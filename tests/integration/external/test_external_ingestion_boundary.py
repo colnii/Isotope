@@ -46,6 +46,7 @@ def _service(tmp_path):
 
 def _raw_provider_response() -> dict:
     return {
+        "run_id": "run_001",
         "source_system": "example_provider",
         "captured_at": "2026-01-01T00:00:01Z",
         "callback_id": "callback_001",
@@ -134,32 +135,29 @@ def test_raw_provider_callback_body_is_not_a_projector_input():
     assert "provider.callback.received" in message
 
 
-def test_external_ingestion_server_api_still_not_enabled_and_side_effect_free(tmp_path):
+def test_external_ingestion_server_api_captures_artifact(tmp_path):
     api = server.InProcessServer(tmp_path)
     session_id = api.create_session()["session_id"]
-    run_id = api.create_run(session_id, "external ingestion remains deferred")["run_id"]
-    before_events = api.event_store.list_events(run_id)
+    run_id = api.create_run(session_id, "external ingestion captures artifact")["run_id"]
+    raw_input = dict(_raw_provider_response(), run_id=run_id)
 
-    result = api.ingest_external_input(_raw_provider_response())
+    result = api.ingest_external_input(raw_input)
 
-    assert result["status"] == "not_enabled"
-    assert result["capability"] == "external_ingestion"
-    assert result["error"]["code"] == "not_enabled"
-    assert api.event_store.list_events(run_id) == before_events
+    assert result["status"] == "artifact_only"
+    assert result["artifact_ref"]["run_id"] == run_id
 
 
-def test_external_ingestion_http_route_still_not_enabled_and_side_effect_free(tmp_path):
+def test_external_ingestion_http_route_captures_artifact(tmp_path):
     app = http_api.create_http_app(tmp_path)
     session_id = app.request("POST", "/sessions").json()["session_id"]
     run_id = app.request("POST", f"/sessions/{session_id}/runs", json={"goal": "ingest"}).json()["run_id"]
-    before_events = app.request("GET", f"/runs/{run_id}/events").json()
+    raw_input = dict(_raw_provider_response(), run_id=run_id)
 
-    response = app.request("POST", "/external-ingestion", json=_raw_provider_response())
+    response = app.request("POST", "/external-ingestion", json=raw_input)
 
-    assert response.status_code == 501
-    assert response.json()["status"] == "not_enabled"
-    assert response.json()["error"]["capability"] == "external_ingestion"
-    assert app.request("GET", f"/runs/{run_id}/events").json() == before_events
+    assert response.status_code == 200
+    assert response.json()["status"] == "artifact_only"
+    assert response.json()["artifact_ref"]["run_id"] == run_id
 
 
 def test_ingestion_boundary_does_not_require_provider_adapter_or_network(monkeypatch, tmp_path):

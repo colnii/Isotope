@@ -26,7 +26,7 @@ REQUIRED_TEXT_FIELDS = (
     "codex_call_count: 0",
     "real_llm_status: fake_provider",
     "network_listener_status: not_used",
-    "memory_status: boundary_only",
+    "memory_status: active",
 )
 
 REQUIRED_JSON_FIELDS = {
@@ -147,7 +147,7 @@ def test_llm_terminal_tool_loop_demo_json_exposes_safe_terminal_status_only():
     assert data["codex_call_count"] == 0
     assert data["real_llm_status"] == "fake_provider"
     assert data["network_listener_status"] == "not_used"
-    assert data["memory_status"] == "boundary_only"
+    assert data["memory_status"] == "active"
     assert "approval.requested" not in data["event_types"]
     assert data["event_types"].count("action.started") == 2
     assert data["event_types"].count("run.completed") == 1

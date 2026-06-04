@@ -100,7 +100,7 @@ def rank_summary_documents(
     query: str,
     documents: list[SummarySearchDocument],
 ) -> list[SummarySearchHit]:
-    """Rank low-sensitive title/summary documents with a small BM25 scorer."""
+    """Rank public title/summary documents with a small BM25 scorer."""
     query_terms = _tokenize(query)
     if not query_terms:
         raise ValueError("query must not be empty")

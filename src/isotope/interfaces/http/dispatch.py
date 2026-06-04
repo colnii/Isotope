@@ -37,19 +37,10 @@ class HttpDispatchMixin(
                 allowed_methods=sorted(allowed_methods),
             )
 
-        if method == "GET" and self._route_matches("/artifacts/{artifact_id}/content", parts):
-            return self._artifact_content_guard()
-
-        deferred_capability = self._deferred_capability(method, parts)
-        if deferred_capability is not None:
-            return self._error(
-                501,
-                "not_enabled",
-                f"{deferred_capability} is not enabled",
-                capability=deferred_capability,
-            )
-
         try:
+            if method == "POST" and parts == ["external-ingestion"]:
+                body = json_body if isinstance(json_body, dict) else {}
+                return self._json(200, self.server.ingest_external_input(body))
             for handler in (
                 self._dispatch_product_route,
                 self._dispatch_run_route,

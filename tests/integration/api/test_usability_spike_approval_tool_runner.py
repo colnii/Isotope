@@ -23,7 +23,7 @@ REQUIRED_TEXT_FIELDS = (
     "artifact_handoff_ok: true",
     "replay_ok: true",
     "checkpoint_ok: true",
-    "memory_status: boundary_only",
+    "memory_status: active",
 )
 
 REQUIRED_JSON_FIELDS = {
@@ -129,13 +129,13 @@ def test_approval_tool_runner_json_cli_exposes_required_status_fields():
     assert data["artifact_handoff_ok"] is True
     assert data["replay_ok"] is True
     assert data["checkpoint_ok"] is True
-    assert data["memory_status"] == "boundary_only"
+    assert data["memory_status"] == "active"
 
 
-def test_approval_tool_runner_keeps_forbidden_integrations_disabled():
+def test_approval_tool_runner_reports_active_http_content_route():
     data = _run_demo_json("--scenario", SCENARIO)
 
-    assert data["http_full_content_route_status"] in {"not_enabled", "deferred"}
+    assert data["http_full_content_route_status"] == "active"
     assert data["filesystem_mutation_status"] == "not_used"
     assert data["model_status"] == "not_used"
     assert data.get("network_listener_status", "not_used") == "not_used"

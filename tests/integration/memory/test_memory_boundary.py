@@ -7,20 +7,20 @@ import isotope.platform.state.projector as projector
 import isotope.runtime.in_process as server
 
 
-def test_not_enabled_memory_query_boundary_still_exists():
-    result = memory.NotEnabledMemoryService().query("run_001", "anything")
+def test_unavailable_memory_query_boundary_still_exists():
+    result = memory.UnavailableMemoryService().query("run_001", "anything")
 
-    assert result == {"status": "not_enabled", "capability": "memory_query"}
+    assert result == {"status": "unavailable", "capability": "memory_query"}
 
 
 def test_durable_write_boundary_method_exists_before_storage_is_enabled():
-    service = memory.NotEnabledMemoryService()
+    service = memory.UnavailableMemoryService()
 
     assert hasattr(service, "write_record")
 
 
 def test_direct_durable_memory_write_without_authorized_execution_is_rejected():
-    service = memory.NotEnabledMemoryService()
+    service = memory.UnavailableMemoryService()
 
     with pytest.raises(PermissionError, match="authorized execution|not enabled|memory_write"):
         service.write_record(
@@ -36,7 +36,7 @@ def test_direct_durable_memory_write_without_authorized_execution_is_rejected():
 
 
 def test_memory_query_requires_caller_context_and_grants():
-    service = memory.NotEnabledMemoryService()
+    service = memory.UnavailableMemoryService()
 
     result = service.query(
         run_id="run_001",
@@ -45,12 +45,12 @@ def test_memory_query_requires_caller_context_and_grants():
         caller_context={},
     )
 
-    assert result["status"] in {"denied", "limited", "not_enabled"}
+    assert result["status"] in {"denied", "limited", "unavailable"}
     assert "content" not in result
 
 
 def test_memory_query_default_result_does_not_include_full_artifact_content():
-    service = memory.NotEnabledMemoryService()
+    service = memory.UnavailableMemoryService()
 
     result = service.query(
         run_id="run_001",

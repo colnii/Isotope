@@ -153,16 +153,15 @@ def test_server_exposes_explicit_checkpoint_history_save_trigger(tmp_path):
     assert hasattr(api, "save_checkpoint_history_for_run")
 
 
-def test_save_checkpoint_history_for_run_requires_checkpoint_store(tmp_path):
+def test_save_checkpoint_history_for_run_uses_default_checkpoint_store(tmp_path):
     api = _server_with_events(tmp_path)
 
     result = api.save_checkpoint_history_for_run("run_001")
 
-    assert result["status"] == "not_enabled"
-    assert result["capability"] == "checkpoint_history"
-    assert result["error"]["code"] == "not_enabled"
-    assert _history_candidate_files(tmp_path) == []
-    assert not _latest_checkpoint_path(tmp_path).exists()
+    assert result["status"] == "saved"
+    assert result["run_id"] == "run_001"
+    assert result["checkpoint_kind"] == "history"
+    assert api.checkpoint_store.load_checkpoint_candidates("run_001")
 
 
 def test_save_checkpoint_history_for_run_delegates_to_projector_history_save(
@@ -270,7 +269,7 @@ def test_save_checkpoint_history_for_run_empty_event_log_fails_without_writing_h
     checkpoints = checkpoint_store.FileCheckpointStore(tmp_path)
     api = server.InProcessServer(tmp_path, checkpoint_store=checkpoints)
 
-    with pytest.raises(ValueError, match="cannot create checkpoint from empty events"):
+    with pytest.raises(ValueError, match="unknown run_id"):
         api.save_checkpoint_history_for_run("run_001")
 
     assert _history_candidate_files(tmp_path) == []
@@ -330,11 +329,11 @@ def test_save_checkpoint_for_run_remains_latest_only_and_does_not_write_history_
     assert _history_candidate_files(tmp_path) == []
 
 
-def test_create_checkpoint_remains_not_enabled(tmp_path):
+def test_create_checkpoint_saves_latest_checkpoint(tmp_path):
     api = _server_with_events(tmp_path)
 
     result = api.create_checkpoint("run_001")
 
-    assert result["status"] == "not_enabled"
-    assert result["capability"] == "checkpoint"
-    assert result["error"]["code"] == "not_enabled"
+    assert result["status"] == "saved"
+    assert result["run_id"] == "run_001"
+    assert api.checkpoint_store.load_latest_checkpoint("run_001")["run_id"] == "run_001"

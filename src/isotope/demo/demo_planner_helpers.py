@@ -33,7 +33,7 @@ def _planner_io_validator_input(run_id: str) -> dict[str, Any]:
             "bind_workspace",
             "verify_replay_checkpoint",
         ],
-        "deferred_capabilities": [
+        "queued_capabilities": [
             "real_llm_plan",
             "scheduler",
             "provider_adapter",
@@ -151,17 +151,17 @@ def _planner_happy_fixture_summary(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _run_planner_blocked_deferred_fixture() -> dict[str, Any]:
+def _run_planner_blocked_queued_fixture() -> dict[str, Any]:
     return {
-        "fixture_id": "blocked_deferred_capability",
-        "status": "blocked_deferred",
+        "fixture_id": "blocked_queued_capability",
+        "status": "blocked_queued",
         "blocked_capability": "real_llm_plan",
-        "reason": "real LLM planning is product/app-layer deferred and is not a core implementation request",
-        "app_deferred_friction": [
+        "reason": "real LLM planning is product/app-layer queued and is not a core implementation request",
+        "app_queued_friction": [
             {
-                "kind": "deferred_capability",
+                "kind": "queued_capability",
                 "capability": "real_llm_plan",
-                "classification": "app_or_product_deferred",
+                "classification": "app_or_product_queued",
             }
         ],
         "app_friction": [],

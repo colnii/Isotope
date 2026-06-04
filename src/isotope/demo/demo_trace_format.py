@@ -179,15 +179,15 @@ def _format_agent_loop_planner_friction_trace(result: dict[str, Any]) -> str:
 def _format_agent_loop_planner_matrix_trace(result: dict[str, Any]) -> str:
     fixtures = {fixture["fixture_id"]: fixture for fixture in result["fixtures"]}
     happy = fixtures["happy_path"]
-    blocked = fixtures["blocked_deferred_capability"]
+    blocked = fixtures["blocked_queued_capability"]
     malformed = fixtures["malformed_symbolic_action"]
     steps = [
         f"happy_path session/run: {happy['session_id']} / {happy['run_id']}",
         f"fixture happy_path action/policy/artifact path: {happy['status']}",
         f"happy_path replay verified: {_bool_text(happy['replay_ok'])}",
         f"happy_path checkpoint verified: {_bool_text(happy['checkpoint_ok'])}",
-        f"fixture blocked_deferred_capability: {blocked['blocked_capability']}",
-        "blocked_deferred_capability classified as app_or_product_deferred",
+        f"fixture blocked_queued_capability: {blocked['blocked_capability']}",
+        "blocked_queued_capability classified as app_or_product_queued",
         f"fixture malformed_symbolic_action: {malformed['status']}",
         f"malformed_symbolic_action partial events appended: {_bool_text(malformed['partial_events_appended'])}",
         f"app friction count: {result['app_friction_count']}",
@@ -428,10 +428,10 @@ def _format_llm_product_chat_app_entry_trace(result: dict[str, Any]) -> str:
     steps = [
         f"创建 session: {result['session_id']}",
         f"创建 run: {result['run_id']}",
-        "preflight blocked before product-chat route",
+        "readiness_check blocked before product-chat route",
         f"blocked response without action side effects: {_bool_text(result['blocked_no_side_effects'])}",
         "no provider call, no Codex call, no artifact while blocked",
-        "preflight ready after developer smoke gate",
+        "readiness_check ready after developer smoke gate",
         f"user message accepted by app entry: {_bool_text(result['user_message_entry_ok'])}",
         f"forwarded to product-chat route: {_bool_text(result['ready_forwarded_to_route'])}",
         "policy accepted final-answer write through existing action chain",

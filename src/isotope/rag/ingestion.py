@@ -63,6 +63,6 @@ class ExternalIngestionService:
         )
 
 
-class NotEnabledExternalIngestionService(ExternalIngestionService):
+class UnavailableExternalIngestionService(ExternalIngestionService):
     """Compatibility alias for the current fail-closed ingestion boundary."""
 

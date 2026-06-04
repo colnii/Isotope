@@ -310,7 +310,7 @@ def test_codex_cli_backend_rejects_unsafe_codex_sandbox(tmp_path):
         )
 
 
-def test_codex_cli_backend_requires_shared_read_only_workspace(tmp_path):
+def test_codex_cli_backend_requires_shared_view_only_workspace(tmp_path):
     runner = RecordingProcessRunner(FakeCompletedProcess())
     backend = codex_cli.CodexCliBackend(
         codex_cli.CodexCliBackendConfig(

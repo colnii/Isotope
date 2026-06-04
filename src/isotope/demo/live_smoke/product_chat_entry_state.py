@@ -25,8 +25,8 @@ def _product_chat_entry_exit_code(payload: dict[str, Any]) -> int:
         return 0
     if entry.get("status") == "bad_request":
         return 2
-    preflight = payload.get("preflight")
-    if isinstance(preflight, dict) and preflight.get("category") == "missing_configuration":
+    readiness_check = payload.get("readiness_check")
+    if isinstance(readiness_check, dict) and readiness_check.get("category") == "missing_configuration":
         return 2
     return 1
 
@@ -114,7 +114,7 @@ def _product_chat_entry_error_next_step(exc: IsotopeError) -> str:
 def _invalid_product_chat_entry_payload(message: Any) -> dict[str, Any] | None:
     if isinstance(message, str) and message.strip():
         return None
-    preflight = {
+    readiness_check = {
         "ready": False,
         "gate": "blocked",
         "category": "invalid_request",
@@ -126,7 +126,7 @@ def _invalid_product_chat_entry_payload(message: Any) -> dict[str, Any] | None:
     return {
         "command": "llm_product_chat_app_entry",
         "codex_runner": "fake",
-        "preflight": preflight,
+        "readiness_check": readiness_check,
         "entry": {
             "http_status": 400,
             "status": "bad_request",
@@ -141,7 +141,7 @@ def _invalid_product_chat_entry_mode_payload(args: Any) -> dict[str, Any] | None
     if not getattr(args, "fake_entry_pending", False) or getattr(args, "fake_provider", False):
         return None
     reason_code = "llm_product_chat_fake_entry_pending_requires_fake_provider"
-    preflight = {
+    readiness_check = {
         "ready": False,
         "gate": "blocked",
         "category": "invalid_request",
@@ -153,7 +153,7 @@ def _invalid_product_chat_entry_mode_payload(args: Any) -> dict[str, Any] | None
     return {
         "command": "llm_product_chat_app_entry",
         "codex_runner": "fake",
-        "preflight": preflight,
+        "readiness_check": readiness_check,
         "entry": {
             "http_status": 400,
             "status": "bad_request",
@@ -172,7 +172,7 @@ def _invalid_product_chat_entry_resume_mode_payload(args: Any) -> dict[str, Any]
     ):
         return None
     reason_code = "llm_product_chat_resume_state_conflicting_flags"
-    preflight = {
+    readiness_check = {
         "ready": False,
         "gate": "blocked",
         "category": "invalid_request",
@@ -184,7 +184,7 @@ def _invalid_product_chat_entry_resume_mode_payload(args: Any) -> dict[str, Any]
     return {
         "command": "llm_product_chat_app_entry_resume",
         "codex_runner": "fake",
-        "preflight": preflight,
+        "readiness_check": readiness_check,
         "entry": {
             "http_status": 400,
             "status": "bad_request",
@@ -232,7 +232,7 @@ def _maybe_write_product_chat_entry_state(
     *,
     root: Path,
     run_id: str,
-    preflight: Mapping[str, Any],
+    readiness_check: Mapping[str, Any],
     state_file: Path | None,
 ) -> dict[str, Any]:
     body = _response_dict(response)
@@ -257,7 +257,7 @@ def _maybe_write_product_chat_entry_state(
         response,
         root=root,
         run_id=run_id,
-        preflight=preflight,
+        readiness_check=readiness_check,
     )
     if state is None:
         return {"saved": False, "resume_ready": False}
@@ -382,7 +382,7 @@ def _mark_product_chat_entry_state_resumed(
         raise _product_chat_entry_state_mark_error("unwritable") from exc
 
 
-def _preflight_from_result(result: Mapping[str, Any]) -> dict[str, Any]:
+def _readiness_check_from_result(result: Mapping[str, Any]) -> dict[str, Any]:
     diagnosis = result.get("diagnosis")
     if not isinstance(diagnosis, dict):
         diagnosis = {}
@@ -397,16 +397,16 @@ def _preflight_from_result(result: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _blocked_product_chat_entry_summary(preflight: Mapping[str, Any]) -> dict[str, Any]:
+def _blocked_product_chat_entry_summary(readiness_check: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "http_status": 412,
-        "status": "blocked_by_preflight",
-        "reason_code": "llm_product_chat_preflight_blocked",
-        "preflight_category": _safe_body_string(dict(preflight), "category"),
+        "status": "blocked_by_readiness_check",
+        "reason_code": "llm_product_chat_readiness_check_blocked",
+        "readiness_check_category": _safe_body_string(dict(readiness_check), "category"),
         "explanation": {
-            "summary": _safe_body_string(dict(preflight), "summary")
-            or "Product-chat preflight is not ready.",
-            "next_step": _safe_body_string(dict(preflight), "next_step")
+            "summary": _safe_body_string(dict(readiness_check), "summary")
+            or "Product-chat readiness_check is not ready.",
+            "next_step": _safe_body_string(dict(readiness_check), "next_step")
             or "Run product-chat diagnosis before submitting a chat turn.",
         },
     }
@@ -441,7 +441,7 @@ __all__ = [
     "_mark_product_chat_entry_state_resumed",
     "_maybe_write_product_chat_entry_state",
     "_optional_path",
-    "_preflight_from_result",
+    "_readiness_check_from_result",
     "_prepare_product_chat_entry_root",
     "_product_chat_entry_error_payload",
     "_product_chat_entry_exit_code",

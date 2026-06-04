@@ -1,4 +1,4 @@
-"""Low-sensitive Supervisor state snapshot schema."""
+"""Public Supervisor state snapshot schema."""
 
 from __future__ import annotations
 

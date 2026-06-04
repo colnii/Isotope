@@ -179,7 +179,7 @@ def test_external_snapshot_review_run_demo_projects_observations_and_conflicts(t
     assert data["external_observation_count"] >= 2
     assert data["conflict_diagnostics_count"] >= 1
     assert data["native_state_preserved"] is True
-    assert data["provider_status"] == "boundary_only"
+    assert data["provider_status"] == "active"
     assert isinstance(data["external_observations"], list)
     assert all(observation["status"] in {"imported", "conflict"} for observation in data["external_observations"])
 

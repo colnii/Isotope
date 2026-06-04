@@ -19,7 +19,7 @@ RESEARCH_CAPABILITIES = frozenset(
         RESEARCH_SEARCH_CAPABILITY,
     }
 )
-VALID_RESEARCH_CAPABILITY_PROVIDERS = frozenset({"codex", "tavily"})
+VALID_RESEARCH_CAPABILITY_PROVIDERS = frozenset({"fake", "codex", "tavily"})
 RESEARCH_PROVIDER_GATES = {
     "codex": "codex_research",
     "tavily": "tavily_research",
@@ -184,16 +184,16 @@ def _validate_research_search_inputs(
         if not value.strip():
             raise ValueError(f"{name} must be a non-empty string")
 
-    provider_input = input_mapping.get("provider")
+    provider_input = input_mapping.get("provider", "fake")
     if not isinstance(provider_input, str) or not provider_input.strip():
         raise ValueError("provider must be a non-empty string")
     provider = provider_input.strip()
     if provider not in VALID_RESEARCH_CAPABILITY_PROVIDERS:
-        raise ValueError("provider must be codex or tavily")
+        raise ValueError("provider must be fake, codex, or tavily")
 
+    provider_gate = input_mapping.get("provider_gate")
     expected_gate = RESEARCH_PROVIDER_GATES.get(provider)
     if expected_gate:
-        provider_gate = input_mapping.get("provider_gate")
         if provider_gate != expected_gate:
             raise ValueError(
                 f"provider_gate must be {expected_gate} for {provider} provider"

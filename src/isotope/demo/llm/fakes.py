@@ -132,7 +132,7 @@ def _demo_terminal_final_answer_response() -> LLMFinalAnswerResponse:
     )
 
 
-def _demo_product_chat_ready_preflight() -> dict[str, Any]:
+def _demo_product_chat_ready_readiness_check() -> dict[str, Any]:
     return {
         "ready": True,
         "gate": "passed",
@@ -140,11 +140,11 @@ def _demo_product_chat_ready_preflight() -> dict[str, Any]:
         "status": "completed",
         "reason_code": "llm_product_chat_live_smoke_completed",
         "summary": "product-chat smoke completed direct answer, approval pause, and resume final answer",
-        "next_step": "use this as a dev-only preflight before product-chat app entry",
+        "next_step": "use this as a dev-only readiness_check before product-chat app entry",
     }
 
 
-def _demo_product_chat_blocked_preflight() -> dict[str, Any]:
+def _demo_product_chat_blocked_readiness_check() -> dict[str, Any]:
     return {
         "ready": False,
         "gate": "blocked",

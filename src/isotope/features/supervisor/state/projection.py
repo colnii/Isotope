@@ -35,7 +35,7 @@ def build_supervisor_state_snapshot(
     notification_limit: int = 20,
     goal_limit: int = 20,
 ) -> dict[str, Any]:
-    """Build a low-sensitive read model from existing Supervisor ledgers."""
+    """Build a public read model from existing Supervisor ledgers."""
     codex_home_path = Path(codex_home).expanduser()
     active_goals = _active_goal_payloads(codex_home_path, limit=goal_limit)
     active_decisions = [

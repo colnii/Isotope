@@ -18,14 +18,14 @@ FORBIDDEN_CONTENT_KEYS = {
 }
 
 
-def _assert_low_sensitive(value: Any) -> None:
+def _assert_public_metadata(value: Any) -> None:
     if isinstance(value, dict):
         assert FORBIDDEN_CONTENT_KEYS.isdisjoint(value)
         for nested in value.values():
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
     elif isinstance(value, list):
         for nested in value:
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
 
 
 def test_notification_flow_creates_filters_and_marks_read(tmp_path):
@@ -58,10 +58,10 @@ def test_notification_flow_creates_filters_and_marks_read(tmp_path):
     assert marked.read_at is not None
     assert flow.list_notifications(unread=True) == [status]
     assert flow.list_notifications(unread=False) == [marked]
-    _assert_low_sensitive({"notifications": [item.to_dict() for item in flow.list_notifications()]})
+    _assert_public_metadata({"notifications": [item.to_dict() for item in flow.list_notifications()]})
 
 
-def test_notification_flow_reloads_low_sensitive_index(tmp_path):
+def test_notification_flow_reloads_public_metadata_index(tmp_path):
     flow = NotificationFlow.in_process(tmp_path)
     created = flow.create_notification(
         notification_type="worker_status",
@@ -74,13 +74,13 @@ def test_notification_flow_reloads_low_sensitive_index(tmp_path):
     assert reloaded.list_notifications() == [marked]
     assert reloaded.list_notifications(unread=False) == [marked]
     assert reloaded.get_notification(created.notification_id) == marked
-    _assert_low_sensitive(reloaded.get_notification(created.notification_id).to_dict())
+    _assert_public_metadata(reloaded.get_notification(created.notification_id).to_dict())
 
 
 def test_notification_flow_rejects_sensitive_source_ref_fields(tmp_path):
     flow = NotificationFlow.in_process(tmp_path)
 
-    with pytest.raises(ValueError, match="source_ref must stay low-sensitive"):
+    with pytest.raises(ValueError, match="source_ref must stay public"):
         flow.create_notification(
             notification_type="approval",
             title="Worker needs approval",
@@ -113,7 +113,7 @@ def test_notification_flow_source_ref_is_deep_copied_and_revalidated(tmp_path):
         "worker": {"name": "worker-a"},
     }
     assert reloaded.source_ref == marked.source_ref
-    _assert_low_sensitive(reloaded.to_dict())
+    _assert_public_metadata(reloaded.to_dict())
 
 
 def test_notification_flow_merges_stale_writers(tmp_path):

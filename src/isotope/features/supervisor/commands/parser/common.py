@@ -67,7 +67,7 @@ def add_failure_retry_args(
 def add_webhook_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--webhook-url",
-        help="HTTP endpoint for low-sensitive Supervisor event POSTs.",
+        help="HTTP endpoint for public Supervisor event POSTs.",
     )
     parser.add_argument(
         "--webhook-secret",

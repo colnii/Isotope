@@ -123,7 +123,7 @@ def test_supervisor_capacity_handoff_json_reports_action_to_tick_chain():
     assert data["app_friction_count"] == 0
 
 
-def test_supervisor_capacity_handoff_keeps_deferred_integrations_disabled():
+def test_supervisor_capacity_handoff_keeps_queued_integrations_disabled():
     data = _run_demo_json("--scenario", SCENARIO)
 
     assert data["transport"] == "in_process"

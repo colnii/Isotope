@@ -37,12 +37,10 @@ def test_launch_work_order_prompt_includes_coordination_reuse_rules():
         goal="接入已有 research capability。",
     )
 
-    assert "coordination_preflight:" in prompt
-    assert "git worktree list --porcelain" in prompt
-    assert "git branch --list" in prompt
-    assert "已有同主题 branch/worktree 时先复用或接入已有成果" in prompt
-    assert "没有对应分支时才创建清晰命名的新 branch/worktree" in prompt
-    assert "不要跨到 memory/screen/capacity/research 等无关主题长臂管辖" in prompt
+    assert "coordination:" in prompt
+    assert "发现相关已有实现时直接复用" in prompt
+    assert "发现冲突时在结果里说明证据和处理方式" in prompt
+    assert "coordination_readiness_check" not in prompt
 
 
 def test_launch_work_order_prompt_can_allow_ci_push_for_merge_workers():

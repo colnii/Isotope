@@ -53,10 +53,10 @@ class TavilyResearchProvider:
             )
         if not self.enable_network:
             raise ResearchProviderError(
-                "tavily provider is preflight only; network execution is deferred",
+                "tavily provider is readiness_check only; network execution is queued",
                 details={
                     "provider_id": "tavily",
-                    "error_code": "network_execution_deferred",
+                    "error_code": "network_execution_queued",
                     "api_key_configured": True,
                     "timeout_seconds": self.timeout_seconds,
                     "max_results": self.max_results,
@@ -96,7 +96,7 @@ class TavilyResearchProvider:
         )
 
 
-TavilyPreflightResearchProvider = TavilyResearchProvider
+TavilyReadinessCheckResearchProvider = TavilyResearchProvider
 
 
 def _post_json(

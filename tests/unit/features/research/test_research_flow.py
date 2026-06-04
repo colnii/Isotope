@@ -279,7 +279,7 @@ def test_research_flow_marks_provider_errors_without_success_artifact(tmp_path):
     }
 
 
-def test_research_flow_preserves_non_retryable_provider_preflight_trace(tmp_path):
+def test_research_flow_preserves_non_retryable_provider_readiness_check_trace(tmp_path):
     class MissingConfigProvider:
         provider_name = "tavily"
 

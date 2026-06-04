@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 class HttpRouteMixin:
-    """Declare supported and deferred route surfaces."""
+    """Declare supported route surfaces."""
 
     """Minimal in-process HTTP-like app for the kernel runtime boundary."""
 
@@ -38,7 +38,15 @@ class HttpRouteMixin:
         ("GET", "/runs/{run_id}/agent-loop-control"),
         ("GET", "/runs/{run_id}/agent-loop-tick-policy"),
         ("GET", "/runs/{run_id}/events"),
+        ("GET", "/runs/{run_id}/events/stream"),
+        ("POST", "/runs/{run_id}/memory/query"),
+        ("GET", "/runs/{run_id}/approvals"),
+        ("POST", "/runs/{run_id}/approvals"),
+        ("GET", "/runs/{run_id}/approvals/{approval_id}"),
+        ("POST", "/runs/{run_id}/approvals/{approval_id}/resolve"),
         ("GET", "/artifacts/{artifact_id}/summary"),
+        ("GET", "/artifacts/{artifact_id}/content"),
+        ("POST", "/external-ingestion"),
     )
     _CODEX_TASK_ROUTES: tuple[tuple[str, str], ...] = (
         ("POST", "/runs/{run_id}/codex-tasks"),
@@ -50,34 +58,6 @@ class HttpRouteMixin:
     _LLM_PRODUCT_CHAT_ROUTES: tuple[tuple[str, str], ...] = (
         ("POST", "/runs/{run_id}/llm/chat-turns"),
     )
-    _DEFERRED_ROUTES: tuple[tuple[str, str, str], ...] = (
-        ("POST", "/runs/{run_id}/memory/query", "memory_query"),
-        ("POST", "/external-ingestion", "external_ingestion"),
-        ("GET", "/runs/{run_id}/events/stream", "sse_stream"),
-        ("POST", "/runs/{run_id}/approvals", "approval_api"),
-        ("GET", "/artifacts/{artifact_id}/content", "artifact_content"),
-    )
-    _CODEX_TASK_DEFERRED_ROUTES: tuple[tuple[str, str, str], ...] = (
-        ("POST", "/runs/{run_id}/codex-tasks", "codex_task"),
-    )
-    _LLM_PROVIDER_DEFERRED_ROUTES: tuple[tuple[str, str, str], ...] = (
-        ("POST", "/runs/{run_id}/llm/tool-calls", "llm_provider_tool_call"),
-        (
-            "POST",
-            "/runs/{run_id}/llm/tool-result-followups",
-            "llm_provider_tool_result_followup",
-        ),
-    )
-    _LLM_PRODUCT_CHAT_DEFERRED_ROUTES: tuple[tuple[str, str, str], ...] = (
-        ("POST", "/runs/{run_id}/llm/chat-turns", "llm_product_chat_route"),
-    )
-
-    def _deferred_capability(self, method: str, parts: list[str]) -> str | None:
-        for deferred_method, route, capability in self._deferred_routes():
-            if method == deferred_method and self._route_matches(route, parts):
-                return capability
-        return None
-
     def _active_routes(self) -> tuple[tuple[str, str], ...]:
         routes = self._ROUTES
         if self.enable_codex_task_route:
@@ -87,17 +67,6 @@ class HttpRouteMixin:
         if self.enable_llm_product_chat_route:
             routes += self._LLM_PRODUCT_CHAT_ROUTES
         return routes
-
-    def _deferred_routes(self) -> tuple[tuple[str, str, str], ...]:
-        routes = self._DEFERRED_ROUTES
-        if not self.enable_codex_task_route:
-            routes += self._CODEX_TASK_DEFERRED_ROUTES
-        if not self.enable_llm_provider_route:
-            routes += self._LLM_PROVIDER_DEFERRED_ROUTES
-        if not self.enable_llm_product_chat_route:
-            routes += self._LLM_PRODUCT_CHAT_DEFERRED_ROUTES
-        return routes
-
 
     def _split_path(self, path: str) -> list[str]:
         if not isinstance(path, str) or not path.startswith("/"):

@@ -198,7 +198,7 @@ def test_artifact_review_demo_uses_source_artifact_helper_not_private_append_glu
     assert "source_execution_id" not in source
 
 
-def test_source_artifact_helper_does_not_open_http_full_content_route(tmp_path):
+def test_source_artifact_helper_exposes_http_full_content_route(tmp_path):
     app = create_http_app(tmp_path)
     session = app.server.create_session()
     run = app.server.create_run(session["session_id"], goal="source content route")
@@ -213,8 +213,9 @@ def test_source_artifact_helper_does_not_open_http_full_content_route(tmp_path):
         f"/artifacts/{result['artifact_ref'].artifact_id}/content",
     )
 
-    assert response.status_code == 501
-    assert response.body["error"]["code"] == "not_enabled"
+    assert response.status_code == 200
+    assert response.body["status"] == "ok"
+    assert response.body["content"] == "source artifact durable content"
 
 
 def test_source_artifact_helper_rejects_binary_or_file_like_inputs_without_artifact(tmp_path):

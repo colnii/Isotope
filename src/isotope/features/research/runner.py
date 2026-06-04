@@ -37,6 +37,8 @@ def _build_parser() -> argparse.ArgumentParser:
     search_parser.add_argument("--query", help="Research query.")
     search_parser.add_argument(
         "--provider",
+        nargs="?",
+        const="fake",
         default="fake",
         choices=research_provider_choices(),
         help="Research provider.",

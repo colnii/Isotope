@@ -146,7 +146,7 @@ def read_goal_planning_facts(root: Path) -> dict[str, str]:
             continue
         facts[relative] = _clip(text)
     if missing:
-        raise ValueError("missing goal planning docs: " + ", ".join(missing))
+        facts["missing_docs"] = "\n".join(missing)
     return facts
 
 

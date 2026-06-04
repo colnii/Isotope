@@ -35,7 +35,7 @@ def validate_vcs_inputs(
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"{name} must be a non-empty string")
         input_mapping[name] = value.strip()
-    input_mapping["max_stat_chars"] = _bounded_int(
+    input_mapping["max_stat_chars"] = _limited_int(
         input_mapping.get("max_stat_chars", _DEFAULT_MAX_STAT_CHARS),
         field_name="max_stat_chars",
         minimum=1,
@@ -181,7 +181,7 @@ def _branch_from_status_header(value: str) -> str | None:
     return branch or None
 
 
-def _bounded_int(value: Any, *, field_name: str, minimum: int, maximum: int) -> int:
+def _limited_int(value: Any, *, field_name: str, minimum: int, maximum: int) -> int:
     if not isinstance(value, int) or isinstance(value, bool):
         raise ValueError(f"{field_name} must be an integer")
     if value < minimum or value > maximum:

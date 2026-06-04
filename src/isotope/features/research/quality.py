@@ -1,4 +1,4 @@
-"""Low-sensitive quality gate for structured research reports."""
+"""Public quality gate for structured research reports."""
 
 from __future__ import annotations
 

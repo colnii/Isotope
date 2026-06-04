@@ -1,4 +1,4 @@
-"""Thin capability runner shell over the low-sensitive capability catalog.
+"""Thin capability runner shell over the public capability catalog.
 
 This module intentionally stays small: catalog metadata remains the source of
 truth, and execution is limited to deterministic in-process demo scenarios.
@@ -331,7 +331,7 @@ class CapabilityRunner:
             can_launch = True
 
         if not can_launch and runner_kind == "deterministic_demo" and scenario is None:
-            runner_kind = "deferred"
+            runner_kind = "queued"
 
         return {
             "kind": "capability_launch_plan",
@@ -648,14 +648,14 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "deterministic_local"
     if is_artifact_output_capability(str(capability.get("capability_id", ""))):
         return "deterministic_local"
-    return "deferred"
+    return "queued"
 
 
 def _output_policy() -> dict[str, bool]:
     return {
         "returns_full_content": False,
         "returns_artifact_refs": True,
-        "low_sensitive_summary_only": True,
+        "public_metadata_summary_only": True,
     }
 
 

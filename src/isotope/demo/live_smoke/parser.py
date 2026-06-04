@@ -21,7 +21,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     terminal_tool.add_argument(
         "--diagnose",
         action="store_true",
-        help="Include a low-sensitive readiness diagnosis in the smoke result.",
+        help="Include a public readiness diagnosis in the smoke result.",
     )
     terminal_tool.add_argument(
         "--root",
@@ -46,7 +46,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     product_chat.add_argument(
         "--diagnose",
         action="store_true",
-        help="Include a low-sensitive readiness diagnosis in the smoke result.",
+        help="Include a public readiness diagnosis in the smoke result.",
     )
     product_chat.add_argument(
         "--root",
@@ -77,7 +77,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     product_chat_entry = subparsers.add_parser(
         "product-chat-entry",
-        help="Run product-chat preflight, then submit one user message if ready.",
+        help="Run product-chat readiness_check, then submit one user message if ready.",
     )
     product_chat_entry.add_argument("--json", action="store_true", help="Print JSON output.")
     product_chat_entry.add_argument(
@@ -93,7 +93,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     product_chat_entry.add_argument(
         "--message",
         required=False,
-        help="One user message to submit after product-chat preflight passes.",
+        help="One user message to submit after product-chat readiness_check passes.",
     )
     product_chat_entry.add_argument(
         "--state-file",

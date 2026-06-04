@@ -43,7 +43,7 @@ def test_supervisor_research_command_proxies_research_flow(tmp_path):
     payload = json.loads(result.stdout)
     assert payload["status"] == "ok"
     assert payload["research"]["query"] == "agent memory retrieval"
-    assert payload["research"]["provider"] == "codex"
+    assert payload["research"]["provider"] == "fake"
     assert payload["research"]["sources"][0]["source_kind"] == "unknown"
     assert payload["research"]["sources"][0]["source_authority"] == "unknown"
     assert [artifact["artifact_type"] for artifact in payload["artifacts"]] == [
@@ -67,7 +67,7 @@ def test_supervisor_research_providers_proxies_registry_json(tmp_path):
     ]
 
 
-def test_supervisor_research_search_records_tavily_preflight_failure(
+def test_supervisor_research_search_records_tavily_readiness_check_failure(
     tmp_path,
     monkeypatch,
 ):
@@ -115,7 +115,7 @@ def test_supervisor_research_accepts_tavily_config_path(tmp_path, monkeypatch):
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["status"] == "provider_failed"
-    assert payload["error"]["details"]["error_code"] == "network_execution_deferred"
+    assert payload["error"]["details"]["error_code"] == "network_execution_queued"
     assert "test-secret-key" not in result.stdout
 
 

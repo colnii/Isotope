@@ -97,10 +97,9 @@ def _codex_http_app(tmp_path, runner: RecordingProcessRunner):
     )
 
 
-def test_default_http_codex_task_route_is_not_enabled_without_side_effects(tmp_path):
+def test_default_http_codex_task_route_submits_pending_approval(tmp_path):
     app = create_http_app(tmp_path)
     run_id = _create_run(app)
-    before_events = _event_types(app, run_id)
 
     response = _request(
         app,
@@ -112,21 +111,21 @@ def test_default_http_codex_task_route_is_not_enabled_without_side_effects(tmp_p
         },
     )
 
-    assert _status_code(response) == 501
+    assert _status_code(response) == 202
     body = _body(response)
-    assert body["status"] == "not_enabled"
-    assert body["error"]["code"] == "not_enabled"
-    assert body["error"]["capability"] == "codex_task"
-    assert _event_types(app, run_id) == before_events
+    assert body["status"] == "pending_user_approval"
+    assert body["approval_id"].startswith("approval_")
+    assert body["proposal_id"].startswith("prop_")
+    assert "approval.requested" in _event_types(app, run_id)
     assert app.server.artifact_store.list_artifacts(run_id) == []
 
 
-def test_codex_http_route_is_listed_only_when_explicitly_enabled(tmp_path):
+def test_codex_http_route_is_listed_by_default(tmp_path):
     default_app = create_http_app(tmp_path / "default")
     runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
     codex_app = _codex_http_app(tmp_path / "codex", runner)
 
-    assert ("POST", "/runs/{run_id}/codex-tasks") not in default_app.routes()
+    assert ("POST", "/runs/{run_id}/codex-tasks") in default_app.routes()
     assert ("POST", "/runs/{run_id}/codex-tasks") in codex_app.routes()
 
 
@@ -158,7 +157,7 @@ def test_codex_http_route_submits_pending_approval_without_starting_codex(tmp_pa
     assert not ACTION_EXECUTION_EVENTS.intersection(event_types)
 
 
-def test_codex_http_approval_resolution_runs_cli_backend_and_keeps_response_low_sensitive(
+def test_codex_http_approval_resolution_runs_cli_backend_and_keeps_response_public_metadata(
     tmp_path,
     monkeypatch,
 ):

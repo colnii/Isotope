@@ -25,6 +25,6 @@
       "step": "one of control.next_actions",
       "request": "object"
     },
-    "rationale": "short low-sensitive string"
+    "rationale": "short public string"
   }
 }

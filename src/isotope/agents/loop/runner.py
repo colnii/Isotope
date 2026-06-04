@@ -1,4 +1,4 @@
-"""Bounded Agent loop goal runner."""
+"""Limited Agent loop goal runner."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ def run_agent_loop_until_stop(
     budget_basis: str | None = None,
     user_pause: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Run bounded planner ticks until policy says the goal loop must stop."""
+    """Run limited planner ticks until policy says the goal loop must stop."""
     if isinstance(max_ticks, bool) or not isinstance(max_ticks, int):
         raise ValueError("max_ticks must be a positive integer")
     if max_ticks <= 0:
@@ -78,7 +78,7 @@ def run_agent_loop_until_stop(
         "ticks": ticks,
         "safety": {
             "max_ticks": max_ticks,
-            "bounded": True,
+            "limited": True,
             "real_llm_provider": False,
             "agent_conversation_interface": False,
         },

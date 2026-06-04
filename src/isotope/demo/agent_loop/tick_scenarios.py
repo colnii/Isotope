@@ -103,8 +103,8 @@ def _run_agent_loop_tick_policy_trace(root: Path) -> dict[str, Any]:
         "provider_status": "not_used",
         "network_listener_status": "not_used",
         "filesystem_mutation_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
         "next_development_step": (
             "Use this readable tick-policy trace as the handoff before wiring any "
             "Supervisor path to agent-loop-driven execution."
@@ -191,8 +191,8 @@ def _run_agent_loop_tick_driver_trace(root: Path) -> dict[str, Any]:
         "provider_status": "not_used",
         "network_listener_status": "not_used",
         "filesystem_mutation_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
         "replay_status": "not_applicable",
         "checkpoint_status": "not_applicable",
         "next_development_step": (
@@ -274,8 +274,8 @@ def _run_supervisor_capacity_handoff_trace(root: Path) -> dict[str, Any]:
         "scheduler_status": "not_used",
         "provider_status": "fixture_only",
         "network_listener_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
         "replay_status": "not_applicable",
         "checkpoint_status": "not_applicable",
         "next_development_step": (

@@ -18,18 +18,6 @@ ACTION_LIFECYCLE_EVENTS = {
     "run.completed",
 }
 
-DEFERRED_ENDPOINTS = [
-    ("GET", "/memory/query"),
-    ("POST", "/memory/query"),
-    ("POST", "/external-ingestion"),
-    ("POST", "/ingest"),
-    ("POST", "/runs/run_001/approvals"),
-    ("GET", "/runs/run_001/events/stream"),
-    ("GET", "/stream"),
-    ("GET", "/artifacts/artifact_001/content"),
-]
-
-
 def _request(app, method: str, path: str, json_body: Any = None):
     return app.request(method, path, json=json_body)
 
@@ -199,18 +187,3 @@ def test_unknown_artifact_summary_returns_404_without_reading_full_content(
     assert _status_code(response) == 404
     assert _json_body(response)["status"] == "not_found"
 
-
-@pytest.mark.parametrize(("method", "path"), DEFERRED_ENDPOINTS)
-def test_deferred_routes_remain_absent_or_not_enabled_without_events(
-    tmp_path,
-    method,
-    path,
-):
-    app = create_http_app(tmp_path)
-
-    response = _request(app, method, path, {"text": "ignored"})
-
-    assert _status_code(response) in {404, 405, 501}
-    body = _json_body(response)
-    assert body.get("status") in {"not_found", "method_not_allowed", "not_enabled"}
-    assert _event_types(tmp_path) == []

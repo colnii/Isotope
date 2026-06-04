@@ -64,9 +64,9 @@ class HttpLlmRouteMixin:
                 )
             if self.llm_tool_call_provider is None:
                 return self._error(
-                    501,
-                    "not_enabled",
-                    "llm_provider_tool_call is not enabled",
+                    400,
+                    "bad_request",
+                    "llm provider is required for tool calls",
                     capability="llm_provider_tool_call",
                 )
             body = self._require_llm_provider_body(json_body)
@@ -103,9 +103,9 @@ class HttpLlmRouteMixin:
                 )
             if self.llm_tool_call_provider is None:
                 return self._error(
-                    501,
-                    "not_enabled",
-                    "llm_provider_tool_result_followup is not enabled",
+                    400,
+                    "bad_request",
+                    "llm provider is required for tool result followups",
                     capability="llm_provider_tool_result_followup",
                 )
             body = self._require_llm_tool_result_followup_body(json_body)
@@ -144,9 +144,9 @@ class HttpLlmRouteMixin:
                 )
             if self.llm_tool_call_provider is None:
                 return self._error(
-                    501,
-                    "not_enabled",
-                    "llm_product_chat_route is not enabled",
+                    400,
+                    "bad_request",
+                    "llm provider is required for product chat turns",
                     capability="llm_product_chat_route",
                 )
             body = self._require_llm_product_chat_body(json_body)

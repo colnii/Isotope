@@ -87,7 +87,7 @@ def _denied_body(**overrides):
     return body
 
 
-def test_route_inventory_does_not_mark_approval_api_as_supported(tmp_path):
+def test_route_inventory_marks_approval_api_as_supported(tmp_path):
     app = create_http_app(tmp_path)
     inventory = app.list_routes()
 
@@ -97,8 +97,8 @@ def test_route_inventory_does_not_mark_approval_api_as_supported(tmp_path):
         if route["status"] == "supported"
     }
 
-    assert "/runs/{run_id}/approvals" not in supported_paths
-    assert "/runs/{run_id}/approvals/{approval_id}/resolve" not in supported_paths
+    assert "/runs/{run_id}/approvals" in supported_paths
+    assert "/runs/{run_id}/approvals/{approval_id}/resolve" in supported_paths
 
 
 def test_approval_route_remains_in_process_facade_not_real_network(tmp_path, monkeypatch):
@@ -249,13 +249,19 @@ def test_duplicate_http_approval_resolve_is_controlled(tmp_path):
     assert _event_types(app, run_id).count("approval.resolved") == 1
 
 
-def test_deferred_approval_collection_route_error_shape_remains_stable(tmp_path):
+def test_approval_collection_route_creates_pending_approval(tmp_path):
     app = create_http_app(tmp_path)
+    session = app.server.create_session()
+    run = app.server.create_run(session["session_id"], goal="approval route")
 
-    response = _request(app, "POST", "/runs/run_001/approvals", {"resolution": "approved"})
+    response = _request(
+        app,
+        "POST",
+        f"/runs/{run['run_id']}/approvals",
+        {"text": "approval gated input"},
+    )
 
-    assert _status_code(response) == 501
+    assert _status_code(response) == 202
     body = _body(response)
-    assert body["status"] == "not_enabled"
-    assert body["error"]["code"] == "not_enabled"
-    assert body["error"]["capability"] == "approval_api"
+    assert body["status"] == "pending_user_approval"
+    assert body["approval_id"].startswith("approval_")

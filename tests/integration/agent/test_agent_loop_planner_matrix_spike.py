@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 SCENARIO = "agent-loop-planner-matrix"
 
@@ -15,8 +15,8 @@ REQUIRED_TEXT_FIELDS = (
     "planner_matrix_ok: true",
     "fixture_count: 3",
     "happy_path_ok: true",
-    "blocked_deferred_ok: true",
-    "malformed_fail_closed_ok: true",
+    "blocked_queued_ok: true",
+    "malformed_rejected_ok: true",
     "app_friction_count: 0",
     "model_status: not_used",
 )
@@ -29,7 +29,7 @@ REQUIRED_JSON_FIELDS = {
     "fixtures",
     "app_friction",
     "app_friction_count",
-    "app_deferred_friction",
+    "app_queued_friction",
     "model_status",
     "scheduler_status",
     "provider_status",
@@ -112,11 +112,11 @@ def test_planner_matrix_json_reports_happy_blocked_and_malformed_paths():
     assert happy["replay_ok"] is True
     assert happy["checkpoint_ok"] is True
 
-    blocked = _fixture(data, "blocked_deferred_capability")
-    assert blocked["status"] == "blocked_deferred"
+    blocked = _fixture(data, "blocked_queued_capability")
+    assert blocked["status"] == "blocked_queued"
     assert blocked["blocked_capability"] in {"real_llm_plan", "memory_query"}
     assert blocked["app_friction"] == []
-    assert blocked["app_deferred_friction"]
+    assert blocked["app_queued_friction"]
 
     malformed = _fixture(data, "malformed_symbolic_action")
     assert malformed["status"] == "failed_closed"
@@ -125,7 +125,7 @@ def test_planner_matrix_json_reports_happy_blocked_and_malformed_paths():
     assert malformed["app_friction"] == []
 
 
-def test_planner_matrix_keeps_deferred_integrations_disabled():
+def test_planner_matrix_keeps_queued_integrations_disabled():
     data = _run_demo_json("--scenario", SCENARIO)
 
     assert data["transport"] == "in_process"
@@ -133,7 +133,7 @@ def test_planner_matrix_keeps_deferred_integrations_disabled():
     assert data["scheduler_status"] == "not_used"
     assert data["provider_status"] == "not_used"
     assert data.get("network_listener_status", "not_used") == "not_used"
-    assert data.get("memory_query_status", "not_enabled") == "not_enabled"
+    assert data.get("memory_query_status", "unavailable") == "unavailable"
 
 
 def test_planner_matrix_json_excludes_model_and_artifact_full_content():
@@ -148,7 +148,7 @@ def test_planner_matrix_trace_shows_all_fixture_paths_and_next_step():
     assert result.returncode == 0, result.stderr
     assert "scenario: agent-loop-planner-matrix" in result.stdout
     assert "happy_path" in result.stdout
-    assert "blocked_deferred_capability" in result.stdout
+    assert "blocked_queued_capability" in result.stdout
     assert "malformed_symbolic_action" in result.stdout
     assert "next development step" in result.stdout
     assert "raw artifact content" not in result.stdout.lower()

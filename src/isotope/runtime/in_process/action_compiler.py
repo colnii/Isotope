@@ -45,8 +45,6 @@ class ActionCompiler:
         try:
             registry_entry = self.registry.get_tool(tool)
         except KeyError as exc:
-            if self.registry.is_deferred_tool(tool):
-                raise ValueError(f"deferred tool {tool} is not callable") from exc
             raise ValueError(f"unknown tool {tool}") from exc
         if not registry_entry.enabled:
             raise ValueError(f"disabled tool {tool}")

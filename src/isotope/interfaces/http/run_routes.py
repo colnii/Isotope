@@ -94,6 +94,39 @@ class HttpRunRouteMixin:
                     user_pause=body["user_pause"],
                 ),
             )
+        if (
+            method == "POST"
+            and len(parts) == 4
+            and parts[0] == "runs"
+            and parts[2] == "memory"
+            and parts[3] == "query"
+        ):
+            if not self._run_exists(parts[1]):
+                return self._error(404, "not_found", "run not found")
+            body = json_body if isinstance(json_body, dict) else {}
+            query = body.get("query")
+            if not isinstance(query, str) or not query.strip():
+                return self._error(400, "bad_request", "query must be a non-empty string")
+            state = self.server.get_run_state(parts[1])
+            result = self.server.memory_query_service.query(
+                parts[1],
+                query,
+                grants=body.get("grants", {"memory": {"query": True}}),
+                caller_context=body.get(
+                    "caller_context",
+                    {
+                        "run_id": parts[1],
+                        "session_id": state.session_id,
+                        "caller": "http_api",
+                        "purpose": "memory_query",
+                    },
+                ),
+                controlled_expand=bool(body.get("controlled_expand", False)),
+                scope=body.get("scope"),
+                session_id=state.session_id,
+                limit=body.get("limit", 20),
+            )
+            return self._json(200, result)
         if method == "GET" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "approvals":
             if not self._run_exists(parts[1]):
                 return self._error(404, "not_found", "run not found")
@@ -104,6 +137,16 @@ class HttpRunRouteMixin:
                     "pending_approvals": self.server.get_pending_approvals(parts[1]),
                 },
             )
+        if method == "POST" and len(parts) == 3 and parts[0] == "runs" and parts[2] == "approvals":
+            if not self._run_exists(parts[1]):
+                return self._error(404, "not_found", "run not found")
+            body = self._require_body(json_body, required_fields=("text",))
+            result = self.server.submit_input(
+                parts[1],
+                text=body["text"],
+                requires_approval=True,
+            )
+            return self._json(202, self._submit_result_to_dict(result))
         if (
             method == "GET"
             and len(parts) == 4
@@ -159,4 +202,20 @@ class HttpRunRouteMixin:
             if not self._run_exists(parts[1]):
                 return self._error(404, "not_found", "run not found")
             return self._json(200, [event.to_dict() for event in self.server.get_events(parts[1])])
+        if (
+            method == "GET"
+            and len(parts) == 4
+            and parts[0] == "runs"
+            and parts[2] == "events"
+            and parts[3] == "stream"
+        ):
+            if not self._run_exists(parts[1]):
+                return self._error(404, "not_found", "run not found")
+            return self._json(
+                200,
+                {
+                    "status": "ok",
+                    "stream": [event.to_dict() for event in self.server.get_events(parts[1])],
+                },
+            )
         return None

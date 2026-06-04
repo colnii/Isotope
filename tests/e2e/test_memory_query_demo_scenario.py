@@ -66,7 +66,7 @@ def test_memory_query_smoke_plain_cli_shows_write_query_recall_closure():
     assert "raw memory" not in result.stdout
 
 
-def test_memory_query_smoke_json_reports_low_sensitive_recall():
+def test_memory_query_smoke_json_reports_public_metadata_recall():
     data = _run_demo_json("--scenario", SCENARIO)
 
     assert data["scenario"] == SCENARIO

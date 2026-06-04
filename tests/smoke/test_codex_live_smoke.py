@@ -59,7 +59,7 @@ def test_codex_live_smoke_is_skipped_by_default_without_artifacts(tmp_path):
 
     assert result == {
         "status": "skipped",
-        "reason_code": "codex_live_smoke_not_enabled",
+        "reason_code": "codex_live_smoke_unavailable",
         "artifact_count": 0,
         "artifact_refs": [],
     }

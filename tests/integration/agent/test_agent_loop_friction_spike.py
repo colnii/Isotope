@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 SCENARIO = "agent-loop-friction"
 
@@ -19,7 +19,7 @@ REQUIRED_TEXT_FIELDS = (
     "checkpoint_ok: true",
     "model_status: not_used",
     "scheduler_status: not_used",
-    "memory_status: boundary_only",
+    "memory_status: active",
 )
 
 REQUIRED_JSON_FIELDS = {
@@ -105,7 +105,7 @@ def test_agent_loop_friction_json_reports_no_core_gap_for_current_public_helpers
     assert data["checkpoint_ok"] is True
 
 
-def test_agent_loop_friction_keeps_deferred_integrations_disabled():
+def test_agent_loop_friction_keeps_queued_integrations_disabled():
     data = _run_demo_json("--scenario", SCENARIO)
 
     assert data["transport"] == "in_process"
@@ -113,7 +113,7 @@ def test_agent_loop_friction_keeps_deferred_integrations_disabled():
     assert data["scheduler_status"] == "not_used"
     assert data["provider_status"] == "not_used"
     assert data.get("network_listener_status", "not_used") == "not_used"
-    assert data.get("memory_query_status", "not_enabled") == "not_enabled"
+    assert data.get("memory_query_status", "unavailable") == "unavailable"
 
 
 def test_agent_loop_friction_json_excludes_full_artifact_content():

@@ -49,18 +49,14 @@ def _approved_body() -> dict:
     }
 
 
-def test_default_server_still_keeps_codex_task_deferred(tmp_path):
+def test_default_server_accepts_codex_task_for_approval(tmp_path):
     api = server.InProcessServer(tmp_path)
     run_id = _create_run(api)
-    before_events = api.event_store.list_events(run_id)
 
-    with pytest.raises(ValueError, match="deferred tool codex_task is not callable"):
-        api.submit_action(run_id, _codex_intent(), requires_approval=True)
+    result = api.submit_action(run_id, _codex_intent(), requires_approval=True)
 
-    after_events = api.event_store.list_events(run_id)
-    assert [(event.event_id, event.event_type) for event in after_events] == [
-        (event.event_id, event.event_type) for event in before_events
-    ]
+    assert result["status"] == "pending_user_approval"
+    assert result["approval_id"].startswith("approval_")
 
 
 def test_codex_cli_server_requires_approval_before_process_call(tmp_path):

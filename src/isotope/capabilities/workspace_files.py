@@ -219,7 +219,7 @@ def _require_existing_materialized_workspace(path: Path) -> None:
 def _collect_files(root: Path, include_paths: list[str]) -> dict[str, str]:
     files: dict[str, str] = {}
     for include_path in include_paths:
-        source = _bounded_path(root, include_path)
+        source = _limited_path(root, include_path)
         if not source.exists():
             continue
         if source.is_file() and not source.is_symlink():
@@ -231,7 +231,7 @@ def _collect_files(root: Path, include_paths: list[str]) -> dict[str, str]:
     return files
 
 
-def _bounded_path(root: Path, relative_path: str) -> Path:
+def _limited_path(root: Path, relative_path: str) -> Path:
     root_resolved = root.resolve(strict=False)
     candidate = (root / relative_path).resolve(strict=False)
     if not candidate.is_relative_to(root_resolved):

@@ -226,7 +226,7 @@ def _candidate_recommendation(
         "next_actions": _string_list(candidate.get("next_actions")),
         "validation_commands": _string_list(candidate.get("validation_commands")),
         "reviewer_command": candidate.get("reviewer_command"),
-        "read_only": True,
+        "view_only": True,
         "guardrail": _BUCKET_GUARDRAILS[kind],
     }
 
@@ -255,7 +255,7 @@ def _active_goal_recommendation(goal: dict[str, Any]) -> dict[str, Any]:
         ],
         "validation_commands": [],
         "reviewer_command": None,
-        "read_only": True,
+        "view_only": True,
         "guardrail": _BUCKET_GUARDRAILS["continue_or_split"],
     }
 
@@ -311,7 +311,7 @@ def _integration_recommendation(
         "next_actions": list(_INTEGRATION_NEXT_ACTIONS[integration_group]),
         "validation_commands": _integration_validation_commands(worker),
         "reviewer_command": None,
-        "read_only": True,
+        "view_only": True,
         "guardrail": _BUCKET_GUARDRAILS[kind],
         "integration_group": integration_group,
         "base_ref": worker.get("base_ref"),
@@ -480,7 +480,7 @@ def _merge_candidates(recommendations: list[dict[str, Any]]) -> list[dict[str, A
                 "base_ref": recommendation.get("base_ref"),
                 "reason": recommendation.get("reason"),
                 "handoff": "dynamic_codex_worker",
-                "read_only": True,
+                "view_only": True,
             }
         )
     return candidates
@@ -488,7 +488,7 @@ def _merge_candidates(recommendations: list[dict[str, Any]]) -> list[dict[str, A
 
 def _safety() -> dict[str, Any]:
     return {
-        "read_only": True,
+        "view_only": True,
         "auto_merge": False,
         "auto_archive": False,
         "delete_branch": False,

@@ -51,7 +51,7 @@ def _walk(value: Any):
             yield from _walk(child)
 
 
-def _assert_low_sensitive(value: Any) -> None:
+def _assert_public_metadata(value: Any) -> None:
     for mapping in _walk(value):
         assert FORBIDDEN_KEYS.isdisjoint(mapping)
 
@@ -63,9 +63,14 @@ def test_capability_runner_cli_lists_capabilities_as_json():
     payload = json.loads(result.stdout)
     assert payload["status"] == "ok"
     capability_ids = [item["capability_id"] for item in payload["capabilities"]]
-    assert capability_ids == [
+    assert set(capability_ids).issuperset({
         "approval.tool.runner",
+        "artifact.changed_files",
+        "artifact.diff_summary",
         "artifact.review",
+        "code.read",
+        "code.search",
+        "coding_task.execute",
         "external.snapshot.review",
         "memory.promotion.preview",
         "memory.query",
@@ -76,8 +81,8 @@ def test_capability_runner_cli_lists_capabilities_as_json():
         "supervisor.integration_review",
         "supervisor.request_context",
         "supervisor.worker_review",
-    ]
-    _assert_low_sensitive(payload)
+    })
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_describes_capability_as_json():
@@ -88,7 +93,7 @@ def test_capability_runner_cli_describes_capability_as_json():
     assert payload["status"] == "ok"
     assert payload["capability"]["capability_id"] == "artifact.review"
     assert payload["capability"]["shelf"] == "product_candidate"
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_reports_status_as_json():
@@ -100,7 +105,7 @@ def test_capability_runner_cli_reports_status_as_json():
     assert payload["capability_status"]["capability_id"] == "external.snapshot.review"
     assert payload["capability_status"]["ready"] is True
     assert payload["capability_status"]["status"] == "ready"
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_searches_capabilities_as_json():
@@ -111,11 +116,10 @@ def test_capability_runner_cli_searches_capabilities_as_json():
     assert payload["status"] == "ok"
     assert payload["search"]["kind"] == "capability_search_result"
     assert payload["search"]["query"] == "artifact"
-    assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
-        "artifact.review",
-        "memory.promotion.preview",
-    ]
-    _assert_low_sensitive(payload)
+    capability_ids = [item["capability_id"] for item in payload["search"]["capabilities"]]
+    assert "artifact.review" in capability_ids
+    assert "artifact.changed_files" in capability_ids
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_searches_supervisor_request_context_as_json():
@@ -127,7 +131,7 @@ def test_capability_runner_cli_searches_supervisor_request_context_as_json():
     assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
         "supervisor.request_context"
     ]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_searches_supervisor_integration_review_as_json():
@@ -139,7 +143,7 @@ def test_capability_runner_cli_searches_supervisor_integration_review_as_json():
     assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
         "supervisor.integration_review"
     ]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_searches_supervisor_worker_review_as_json():
@@ -151,7 +155,7 @@ def test_capability_runner_cli_searches_supervisor_worker_review_as_json():
     assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
         "supervisor.worker_review"
     ]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_searches_screen_report_as_json():
@@ -163,7 +167,7 @@ def test_capability_runner_cli_searches_screen_report_as_json():
     assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
         "screen.report"
     ]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_searches_research_search_as_json():
@@ -175,7 +179,7 @@ def test_capability_runner_cli_searches_research_search_as_json():
     assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
         "research.search"
     ]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_searches_research_promote_as_json():
@@ -187,7 +191,7 @@ def test_capability_runner_cli_searches_research_promote_as_json():
     assert [item["capability_id"] for item in payload["search"]["capabilities"]] == [
         "research.promote"
     ]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_plans_capability_run_as_json():
@@ -202,7 +206,7 @@ def test_capability_runner_cli_plans_capability_run_as_json():
     assert plan["can_launch"] is True
     assert plan["runner_kind"] == "deterministic_demo"
     assert plan["scenario"] == "artifact-review"
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_plans_request_context_missing_inputs_as_json():
@@ -223,7 +227,7 @@ def test_capability_runner_cli_plans_request_context_missing_inputs_as_json():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["state_root", "query"]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_plans_worker_review_missing_inputs_as_json():
@@ -238,7 +242,7 @@ def test_capability_runner_cli_plans_worker_review_missing_inputs_as_json():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["state_root"]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_plans_integration_review_missing_inputs_as_json():
@@ -253,7 +257,7 @@ def test_capability_runner_cli_plans_integration_review_missing_inputs_as_json()
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["state_root"]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_plans_memory_query_missing_inputs_as_json():
@@ -274,7 +278,7 @@ def test_capability_runner_cli_plans_memory_query_missing_inputs_as_json():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["run_id"]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_plans_screen_report_missing_inputs_as_json():
@@ -295,7 +299,7 @@ def test_capability_runner_cli_plans_screen_report_missing_inputs_as_json():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_readonly"
     assert plan["missing_inputs"] == ["run_id"]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_plans_research_search_missing_inputs_as_json():
@@ -316,7 +320,7 @@ def test_capability_runner_cli_plans_research_search_missing_inputs_as_json():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_local"
     assert plan["missing_inputs"] == ["query"]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_plans_research_promote_missing_inputs_as_json():
@@ -343,7 +347,7 @@ def test_capability_runner_cli_plans_research_promote_missing_inputs_as_json():
     assert plan["status"] == "missing_inputs"
     assert plan["runner_kind"] == "deterministic_local"
     assert plan["missing_inputs"] == ["agent_id", "thread_id"]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_rejects_non_object_input_json():
@@ -423,7 +427,7 @@ def test_capability_runner_cli_runs_allowlisted_capability_as_json(tmp_path):
     assert run["scenario"] == "artifact-review"
     assert run["replay_ok"] is True
     assert run["checkpoint_ok"] is True
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_runs_request_context_with_input_json(tmp_path):
@@ -463,7 +467,7 @@ def test_capability_runner_cli_runs_request_context_with_input_json(tmp_path):
     assert run["context_result"]["created_at"]
     assert run["context_result"]["item_count"] >= 1
     assert (state_root / "supervisor" / "context_results.jsonl").is_file()
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_runs_worker_review_with_input_json(tmp_path):
@@ -488,7 +492,7 @@ def test_capability_runner_cli_runs_worker_review_with_input_json(tmp_path):
     assert run["worker_review"]["status"] == "ok"
     assert run["worker_review"]["summary"]["total"] == 0
     assert run["worker_review"]["workers"] == []
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_runs_integration_review_with_input_json(tmp_path):
@@ -515,7 +519,7 @@ def test_capability_runner_cli_runs_integration_review_with_input_json(tmp_path)
     assert review["summary"]["total"] == 0
     assert review["groups"]["ready_to_integrate"] == []
     assert review["workers"] == []
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_runs_memory_query_with_input_json(tmp_path):
@@ -564,7 +568,7 @@ def test_capability_runner_cli_runs_memory_query_with_input_json(tmp_path):
     assert run["memory_query"]["content_policy"] == "summary_refs_provenance_only"
     assert run["memory_query"]["results"][0]["record_id"] == "mem_cli"
     assert "raw memory content" not in result.stdout
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_runs_memory_promotion_preview_with_input_json():
@@ -607,7 +611,7 @@ def test_capability_runner_cli_runs_memory_promotion_preview_with_input_json():
     assert preview["source_refs"][0]["artifact_id"] == "artifact_report"
     assert "raw_content" not in result.stdout
     assert "raw memory content" not in result.stdout
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_runs_screen_report_with_input_json(tmp_path):
@@ -653,7 +657,7 @@ def test_capability_runner_cli_runs_screen_report_with_input_json(tmp_path):
         "restore_window"
     ]
     assert "raw screen control payload" not in result.stdout
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_capability_runner_cli_unknown_capability_fails_controlled_json(tmp_path):

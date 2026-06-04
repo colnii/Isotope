@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 SCENARIO = "agent-loop-planner-io-validator"
 
@@ -135,7 +135,7 @@ def test_planner_io_validator_fails_closed_without_side_effects():
     assert data["artifact_created_during_validation"] is False
 
 
-def test_planner_io_validator_keeps_deferred_integrations_disabled():
+def test_planner_io_validator_keeps_queued_integrations_disabled():
     data = _run_demo_json("--scenario", SCENARIO)
 
     assert data["transport"] == "in_process"
@@ -143,7 +143,7 @@ def test_planner_io_validator_keeps_deferred_integrations_disabled():
     assert data["scheduler_status"] == "not_used"
     assert data["provider_status"] == "not_used"
     assert data.get("network_listener_status", "not_used") == "not_used"
-    assert data.get("memory_query_status", "not_enabled") == "not_enabled"
+    assert data.get("memory_query_status", "unavailable") == "unavailable"
 
 
 def test_planner_io_validator_json_excludes_model_and_artifact_full_content():

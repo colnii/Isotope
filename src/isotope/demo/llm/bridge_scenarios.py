@@ -153,8 +153,8 @@ def _run_model_tool_bridge_demo(root: Path) -> dict[str, Any]:
         "real_llm_status": "not_used",
         "provider_status": "not_used",
         "network_listener_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
     }
 
 
@@ -268,6 +268,6 @@ def _run_llm_provider_route_demo(root: Path) -> dict[str, Any]:
         "real_llm_status": "fake_provider",
         "provider_status": "fake_tool_call",
         "network_listener_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
     }

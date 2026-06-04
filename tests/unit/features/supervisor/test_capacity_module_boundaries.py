@@ -15,7 +15,7 @@ def test_capacity_handler_reexports_summary_and_rendering_boundaries():
     )
 
 
-def test_capacity_summary_extracts_low_sensitive_agent_loop_fields():
+def test_capacity_summary_extracts_public_metadata_agent_loop_fields():
     payload = {
         "agent_loop": {
             "handoff": {

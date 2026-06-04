@@ -1,4 +1,4 @@
-"""Read-only worktree coordination audit for the Supervisor CLI."""
+"""Worktree coordination audit for the Supervisor CLI."""
 
 from __future__ import annotations
 
@@ -81,78 +81,6 @@ def worktree_audit_payload(
     return payload
 
 
-def launch_coordination_preflight(
-    *,
-    cwd: Path,
-    target_name: str,
-    goal: str,
-    api: Any | None = None,
-) -> dict[str, Any]:
-    if api is None:
-        from isotope.features.supervisor import runner as api
-
-    repo_root = Path(cwd).expanduser()
-    try:
-        completed = api.subprocess.run(
-            ["git", "-C", str(repo_root), "worktree", "list", "--porcelain"],
-            check=False,
-            text=True,
-            capture_output=True,
-        )
-    except (OSError, TypeError):
-        return {
-            "kind": "launch_coordination_preflight",
-            "status": "unknown",
-            "repo_root": str(repo_root),
-            "summary": {"candidates": 0},
-            "candidates": [],
-            "error": "unable to inspect git worktrees",
-        }
-    if completed.returncode != 0:
-        return {
-            "kind": "launch_coordination_preflight",
-            "status": "unknown",
-            "repo_root": str(repo_root),
-            "summary": {"candidates": 0},
-            "candidates": [],
-            "error": (completed.stderr or completed.stdout or "").strip(),
-        }
-    records = parse_worktree_list_porcelain(completed.stdout)
-    records = enrich_worktree_records_with_status(records, api=api)
-    payload = launch_coordination_preflight_from_records(
-        records,
-        target_name=target_name,
-        goal=goal,
-    )
-    payload["repo_root"] = str(repo_root)
-    return payload
-
-
-def launch_coordination_preflight_from_records(
-    records: list[dict[str, Any]],
-    *,
-    target_name: str,
-    goal: str,
-) -> dict[str, Any]:
-    query_tokens = topic_tokens_for_text(f"{target_name} {goal}")
-    worktrees = [_worktree_payload(record) for record in records]
-    candidates = _launch_coordination_candidates(worktrees, query_tokens)
-    return {
-        "kind": "launch_coordination_preflight",
-        "status": "needs_user" if candidates else "ok",
-        "summary": {"candidates": len(candidates)},
-        "query": {
-            "target_name": target_name,
-            "topic_tokens": query_tokens,
-        },
-        "candidates": candidates,
-        "note": (
-            "read-only preflight; reuse or explicit confirmation is recommended "
-            "before creating another related worktree"
-        ),
-    }
-
-
 def parse_worktree_list_porcelain(text: str) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     current: dict[str, Any] | None = None
@@ -201,7 +129,7 @@ def audit_worktree_records(records: list[dict[str, Any]]) -> dict[str, Any]:
         "worktrees": worktrees,
         "duplicate_candidates": duplicate_candidates,
         "overlapping_modified_files": overlapping_modified_files,
-        "note": "read-only audit; no worktree, branch, or file is modified",
+        "note": "audit report; no worktree, branch, or file is modified",
     }
 
 
@@ -312,34 +240,6 @@ def _worktree_payload(record: dict[str, Any]) -> dict[str, Any]:
         "status_error": record.get("status_error"),
         "topic_tokens": topic_tokens_for_text(text),
     }
-
-
-def _launch_coordination_candidates(
-    worktrees: list[dict[str, Any]],
-    query_tokens: list[str],
-) -> list[dict[str, Any]]:
-    candidates: list[dict[str, Any]] = []
-    query_token_set = set(query_tokens)
-    if not query_token_set:
-        return candidates
-    for worktree in worktrees:
-        if _is_primary_worktree(worktree):
-            continue
-        shared_tokens = sorted(
-            query_token_set & set(worktree.get("topic_tokens") or [])
-        )
-        if not shared_tokens:
-            continue
-        candidate = _candidate_worktree_ref(worktree)
-        candidate["dirty"] = bool(worktree.get("dirty"))
-        candidate["modified_files"] = list(worktree.get("modified_files") or [])
-        candidate["status_error"] = worktree.get("status_error")
-        candidate["shared_tokens"] = shared_tokens
-        candidates.append(candidate)
-    return sorted(
-        candidates,
-        key=lambda item: (-len(item.get("shared_tokens") or []), item.get("path") or ""),
-    )
 
 
 def _is_primary_worktree(worktree: dict[str, Any]) -> bool:

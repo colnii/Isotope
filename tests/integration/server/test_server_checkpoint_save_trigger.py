@@ -24,16 +24,14 @@ def _event(event_id, run_id, event_type, payload):
     )
 
 
-def test_save_checkpoint_for_run_requires_checkpoint_store(tmp_path):
+def test_save_checkpoint_for_run_uses_default_checkpoint_store(tmp_path):
     api, run_id = _completed_run(tmp_path)
-    checkpoints = checkpoint_store.FileCheckpointStore(tmp_path)
 
     result = api.save_checkpoint_for_run(run_id)
+    loaded = api.checkpoint_store.load_latest_checkpoint(run_id)
 
-    assert result["status"] == "not_enabled"
-    assert result["capability"] == "checkpoint"
-    assert result["error"]["code"] == "not_enabled"
-    assert not checkpoints.checkpoint_path(run_id).exists()
+    assert result == {"status": "saved", "run_id": run_id, "basis_event_id": loaded["basis_event_id"]}
+    assert api.checkpoint_store.checkpoint_path(run_id).exists()
 
 
 def test_save_checkpoint_for_run_saves_checkpoint_via_projector_boundary(tmp_path, monkeypatch):
@@ -83,7 +81,7 @@ def test_save_checkpoint_for_run_empty_event_log_fails_without_writing_checkpoin
     api = server.InProcessServer(tmp_path, checkpoint_store=checkpoints)
     run_id = "run_empty"
 
-    with pytest.raises(ValueError, match="cannot create checkpoint from empty events"):
+    with pytest.raises(ValueError, match="unknown run_id"):
         api.save_checkpoint_for_run(run_id)
 
     assert not checkpoints.checkpoint_path(run_id).exists()
@@ -113,12 +111,11 @@ def test_save_checkpoint_for_run_lifecycle_invalid_event_log_fails_without_writi
     assert not checkpoints.checkpoint_path(run_id).exists()
 
 
-def test_create_checkpoint_remains_not_enabled(tmp_path):
+def test_create_checkpoint_saves_checkpoint(tmp_path):
     checkpoints = checkpoint_store.FileCheckpointStore(tmp_path)
     api, run_id = _completed_run(tmp_path, checkpoints)
 
     result = api.create_checkpoint(run_id)
 
-    assert result["status"] == "not_enabled"
-    assert result["capability"] == "checkpoint"
-    assert result["error"]["code"] == "not_enabled"
+    loaded = checkpoints.load_latest_checkpoint(run_id)
+    assert result == {"status": "saved", "run_id": run_id, "basis_event_id": loaded["basis_event_id"]}

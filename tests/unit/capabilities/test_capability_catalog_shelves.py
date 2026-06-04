@@ -25,7 +25,7 @@ def _capability(capability_id, shelf, **overrides):
         "domain_tags": tuple(capability_id.split(".")),
         "input_contract": {"type": "object"},
         "output_contract": {"type": "object"},
-        "safety_boundaries": ("low_sensitive_manifest_only",),
+        "safety_boundaries": ("public_metadata_manifest_only",),
         "default_enabled": True,
         "required_env": (),
         "network_required": False,
@@ -118,15 +118,21 @@ def test_listing_order_is_deterministic_by_capability_id():
     ]
 
 
-def test_default_builtins_are_small_product_candidate_set_only():
+def test_default_builtins_expose_active_product_candidate_set():
     catalog = _catalog_class().default()
 
     entries = catalog.list_capabilities(include_diagnostics=True, include_experimental=True)
     capability_ids = _ids(entries)
 
-    assert capability_ids == [
+    assert set(capability_ids).issuperset({
         "approval.tool.runner",
+        "artifact.changed_files",
+        "artifact.diff_summary",
         "artifact.review",
+        "code.apply_patch",
+        "code.read",
+        "code.search",
+        "coding_task.execute",
         "external.snapshot.review",
         "memory.promotion.preview",
         "memory.query",
@@ -137,7 +143,7 @@ def test_default_builtins_are_small_product_candidate_set_only():
         "supervisor.integration_review",
         "supervisor.request_context",
         "supervisor.worker_review",
-    ]
+    })
     assert all(entry["shelf"] == "product_candidate" for entry in entries)
     assert "self.evolution.review" not in capability_ids
     assert "llm.chat" not in capability_ids

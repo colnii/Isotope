@@ -34,17 +34,20 @@ SUPPORTED_ROUTES = [
     ("GET", "/runs/{run_id}/agent-loop-control"),
     ("GET", "/runs/{run_id}/agent-loop-tick-policy"),
     ("GET", "/runs/{run_id}/events"),
+    ("GET", "/runs/{run_id}/events/stream"),
+    ("POST", "/runs/{run_id}/memory/query"),
+    ("GET", "/runs/{run_id}/approvals"),
+    ("POST", "/runs/{run_id}/approvals"),
+    ("GET", "/runs/{run_id}/approvals/{approval_id}"),
+    ("POST", "/runs/{run_id}/approvals/{approval_id}/resolve"),
     ("GET", "/artifacts/{artifact_id}/summary"),
+    ("GET", "/artifacts/{artifact_id}/content"),
+    ("POST", "/external-ingestion"),
+    ("POST", "/runs/{run_id}/codex-tasks"),
+    ("POST", "/runs/{run_id}/llm/tool-calls"),
+    ("POST", "/runs/{run_id}/llm/tool-result-followups"),
+    ("POST", "/runs/{run_id}/llm/chat-turns"),
 ]
-
-DEFERRED_PATTERNS = {
-    "/runs/{run_id}/memory/query",
-    "/external-ingestion",
-    "/runs/{run_id}/events/stream",
-    "/runs/{run_id}/llm/chat-turns",
-    "/runs/{run_id}/approvals",
-    "/artifacts/{artifact_id}/content",
-}
 
 
 def _request(app, method: str, path: str, json_body: Any = None):
@@ -114,23 +117,6 @@ def test_get_routes_returns_same_supported_inventory(tmp_path):
     assert _routes_from_inventory(inventory) == [
         (method, path, "supported") for method, path in SUPPORTED_ROUTES
     ]
-
-
-def test_route_inventory_does_not_mark_deferred_routes_as_supported(tmp_path):
-    app = create_http_app(tmp_path)
-    inventory = app.list_routes()
-
-    route_entries = inventory["routes"]
-    supported_paths = {
-        route["path"]
-        for route in route_entries
-        if route.get("status") == "supported"
-    }
-
-    assert not DEFERRED_PATTERNS.intersection(supported_paths)
-    for route in route_entries:
-        if route["path"] in DEFERRED_PATTERNS:
-            assert route["status"] == "deferred"
 
 
 def test_legacy_routes_remains_minimal_supported_tuple_surface(tmp_path):

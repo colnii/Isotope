@@ -187,7 +187,7 @@ def _provider_http_app(
     )
 
 
-def test_default_llm_provider_route_is_not_enabled_without_side_effects(tmp_path):
+def test_default_llm_provider_route_requires_provider_without_side_effects(tmp_path):
     app = create_http_app(tmp_path)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -199,48 +199,23 @@ def test_default_llm_provider_route_is_not_enabled_without_side_effects(tmp_path
         {"messages": _messages()},
     )
 
-    assert _status_code(response) == 501
+    assert _status_code(response) == 400
     body = _body(response)
-    assert body["status"] == "not_enabled"
-    assert body["error"]["code"] == "not_enabled"
+    assert body["status"] == "bad_request"
+    assert body["error"]["code"] == "bad_request"
     assert body["error"]["capability"] == "llm_provider_tool_call"
     assert _event_types(app, run_id) == before_events
 
 
-def test_llm_provider_route_stays_disabled_when_provider_is_supplied_without_enablement(tmp_path):
-    provider = RecordingToolProvider(_provider_response())
-    app = HttpApiApp(
-        tmp_path,
-        enable_llm_provider_route=False,
-        llm_tool_call_provider=provider,
-    )
-    run_id = _create_run(app)
-    before_events = _event_types(app, run_id)
-
-    response = _request(
-        app,
-        "POST",
-        _provider_route(run_id),
-        {"messages": _messages()},
-    )
-
-    assert _status_code(response) == 501
-    body = _body(response)
-    assert body["status"] == "not_enabled"
-    assert body["error"]["capability"] == "llm_provider_tool_call"
-    assert provider.calls == []
-    assert _event_types(app, run_id) == before_events
-
-
-def test_llm_provider_route_is_listed_only_when_explicitly_enabled(tmp_path):
+def test_llm_provider_route_is_listed_by_default_and_with_provider(tmp_path):
     default_app = create_http_app(tmp_path / "default")
     provider = RecordingToolProvider(_provider_response())
     runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _provider_http_app(tmp_path / "provider", provider, runner)
 
-    assert ("POST", "/runs/{run_id}/llm/tool-calls") not in default_app.routes()
+    assert ("POST", "/runs/{run_id}/llm/tool-calls") in default_app.routes()
     assert ("POST", "/runs/{run_id}/llm/tool-calls") in app.routes()
-    assert ("POST", "/runs/{run_id}/llm/tool-result-followups") not in default_app.routes()
+    assert ("POST", "/runs/{run_id}/llm/tool-result-followups") in default_app.routes()
     assert ("POST", "/runs/{run_id}/llm/tool-result-followups") in app.routes()
 
 

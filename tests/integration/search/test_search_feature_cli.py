@@ -12,7 +12,7 @@ from isotope.features.projects.flow import ProjectFlow
 from isotope.features.tasks.flow import TaskFlow
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 
 FORBIDDEN_KEYS = {
@@ -40,14 +40,14 @@ def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _assert_low_sensitive(value: Any) -> None:
+def _assert_public_metadata(value: Any) -> None:
     if isinstance(value, dict):
         assert FORBIDDEN_KEYS.isdisjoint(value)
         for nested in value.values():
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
     elif isinstance(value, list):
         for nested in value:
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
 
 
 def test_search_cli_returns_matching_summaries_as_json(tmp_path):
@@ -95,7 +95,7 @@ def test_search_cli_returns_matching_summaries_as_json(tmp_path):
             },
         ],
     }
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_search_cli_requires_query(tmp_path):

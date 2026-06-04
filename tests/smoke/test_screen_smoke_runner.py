@@ -129,7 +129,7 @@ def test_target_allowlist_profile_rejects_path_like_names(tmp_path):
         )
 
 
-def test_validate_target_allowlist_file_returns_low_sensitive_summary(tmp_path):
+def test_validate_target_allowlist_file_returns_public_metadata_summary(tmp_path):
     allowlist_file = tmp_path / "screen-allowlist.json"
     allowlist_file.write_text(
         json.dumps(
@@ -191,7 +191,7 @@ def test_validate_target_allowlist_profile_rejects_path_like_names(tmp_path):
         )
 
 
-def test_list_target_allowlist_profiles_returns_low_sensitive_sorted_summary(tmp_path):
+def test_list_target_allowlist_profiles_returns_public_metadata_sorted_summary(tmp_path):
     profile_dir = tmp_path / "profiles"
     profile_dir.mkdir()
     (profile_dir / "mahjong.json").write_text(

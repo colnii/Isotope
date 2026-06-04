@@ -27,9 +27,9 @@ from .diagnosis import (
     _legacy_deepseek_result,
     _llm_diagnosis_for,
     _llm_product_chat_diagnosis_for,
-    _llm_product_chat_preflight_for,
+    _llm_product_chat_readiness_check_for,
     _llm_terminal_tool_diagnosis_for,
-    _llm_terminal_tool_preflight_for,
+    _llm_terminal_tool_readiness_check_for,
     _terminal_error_reason_summary,
 )
 
@@ -42,7 +42,7 @@ def run_llm_tool_call_live_smoke(
     provider: ToolCallProvider | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Run a deliberate provider tool-call smoke and return low-sensitive status."""
+    """Run a deliberate provider tool-call smoke and return public status."""
 
     resolved_config = config or LLMToolCallLiveSmokeConfig()
     if not isinstance(resolved_config, LLMToolCallLiveSmokeConfig):
@@ -50,7 +50,7 @@ def run_llm_tool_call_live_smoke(
     if not resolved_config.enabled:
         return {
             "status": "skipped",
-            "reason_code": "llm_tool_call_live_smoke_not_enabled",
+            "reason_code": "llm_tool_call_live_smoke_unavailable",
             "provider": "auto",
             "tool_name": resolved_config.tool_name,
         }
@@ -120,7 +120,7 @@ def run_llm_product_chat_live_smoke(
     if not resolved_config.enabled:
         return {
             "status": "skipped",
-            "reason_code": "llm_product_chat_live_smoke_not_enabled",
+            "reason_code": "llm_product_chat_live_smoke_unavailable",
             "provider": "auto",
             "case_count": 0,
             "cases": [],
@@ -170,7 +170,7 @@ def run_llm_terminal_tool_live_smoke(
     if not resolved_config.enabled:
         return {
             "status": "skipped",
-            "reason_code": "llm_terminal_tool_live_smoke_not_enabled",
+            "reason_code": "llm_terminal_tool_live_smoke_unavailable",
             "provider": "auto",
             "tool_name": "terminal_exec",
             "codex_call_count": 0,
@@ -256,7 +256,7 @@ def diagnose_llm_tool_call_live_smoke(
     provider: ToolCallProvider | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Run the provider smoke and add low-sensitive readiness diagnostics."""
+    """Run the provider smoke and add public readiness diagnostics."""
 
     result = run_llm_tool_call_live_smoke(
         app,
@@ -277,7 +277,7 @@ def diagnose_llm_product_chat_live_smoke(
     provider: ToolCallProvider | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Run the product-chat smoke and add low-sensitive readiness diagnostics."""
+    """Run the product-chat smoke and add public readiness diagnostics."""
 
     result = run_llm_product_chat_live_smoke(
         app,
@@ -287,7 +287,7 @@ def diagnose_llm_product_chat_live_smoke(
     )
     diagnosed = dict(result)
     diagnosed["diagnosis"] = _llm_product_chat_diagnosis_for(result)
-    diagnosed["preflight"] = _llm_product_chat_preflight_for(diagnosed)
+    diagnosed["readiness_check"] = _llm_product_chat_readiness_check_for(diagnosed)
     return diagnosed
 
 
@@ -299,7 +299,7 @@ def diagnose_llm_terminal_tool_live_smoke(
     provider: ToolCallProvider | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Run the terminal-tool smoke and add low-sensitive readiness diagnostics."""
+    """Run the terminal-tool smoke and add public readiness diagnostics."""
 
     result = run_llm_terminal_tool_live_smoke(
         app,
@@ -310,7 +310,7 @@ def diagnose_llm_terminal_tool_live_smoke(
     )
     diagnosed = dict(result)
     diagnosed["diagnosis"] = _llm_terminal_tool_diagnosis_for(result)
-    diagnosed["preflight"] = _llm_terminal_tool_preflight_for(diagnosed)
+    diagnosed["readiness_check"] = _llm_terminal_tool_readiness_check_for(diagnosed)
     return diagnosed
 
 

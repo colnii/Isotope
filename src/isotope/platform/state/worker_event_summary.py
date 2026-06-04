@@ -1,4 +1,4 @@
-"""Supervisor worker event summary schema for low-sensitive state snapshots."""
+"""Supervisor worker event summary schema for public state snapshots."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ WORKER_EVENT_PAYLOAD_KEYS = {
 
 @dataclass(frozen=True)
 class SupervisorWorkerEventSummary:
-    """Low-sensitive worker event payload for Supervisor read models."""
+    """Public worker event payload for Supervisor read models."""
 
     record_id: str
     channel: str
@@ -79,7 +79,7 @@ class SupervisorWorkerEventSummary:
 
 
 def filter_worker_event_payload(payload: Any) -> dict[str, Any]:
-    """Return stable low-sensitive worker event payload keys for snapshots."""
+    """Return stable public worker event payload keys for snapshots."""
     if not isinstance(payload, dict):
         return {}
     return {

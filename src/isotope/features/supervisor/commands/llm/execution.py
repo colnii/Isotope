@@ -300,19 +300,6 @@ def execute_launch_action(
             "reason": "launch prompt cooldown active",
             "lane_state": cooldown_state.to_dict(),
         }
-    coordination_preflight = api._launch_coordination_preflight(
-        cwd=Path(cwd),
-        target_name=target_name,
-        goal=prompt,
-    )
-    if coordination_preflight.get("status") == "needs_user":
-        return {
-            "kind": "launch_session",
-            "skipped": True,
-            "reason": "coordination preflight needs user",
-            "target_name": target_name,
-            "coordination_preflight": coordination_preflight,
-        }
     worktree = api._prepare_launch_worktree(cwd=Path(cwd), target_name=target_name)
     if worktree.get("failed"):
         return {

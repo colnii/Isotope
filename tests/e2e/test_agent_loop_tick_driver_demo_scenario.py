@@ -114,7 +114,7 @@ def test_tick_driver_trace_json_reports_execute_and_stop_paths():
     assert data["app_friction_count"] == 0
 
 
-def test_tick_driver_trace_keeps_deferred_integrations_disabled():
+def test_tick_driver_trace_keeps_queued_integrations_disabled():
     data = _run_demo_json("--scenario", SCENARIO)
 
     assert data["transport"] == "in_process"

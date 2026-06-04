@@ -161,10 +161,10 @@ def test_demo_source_does_not_import_network_or_real_llm_clients():
     )
 
 
-def test_demo_memory_status_is_boundary_only():
+def test_demo_memory_status_is_active():
     data = _run_demo_json()
 
-    assert data["memory_status"] == "boundary_only"
+    assert data["memory_status"] == "active"
 
 
 def test_demo_replay_and_checkpoint_verification_are_backed_by_metadata(tmp_path):

@@ -38,7 +38,7 @@ def filter_replenishment_counted_goals(
     running_names = {name for name in running_target_names if name}
     counted: list[dict[str, Any]] = []
     for goal in active_goals:
-        if active_goal_is_deferred(goal):
+        if active_goal_is_queued(goal):
             continue
         target_name = goal.get("target_name")
         if isinstance(target_name, str) and target_name in running_names:
@@ -50,10 +50,10 @@ def filter_replenishment_counted_goals(
 def filter_fanout_candidate_goals(
     active_goals: Iterable[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
-    return [dict(goal) for goal in active_goals if not active_goal_is_deferred(goal)]
+    return [dict(goal) for goal in active_goals if not active_goal_is_queued(goal)]
 
 
-def active_goal_is_deferred(goal: Mapping[str, Any]) -> bool:
+def active_goal_is_queued(goal: Mapping[str, Any]) -> bool:
     for key in ("last_status", "status", "supervisor_status"):
         status = goal.get(key)
         if isinstance(status, str) and status.lower() in {

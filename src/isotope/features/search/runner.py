@@ -19,7 +19,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--json", action="store_true", help="Print JSON output.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    search_parser = subparsers.add_parser("search", help="Search low-sensitive summaries.")
+    search_parser = subparsers.add_parser("search", help="Search public summaries.")
     search_parser.add_argument("--root", required=True, help="Runtime root directory.")
     search_parser.add_argument("--query", help="Search query.")
     search_parser.add_argument(

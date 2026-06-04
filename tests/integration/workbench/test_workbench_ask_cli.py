@@ -12,7 +12,7 @@ from isotope.features.projects.flow import ProjectFlow
 from isotope.features.tasks.flow import TaskFlow
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 
 

@@ -30,7 +30,7 @@ def run_agent_loop_real_planner_contract_step(
     run_id: str,
     provider_result: dict[str, Any],
 ) -> dict[str, Any]:
-    """Accept a quarantined provider-shaped result, then run parsed symbolic output."""
+    """Accept a provider-shaped result, then run parsed symbolic output."""
     if not isinstance(provider_result, dict):
         raise ValueError("planner provider result must be a dict")
     _reject_raw_provider_payload(provider_result)
@@ -39,10 +39,6 @@ def run_agent_loop_real_planner_contract_step(
     provider_status = _required_string(provider_result, "provider_status")
     if provider_status != "completed":
         raise ValueError("planner provider result must be completed before core execution")
-    if provider_result.get("raw_prompt_quarantined") is not True:
-        raise ValueError("raw planner provider payload must be quarantined before core execution")
-    if provider_result.get("raw_response_quarantined") is not True:
-        raise ValueError("raw planner provider payload must be quarantined before core execution")
 
     parsed_output = provider_result.get("parsed_planner_output")
     if not isinstance(parsed_output, dict):
@@ -53,8 +49,6 @@ def run_agent_loop_real_planner_contract_step(
         "contract_status": "accepted",
         "provider_result_id": provider_result_id,
         "provider_status": provider_status,
-        "raw_prompt_quarantined": True,
-        "raw_response_quarantined": True,
         "planner_result": planner_result,
         "control": planner_result["control"],
     }

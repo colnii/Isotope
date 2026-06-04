@@ -12,8 +12,8 @@ from isotope.features.chat.flow import (
     build_llm_product_chat_entry_resume_state,
     mark_llm_product_chat_entry_state_resumed,
     submit_llm_product_chat_entry_resume,
-    submit_llm_product_chat_turn_with_preflight,
-    submit_llm_product_chat_user_message_with_preflight,
+    submit_llm_product_chat_turn_with_readiness_check,
+    submit_llm_product_chat_user_message_with_readiness_check,
 )
 
 
@@ -117,7 +117,7 @@ def _provider_response(
     )
 
 
-def _ready_preflight() -> dict[str, Any]:
+def _ready_readiness_check() -> dict[str, Any]:
     return {
         "ready": True,
         "gate": "passed",
@@ -125,11 +125,11 @@ def _ready_preflight() -> dict[str, Any]:
         "status": "completed",
         "reason_code": "llm_product_chat_live_smoke_completed",
         "summary": "product-chat smoke completed direct answer, approval pause, and resume final answer",
-        "next_step": "use this as a dev-only preflight before application-layer product chat wiring",
+        "next_step": "use this as a dev-only readiness_check before application-layer product chat wiring",
     }
 
 
-def _blocked_preflight() -> dict[str, Any]:
+def _blocked_readiness_check() -> dict[str, Any]:
     return {
         "ready": False,
         "gate": "blocked",
@@ -141,30 +141,30 @@ def _blocked_preflight() -> dict[str, Any]:
     }
 
 
-def test_product_chat_app_entry_blocks_unready_preflight_without_side_effects(tmp_path):
+def test_product_chat_app_entry_blocks_unready_readiness_check_without_side_effects(tmp_path):
     provider = SequencedChatProvider([_final_answer_response()])
     runner = RecordingProcessRunner()
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
 
-    response = submit_llm_product_chat_turn_with_preflight(
+    response = submit_llm_product_chat_turn_with_readiness_check(
         app,
         run_id,
-        preflight=_blocked_preflight(),
+        readiness_check=_blocked_readiness_check(),
         messages=_messages("APP_ENTRY_BLOCKED_MESSAGE_SHOULD_NOT_LEAK"),
         max_tokens=64,
     )
 
     assert response.status_code == 412
     body = response.json()
-    assert body["status"] == "blocked_by_preflight"
-    assert body["reason_code"] == "llm_product_chat_preflight_blocked"
-    assert body["preflight"]["ready"] is False
-    assert body["preflight"]["gate"] == "blocked"
-    assert body["preflight"]["category"] == "missing_configuration"
-    assert body["preflight"]["reason_code"] == "llm_provider_not_configured"
-    assert body["preflight"]["next_step"] == (
+    assert body["status"] == "blocked_by_readiness_check"
+    assert body["reason_code"] == "llm_product_chat_readiness_check_blocked"
+    assert body["readiness_check"]["ready"] is False
+    assert body["readiness_check"]["gate"] == "blocked"
+    assert body["readiness_check"]["category"] == "missing_configuration"
+    assert body["readiness_check"]["reason_code"] == "llm_provider_not_configured"
+    assert body["readiness_check"]["next_step"] == (
         "configure ISOTOPE_LLM_PROVIDER and provider credentials before running product-chat smoke"
     )
     assert provider.calls == []
@@ -173,16 +173,16 @@ def test_product_chat_app_entry_blocks_unready_preflight_without_side_effects(tm
     assert "APP_ENTRY_BLOCKED_MESSAGE_SHOULD_NOT_LEAK" not in repr(body)
 
 
-def test_product_chat_app_entry_forwards_when_preflight_is_ready(tmp_path):
+def test_product_chat_app_entry_forwards_when_readiness_check_is_ready(tmp_path):
     provider = SequencedChatProvider([_final_answer_response("Final answer through gated entry.")])
     runner = RecordingProcessRunner()
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
 
-    response = submit_llm_product_chat_turn_with_preflight(
+    response = submit_llm_product_chat_turn_with_readiness_check(
         app,
         run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
         messages=_messages("APP_ENTRY_READY_MESSAGE_SHOULD_NOT_LEAK"),
         max_tokens=72,
     )
@@ -216,10 +216,10 @@ def test_product_chat_app_entry_builds_resume_state_without_leaks(tmp_path):
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
 
-    response = submit_llm_product_chat_user_message_with_preflight(
+    response = submit_llm_product_chat_user_message_with_readiness_check(
         app,
         run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
         user_message="APP_ENTRY_STATE_MESSAGE_SHOULD_NOT_LEAK",
         max_tokens=72,
         complete_run=False,
@@ -228,7 +228,7 @@ def test_product_chat_app_entry_builds_resume_state_without_leaks(tmp_path):
         response,
         root=tmp_path,
         run_id=run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
     )
 
     assert state is not None
@@ -237,7 +237,7 @@ def test_product_chat_app_entry_builds_resume_state_without_leaks(tmp_path):
     assert state["run_id"] == run_id
     assert state["approval_id"].startswith("approval_")
     assert state["llm_result"]["approval_id"] == state["approval_id"]
-    assert state["preflight"]["ready"] is True
+    assert state["readiness_check"]["ready"] is True
     assert state["resume"] == {"status": "pending"}
     rendered = repr(state)
     assert "APP_ENTRY_STATE_MESSAGE_SHOULD_NOT_LEAK" not in rendered
@@ -259,10 +259,10 @@ def test_product_chat_app_entry_resume_helper_approves_and_returns_final_answer_
     runner = RecordingProcessRunner()
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
-    first_response = submit_llm_product_chat_user_message_with_preflight(
+    first_response = submit_llm_product_chat_user_message_with_readiness_check(
         app,
         run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
         user_message="APP_ENTRY_RESUME_MESSAGE_SHOULD_NOT_LEAK",
         max_tokens=72,
         complete_run=False,
@@ -271,7 +271,7 @@ def test_product_chat_app_entry_resume_helper_approves_and_returns_final_answer_
         first_response,
         root=tmp_path,
         run_id=run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
     )
     assert state is not None
 
@@ -325,10 +325,10 @@ def test_product_chat_app_entry_resume_rejects_mismatched_approval_state_before_
     runner = RecordingProcessRunner()
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
-    first_response = submit_llm_product_chat_user_message_with_preflight(
+    first_response = submit_llm_product_chat_user_message_with_readiness_check(
         app,
         run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
         user_message="APP_ENTRY_MISMATCH_MESSAGE_SHOULD_NOT_LEAK",
         max_tokens=72,
         complete_run=False,
@@ -337,7 +337,7 @@ def test_product_chat_app_entry_resume_rejects_mismatched_approval_state_before_
         first_response,
         root=tmp_path,
         run_id=run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
     )
     assert state is not None
     before_events = _event_types(app, run_id)
@@ -379,10 +379,10 @@ def test_product_chat_app_entry_resume_rejects_already_resumed_state_before_side
     runner = RecordingProcessRunner()
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
-    first_response = submit_llm_product_chat_user_message_with_preflight(
+    first_response = submit_llm_product_chat_user_message_with_readiness_check(
         app,
         run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
         user_message="APP_ENTRY_ALREADY_RESUMED_MESSAGE_SHOULD_NOT_LEAK",
         max_tokens=72,
         complete_run=False,
@@ -391,7 +391,7 @@ def test_product_chat_app_entry_resume_rejects_already_resumed_state_before_side
         first_response,
         root=tmp_path,
         run_id=run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
     )
     assert state is not None
     resumed_state = mark_llm_product_chat_entry_state_resumed(
@@ -435,10 +435,10 @@ def test_product_chat_app_entry_resume_maps_missing_approval_context_without_lea
     runner = RecordingProcessRunner()
     app = _product_chat_app(tmp_path / "source", provider, runner)
     run_id = _create_run(app)
-    first_response = submit_llm_product_chat_user_message_with_preflight(
+    first_response = submit_llm_product_chat_user_message_with_readiness_check(
         app,
         run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
         user_message="APP_ENTRY_MISSING_APPROVAL_MESSAGE_SHOULD_NOT_LEAK",
         max_tokens=72,
         complete_run=False,
@@ -447,7 +447,7 @@ def test_product_chat_app_entry_resume_maps_missing_approval_context_without_lea
         first_response,
         root=tmp_path / "source",
         run_id=run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
     )
     assert state is not None
     empty_app = _product_chat_app(
@@ -473,29 +473,29 @@ def test_product_chat_app_entry_resume_maps_missing_approval_context_without_lea
     assert "APP_ENTRY_MISSING_APPROVAL_FOLLOWUP_SHOULD_NOT_LEAK" not in repr(exc_info.value.details)
 
 
-def test_product_chat_app_entry_blocks_malformed_preflight_without_side_effects(tmp_path):
+def test_product_chat_app_entry_blocks_malformed_readiness_check_without_side_effects(tmp_path):
     provider = SequencedChatProvider([_final_answer_response()])
     runner = RecordingProcessRunner()
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
 
-    response = submit_llm_product_chat_turn_with_preflight(
+    response = submit_llm_product_chat_turn_with_readiness_check(
         app,
         run_id,
-        preflight={"category": "ready"},
-        messages=_messages("APP_ENTRY_MALFORMED_PREFLIGHT_MESSAGE_SHOULD_NOT_LEAK"),
+        readiness_check={"category": "ready"},
+        messages=_messages("APP_ENTRY_MALFORMED_READINESS_CHECK_MESSAGE_SHOULD_NOT_LEAK"),
     )
 
     assert response.status_code == 412
     body = response.json()
-    assert body["status"] == "blocked_by_preflight"
-    assert body["preflight"]["ready"] is False
-    assert body["preflight"]["category"] == "invalid_preflight"
+    assert body["status"] == "blocked_by_readiness_check"
+    assert body["readiness_check"]["ready"] is False
+    assert body["readiness_check"]["category"] == "invalid_readiness_check"
     assert provider.calls == []
     assert runner.calls == []
     assert _event_types(app, run_id) == before_events
-    assert "APP_ENTRY_MALFORMED_PREFLIGHT_MESSAGE_SHOULD_NOT_LEAK" not in repr(body)
+    assert "APP_ENTRY_MALFORMED_READINESS_CHECK_MESSAGE_SHOULD_NOT_LEAK" not in repr(body)
 
 
 def test_product_chat_user_message_entry_rejects_empty_message_without_side_effects(tmp_path):
@@ -505,10 +505,10 @@ def test_product_chat_user_message_entry_rejects_empty_message_without_side_effe
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
 
-    response = submit_llm_product_chat_user_message_with_preflight(
+    response = submit_llm_product_chat_user_message_with_readiness_check(
         app,
         run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
         user_message="   ",
     )
 
@@ -522,7 +522,7 @@ def test_product_chat_user_message_entry_rejects_empty_message_without_side_effe
     assert _event_types(app, run_id) == before_events
 
 
-def test_product_chat_user_message_entry_explains_blocked_preflight_without_leaking_message(
+def test_product_chat_user_message_entry_explains_blocked_readiness_check_without_leaking_message(
     tmp_path,
 ):
     provider = SequencedChatProvider([_final_answer_response()])
@@ -531,19 +531,19 @@ def test_product_chat_user_message_entry_explains_blocked_preflight_without_leak
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
 
-    response = submit_llm_product_chat_user_message_with_preflight(
+    response = submit_llm_product_chat_user_message_with_readiness_check(
         app,
         run_id,
-        preflight=_blocked_preflight(),
+        readiness_check=_blocked_readiness_check(),
         user_message="APP_ENTRY_USER_BLOCKED_MESSAGE_SHOULD_NOT_LEAK",
         max_tokens=80,
     )
 
     assert response.status_code == 412
     body = response.json()
-    assert body["status"] == "blocked_by_preflight"
-    assert body["reason_code"] == "llm_product_chat_preflight_blocked"
-    assert body["preflight"]["ready"] is False
+    assert body["status"] == "blocked_by_readiness_check"
+    assert body["reason_code"] == "llm_product_chat_readiness_check_blocked"
+    assert body["readiness_check"]["ready"] is False
     assert body["explanation"] == {
         "summary": "LLM provider is not configured",
         "next_step": "configure ISOTOPE_LLM_PROVIDER and provider credentials before running product-chat smoke",
@@ -554,16 +554,16 @@ def test_product_chat_user_message_entry_explains_blocked_preflight_without_leak
     assert "APP_ENTRY_USER_BLOCKED_MESSAGE_SHOULD_NOT_LEAK" not in repr(body)
 
 
-def test_product_chat_user_message_entry_builds_messages_after_preflight_passes(tmp_path):
+def test_product_chat_user_message_entry_builds_messages_after_readiness_check_passes(tmp_path):
     provider = SequencedChatProvider([_final_answer_response("Answer through user entry.")])
     runner = RecordingProcessRunner()
     app = _product_chat_app(tmp_path, provider, runner)
     run_id = _create_run(app)
 
-    response = submit_llm_product_chat_user_message_with_preflight(
+    response = submit_llm_product_chat_user_message_with_readiness_check(
         app,
         run_id,
-        preflight=_ready_preflight(),
+        readiness_check=_ready_readiness_check(),
         user_message="APP_ENTRY_USER_READY_MESSAGE_SHOULD_NOT_LEAK",
         system_message="Use the safe app entry.",
         max_tokens=96,

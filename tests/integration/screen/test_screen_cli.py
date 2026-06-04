@@ -137,7 +137,7 @@ def test_screen_cli_report_summarizes_metadata_only_observe(tmp_path):
     ]
 
 
-def test_screen_cli_report_plain_output_is_low_sensitive(tmp_path):
+def test_screen_cli_report_plain_output_is_public_metadata(tmp_path):
     store = ArtifactStore(tmp_path)
     store.create_artifact(
         "run_001",
@@ -288,7 +288,7 @@ def test_screen_cli_real_smoke_plan_carries_allowlist_profile(tmp_path):
     )
 
 
-def test_screen_cli_allowlist_validate_returns_low_sensitive_json(tmp_path):
+def test_screen_cli_allowlist_validate_returns_public_metadata_json(tmp_path):
     allowlist_file = tmp_path / "screen-allowlist.json"
     allowlist_file.write_text(
         json.dumps(
@@ -320,7 +320,7 @@ def test_screen_cli_allowlist_validate_returns_low_sensitive_json(tmp_path):
     }
 
 
-def test_screen_cli_allowlist_validate_profile_returns_low_sensitive_json(tmp_path):
+def test_screen_cli_allowlist_validate_profile_returns_public_metadata_json(tmp_path):
     profile_dir = tmp_path / "profiles"
     profile_dir.mkdir()
     profile_file = profile_dir / "mahjong.json"
@@ -358,7 +358,7 @@ def test_screen_cli_allowlist_validate_profile_returns_low_sensitive_json(tmp_pa
     assert "private game title" not in result.stdout
 
 
-def test_screen_cli_allowlist_validate_plain_output_is_low_sensitive(tmp_path):
+def test_screen_cli_allowlist_validate_plain_output_is_public_metadata(tmp_path):
     allowlist_file = tmp_path / "screen-allowlist.json"
     allowlist_file.write_text(
         json.dumps(
@@ -381,7 +381,7 @@ def test_screen_cli_allowlist_validate_plain_output_is_low_sensitive(tmp_path):
     assert "private window title fragment" not in result.stdout
 
 
-def test_screen_cli_allowlist_validate_profile_plain_output_is_low_sensitive(tmp_path):
+def test_screen_cli_allowlist_validate_profile_plain_output_is_public_metadata(tmp_path):
     profile_dir = tmp_path / "profiles"
     profile_dir.mkdir()
     (profile_dir / "mahjong.json").write_text(
@@ -436,7 +436,7 @@ def test_screen_cli_allowlist_validate_rejects_malformed_json(tmp_path):
     )
 
 
-def test_screen_cli_allowlist_list_returns_low_sensitive_json(tmp_path):
+def test_screen_cli_allowlist_list_returns_public_metadata_json(tmp_path):
     profile_dir = tmp_path / "profiles"
     profile_dir.mkdir()
     (profile_dir / "mahjong.json").write_text(
@@ -488,7 +488,7 @@ def test_screen_cli_allowlist_list_returns_low_sensitive_json(tmp_path):
     assert "private game title" not in result.stdout
 
 
-def test_screen_cli_allowlist_list_plain_output_is_low_sensitive(tmp_path):
+def test_screen_cli_allowlist_list_plain_output_is_public_metadata(tmp_path):
     profile_dir = tmp_path / "profiles"
     profile_dir.mkdir()
     (profile_dir / "mahjong.json").write_text(

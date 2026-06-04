@@ -294,7 +294,7 @@ def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path)
     assert capability_run["status"] == "completed"
 
 
-def test_supervisor_capacity_plan_exposes_low_sensitive_agent_loop_json_summary(tmp_path):
+def test_supervisor_capacity_plan_exposes_public_metadata_agent_loop_json_summary(tmp_path):
     provider = FakeCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
         '"rationale":"low risk review"}'
@@ -348,7 +348,7 @@ def test_supervisor_capacity_plan_reports_ready_supervisor_decision(tmp_path):
     }
 
 
-def test_supervisor_capacity_plan_only_offers_preflight_launchable_capabilities(tmp_path):
+def test_supervisor_capacity_plan_only_offers_readiness_check_launchable_capabilities(tmp_path):
     provider = FakeCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
         '"rationale":"low risk review"}'
@@ -359,13 +359,13 @@ def test_supervisor_capacity_plan_only_offers_preflight_launchable_capabilities(
                 Capability(
                     capability_id="artifact.review",
                     title="Artifact Review",
-                    description="Review low-sensitive artifact summaries.",
+                    description="Review public artifact summaries.",
                     maturity="v0.2",
                     shelf="product_candidate",
                     domain_tags=("artifact", "review"),
                     input_contract={"type": "object"},
                     output_contract={"type": "object"},
-                    safety_boundaries=("low_sensitive_manifest_only",),
+                    safety_boundaries=("public_metadata_manifest_only",),
                 ),
                 Capability(
                     capability_id="llm.artifact.review",
@@ -385,13 +385,13 @@ def test_supervisor_capacity_plan_only_offers_preflight_launchable_capabilities(
                 Capability(
                     capability_id="context.search",
                     title="Context Search",
-                    description="Deferred context search capability.",
+                    description="Queued context search capability.",
                     maturity="v0.1",
                     shelf="product_candidate",
                     domain_tags=("context", "search"),
                     input_contract={"type": "object"},
                     output_contract={"type": "object"},
-                    safety_boundaries=("low_sensitive_manifest_only",),
+                    safety_boundaries=("public_metadata_manifest_only",),
                 ),
             ]
         )
@@ -507,7 +507,7 @@ def test_execute_capacity_action_requires_matching_ready_decision(tmp_path, monk
     assert calls == []
 
 
-def test_execute_capacity_action_returns_low_sensitive_agent_loop_summary(
+def test_execute_capacity_action_returns_public_metadata_agent_loop_summary(
     tmp_path, monkeypatch
 ):
     agent_loop = {
@@ -916,9 +916,9 @@ def test_supervisor_capacity_plan_summarizes_research_search_agent_loop_result(t
     assert capability_run["status"] == "completed"
     research_search = capability_run["research_search"]
     assert research_search["status"] == "ok"
-    assert research_search["provider"] == "codex"
+    assert research_search["provider"] == "fake"
     assert result["agent_loop_summary"]["agent_loop_research_search_status"] == "ok"
-    assert result["agent_loop_summary"]["agent_loop_research_provider"] == "codex"
+    assert result["agent_loop_summary"]["agent_loop_research_provider"] == "fake"
     assert result["agent_loop_summary"]["agent_loop_research_source_count"] == 1
     assert result["agent_loop_summary"]["agent_loop_research_artifact_count"] == 2
     assert "raw_transcript" not in json.dumps(result["agent_loop_summary"])
@@ -1024,7 +1024,7 @@ def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_ex
                         "properties": {"query": {"type": "string"}},
                     },
                     output_contract={"type": "object"},
-                    safety_boundaries=("low_sensitive_manifest_only",),
+                    safety_boundaries=("public_metadata_manifest_only",),
                 )
             ]
         )
@@ -1064,7 +1064,7 @@ def test_supervisor_capacity_plan_does_not_execute_unlaunchable_capacity(tmp_pat
         '{"capacity_id":"context.search","arguments":{"query":"capacity"},'
         '"confidence":0.77,"rationale":"not allowlisted"}'
     )
-    runner_with_deferred_capability = CapabilityRunner(
+    runner_with_queued_capability = CapabilityRunner(
         catalog=CapabilityCatalog(
             capabilities=[
                 Capability(
@@ -1080,7 +1080,7 @@ def test_supervisor_capacity_plan_does_not_execute_unlaunchable_capacity(tmp_pat
                         "properties": {"query": {"type": "string"}},
                     },
                     output_contract={"type": "object"},
-                    safety_boundaries=("low_sensitive_manifest_only",),
+                    safety_boundaries=("public_metadata_manifest_only",),
                 )
             ]
         )
@@ -1089,7 +1089,7 @@ def test_supervisor_capacity_plan_does_not_execute_unlaunchable_capacity(tmp_pat
     result = capacity_command.build_supervisor_capacity_plan(
         goal="搜索项目文档",
         provider=provider,
-        runner=runner_with_deferred_capability,
+        runner=runner_with_queued_capability,
         state_root=tmp_path / "state",
         execute_agent_loop=True,
     )
@@ -1142,7 +1142,7 @@ def test_supervisor_capacity_command_handler_prints_json_status_reason(capsys):
         execute_agent_loop=True,
         json=True,
     )
-    runner_with_deferred_capability = CapabilityRunner(
+    runner_with_queued_capability = CapabilityRunner(
         catalog=CapabilityCatalog(
             capabilities=[
                 Capability(
@@ -1158,7 +1158,7 @@ def test_supervisor_capacity_command_handler_prints_json_status_reason(capsys):
                         "properties": {"query": {"type": "string"}},
                     },
                     output_contract={"type": "object"},
-                    safety_boundaries=("low_sensitive_manifest_only",),
+                    safety_boundaries=("public_metadata_manifest_only",),
                 )
             ]
         )
@@ -1170,7 +1170,7 @@ def test_supervisor_capacity_command_handler_prints_json_status_reason(capsys):
             '{"capacity_id":"context.search","arguments":{"query":"capacity"},'
             '"confidence":0.77,"rationale":"not allowlisted"}'
         ),
-        runner=runner_with_deferred_capability,
+        runner=runner_with_queued_capability,
     )
 
     assert exit_code == 0
@@ -1506,7 +1506,7 @@ def test_supervisor_capacity_plain_output_explains_not_launchable(tmp_path, caps
         '{"capacity_id":"context.search","arguments":{"query":"capacity"},'
         '"confidence":0.77,"rationale":"not allowlisted"}'
     )
-    runner_with_deferred_capability = CapabilityRunner(
+    runner_with_queued_capability = CapabilityRunner(
         catalog=CapabilityCatalog(
             capabilities=[
                 Capability(
@@ -1522,7 +1522,7 @@ def test_supervisor_capacity_plain_output_explains_not_launchable(tmp_path, caps
                         "properties": {"query": {"type": "string"}},
                     },
                     output_contract={"type": "object"},
-                    safety_boundaries=("low_sensitive_manifest_only",),
+                    safety_boundaries=("public_metadata_manifest_only",),
                 )
             ]
         )
@@ -1530,7 +1530,7 @@ def test_supervisor_capacity_plain_output_explains_not_launchable(tmp_path, caps
     payload = capacity_command.build_supervisor_capacity_plan(
         goal="搜索项目文档",
         provider=provider,
-        runner=runner_with_deferred_capability,
+        runner=runner_with_queued_capability,
         state_root=tmp_path / "state",
         execute_agent_loop=True,
     )

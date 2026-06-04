@@ -141,7 +141,7 @@ def test_supervisor_memory_command_queries_memory_without_content(tmp_path, caps
     assert "raw memory" not in output
 
 
-def test_supervisor_memory_query_plain_output_explains_low_sensitive_preview(
+def test_supervisor_memory_query_plain_output_explains_public_metadata_preview(
     tmp_path,
     capsys,
 ):

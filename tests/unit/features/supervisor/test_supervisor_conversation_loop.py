@@ -191,7 +191,7 @@ def test_conversation_loop_filters_model_supplied_inputs_to_capability_contract(
     }
     assert events[1].payload["capacity_id"] == "research.search"
     assert events[1].payload["status"] == "ok"
-    assert events[1].payload["result_summary"]["agent_loop_research_provider"] == "codex"
+    assert events[1].payload["result_summary"]["agent_loop_research_provider"] == "fake"
     assert events[2].payload == {"text": "research.search 已执行。"}
 
 
@@ -365,7 +365,7 @@ def test_conversation_loop_returns_capacity_error_when_execution_times_out(
     }
 
 
-def test_conversation_loop_records_low_sensitive_capability_gap(tmp_path) -> None:
+def test_conversation_loop_records_public_metadata_capability_gap(tmp_path) -> None:
     provider = RecordingConversationProvider(
         [
             json.dumps(
@@ -485,5 +485,4 @@ def test_conversation_loop_executes_native_coding_capacity_with_safe_observation
     assert "capacity_observation" in second_prompt
     assert "value = 1" not in second_prompt
     assert "value = 2" not in second_prompt
-
 

@@ -5,10 +5,14 @@ from __future__ import annotations
 from typing import Any
 
 
-def _deferred_status(response: Any) -> str:
+def _route_status(response: Any) -> str:
+    if response.status_code == 200:
+        return "active"
+    if response.status_code in {400, 404, 405}:
+        return "validation_error"
     if response.status_code == 501:
-        return "not_enabled"
-    return "deferred"
+        return "unavailable"
+    return "unknown"
 
 
 def _latest_action_status(actions: dict[str, dict[str, Any]]) -> str:

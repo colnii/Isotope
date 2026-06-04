@@ -119,7 +119,7 @@ def run_code_search(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
             "total_match_count": visited_match_count,
             "truncated": visited_match_count > len(matches),
             "matches": matches,
-            "content_policy": "bounded_excerpts_only",
+            "content_policy": "limited_excerpts_only",
         },
     }
 
@@ -139,7 +139,7 @@ def _validate_code_read_inputs(
     _validate_non_empty_strings(input_mapping, ("root", "cwd", "path"), missing_inputs)
     if "path" not in missing_inputs:
         input_mapping["path"] = _safe_relative_path(input_mapping["path"], field_name="path")
-    input_mapping["max_excerpt_chars"] = _bounded_int(
+    input_mapping["max_excerpt_chars"] = _limited_int(
         input_mapping.get("max_excerpt_chars", _DEFAULT_MAX_EXCERPT_CHARS),
         field_name="max_excerpt_chars",
         minimum=1,
@@ -164,13 +164,13 @@ def _validate_code_search_inputs(
         _safe_relative_path(path, field_name="include_paths", allow_dot=True)
         for path in include_paths
     ]
-    input_mapping["max_results"] = _bounded_int(
+    input_mapping["max_results"] = _limited_int(
         input_mapping.get("max_results", _DEFAULT_MAX_RESULTS),
         field_name="max_results",
         minimum=1,
         maximum=_MAX_RESULTS,
     )
-    input_mapping["max_excerpt_chars"] = _bounded_int(
+    input_mapping["max_excerpt_chars"] = _limited_int(
         input_mapping.get("max_excerpt_chars", _DEFAULT_MAX_EXCERPT_CHARS),
         field_name="max_excerpt_chars",
         minimum=1,
@@ -213,7 +213,7 @@ def _safe_relative_path(value: Any, *, field_name: str, allow_dot: bool = False)
     return candidate
 
 
-def _bounded_int(value: Any, *, field_name: str, minimum: int, maximum: int) -> int:
+def _limited_int(value: Any, *, field_name: str, minimum: int, maximum: int) -> int:
     if not isinstance(value, int) or isinstance(value, bool):
         raise ValueError(f"{field_name} must be an integer")
     if value < minimum or value > maximum:
@@ -275,7 +275,7 @@ def _read_text_excerpt(
             "path": path,
             "sha256": digest,
         },
-        "content_policy": "bounded_excerpts_only",
+        "content_policy": "limited_excerpts_only",
     }
 
 
@@ -291,7 +291,7 @@ def _code_read_status(
         "path": path,
         "excerpt": "",
         "truncated": False,
-        "content_policy": "bounded_excerpts_only",
+        "content_policy": "limited_excerpts_only",
     }
     if byte_count is not None:
         payload["byte_count"] = byte_count

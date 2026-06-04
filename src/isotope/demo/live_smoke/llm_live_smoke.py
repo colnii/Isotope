@@ -13,7 +13,7 @@ from typing import Any
 from ...platform.errors import IsotopeError
 from ...features.chat.flow import (
     submit_llm_product_chat_entry_resume,
-    submit_llm_product_chat_user_message_with_preflight,
+    submit_llm_product_chat_user_message_with_readiness_check,
     summarize_llm_product_chat_entry_response,
 )
 from ...llm.provider import resolve_llm_tool_call_provider
@@ -27,7 +27,7 @@ from .cli_support import (
     _mark_product_chat_entry_state_resumed,
     _maybe_write_product_chat_entry_state,
     _optional_path,
-    _preflight_from_result,
+    _readiness_check_from_result,
     _prepare_product_chat_entry_root,
     _print_product_chat_entry_plain,
     _print_product_chat_entry_resume_plain,
@@ -84,7 +84,7 @@ def main(
     *,
     environ: Mapping[str, str] | None = None,
 ) -> int:
-    """Run low-sensitive developer smoke commands."""
+    """Run public developer smoke commands."""
 
     parser = _build_arg_parser()
     args = parser.parse_args(argv)
@@ -341,22 +341,22 @@ def _run_product_chat_entry_command_at_root(
         enabled=True,
         max_tokens=args.max_tokens,
     )
-    preflight_result = diagnose_llm_product_chat_live_smoke(
+    readiness_check_result = diagnose_llm_product_chat_live_smoke(
         app,
         config=config,
         provider=provider,
         environ=environ,
     )
-    preflight = preflight_result.get("preflight")
-    if not isinstance(preflight, dict):
-        preflight = _preflight_from_result(preflight_result)
+    readiness_check = readiness_check_result.get("readiness_check")
+    if not isinstance(readiness_check, dict):
+        readiness_check = _readiness_check_from_result(readiness_check_result)
 
-    if preflight.get("ready") is True:
+    if readiness_check.get("ready") is True:
         run_id = _create_smoke_run(app, "llm product chat app entry command")
-        response = submit_llm_product_chat_user_message_with_preflight(
+        response = submit_llm_product_chat_user_message_with_readiness_check(
             app,
             run_id,
-            preflight=preflight,
+            readiness_check=readiness_check,
             user_message=args.message,
             max_tokens=args.max_tokens,
             complete_run=_entry_initial_complete_run(args),
@@ -367,7 +367,7 @@ def _run_product_chat_entry_command_at_root(
                 response,
                 root=root,
                 run_id=run_id,
-                preflight=preflight,
+                readiness_check=readiness_check,
                 state_file=_optional_path(getattr(args, "state_file", None)),
             )
         except IsotopeError as exc:
@@ -378,13 +378,13 @@ def _run_product_chat_entry_command_at_root(
                 _print_product_chat_entry_resume_plain(payload)
             return _product_chat_entry_exit_code(payload)
     else:
-        entry = _blocked_product_chat_entry_summary(preflight)
+        entry = _blocked_product_chat_entry_summary(readiness_check)
         pending_state = {}
 
     payload = {
         "command": "llm_product_chat_app_entry",
         "codex_runner": "fake",
-        "preflight": preflight,
+        "readiness_check": readiness_check,
         "entry": entry,
         "runner_call_count": len(runner.calls),
     }

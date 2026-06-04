@@ -7,7 +7,6 @@ from isotope.features.supervisor.commands.parser import build_parser
 from isotope.features.supervisor.commands.handlers.worktree_audit import (
     audit_worktree_records,
     handle_worktree_audit_command,
-    launch_coordination_preflight_from_records,
     parse_worktree_list_porcelain,
     parse_worktree_status_porcelain,
 )
@@ -157,76 +156,6 @@ def test_audit_worktree_records_warns_on_overlapping_dirty_files():
         "feature/agent-loop-summary",
         "feature/memory-summary",
     ]
-
-
-def test_launch_coordination_preflight_warns_about_existing_topic_worktree():
-    payload = launch_coordination_preflight_from_records(
-        [
-            {
-                "path": "/repo",
-                "branch": "main",
-                "head": "000",
-                "detached": False,
-            },
-            {
-                "path": "/repo/.worktrees/research-quality-gate",
-                "branch": "feature/research-quality-gate",
-                "head": "111",
-                "detached": False,
-                "dirty": True,
-                "modified_files": ["src/isotope/features/research/quality.py"],
-            },
-            {
-                "path": "/repo/.worktrees/screen-allowlist-list",
-                "branch": "feature/screen-allowlist-list",
-                "head": "222",
-                "detached": False,
-            },
-        ],
-        target_name="research-quality-gate",
-        goal="完善 research quality gate 的 promotion guard。",
-    )
-
-    assert payload["kind"] == "launch_coordination_preflight"
-    assert payload["status"] == "needs_user"
-    assert payload["summary"] == {"candidates": 1}
-    assert payload["query"]["target_name"] == "research-quality-gate"
-    assert payload["query"]["topic_tokens"] == [
-        "gate",
-        "guard",
-        "promotion",
-        "quality",
-        "research",
-    ]
-    assert payload["candidates"][0]["branch"] == "feature/research-quality-gate"
-    assert payload["candidates"][0]["dirty"] is True
-    assert payload["candidates"][0]["modified_files"] == [
-        "src/isotope/features/research/quality.py"
-    ]
-    assert payload["candidates"][0]["shared_tokens"] == [
-        "gate",
-        "quality",
-        "research",
-    ]
-
-
-def test_launch_coordination_preflight_ignores_unrelated_worktrees():
-    payload = launch_coordination_preflight_from_records(
-        [
-            {
-                "path": "/repo/.worktrees/screen-allowlist-list",
-                "branch": "feature/screen-allowlist-list",
-                "head": "222",
-                "detached": False,
-            },
-        ],
-        target_name="research-quality-gate",
-        goal="完善 research quality gate 的 promotion guard。",
-    )
-
-    assert payload["status"] == "ok"
-    assert payload["summary"] == {"candidates": 0}
-    assert payload["candidates"] == []
 
 
 def test_worktree_audit_command_prints_json_payload(capsys):

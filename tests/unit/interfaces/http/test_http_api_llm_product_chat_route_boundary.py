@@ -88,7 +88,7 @@ def _chat_body() -> dict[str, Any]:
             {"role": "system", "content": "You are a product chat shell."},
             {"role": "user", "content": "PRODUCT_CHAT_MESSAGE_SHOULD_NOT_LEAK"},
         ],
-        "max_tool_steps": 2,
+        "max_tool_steps": 1,
     }
 
 
@@ -96,23 +96,23 @@ def _event_types(app, run_id: str) -> list[str]:
     return [event.event_type for event in app.server.get_events(run_id)]
 
 
-def test_product_llm_chat_route_is_deferred_in_default_http_app_without_side_effects(tmp_path):
+def test_product_llm_chat_route_requires_provider_without_side_effects(tmp_path):
     app = create_http_app(tmp_path)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
 
     response = _request(app, "POST", _chat_route(run_id), _chat_body())
 
-    assert _status_code(response) == 501
+    assert _status_code(response) == 400
     body = _body(response)
-    assert body["status"] == "not_enabled"
-    assert body["error"]["code"] == "not_enabled"
+    assert body["status"] == "bad_request"
+    assert body["error"]["code"] == "bad_request"
     assert body["error"]["capability"] == "llm_product_chat_route"
     assert _event_types(app, run_id) == before_events
     assert "PRODUCT_CHAT_MESSAGE_SHOULD_NOT_LEAK" not in repr(body)
 
 
-def test_product_llm_chat_route_stays_deferred_when_provider_routes_are_enabled(tmp_path):
+def test_product_llm_chat_route_runs_when_provider_is_supplied(tmp_path):
     provider = RecordingToolProvider()
     runner = RecordingProcessRunner()
     app = create_llm_provider_http_app(
@@ -125,17 +125,17 @@ def test_product_llm_chat_route_stays_deferred_when_provider_routes_are_enabled(
         process_runner=runner,
     )
     run_id = _create_run(app)
-    before_events = _event_types(app, run_id)
 
     response = _request(app, "POST", _chat_route(run_id), _chat_body())
 
-    assert _status_code(response) == 501
+    assert _status_code(response) == 202
     body = _body(response)
-    assert body["status"] == "not_enabled"
-    assert body["error"]["capability"] == "llm_product_chat_route"
+    assert body["status"] == "pending_user_approval"
+    assert body["tool_name"] == "codex_task"
+    assert body["approval_id"].startswith("approval_")
     supported_paths = {route["path"] for route in app.list_routes()["routes"] if route["status"] == "supported"}
-    assert "/runs/{run_id}/llm/chat-turns" not in supported_paths
-    assert provider.calls == []
+    assert "/runs/{run_id}/llm/chat-turns" in supported_paths
+    assert len(provider.calls) == 1
     assert runner.calls == []
-    assert _event_types(app, run_id) == before_events
+    assert "approval.requested" in _event_types(app, run_id)
     assert "PRODUCT_CHAT_MESSAGE_SHOULD_NOT_LEAK" not in repr(body)

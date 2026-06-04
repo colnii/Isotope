@@ -234,7 +234,7 @@ def _require_provider_selected_offered_tool(
         raise IsotopeError(
             "provider selected a tool that was not offered",
             code="llm_provider_selected_unoffered_tool",
-            category="not_enabled",
+            category="unavailable",
             retryable=False,
             http_status=501,
             details={"tool_names": [provider_tool_name]},

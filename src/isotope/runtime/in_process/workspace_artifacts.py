@@ -17,7 +17,7 @@ SOURCE_ARTIFACT_TYPES = {
 
 
 class InProcessArtifactMixin:
-    """Create and inspect low-sensitive artifact records."""
+    """Create and inspect public artifact records."""
 
     def create_source_artifact(
         self,

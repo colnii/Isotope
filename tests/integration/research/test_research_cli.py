@@ -43,7 +43,7 @@ def test_research_cli_search_returns_json(tmp_path):
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["status"] == "ok"
-    assert payload["research"]["provider"] == "codex"
+    assert payload["research"]["provider"] == "fake"
     assert payload["research"]["sources"][0]["source_kind"] == "unknown"
     assert len(payload["artifact_refs"]) == 2
     assert [artifact["artifact_type"] for artifact in payload["artifacts"]] == [
@@ -59,6 +59,7 @@ def test_research_cli_lists_provider_registry_json():
     payload = json.loads(result.stdout)
     assert payload["status"] == "ok"
     assert [provider["provider_id"] for provider in payload["providers"]] == [
+        "fake",
         "codex",
         "tavily",
         "searxng",
@@ -75,7 +76,7 @@ def test_research_cli_providers_plain_output_marks_planned_provider():
     assert "provider: tavily implemented provider_name: tavily" in result.stdout
 
 
-def test_research_cli_search_records_tavily_preflight_failure(tmp_path, monkeypatch):
+def test_research_cli_search_records_tavily_readiness_check_failure(tmp_path, monkeypatch):
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
 
     result = _run_cli(
@@ -101,7 +102,7 @@ def test_research_cli_search_records_tavily_preflight_failure(tmp_path, monkeypa
     ]
 
 
-def test_research_cli_tavily_preflight_does_not_echo_api_key(tmp_path, monkeypatch):
+def test_research_cli_tavily_readiness_check_does_not_echo_api_key(tmp_path, monkeypatch):
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
 
     result = _run_cli(
@@ -124,7 +125,7 @@ def test_research_cli_tavily_preflight_does_not_echo_api_key(tmp_path, monkeypat
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["status"] == "provider_failed"
-    assert payload["error"]["details"]["error_code"] == "network_execution_deferred"
+    assert payload["error"]["details"]["error_code"] == "network_execution_queued"
     assert payload["error"]["details"]["api_key_configured"] is True
     assert payload["error"]["details"]["timeout_seconds"] == 9
     assert payload["error"]["details"]["max_results"] == 3
@@ -375,7 +376,7 @@ def test_research_cli_inspect_prints_research_artifact_plain(tmp_path):
     assert "status: ok" in result.stdout
     assert "artifact: research.raw_transcript artifact_001" in result.stdout
     assert "summary: raw research provider output: agent memory retrieval" in result.stdout
-    assert '"provider": "codex"' in result.stdout
+    assert '"provider": "fake"' in result.stdout
 
 
 def test_research_cli_inspect_rejects_non_research_artifact(tmp_path):
@@ -637,6 +638,14 @@ def test_research_cli_list_accepts_type_filter(tmp_path):
 
 
 def test_research_cli_requires_query(tmp_path):
+    result = _run_cli(
+        "search",
+        "--root",
+        str(tmp_path),
+        "--provider",
+        "fake",
+        "--json",
+    )
 
     assert result.returncode == 2
     assert json.loads(result.stdout)["error"]["code"] == "research_runner_error"

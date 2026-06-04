@@ -8,7 +8,7 @@ import argparse
 def add_memory_command_parsers(subparsers: argparse._SubParsersAction) -> None:
     memory_parser = subparsers.add_parser(
         "memory",
-        help="Show a low-sensitive summary of local memory records.",
+        help="Show a public summary of local memory records.",
     )
     memory_parser.add_argument(
         "--root",
@@ -28,7 +28,7 @@ def add_memory_command_parsers(subparsers: argparse._SubParsersAction) -> None:
     )
     memory_parser.add_argument(
         "--query",
-        help="Search low-sensitive memory summaries and references.",
+        help="Search public memory summaries and references.",
     )
     memory_parser.add_argument(
         "--run-id",

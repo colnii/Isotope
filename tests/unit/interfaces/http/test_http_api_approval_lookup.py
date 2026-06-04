@@ -120,7 +120,7 @@ def test_http_approval_lookup_unknown_run_or_approval_is_controlled_404(tmp_path
     assert app.server.get_events(run_id) == before_events
 
 
-def test_http_approval_lookup_is_in_process_and_not_supported_product_inventory(
+def test_http_approval_lookup_is_in_process_and_supported_product_inventory(
     tmp_path,
     monkeypatch,
 ):
@@ -141,8 +141,7 @@ def test_http_approval_lookup_is_in_process_and_not_supported_product_inventory(
     }
 
     assert _status_code(response) == 200
-    assert "/runs/{run_id}/approvals" not in supported_paths
-    assert "/runs/{run_id}/approvals/{approval_id}" not in supported_paths
+    assert "/runs/{run_id}/approvals" in supported_paths
+    assert "/runs/{run_id}/approvals/{approval_id}" in supported_paths
     assert not hasattr(app, "serve_forever")
     assert not hasattr(app, "listen")
-

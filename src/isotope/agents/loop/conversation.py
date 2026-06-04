@@ -93,7 +93,7 @@ def arbitrate_agent_conversation_turn(
     turn_id: str,
     max_visible_messages: int,
 ) -> dict[str, Any]:
-    """Select bounded agent messages for one conversation turn."""
+    """Select limited agent messages for one conversation turn."""
     _require_string(turn_id, "turn_id")
     if isinstance(max_visible_messages, bool) or not isinstance(max_visible_messages, int):
         raise ValueError("max_visible_messages must be a positive integer")
@@ -109,7 +109,7 @@ def arbitrate_agent_conversation_turn(
         ),
     )
     selected: list[AgentConversationMessage] = []
-    deferred: list[dict[str, Any]] = []
+    queued: list[dict[str, Any]] = []
     dropped: list[dict[str, Any]] = []
     claimed_locks: dict[str, str] = {}
 
@@ -118,13 +118,13 @@ def arbitrate_agent_conversation_turn(
             dropped.append(_drop_record(message, "silent"))
             continue
         if not message.display:
-            deferred.append(_defer_record(message, "visible_limit"))
+            queued.append(_defer_record(message, "visible_limit"))
             continue
         if message.state_lock is not None and message.state_lock in claimed_locks:
-            deferred.append(_defer_record(message, "state_lock_conflict"))
+            queued.append(_defer_record(message, "state_lock_conflict"))
             continue
         if message.display and len([item for item in selected if item.display]) >= max_visible_messages:
-            deferred.append(_defer_record(message, "visible_limit"))
+            queued.append(_defer_record(message, "visible_limit"))
             continue
         selected.append(message)
         if message.state_lock is not None:
@@ -140,12 +140,12 @@ def arbitrate_agent_conversation_turn(
         "turn_id": turn_id,
         "status": "selected" if visible_messages else "silent",
         "visible_messages": visible_messages,
-        "deferred_messages": deferred,
+        "queued_messages": queued,
         "dropped_messages": dropped,
         "state_locks": list(claimed_locks),
         "safety": {
             "agent_conversation_interface": True,
-            "bounded": True,
+            "limited": True,
             "max_visible_messages": max_visible_messages,
             "arbiter": "deterministic_priority",
             "real_llm_provider": False,

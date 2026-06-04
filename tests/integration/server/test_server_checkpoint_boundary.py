@@ -14,28 +14,22 @@ def _completed_run(root):
     return api, run["run_id"]
 
 
-def test_get_run_state_without_checkpoint_store_uses_full_rebuild(tmp_path, monkeypatch):
+def test_get_run_state_default_uses_checkpoint_store(tmp_path, monkeypatch):
     api, run_id = _completed_run(tmp_path)
-    checkpoints = checkpoint_store.FileCheckpointStore(tmp_path)
     calls = []
-    original_rebuild = projector.RunProjector.rebuild
+    original_rebuild_with_checkpoint = projector.RunProjector.rebuild_with_checkpoint
 
-    def fail_if_checkpoint_rebuild_is_used(self, run_id_arg, event_store, checkpoint_store_arg):
-        raise AssertionError("default server must not use checkpoint-assisted rebuild")
+    def spy_rebuild_with_checkpoint(self, run_id_arg, event_store, checkpoint_store_arg, *args, **kwargs):
+        calls.append((run_id_arg, checkpoint_store_arg))
+        return original_rebuild_with_checkpoint(self, run_id_arg, event_store, checkpoint_store_arg, *args, **kwargs)
 
-    def spy_rebuild(self, run_id_arg, event_store):
-        calls.append(run_id_arg)
-        return original_rebuild(self, run_id_arg, event_store)
-
-    monkeypatch.setattr(projector.RunProjector, "rebuild_with_checkpoint", fail_if_checkpoint_rebuild_is_used)
-    monkeypatch.setattr(projector.RunProjector, "rebuild", spy_rebuild)
+    monkeypatch.setattr(projector.RunProjector, "rebuild_with_checkpoint", spy_rebuild_with_checkpoint)
 
     state = api.get_run_state(run_id)
 
-    assert calls == [run_id]
+    assert calls == [(run_id, api.checkpoint_store)]
     assert state.status == "completed"
     assert state.artifacts[0]["summary"] == "hello artifact"
-    assert not checkpoints.checkpoint_path(run_id).exists()
 
 
 def test_get_run_state_with_checkpoint_store_matches_full_rebuild(tmp_path, monkeypatch):
@@ -109,11 +103,12 @@ def test_lifecycle_invalid_event_log_still_fails_with_checkpoint_store(tmp_path)
         reader.get_run_state(run_id)
 
 
-def test_server_create_checkpoint_remains_not_enabled(tmp_path):
+def test_server_create_checkpoint_saves_checkpoint(tmp_path):
     api, run_id = _completed_run(tmp_path)
 
     result = api.create_checkpoint(run_id)
 
-    assert result["status"] == "not_enabled"
-    assert result["capability"] == "checkpoint"
-    assert result["error"]["code"] == "not_enabled"
+    assert result["status"] == "saved"
+    assert result["run_id"] == run_id
+    assert result["basis_event_id"].startswith("evt_")
+    assert api.checkpoint_store.checkpoint_path(run_id).exists()

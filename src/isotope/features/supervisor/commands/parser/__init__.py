@@ -69,7 +69,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
             _add_webhook_args(subparser)
     state_parser = subparsers.add_parser(
         "state",
-        help="Print the unified low-sensitive Supervisor state projection.",
+        help="Print the unified public Supervisor state projection.",
     )
     _add_state_root_arg(state_parser)
     state_parser.add_argument("--json", action="store_true", help="Print JSON output.")

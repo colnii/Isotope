@@ -690,7 +690,7 @@ def test_desktop_chat_endpoint_rejects_empty_question(tmp_path) -> None:
     assert payload["error"]["message"] == "question must not be empty"
 
 
-def test_desktop_chat_endpoint_allows_browser_preflight(tmp_path) -> None:
+def test_desktop_chat_endpoint_allows_browser_readiness_check(tmp_path) -> None:
     server = create_dashboard_server(
         codex_home=tmp_path,
         host="127.0.0.1",

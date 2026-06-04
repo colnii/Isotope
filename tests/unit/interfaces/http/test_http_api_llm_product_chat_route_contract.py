@@ -200,7 +200,7 @@ def _product_chat_app(
     )
 
 
-def test_product_chat_route_is_listed_only_when_explicitly_enabled(tmp_path):
+def test_product_chat_route_is_listed_by_default_and_with_provider(tmp_path):
     default_app = create_http_app(tmp_path / "default")
     provider = SequencedToolProvider(
         [_provider_response("PRODUCT_CHAT_PROMPT_SHOULD_NOT_LEAK", call_id="call_product", summary="chat task")]
@@ -208,10 +208,10 @@ def test_product_chat_route_is_listed_only_when_explicitly_enabled(tmp_path):
     runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _product_chat_app(tmp_path / "product", provider, runner)
 
-    assert ("POST", "/runs/{run_id}/llm/chat-turns") not in default_app.routes()
+    assert ("POST", "/runs/{run_id}/llm/chat-turns") in default_app.routes()
     assert ("POST", "/runs/{run_id}/llm/chat-turns") in app.routes()
-    assert ("POST", "/runs/{run_id}/llm/tool-calls") not in app.routes()
-    assert ("POST", "/runs/{run_id}/llm/tool-result-followups") not in app.routes()
+    assert ("POST", "/runs/{run_id}/llm/tool-calls") in app.routes()
+    assert ("POST", "/runs/{run_id}/llm/tool-result-followups") in app.routes()
 
 
 def test_product_chat_initial_turn_submits_one_pending_approval_without_starting_codex(tmp_path):
@@ -628,7 +628,7 @@ def test_product_chat_route_rejects_provider_selected_unoffered_tool_without_sid
 
     assert _status_code(response) == 501
     body = _body(response)
-    assert body["status"] == "not_enabled"
+    assert body["status"] == "unavailable"
     assert body["error"]["code"] == "llm_provider_selected_unoffered_tool"
     assert body["error"]["details"] == {"tool_names": ["codex_task"]}
     assert [tool["name"] for tool in provider.calls[0]["tools"]] == ["terminal_exec"]

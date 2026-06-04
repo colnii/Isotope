@@ -59,7 +59,7 @@ from .planner.goal_queue import (
     record_supervisor_goal_status,
 )
 from ...agents.scheduler.goal_queue import (
-    active_goal_is_deferred,
+    active_goal_is_queued,
     filter_replenishment_counted_goals,
 )
 from .planner.goal_planner import plan_supervisor_goals
@@ -293,8 +293,8 @@ def _replenishment_counted_active_goals(
     )
 
 
-def _active_goal_is_deferred(goal: dict[str, Any]) -> bool:
-    return active_goal_is_deferred(goal)
+def _active_goal_is_queued(goal: dict[str, Any]) -> bool:
+    return active_goal_is_queued(goal)
 
 
 def _selected_active_goal(args: argparse.Namespace) -> dict[str, Any] | None:

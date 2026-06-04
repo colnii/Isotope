@@ -79,8 +79,8 @@ def _run_terminal_exec_demo(root: Path) -> dict[str, Any]:
         "interactive_shell_status": "not_used",
         "network_listener_status": "not_used",
         "model_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
     }
 
 

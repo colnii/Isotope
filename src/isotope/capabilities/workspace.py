@@ -1,7 +1,7 @@
 """Workspace capability proposals for native coding.
 
 The first isolated writable workspace slice is proposal-only. It fixes the
-path-safety and low-sensitive contract for a future materialized workspace, but
+path-safety and public contract for a future materialized workspace, but
 does not create directories, copy files, mutate repositories, or append events.
 """
 

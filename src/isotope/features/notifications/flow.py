@@ -1,4 +1,4 @@
-"""Low-sensitive notification feature flow."""
+"""Public notification feature flow."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ class NotificationSummary:
     source_ref: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        source_ref = _copy_low_sensitive_ref(self.source_ref)
+        source_ref = _copy_public_metadata_ref(self.source_ref)
         return {
             "notification_id": self.notification_id,
             "type": self.notification_type,
@@ -59,7 +59,7 @@ class NotificationSummary:
             unread=_required_bool(data, "unread"),
             created_at=_required_string(data, "created_at"),
             read_at=read_at,
-            source_ref=_copy_low_sensitive_ref(source_ref),
+            source_ref=_copy_public_metadata_ref(source_ref),
         )
 
 
@@ -98,7 +98,7 @@ class NotificationFlow:
             unread=True,
             created_at=self._timestamp(),
             read_at=None,
-            source_ref=_copy_low_sensitive_ref(source_ref),
+            source_ref=_copy_public_metadata_ref(source_ref),
         )
         self._notifications[summary.notification_id] = summary
         self._save_index()
@@ -139,7 +139,7 @@ class NotificationFlow:
             unread=False,
             created_at=current.created_at,
             read_at=self._timestamp(),
-            source_ref=_copy_low_sensitive_ref(current.source_ref),
+            source_ref=_copy_public_metadata_ref(current.source_ref),
         )
         self._notifications[updated.notification_id] = updated
         self._save_index()
@@ -215,41 +215,41 @@ def _non_empty(value: str, field_name: str) -> str:
     return value
 
 
-def _copy_low_sensitive_ref(source_ref: dict[str, Any] | None) -> dict[str, Any] | None:
+def _copy_public_metadata_ref(source_ref: dict[str, Any] | None) -> dict[str, Any] | None:
     if source_ref is None:
         return None
-    copied = _copy_low_sensitive_value(source_ref)
+    copied = _copy_public_metadata_value(source_ref)
     if not isinstance(copied, dict):
         raise ValueError("source_ref must be a JSON object")
     return copied
 
 
-def _validate_low_sensitive_ref(value: Any) -> None:
+def _validate_public_metadata_ref(value: Any) -> None:
     if isinstance(value, dict):
         forbidden = FORBIDDEN_SOURCE_REF_KEYS.intersection(value)
         if forbidden:
-            raise ValueError("source_ref must stay low-sensitive")
+            raise ValueError("source_ref must stay public")
         for nested in value.values():
-            _validate_low_sensitive_ref(nested)
+            _validate_public_metadata_ref(nested)
         return
     if isinstance(value, list):
         for nested in value:
-            _validate_low_sensitive_ref(nested)
+            _validate_public_metadata_ref(nested)
 
 
-def _copy_low_sensitive_value(value: Any) -> Any:
+def _copy_public_metadata_value(value: Any) -> Any:
     if isinstance(value, dict):
         forbidden = FORBIDDEN_SOURCE_REF_KEYS.intersection(value)
         if forbidden:
-            raise ValueError("source_ref must stay low-sensitive")
+            raise ValueError("source_ref must stay public")
         copied: dict[str, Any] = {}
         for key, nested in value.items():
             if not isinstance(key, str) or not key.strip():
                 raise ValueError("source_ref must be a JSON object")
-            copied[key] = _copy_low_sensitive_value(nested)
+            copied[key] = _copy_public_metadata_value(nested)
         return copied
     if isinstance(value, list):
-        return [_copy_low_sensitive_value(nested) for nested in value]
+        return [_copy_public_metadata_value(nested) for nested in value]
     if value is None or isinstance(value, str | int | float | bool):
         return value
     raise ValueError("source_ref must be JSON-compatible")

@@ -25,7 +25,7 @@ def build_llm_tool_result_message(
     llm_result: dict[str, Any],
     tool_execution_result: dict[str, Any],
 ) -> dict[str, str]:
-    """Build a low-sensitive tool-result message for the originating model call."""
+    """Build a public tool-result message for the originating model call."""
 
     if not isinstance(llm_result, dict):
         raise IsotopeError(
@@ -99,7 +99,7 @@ def select_llm_tool_result_followup(
     max_tokens: int = 512,
     tool_names: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
-    """Send a low-sensitive tool result back to the provider for one follow-up choice."""
+    """Send a public tool result back to the provider for one follow-up choice."""
 
     provider_response, tool_result_message, tool_result_content = _request_tool_result_followup(
         app,
@@ -250,8 +250,8 @@ def _request_tool_result_followup(
     if tool_name not in offered_names:
         raise IsotopeError(
             "provider selected a tool that is not enabled",
-            code="llm_tool_not_enabled",
-            category="not_enabled",
+            code="llm_tool_unavailable",
+            category="unavailable",
             retryable=False,
             http_status=501,
             details={"tool_names": [tool_name]},

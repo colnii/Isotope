@@ -111,7 +111,7 @@ def build_agent_loop_provider_planner_result(
     decision_id: str,
     max_tokens: int = 512,
 ) -> dict[str, Any]:
-    """Return quarantined provider output shaped for the real planner contract."""
+    """Return provider output shaped for the real planner contract."""
     messages = _build_planner_messages(
         control=control,
         default_context=default_context,
@@ -138,8 +138,6 @@ def build_agent_loop_provider_planner_result(
         "agent_id": agent_id,
         "tick_id": tick_id,
         "decision_id": decision_id,
-        "raw_prompt_quarantined": True,
-        "raw_response_quarantined": True,
         "parsed_planner_output": parsed_output,
         "planner_output_summary": {
             "planner_run_id": parsed_output["planner_run_id"],
@@ -329,8 +327,5 @@ def _safety(*, max_tokens: int) -> dict[str, Any]:
     return {
         "real_llm_provider": True,
         "provider_executes_actions": False,
-        "raw_prompt_quarantined": True,
-        "raw_response_quarantined": True,
-        "bounded": True,
         "max_tokens": max_tokens,
     }

@@ -231,7 +231,7 @@ def test_supervisor_worker_event_summary_uses_platform_schema():
     }
 
 
-def test_supervisor_state_snapshot_empty_root_is_read_only(tmp_path):
+def test_supervisor_state_snapshot_empty_root_is_view_only(tmp_path):
     snapshot = build_supervisor_state_snapshot(codex_home=tmp_path)
 
     assert snapshot == {
@@ -267,7 +267,7 @@ def test_supervisor_state_snapshot_empty_root_is_read_only(tmp_path):
     assert list(tmp_path.rglob("*")) == []
 
 
-def test_supervisor_state_snapshot_projects_existing_low_sensitive_state(tmp_path):
+def test_supervisor_state_snapshot_projects_existing_public_metadata_state(tmp_path):
     record_decision_request(
         codex_home=tmp_path,
         action={

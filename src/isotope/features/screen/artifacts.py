@@ -1,4 +1,4 @@
-"""Screen artifact inspection and low-sensitive reports."""
+"""Screen artifact inspection and public reports."""
 
 from __future__ import annotations
 

@@ -63,14 +63,14 @@ def test_artifact_review_decision_and_artifact_keep_provenance(tmp_path):
     assert review_provenance["execution_id"]
 
 
-def test_artifact_review_content_policy_is_controlled_and_not_http_enabled(tmp_path):
+def test_artifact_review_content_policy_and_http_content_route_are_active(tmp_path):
     data = run_demo(tmp_path, scenario=SCENARIO)
 
     assert data["content_policy_ok"] is True
     assert data["summary_only_ok"] is True
     assert data["controlled_retrieval_ok"] is True
     assert data["controlled_retrieval_view"] == "full"
-    assert data["http_full_content_route_status"] == "not_enabled"
+    assert data["http_full_content_route_status"] == "active"
     _assert_no_forbidden_content_keys(data)
 
 

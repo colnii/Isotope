@@ -80,6 +80,15 @@ class ResearchProviderDescriptor:
 
 _PROVIDER_DESCRIPTORS: tuple[ResearchProviderDescriptor, ...] = (
     ResearchProviderDescriptor(
+        provider_id="fake",
+        provider_name="fake",
+        label="Fake local provider",
+        status="implemented",
+        entrypoint="in_process",
+        notes="Deterministic local provider for demos, tests, and offline capability execution.",
+        selectable=True,
+    ),
+    ResearchProviderDescriptor(
         provider_id="codex",
         provider_name="codex_delegated",
         label="Codex delegated provider",
@@ -96,7 +105,7 @@ _PROVIDER_DESCRIPTORS: tuple[ResearchProviderDescriptor, ...] = (
         status="implemented",
         entrypoint="api",
         requires=("TAVILY_API_KEY",),
-        notes="Network execution is available behind an explicit command flag; preflight remains the default.",
+        notes="Network execution is available behind an explicit command flag; readiness_check remains the default.",
         selectable=True,
     ),
     ResearchProviderDescriptor(
@@ -178,6 +187,8 @@ def build_research_provider(
             f"research provider {provider_id} is registered but not implemented yet; "
             "run `isotope-research providers` to inspect provider status"
         )
+    if provider_id == "fake":
+        return FakeResearchProvider()
     if provider_id == "codex":
         return CodexDelegatedResearchProvider(
             build_codex_cli_research_backend(
@@ -204,6 +215,48 @@ def build_research_provider(
             max_results=tavily_max_results,
         )
     raise RuntimeError(f"research provider registry is missing builder for: {provider_id}")
+
+
+class FakeResearchProvider:
+    provider_name = "fake"
+
+    def run(self, query: str) -> dict[str, Any]:
+        clean_query = _require_query(query)
+        retrieved_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        return {
+            "research_id": "research_fake_001",
+            "query": clean_query,
+            "provider": self.provider_name,
+            "created_at": retrieved_at,
+            "status": "ok",
+            "evidence_status": "complete",
+            "sources": [
+                {
+                    "source_id": "src_001",
+                    "title": "Fake source-backed research note",
+                    "url": "https://example.com/isotope-research",
+                    "snippet": "Research claims should cite source ids.",
+                    "why_used": "deterministic fake source for tests",
+                    "retrieved_at": retrieved_at,
+                    "provider_rank": 1,
+                    "source_kind": "documentation",
+                    "source_authority": "secondary",
+                }
+            ],
+            "report": {
+                "summary": f"Fake research summary for {clean_query}.",
+                "claims": [
+                    {
+                        "text": f"Local fake research can answer: {clean_query}.",
+                        "source_ids": ["src_001"],
+                        "confidence": "medium",
+                    }
+                ],
+                "limitations": ["Uses deterministic local evidence only."],
+                "next_queries": [],
+            },
+            "provenance": {"provider": self.provider_name},
+        }
 
 
 

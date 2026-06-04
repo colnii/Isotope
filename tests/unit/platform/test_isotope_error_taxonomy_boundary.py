@@ -123,13 +123,16 @@ def test_invalid_request_helper_error_is_structured(tmp_path):
     assert exc_info.value.details == {"field": "text"}
 
 
-def test_not_enabled_helper_result_uses_structured_error_shape(tmp_path):
+def test_checkpoint_unknown_run_error_uses_structured_shape(tmp_path):
+    IsotopeError = _isotope_error_type()
     api = server.InProcessServer(tmp_path)
 
-    result = api.create_checkpoint("run_missing")
+    with pytest.raises(ValueError) as exc_info:
+        api.create_checkpoint("run_missing")
 
-    assert result["status"] == "not_enabled"
-    assert result["error"]["code"] == "not_enabled"
-    assert result["error"]["category"] == "not_enabled"
-    assert result["error"]["retryable"] is False
-    assert result["error"]["details"] == {"capability": "checkpoint"}
+    assert isinstance(exc_info.value, IsotopeError)
+    assert exc_info.value.code == "unknown_run"
+    assert exc_info.value.category == "not_found"
+    assert exc_info.value.retryable is False
+    assert exc_info.value.http_status == 404
+    assert exc_info.value.details == {"run_id": "run_missing"}

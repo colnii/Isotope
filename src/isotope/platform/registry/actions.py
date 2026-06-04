@@ -82,7 +82,7 @@ class ActionTypeRegistry:
     def default(
         cls,
         *,
-        enable_codex_task: bool = False,
+        enable_codex_task: bool = True,
         codex_task_budget_seconds: int | None = None,
     ) -> "ActionTypeRegistry":
         entries = [
@@ -113,11 +113,6 @@ class ActionTypeRegistry:
         except KeyError as exc:
             raise KeyError(tool_name) from exc
 
-    def is_deferred_tool(self, tool_name: str) -> bool:
-        return tool_name not in self._entries_by_tool and any(
-            entry["name"] == tool_name for entry in _deferred_model_tool_entries()
-        )
-
     def model_tool_catalog(self) -> dict[str, Any]:
         """Return the model-facing callable tool catalog without executable hooks."""
         return {
@@ -128,11 +123,6 @@ class ActionTypeRegistry:
                 _model_tool_entry(entry)
                 for entry in self._entries_by_tool.values()
                 if entry.enabled
-            ],
-            "deferred_tools": [
-                entry
-                for entry in _deferred_model_tool_entries()
-                if entry["name"] not in self._entries_by_tool
             ],
         }
 
@@ -469,38 +459,6 @@ def _input_schema_from_payload_requirements(payload_requirements: dict[str, Any]
         "required": list(required),
         "properties": properties,
     }
-
-
-def _deferred_model_tool_entries() -> list[dict[str, Any]]:
-    return [
-        {
-            "name": "codex_task",
-            "action": "delegate_agent_task",
-            "tool_kind": "agent_cli_task",
-            "status": "deferred",
-            "reason": "future agent CLI tool; requires explicit Codex adapter boundary",
-            "input_schema": {
-                "type": "object",
-                "required": ["prompt"],
-                "properties": {
-                    "prompt": {"type": "string", "minLength": 1},
-                },
-            },
-            "constraints": {
-                "terminal_tool": False,
-                "uses_terminal_exec": False,
-                "requires_selected_adapter": True,
-                "requires_approval": True,
-                "full_content_in_events": False,
-            },
-            "output_contract": {
-                "result_kind": "agent_task_output",
-                "content_location": "artifact_ref",
-                "full_content_in_events": False,
-                "full_content_in_read_model": False,
-            },
-        }
-    ]
 
 
 __all__ = ["ActionTypeEntry", "ActionTypeRegistry"]

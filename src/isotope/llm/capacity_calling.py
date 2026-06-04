@@ -133,7 +133,7 @@ def select_capacity_call(
         raise IsotopeError(
             "provider selected a capacity that was not offered",
             code="llm_capacity_unoffered",
-            category="not_enabled",
+            category="unavailable",
             retryable=False,
             http_status=501,
             details={"capacity_id": capacity_id},

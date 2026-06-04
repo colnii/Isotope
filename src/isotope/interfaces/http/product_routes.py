@@ -190,7 +190,7 @@ class HttpProductRouteMixin:
             if self.workbench_ask_flow is None:
                 return self._error(
                     501,
-                    "not_enabled",
+                    "unavailable",
                     "workbench_ask is not enabled",
                     capability="workbench_ask",
                 )

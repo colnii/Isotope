@@ -45,10 +45,10 @@ def test_conversation_arbiter_allows_silence_without_forcing_agent_reply():
     assert result["turn_id"] == "turn_001"
     assert result["status"] == "silent"
     assert result["visible_messages"] == []
-    assert result["deferred_messages"] == []
+    assert result["queued_messages"] == []
     assert result["dropped_messages"] == []
     assert result["safety"]["agent_conversation_interface"] is True
-    assert result["safety"]["bounded"] is True
+    assert result["safety"]["limited"] is True
     _assert_no_forbidden_content_keys(result)
 
 
@@ -86,11 +86,11 @@ def test_conversation_arbiter_prioritizes_interrupts_and_limits_visible_messages
     assert [item["message_id"] for item in result["visible_messages"]] == ["msg_critic"]
     assert result["visible_messages"][0]["intent"] == "interrupt"
     assert result["visible_messages"][0]["display"] is True
-    assert {item["message_id"] for item in result["deferred_messages"]} == {
+    assert {item["message_id"] for item in result["queued_messages"]} == {
         "msg_coder",
         "msg_memo",
     }
-    assert {item["reason"] for item in result["deferred_messages"]} == {
+    assert {item["reason"] for item in result["queued_messages"]} == {
         "visible_limit",
     }
     _assert_no_forbidden_content_keys(result)
@@ -132,7 +132,7 @@ def test_conversation_arbiter_defers_state_lock_conflicts():
         "msg_supr",
         "msg_screen",
     ]
-    assert result["deferred_messages"] == [
+    assert result["queued_messages"] == [
         {
             "message_id": "msg_loop",
             "agent_id": "agent_loop",
@@ -174,7 +174,7 @@ def test_in_process_runtime_exposes_conversation_arbiter(tmp_path):
                 message_id="msg_loop",
                 agent_id="agent_loop",
                 intent="respond",
-                summary="Loop has a bounded next step.",
+                summary="Loop has a limited next step.",
                 priority=10,
             )
         ],

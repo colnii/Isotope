@@ -1,4 +1,4 @@
-"""Supervisor notification summary schema for low-sensitive state snapshots."""
+"""Supervisor notification summary schema for public state snapshots."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ NOTIFICATION_SOURCE_REF_KEYS = {
 
 @dataclass(frozen=True)
 class SupervisorNotificationSummary:
-    """Low-sensitive notification payload for Supervisor read models."""
+    """Public notification payload for Supervisor read models."""
 
     notification_id: str
     notification_type: str
@@ -67,7 +67,7 @@ class SupervisorNotificationSummary:
 
 
 def filter_notification_source_ref(source_ref: Any) -> dict[str, Any]:
-    """Return the stable low-sensitive source reference used by state snapshots."""
+    """Return the stable public source reference used by state snapshots."""
     if not isinstance(source_ref, dict):
         return {}
     return {

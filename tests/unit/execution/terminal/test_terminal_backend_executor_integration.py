@@ -169,7 +169,7 @@ def test_executor_routes_terminal_exec_through_configured_backend_adapter(tmp_pa
     assert runner.artifact_store.get_content(ref) == secret
 
 
-def test_executor_completed_event_has_low_sensitive_terminal_backend_summary(tmp_path):
+def test_executor_completed_event_has_public_metadata_terminal_backend_summary(tmp_path):
     proposal = _proposal()
     decision = _decision(proposal)
     secret = "SECRET_OUTPUT_must_stay_in_artifact"
@@ -209,7 +209,7 @@ def test_executor_completed_event_has_low_sensitive_terminal_backend_summary(tmp
     assert "SECRET_ENV_TOKEN" not in payload_repr
 
 
-def test_in_process_server_projects_low_sensitive_terminal_backend_summary(tmp_path):
+def test_in_process_server_projects_public_metadata_terminal_backend_summary(tmp_path):
     secret = "SERVER_SECRET_OUTPUT_must_stay_in_artifact"
     backend = FakeTerminalBackend(
         _completed_backend_result_with_session(

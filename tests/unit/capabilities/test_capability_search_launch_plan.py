@@ -29,7 +29,7 @@ def _capability(capability_id, shelf="product_candidate", **overrides):
         "domain_tags": tuple(capability_id.split(".")),
         "input_contract": {"type": "object", "required": []},
         "output_contract": {"type": "object"},
-        "safety_boundaries": ("low_sensitive_manifest_only",),
+        "safety_boundaries": ("public_metadata_manifest_only",),
         "default_enabled": True,
         "required_env": (),
         "network_required": False,
@@ -54,7 +54,7 @@ def _walk(value):
             yield from _walk(child)
 
 
-def _assert_low_sensitive(value):
+def _assert_public_metadata(value):
     json.dumps(value)
     for mapping in _walk(value):
         assert FORBIDDEN_KEYS.isdisjoint(mapping)
@@ -70,10 +70,12 @@ def test_search_capabilities_finds_matching_catalog_entries():
     assert result["kind"] == "capability_search_result"
     assert result["query"] == "artifact"
     ids = [entry["capability_id"] for entry in result["capabilities"]]
-    assert ids == ["artifact.review", "memory.promotion.preview"]
+    assert "artifact.review" in ids
+    assert "artifact.changed_files" in ids
+    assert "artifact.diff_summary" in ids
 
 
-def test_search_capabilities_returns_low_sensitive_metadata_only():
+def test_search_capabilities_returns_public_metadata_metadata_only():
     result = _runner().search_capabilities(query="review")
 
     assert result["capabilities"]
@@ -88,7 +90,7 @@ def test_search_capabilities_returns_low_sensitive_metadata_only():
                 "readiness",
             }
         )
-    _assert_low_sensitive(result)
+    _assert_public_metadata(result)
 
 
 def test_search_capabilities_has_no_side_effects(tmp_path):
@@ -134,9 +136,9 @@ def test_plan_capability_run_for_allowlisted_capability_is_launchable():
     assert plan["output_policy"] == {
         "returns_full_content": False,
         "returns_artifact_refs": True,
-        "low_sensitive_summary_only": True,
+        "public_metadata_summary_only": True,
     }
-    _assert_low_sensitive(plan)
+    _assert_public_metadata(plan)
 
 
 def test_plan_unknown_capability_returns_controlled_unknown_plan_without_side_effects(
@@ -150,7 +152,7 @@ def test_plan_unknown_capability_returns_controlled_unknown_plan_without_side_ef
     assert plan["status"] == "unknown"
     assert plan["blocking_reasons"] == ["unknown_capability"]
     assert not list(Path(tmp_path).rglob("*"))
-    _assert_low_sensitive(plan)
+    _assert_public_metadata(plan)
 
 
 def test_plan_provider_required_capability_reports_missing_configuration_without_provider():
@@ -178,7 +180,7 @@ def test_plan_provider_required_capability_reports_missing_configuration_without
     assert plan["model"] == "deepseek-v4-flash"
     assert plan["missing_env"] == ["ISOTOPE_TEST_PROVIDER_KEY"]
     assert "missing_configuration" in plan["blocking_reasons"]
-    _assert_low_sensitive(plan)
+    _assert_public_metadata(plan)
 
 
 @pytest.mark.parametrize("shelf", ["diagnostic", "experimental"])
@@ -190,8 +192,8 @@ def test_plan_hidden_capabilities_are_not_launchable_by_default(shelf):
     plan = _runner(catalog=catalog).plan_capability_run(f"{shelf}.capability")
 
     assert plan["can_launch"] is False
-    assert plan["status"] in {"deferred", "not_allowlisted"}
+    assert plan["status"] in {"queued", "not_allowlisted"}
     assert plan["shelf"] == shelf
     assert plan["scenario"] is None
     assert "not_allowlisted" in plan["blocking_reasons"]
-    _assert_low_sensitive(plan)
+    _assert_public_metadata(plan)

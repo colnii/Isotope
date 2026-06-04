@@ -28,8 +28,8 @@ class HttpResponseMixin:
         **details: Any,
     ) -> HttpResponse:
         nested_details = dict(details.pop("details", {}))
-        if code == "not_enabled":
-            details.setdefault("category", "not_enabled")
+        if code == "unavailable":
+            details.setdefault("category", "unavailable")
             details.setdefault("retryable", False)
             nested_details.update({key: value for key, value in details.items() if key == "capability"})
         error: dict[str, Any] = {
@@ -65,7 +65,7 @@ class HttpResponseMixin:
         )
 
     def _status_for_isotope_error(self, error: IsotopeError, status_code: int) -> str:
-        if error.category in {"conflict", "not_enabled"}:
+        if error.category in {"conflict", "unavailable"}:
             return error.category
         if status_code == 404:
             return "not_found"

@@ -1,4 +1,4 @@
-"""Supervisor decision request schema for low-sensitive state snapshots."""
+"""Supervisor decision request schema for public state snapshots."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Low-sensitive summaries for Supervisor capacity execution payloads."""
+"""Public summaries for Supervisor capacity execution payloads."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Any, Mapping
 
 
 def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
-    """Return low-sensitive capacity handoff fields for JSON and plain output."""
+    """Return public capacity handoff fields for JSON and plain output."""
     agent_loop = payload.get("agent_loop") if isinstance(payload, Mapping) else None
     summary: dict[str, Any] = {"agent_loop_executed": isinstance(agent_loop, Mapping)}
     if not isinstance(agent_loop, Mapping):

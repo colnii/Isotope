@@ -149,8 +149,8 @@ def _run_agent_loop_planner_io_validator_spike(root: Path) -> dict[str, Any]:
         "provider_status": "not_used",
         "network_listener_status": "not_used",
         "filesystem_mutation_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
         "next_development_step": (
             "Wire this validator to a tiny demo-local runner before connecting a model provider."
         ),
@@ -236,8 +236,8 @@ def _run_agent_loop_planner_validated_runner_spike(root: Path) -> dict[str, Any]
         "provider_status": "not_used",
         "network_listener_status": "not_used",
         "filesystem_mutation_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
         "next_development_step": (
             "Pause this artificial branch-local expansion and wait for real app-layer friction "
             "before connecting any model provider."

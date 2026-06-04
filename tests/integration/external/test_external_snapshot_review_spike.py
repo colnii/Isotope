@@ -23,8 +23,8 @@ REQUIRED_TEXT_FIELDS = (
     "native_state_preserved: true",
     "replay_ok: true",
     "checkpoint_ok: true",
-    "provider_status: boundary_only",
-    "memory_status: boundary_only",
+    "provider_status: active",
+    "memory_status: active",
 )
 
 REQUIRED_JSON_FIELDS = {
@@ -129,9 +129,9 @@ def test_external_snapshot_review_json_cli_exposes_required_status_fields():
     assert data["native_state_preserved"] is True
     assert data["replay_ok"] is True
     assert data["checkpoint_ok"] is True
-    assert data["provider_status"] == "boundary_only"
-    assert data["http_external_ingestion_route_status"] == "not_enabled"
-    assert data["memory_status"] == "boundary_only"
+    assert data["provider_status"] == "active"
+    assert data["http_external_ingestion_route_status"] == "active"
+    assert data["memory_status"] == "active"
 
 
 def test_external_snapshot_review_json_excludes_raw_external_and_full_artifact_content():
@@ -152,15 +152,15 @@ def test_external_snapshot_review_trace_shows_steps_without_raw_content():
     assert "full artifact content" not in result.stdout.lower()
 
 
-def test_external_snapshot_review_keeps_deferred_integrations_disabled():
+def test_external_snapshot_review_reports_active_integrations():
     data = _run_demo_json("--scenario", SCENARIO)
 
-    assert data["provider_status"] == "boundary_only"
-    assert data["http_external_ingestion_route_status"] == "not_enabled"
+    assert data["provider_status"] == "active"
+    assert data["http_external_ingestion_route_status"] == "active"
     assert data.get("network_listener_status", "not_used") == "not_used"
     assert data.get("model_status", "not_used") == "not_used"
-    assert data.get("memory_query_status", "not_enabled") == "not_enabled"
-    assert data.get("memory_storage_status", "not_enabled") == "not_enabled"
+    assert data.get("memory_query_status") == "active"
+    assert data.get("memory_storage_status") == "active"
 
 
 def test_external_snapshot_review_demo_source_does_not_import_provider_or_network_listener_dependencies():
@@ -173,21 +173,40 @@ def test_external_snapshot_review_demo_source_does_not_import_provider_or_networ
     )
 
 
-def test_http_external_ingestion_route_remains_not_enabled(tmp_path):
+def test_http_external_ingestion_route_captures_structured_input(tmp_path):
     app = create_http_app(tmp_path)
+    session = app.server.create_session()
+    run = app.server.create_run(session["session_id"], goal="external ingestion")
 
-    response = app.request("POST", "/external-ingestion", json={"source_system": "example_provider"})
+    response = app.request(
+        "POST",
+        "/external-ingestion",
+        json={
+            "run_id": run["run_id"],
+            "source_system": "example_provider",
+            "captured_at": "2026-06-04T00:00:00Z",
+            "body": {"message": "input"},
+        },
+    )
 
-    assert response.status_code == 501
-    assert response.json()["status"] == "not_enabled"
-    assert response.json()["error"]["capability"] == "external_ingestion"
+    assert response.status_code == 200
+    assert response.json()["status"] == "artifact_only"
+    assert response.json()["artifact_ref"]["run_id"] == run["run_id"]
 
 
-def test_server_external_ingestion_public_api_remains_not_enabled(tmp_path):
+def test_server_external_ingestion_public_api_captures_structured_input(tmp_path):
     server = InProcessServer(tmp_path)
+    session = server.create_session()
+    run = server.create_run(session["session_id"], goal="external ingestion")
 
-    result = server.ingest_external_input({"source_system": "example_provider"})
+    result = server.ingest_external_input(
+        {
+            "run_id": run["run_id"],
+            "source_system": "example_provider",
+            "captured_at": "2026-06-04T00:00:00Z",
+            "body": {"message": "input"},
+        }
+    )
 
-    assert result["status"] == "not_enabled"
-    assert result["capability"] == "external_ingestion"
-    assert result["error"]["code"] == "not_enabled"
+    assert result["status"] == "artifact_only"
+    assert result["artifact_ref"]["run_id"] == run["run_id"]

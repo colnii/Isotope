@@ -36,20 +36,21 @@ MINIMAL_ROUTES = {
     ("GET", "/runs/{run_id}/agent-loop-control"),
     ("GET", "/runs/{run_id}/agent-loop-tick-policy"),
     ("GET", "/runs/{run_id}/events"),
+    ("GET", "/runs/{run_id}/events/stream"),
+    ("POST", "/runs/{run_id}/memory/query"),
+    ("GET", "/runs/{run_id}/approvals"),
+    ("POST", "/runs/{run_id}/approvals"),
+    ("GET", "/runs/{run_id}/approvals/{approval_id}"),
+    ("POST", "/runs/{run_id}/approvals/{approval_id}/resolve"),
     ("GET", "/artifacts/{artifact_id}/summary"),
+    ("GET", "/artifacts/{artifact_id}/content"),
+    ("POST", "/external-ingestion"),
+    ("POST", "/runs/{run_id}/codex-tasks"),
+    ("POST", "/runs/{run_id}/llm/tool-calls"),
+    ("POST", "/runs/{run_id}/llm/tool-result-followups"),
+    ("POST", "/runs/{run_id}/llm/chat-turns"),
     ("GET", "/health"),
 }
-
-DEFERRED_ENDPOINTS = [
-    ("GET", "/memory/query"),
-    ("POST", "/memory/query"),
-    ("POST", "/ingest"),
-    ("POST", "/external-ingestion"),
-    ("POST", "/runs/run_001/approvals"),
-    ("GET", "/runs/run_001/events/stream"),
-    ("GET", "/stream"),
-    ("GET", "/artifacts/artifact_001/content"),
-]
 
 FORBIDDEN_CONTENT_KEYS = {
     "content",
@@ -183,18 +184,6 @@ def test_http_api_defines_only_minimal_v0_2_surface(tmp_path):
     app = _create_app(tmp_path)
 
     assert _routes(app) == MINIMAL_ROUTES
-
-
-@pytest.mark.parametrize(("method", "path"), DEFERRED_ENDPOINTS)
-def test_deferred_http_endpoints_are_absent_or_not_enabled(tmp_path, method, path):
-    app = _create_app(tmp_path)
-
-    response = _request(app, method, path)
-
-    assert _status_code(response) in {404, 405, 501}
-    body = _json_body(response)
-    if body:
-        assert body.get("status") in {None, "not_found", "not_enabled", "method_not_allowed"}
 
 
 def test_http_api_cannot_directly_modify_projected_run_state(tmp_path):
@@ -454,7 +443,7 @@ def test_http_api_projects_route_reads_linked_detail_summaries(tmp_path):
     _assert_no_task_content_keys(detail)
 
 
-def test_http_api_search_route_reads_low_sensitive_summaries(tmp_path):
+def test_http_api_search_route_reads_public_metadata_summaries(tmp_path):
     app = _create_app(tmp_path)
     project = _successful_json(
         _request(

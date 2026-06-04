@@ -1,4 +1,4 @@
-"""Low-sensitive capability catalog metadata.
+"""Public capability catalog metadata.
 
 This module is intentionally a catalog, not a capability runner. It exposes
 stable metadata for app shells without constructing providers or executing work.
@@ -381,7 +381,7 @@ class CapabilityCatalog:
                         "no_patch_apply",
                         "no_test_execution",
                         "no_vcs_mutation",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -390,7 +390,7 @@ class CapabilityCatalog:
                     capability_id="coding_task.execute",
                     title="Native Coding Task Execute",
                     description=(
-                        "Run a bounded native coding loop in an isolated "
+                        "Run a limited native coding loop in an isolated "
                         "workspace without delegating implementation to Codex."
                     ),
                     maturity="v0.2",
@@ -491,7 +491,7 @@ class CapabilityCatalog:
                     },
                     safety_boundaries=(
                         "no_codex_delegation",
-                        "bounded_step_count",
+                        "limited_step_count",
                         "isolated_workspace_write_only",
                         "workspace_relative_patch_only",
                         "argv_allowlist_only",
@@ -506,7 +506,7 @@ class CapabilityCatalog:
                     capability_id="workspace.isolated_rw",
                     title="Isolated Writable Workspace",
                     description=(
-                        "Build a low-sensitive proposal for a future isolated "
+                        "Build a public proposal for a future isolated "
                         "writable workspace without creating files or directories."
                     ),
                     maturity="v0.2",
@@ -564,7 +564,7 @@ class CapabilityCatalog:
                         "relative_paths_only",
                         "no_workspace_materialization",
                         "no_git_worktree_creation",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -647,7 +647,7 @@ class CapabilityCatalog:
                         "no_event_append",
                         "no_filesystem_write",
                         "no_workspace_materialization",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -823,7 +823,7 @@ class CapabilityCatalog:
                         "workspace_id_path_guard",
                         "no_source_workspace_write",
                         "no_event_append",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -832,7 +832,7 @@ class CapabilityCatalog:
                     capability_id="code.read",
                     title="Code Read",
                     description=(
-                        "Read a bounded excerpt and low-sensitive metadata from "
+                        "Read a limited excerpt and public metadata from "
                         "one workspace-relative code file."
                     ),
                     maturity="v0.2",
@@ -880,10 +880,10 @@ class CapabilityCatalog:
                     safety_boundaries=(
                         "relative_paths_only",
                         "workspace_escape_rejected",
-                        "bounded_excerpts_only",
+                        "limited_excerpts_only",
                         "no_filesystem_write",
                         "no_command_execution",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -892,7 +892,7 @@ class CapabilityCatalog:
                     capability_id="code.search",
                     title="Code Search",
                     description=(
-                        "Search workspace-relative code files with bounded "
+                        "Search workspace-relative code files with limited "
                         "line excerpts and stable code refs."
                     ),
                     maturity="v0.2",
@@ -951,10 +951,10 @@ class CapabilityCatalog:
                     safety_boundaries=(
                         "relative_paths_only",
                         "workspace_escape_rejected",
-                        "bounded_excerpts_only",
+                        "limited_excerpts_only",
                         "no_filesystem_write",
                         "no_command_execution",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1077,7 +1077,7 @@ class CapabilityCatalog:
                     safety_boundaries=(
                         "argv_allowlist_only",
                         "shell_false",
-                        "bounded_stdout_stderr_excerpts",
+                        "limited_stdout_stderr_excerpts",
                         "no_artifact_write",
                         "no_event_append",
                         "workspace_cwd_required",
@@ -1131,10 +1131,10 @@ class CapabilityCatalog:
                     },
                     safety_boundaries=(
                         "fixed_git_subcommands_only",
-                        "read_only_git_status",
+                        "view_only_git_status",
                         "no_vcs_mutation",
                         "no_artifact_write",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1186,7 +1186,7 @@ class CapabilityCatalog:
                     },
                     safety_boundaries=(
                         "fixed_git_subcommands_only",
-                        "read_only_git_diff",
+                        "view_only_git_diff",
                         "diff_summary_only",
                         "no_vcs_mutation",
                         "no_artifact_write",
@@ -1214,7 +1214,7 @@ class CapabilityCatalog:
                             },
                             "query": {
                                 "type": "string",
-                                "description": "Low-sensitive memory search query.",
+                                "description": "Public memory search query.",
                             },
                             "run_id": {
                                 "type": "string",
@@ -1270,7 +1270,7 @@ class CapabilityCatalog:
                     capability_id="memory.promotion.preview",
                     title="Memory Promotion Preview",
                     description=(
-                        "Build a low-sensitive write_memory proposal preview from "
+                        "Build a public write_memory proposal preview from "
                         "structured artifact or external observation metadata."
                     ),
                     maturity="v0.2",
@@ -1344,7 +1344,7 @@ class CapabilityCatalog:
                     title="Screen Report",
                     description=(
                         "Summarize existing screen run records through the shared "
-                        "low-sensitive observe/control plan report boundary."
+                        "public observe/control plan report boundary."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -1379,8 +1379,8 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "screen_artifact_read_only",
-                        "low_sensitive_summary_only",
+                        "screen_artifact_view_only",
+                        "public_metadata_summary_only",
                         "no_screenshot_content",
                         "no_input_execution",
                         "no_window_mutation",
@@ -1393,7 +1393,7 @@ class CapabilityCatalog:
                     title="Research Search",
                     description=(
                         "Run the existing research flow with an explicitly gated "
-                        "research provider and return a low-sensitive result summary."
+                        "research provider and return a public result summary."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -1461,7 +1461,7 @@ class CapabilityCatalog:
                         "explicit_provider_gate",
                         "tavily_network_requires_allow_network",
                         "writes_research_artifacts",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                         "no_raw_transcript_return",
                     ),
                     default_enabled=True,
@@ -1555,7 +1555,7 @@ class CapabilityCatalog:
                         "proposal_only_no_memory_write",
                         "no_raw_transcript_read",
                         "no_proposal_payload_content_return",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1632,7 +1632,7 @@ class CapabilityCatalog:
                         "no_arbitrary_worker_command",
                         "reuses_existing_supervisor_boundaries",
                         "agent_loop_call_capability_compatible",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1652,7 +1652,7 @@ class CapabilityCatalog:
                         "integration",
                         "review",
                         "merge",
-                        "read_only",
+                        "view_only",
                     ),
                     input_contract={
                         "type": "object",
@@ -1700,12 +1700,12 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "workspace_read_only",
-                        "managed_registry_read_only",
-                        "git_read_only",
+                        "workspace_view_only",
+                        "managed_registry_view_only",
+                        "git_view_only",
                         "lightweight_integration_review",
                         "no_merge_push_or_cleanup",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1753,9 +1753,9 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "workspace_read_only",
+                        "workspace_view_only",
                         "writes_existing_supervisor_context_store",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1774,7 +1774,7 @@ class CapabilityCatalog:
                         "worker",
                         "worker-review",
                         "review",
-                        "read_only",
+                        "view_only",
                     ),
                     input_contract={
                         "type": "object",
@@ -1797,11 +1797,11 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "workspace_read_only",
-                        "managed_registry_read_only",
+                        "workspace_view_only",
+                        "managed_registry_view_only",
                         "lightweight_worker_review",
                         "no_merge_or_cleanup",
-                        "low_sensitive_summary_only",
+                        "public_metadata_summary_only",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1902,7 +1902,7 @@ def _builtin_capability(
         domain_tags=tags,
         input_contract={"type": "object"},
         output_contract={"type": "object"},
-        safety_boundaries=("low_sensitive_manifest_only", "no_execution"),
+        safety_boundaries=("public_metadata_manifest_only", "no_execution"),
         default_enabled=True,
     )
 

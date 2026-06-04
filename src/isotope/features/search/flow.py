@@ -35,7 +35,7 @@ class SearchResult:
 
 
 class SearchFlow:
-    """Thin low-sensitive search flow over user-facing summaries."""
+    """Thin public search flow over user-facing summaries."""
 
     def __init__(self, core: ProductCore):
         self.core = core

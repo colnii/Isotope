@@ -41,13 +41,13 @@ FORBIDDEN_CONTENT_KEYS = {
 }
 
 
-def _assert_low_sensitive_source_ref(value: dict[str, Any]) -> None:
+def _assert_public_metadata_source_ref(value: dict[str, Any]) -> None:
     assert set(value) <= ALLOWED_SOURCE_REF_KEYS
     assert FORBIDDEN_CONTENT_KEYS.isdisjoint(value)
 
 
 @pytest.mark.parametrize("status", ["done", "blocked", "needs_user"])
-def test_goal_status_writeback_creates_low_sensitive_notification(tmp_path, status):
+def test_goal_status_writeback_creates_public_metadata_notification(tmp_path, status):
     goal = record_supervisor_goal(
         codex_home=tmp_path,
         cwd=tmp_path,
@@ -76,7 +76,7 @@ def test_goal_status_writeback_creates_low_sensitive_notification(tmp_path, stat
         "goal_id": goal.goal_id,
         "status": status,
     }
-    _assert_low_sensitive_source_ref(summary.source_ref)
+    _assert_public_metadata_source_ref(summary.source_ref)
 
 
 def test_duplicate_goal_status_writeback_does_not_duplicate_notification(tmp_path):
@@ -99,7 +99,7 @@ def test_duplicate_goal_status_writeback_does_not_duplicate_notification(tmp_pat
     assert len(NotificationFlow.in_process(tmp_path).list_notifications()) == 1
 
 
-def test_decision_request_write_creates_low_sensitive_notification(tmp_path):
+def test_decision_request_write_creates_public_metadata_notification(tmp_path):
     request = record_decision_request(
         codex_home=tmp_path,
         action={
@@ -127,7 +127,7 @@ def test_decision_request_write_creates_low_sensitive_notification(tmp_path):
         "goal_id": "goal-123",
         "request_id": request.request_id,
     }
-    _assert_low_sensitive_source_ref(summary.source_ref)
+    _assert_public_metadata_source_ref(summary.source_ref)
 
 
 def test_duplicate_decision_request_reuses_active_request_without_notification(tmp_path):
@@ -245,7 +245,7 @@ def test_notification_bridge_does_not_leak_target_name_value(tmp_path):
     assert unsafe_target not in json.dumps(payload, ensure_ascii=False)
 
 
-def test_goal_status_webhook_posts_low_sensitive_signed_payload(tmp_path, monkeypatch):
+def test_goal_status_webhook_posts_public_metadata_signed_payload(tmp_path, monkeypatch):
     requests: list[dict[str, Any]] = []
 
     def fake_urlopen(request, timeout):
@@ -305,7 +305,7 @@ def test_goal_status_webhook_posts_low_sensitive_signed_payload(tmp_path, monkey
     }
     assert requests[0]["headers"]["X-isotope-event"] == "supervisor_goal_status"
     assert requests[0]["headers"]["X-isotope-signature"].startswith("sha256=")
-    _assert_low_sensitive_source_ref(body["source_ref"])
+    _assert_public_metadata_source_ref(body["source_ref"])
     assert "shared-secret" not in json.dumps(requests[0], ensure_ascii=False)
 
 

@@ -2,33 +2,47 @@ import isotope.memory as memory
 import isotope.runtime.in_process as server
 
 
-def test_memory_query_returns_not_enabled():
-    result = memory.NotEnabledMemoryService().query("run_001", "anything")
+def test_memory_query_service_returns_ok_results(tmp_path):
+    store = memory.FileMemoryStore(tmp_path)
+    service = memory.LocalMemoryQueryService(store)
 
-    assert result == {"status": "not_enabled", "capability": "memory_query"}
+    result = service.query(
+        "run_001",
+        "anything",
+        grants={"memory": {"query": True}},
+        caller_context={"run_id": "run_001", "caller": "pytest", "purpose": "query"},
+    )
+
+    assert result["status"] == "ok"
+    assert result["capability"] == "memory_query"
+    assert result["results"] == []
 
 
-def test_external_ingestion_returns_not_enabled(tmp_path):
+def test_external_ingestion_captures_structured_input(tmp_path):
     api = server.InProcessServer(tmp_path)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], "ingest external input")
 
-    result = api.ingest_external_input({"raw": "input"})
+    result = api.ingest_external_input(
+        {
+            "run_id": run["run_id"],
+            "source_system": "pytest",
+            "captured_at": "2026-06-04T00:00:00Z",
+            "body": {"message": "input"},
+        }
+    )
 
-    assert result["status"] == "not_enabled"
-    assert result["capability"] == "external_ingestion"
-    assert result["error"]["code"] == "not_enabled"
+    assert result["status"] == "artifact_only"
+    assert result["artifact_ref"]["ref_type"] == "artifact"
 
 
-def test_checkpoint_returns_not_enabled_or_absent(tmp_path):
+def test_checkpoint_saves_current_run_state(tmp_path):
     api = server.InProcessServer(tmp_path)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], "save checkpoint")
 
-    result = api.create_checkpoint("run_001")
+    result = api.create_checkpoint(run["run_id"])
 
-    assert result["status"] == "not_enabled"
-    assert result["capability"] == "checkpoint"
-    assert result["error"]["code"] == "not_enabled"
-
-
-def test_sse_not_exposed_in_slice(tmp_path):
-    api = server.InProcessServer(tmp_path)
-
-    assert not hasattr(api, "stream_events")
+    assert result["status"] == "saved"
+    assert result["run_id"] == run["run_id"]
+    assert result["basis_event_id"].startswith("evt_")

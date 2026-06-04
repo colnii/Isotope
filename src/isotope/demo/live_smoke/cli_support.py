@@ -14,7 +14,7 @@ from .product_chat_entry_state import (
     _mark_product_chat_entry_state_resumed,
     _maybe_write_product_chat_entry_state,
     _optional_path,
-    _preflight_from_result,
+    _readiness_check_from_result,
     _prepare_product_chat_entry_root,
     _product_chat_entry_error_payload,
     _product_chat_entry_exit_code,
@@ -45,10 +45,10 @@ def _print_terminal_tool_smoke_plain(payload: dict[str, Any]) -> None:
         print(f"diagnosis: {diagnosis.get('category')}")
         print(f"diagnosis_summary: {diagnosis.get('summary')}")
         print(f"diagnosis_next_step: {diagnosis.get('next_step')}")
-    preflight = result.get("preflight")
-    if isinstance(preflight, dict):
-        print(f"preflight_ready: {str(preflight.get('ready')).lower()}")
-        print(f"preflight_gate: {preflight.get('gate')}")
+    readiness_check = result.get("readiness_check")
+    if isinstance(readiness_check, dict):
+        print(f"readiness_check_ready: {str(readiness_check.get('ready')).lower()}")
+        print(f"readiness_check_gate: {readiness_check.get('gate')}")
 
 
 def _print_product_chat_smoke_plain(payload: dict[str, Any]) -> None:
@@ -81,23 +81,23 @@ def _print_product_chat_smoke_plain(payload: dict[str, Any]) -> None:
         print(f"diagnosis: {diagnosis.get('category')}")
         print(f"diagnosis_summary: {diagnosis.get('summary')}")
         print(f"diagnosis_next_step: {diagnosis.get('next_step')}")
-    preflight = result.get("preflight")
-    if isinstance(preflight, dict):
-        print(f"preflight_ready: {str(preflight.get('ready')).lower()}")
-        print(f"preflight_gate: {preflight.get('gate')}")
+    readiness_check = result.get("readiness_check")
+    if isinstance(readiness_check, dict):
+        print(f"readiness_check_ready: {str(readiness_check.get('ready')).lower()}")
+        print(f"readiness_check_gate: {readiness_check.get('gate')}")
 
 
 def _print_product_chat_entry_plain(payload: dict[str, Any]) -> None:
-    preflight = payload.get("preflight")
-    if not isinstance(preflight, dict):
-        preflight = {}
+    readiness_check = payload.get("readiness_check")
+    if not isinstance(readiness_check, dict):
+        readiness_check = {}
     entry = payload.get("entry")
     if not isinstance(entry, dict):
         entry = {}
     print(f"command: {payload.get('command')}")
-    print(f"preflight_ready: {str(preflight.get('ready')).lower()}")
-    print(f"preflight_gate: {preflight.get('gate')}")
-    print(f"preflight_category: {preflight.get('category')}")
+    print(f"readiness_check_ready: {str(readiness_check.get('ready')).lower()}")
+    print(f"readiness_check_gate: {readiness_check.get('gate')}")
+    print(f"readiness_check_category: {readiness_check.get('category')}")
     print(f"entry_status: {entry.get('status')}")
     print(f"entry_http_status: {entry.get('http_status')}")
     if entry.get("provider_status"):

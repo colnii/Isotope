@@ -130,7 +130,7 @@ def _goal_activity(
     goal_id = str(goal["goal_id"])
     title = str(goal["goal"])
     source_ref = {"kind": "goal", "id": goal_id, "label": title}
-    summary = _low_sensitive_preview(goal.get("last_summary") or title)
+    summary = _public_metadata_preview(goal.get("last_summary") or title)
     return _omit_none({
         "id": f"activity_goal_{goal_id}",
         "kind": "goal",
@@ -169,7 +169,7 @@ def _goal_summary(goal: dict[str, Any]) -> dict[str, Any]:
 
 def _approval_summary(decision: dict[str, Any]) -> dict[str, Any]:
     request_id = str(decision["request_id"])
-    title = _low_sensitive_preview(decision.get("question") or "需要 Supervisor 审批")
+    title = _public_metadata_preview(decision.get("question") or "需要 Supervisor 审批")
     title = title or "需要 Supervisor 审批"
     source_ref = {"kind": "approval", "id": request_id, "label": title}
     return _omit_none({
@@ -203,7 +203,7 @@ def _runtime_pending_approval_summaries(root: Path) -> list[dict[str, Any]]:
 
 def _runtime_approval_summary(approval: dict[str, Any]) -> dict[str, Any]:
     approval_id = str(approval["approval_id"])
-    requested_summary = _low_sensitive_mapping(
+    requested_summary = _public_metadata_mapping(
         approval.get("requested_action_summary"),
     )
     title = _runtime_approval_title(requested_summary)
@@ -247,7 +247,7 @@ def _summary_string(summary: dict[str, Any] | None, key: str) -> str | None:
     value = summary.get(key)
     if not isinstance(value, str) or not value:
         return None
-    return _low_sensitive_preview(value)
+    return _public_metadata_preview(value)
 
 
 def _goal_status(goal: dict[str, Any]) -> str:
@@ -259,7 +259,7 @@ def _goal_status(goal: dict[str, Any]) -> str:
     return "running"
 
 
-def _low_sensitive_preview(value: object) -> str | None:
+def _public_metadata_preview(value: object) -> str | None:
     text = str(value)
     lowered = text.lower()
     if len(text) > 2000:
@@ -269,29 +269,29 @@ def _low_sensitive_preview(value: object) -> str | None:
     return text
 
 
-def _low_sensitive_mapping(value: object) -> dict[str, Any] | None:
+def _public_metadata_mapping(value: object) -> dict[str, Any] | None:
     if not isinstance(value, dict):
         return None
     sanitized: dict[str, Any] = {}
     for key, nested in value.items():
         if not isinstance(key, str):
             continue
-        clean = _low_sensitive_value(nested)
+        clean = _public_metadata_value(nested)
         if clean is not None:
             sanitized[key] = clean
     return sanitized
 
 
-def _low_sensitive_value(value: object) -> Any:
+def _public_metadata_value(value: object) -> Any:
     if isinstance(value, str):
-        return _low_sensitive_preview(value)
+        return _public_metadata_preview(value)
     if isinstance(value, bool) or isinstance(value, int) or isinstance(value, float):
         return value
     if isinstance(value, list):
-        sanitized = [_low_sensitive_value(item) for item in value]
+        sanitized = [_public_metadata_value(item) for item in value]
         return [item for item in sanitized if item is not None]
     if isinstance(value, dict):
-        return _low_sensitive_mapping(value)
+        return _public_metadata_mapping(value)
     return None
 
 

@@ -20,11 +20,11 @@ DEFAULT_PRODUCT_CHAT_SYSTEM_MESSAGE = load_system_prompt("product_chat")
 PRODUCT_CHAT_ENTRY_STATE_SCHEMA = "product_chat_entry_state_v1"
 
 
-def submit_llm_product_chat_turn_with_preflight(
+def submit_llm_product_chat_turn_with_readiness_check(
     app: Any,
     run_id: str,
     *,
-    preflight: Mapping[str, Any],
+    readiness_check: Mapping[str, Any],
     messages: list[dict[str, str]],
     llm_result: Mapping[str, Any] | None = None,
     tool_execution_result: Mapping[str, Any] | None = None,
@@ -32,11 +32,11 @@ def submit_llm_product_chat_turn_with_preflight(
     complete_run: bool = True,
     max_tool_steps: int = 1,
 ) -> HttpResponse:
-    """Submit a product-chat turn only after a low-sensitive preflight gate passes."""
+    """Submit a product-chat turn only after a public readiness_check gate passes."""
 
-    gate = _product_chat_preflight_gate(preflight)
+    gate = _product_chat_readiness_check_gate(readiness_check)
     if not gate["ready"]:
-        return _blocked_preflight_response(gate)
+        return _blocked_readiness_check_response(gate)
 
     body: dict[str, Any] = {
         "messages": deepcopy(messages),
@@ -51,11 +51,11 @@ def submit_llm_product_chat_turn_with_preflight(
     return app.request("POST", f"/runs/{run_id}/llm/chat-turns", json=body)
 
 
-def submit_llm_product_chat_user_message_with_preflight(
+def submit_llm_product_chat_user_message_with_readiness_check(
     app: Any,
     run_id: str,
     *,
-    preflight: Mapping[str, Any],
+    readiness_check: Mapping[str, Any],
     user_message: str,
     system_message: str = DEFAULT_PRODUCT_CHAT_SYSTEM_MESSAGE,
     llm_result: Mapping[str, Any] | None = None,
@@ -64,7 +64,7 @@ def submit_llm_product_chat_user_message_with_preflight(
     complete_run: bool = True,
     max_tool_steps: int = 1,
 ) -> HttpResponse:
-    """Accept one user sentence, gate it by preflight, then call product chat."""
+    """Accept one user sentence, gate it by readiness_check, then call product chat."""
 
     safe_user_message = _required_user_message(user_message)
     if safe_user_message is None:
@@ -80,10 +80,10 @@ def submit_llm_product_chat_user_message_with_preflight(
         },
         {"role": "user", "content": safe_user_message},
     ]
-    return submit_llm_product_chat_turn_with_preflight(
+    return submit_llm_product_chat_turn_with_readiness_check(
         app,
         run_id,
-        preflight=preflight,
+        readiness_check=readiness_check,
         messages=messages,
         llm_result=llm_result,
         tool_execution_result=tool_execution_result,
@@ -98,7 +98,7 @@ def build_llm_product_chat_entry_resume_state(
     *,
     root: Any,
     run_id: str,
-    preflight: Mapping[str, Any],
+    readiness_check: Mapping[str, Any],
 ) -> dict[str, Any] | None:
     """Build local resume state for a pending product-chat entry response."""
 
@@ -113,7 +113,7 @@ def build_llm_product_chat_entry_resume_state(
         "root": str(root),
         "run_id": run_id,
         "approval_id": approval_id,
-        "preflight": _safe_json_object(dict(preflight)),
+        "readiness_check": _safe_json_object(dict(readiness_check)),
         "llm_result": _safe_json_object(body),
         "resume": {"status": "pending"},
     }
@@ -144,10 +144,10 @@ def submit_llm_product_chat_entry_resume(
     except ValueError as exc:
         _raise_product_chat_entry_approval_error(exc)
     approval_body = product_chat_entry_approval_result_body(approval_result)
-    response = submit_llm_product_chat_turn_with_preflight(
+    response = submit_llm_product_chat_turn_with_readiness_check(
         app,
         resume_state["run_id"],
-        preflight=resume_state["preflight"],
+        readiness_check=resume_state["readiness_check"],
         messages=messages,
         llm_result=resume_state["llm_result"],
         tool_execution_result=approval_body,
@@ -166,7 +166,7 @@ def mark_llm_product_chat_entry_state_resumed(
     approval: Mapping[str, Any],
     entry: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Return a copied local resume state marked with a low-sensitive resume summary."""
+    """Return a copied local resume state marked with a public resume summary."""
 
     updated = dict(validate_llm_product_chat_entry_resume_state(state))
     updated["resume"] = {
@@ -199,7 +199,7 @@ def validate_llm_product_chat_entry_resume_state(state: Mapping[str, Any]) -> di
                 http_status=400,
                 details={"field": key},
             )
-    if not isinstance(copied.get("preflight"), dict) or not isinstance(copied.get("llm_result"), dict):
+    if not isinstance(copied.get("readiness_check"), dict) or not isinstance(copied.get("llm_result"), dict):
         raise IsotopeError(
             "product-chat entry state file is incomplete",
             code="product_chat_entry_state_invalid",
@@ -273,7 +273,7 @@ def _raise_product_chat_entry_approval_error(exc: ValueError) -> None:
 
 
 def product_chat_entry_approval_result_body(result: Mapping[str, Any]) -> dict[str, Any]:
-    """Build the low-sensitive approved execution body used for model follow-up."""
+    """Build the public approved execution body used for model follow-up."""
 
     body: dict[str, Any] = {"status": result.get("status")}
     if isinstance(result.get("tool_execution_status"), str):
@@ -346,22 +346,22 @@ def summarize_llm_product_chat_entry_response(response: HttpResponse) -> dict[st
     return summary
 
 
-def _blocked_preflight_response(gate: dict[str, Any]) -> HttpResponse:
+def _blocked_readiness_check_response(gate: dict[str, Any]) -> HttpResponse:
     return HttpResponse(
         status_code=412,
         body={
-            "status": "blocked_by_preflight",
-            "reason_code": "llm_product_chat_preflight_blocked",
-            "preflight": gate,
-            "explanation": _preflight_explanation(gate),
+            "status": "blocked_by_readiness_check",
+            "reason_code": "llm_product_chat_readiness_check_blocked",
+            "readiness_check": gate,
+            "explanation": _readiness_check_explanation(gate),
         },
     )
 
 
-def _preflight_explanation(gate: Mapping[str, Any]) -> dict[str, str]:
+def _readiness_check_explanation(gate: Mapping[str, Any]) -> dict[str, str]:
     return {
         "summary": _safe_optional_text(gate.get("summary"))
-        or "Product-chat preflight is not ready.",
+        or "Product-chat readiness_check is not ready.",
         "next_step": _safe_optional_text(gate.get("next_step"))
         or "Run product-chat diagnosis before submitting a chat turn.",
     }
@@ -395,38 +395,38 @@ def _invalid_user_message_response() -> HttpResponse:
     )
 
 
-def _product_chat_preflight_gate(preflight: Mapping[str, Any]) -> dict[str, Any]:
-    if not isinstance(preflight, Mapping):
-        return _blocked_preflight_gate(category="invalid_preflight")
+def _product_chat_readiness_check_gate(readiness_check: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(readiness_check, Mapping):
+        return _blocked_readiness_check_gate(category="invalid_readiness_check")
 
-    ready = preflight.get("ready") is True
+    ready = readiness_check.get("ready") is True
     if ready:
         return {
             "ready": True,
             "gate": "passed",
-            "category": _safe_text(preflight.get("category"), default="ready"),
-            "status": _safe_text(preflight.get("status"), default="completed"),
+            "category": _safe_text(readiness_check.get("category"), default="ready"),
+            "status": _safe_text(readiness_check.get("status"), default="completed"),
             "reason_code": _safe_text(
-                preflight.get("reason_code"),
-                default="llm_product_chat_preflight_ready",
+                readiness_check.get("reason_code"),
+                default="llm_product_chat_readiness_check_ready",
             ),
-            "summary": _safe_optional_text(preflight.get("summary")),
-            "next_step": _safe_optional_text(preflight.get("next_step")),
+            "summary": _safe_optional_text(readiness_check.get("summary")),
+            "next_step": _safe_optional_text(readiness_check.get("next_step")),
         }
 
-    category = _safe_text(preflight.get("category"), default="invalid_preflight")
+    category = _safe_text(readiness_check.get("category"), default="invalid_readiness_check")
     if category == "ready":
-        category = "invalid_preflight"
-    return _blocked_preflight_gate(
+        category = "invalid_readiness_check"
+    return _blocked_readiness_check_gate(
         category=category,
-        status=_safe_optional_text(preflight.get("status")),
-        reason_code=_safe_optional_text(preflight.get("reason_code")),
-        summary=_safe_optional_text(preflight.get("summary")),
-        next_step=_safe_optional_text(preflight.get("next_step")),
+        status=_safe_optional_text(readiness_check.get("status")),
+        reason_code=_safe_optional_text(readiness_check.get("reason_code")),
+        summary=_safe_optional_text(readiness_check.get("summary")),
+        next_step=_safe_optional_text(readiness_check.get("next_step")),
     )
 
 
-def _blocked_preflight_gate(
+def _blocked_readiness_check_gate(
     *,
     category: str,
     status: str | None = None,
@@ -481,8 +481,8 @@ __all__ = [
     "mark_llm_product_chat_entry_state_resumed",
     "product_chat_entry_approval_result_body",
     "submit_llm_product_chat_entry_resume",
-    "submit_llm_product_chat_turn_with_preflight",
-    "submit_llm_product_chat_user_message_with_preflight",
+    "submit_llm_product_chat_turn_with_readiness_check",
+    "submit_llm_product_chat_user_message_with_readiness_check",
     "summarize_llm_product_chat_entry_response",
     "summarize_product_chat_entry_approval_result",
     "validate_llm_product_chat_entry_resume_state",

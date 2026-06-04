@@ -96,11 +96,8 @@ def test_external_snapshot_review_demo_uses_import_helper_not_private_append_glu
     assert "app.server._append(" not in source
 
 
-def test_import_external_snapshot_does_not_open_raw_ingestion_api(tmp_path):
+def test_import_external_snapshot_can_use_raw_ingestion_api(tmp_path):
     server, _run_id = _server_with_run(tmp_path)
 
-    result = server.ingest_external_input({"source_system": "example_provider"})
-
-    assert result["status"] == "not_enabled"
-    assert result["capability"] == "external_ingestion"
-    assert result["error"]["code"] == "not_enabled"
+    with pytest.raises(Exception, match="run_id"):
+        server.ingest_external_input({"source_system": "example_provider"})

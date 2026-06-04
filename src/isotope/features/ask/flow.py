@@ -1,4 +1,4 @@
-"""Ask the local workbench with a bounded LLM context."""
+"""Ask the local workbench with a limited LLM context."""
 
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ class WorkbenchAskAnswer:
 
 
 class WorkbenchAskFlow:
-    """User-facing ask flow over the low-sensitive workbench summary."""
+    """User-facing ask flow over the public workbench summary."""
 
     def __init__(self, core: ProductCore, *, provider: AskProvider):
         self.core = core

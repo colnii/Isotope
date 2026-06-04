@@ -11,7 +11,7 @@ GOAL_STATUS_VALUES = {"done", "blocked", "needs_user"}
 
 @dataclass(frozen=True)
 class SupervisorGoalStatus:
-    """Low-sensitive status payload for an active Supervisor goal."""
+    """Public status payload for an active Supervisor goal."""
 
     goal_id: str
     status: str

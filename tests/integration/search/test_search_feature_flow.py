@@ -21,14 +21,14 @@ FORBIDDEN_CONTENT_KEYS = {
 }
 
 
-def _assert_low_sensitive(value: Any) -> None:
+def _assert_public_metadata(value: Any) -> None:
     if isinstance(value, dict):
         assert FORBIDDEN_CONTENT_KEYS.isdisjoint(value)
         for nested in value.values():
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
     elif isinstance(value, list):
         for nested in value:
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
 
 
 def test_search_flow_finds_project_task_and_file_summaries(tmp_path):
@@ -65,7 +65,7 @@ def test_search_flow_finds_project_task_and_file_summaries(tmp_path):
     assert results[0].item == project.to_dict()
     assert results[1].item == task.to_dict()
     assert results[2].item == file_summary.to_dict()
-    _assert_low_sensitive({"results": [result.to_dict() for result in results]})
+    _assert_public_metadata({"results": [result.to_dict() for result in results]})
 
 
 def test_search_flow_requires_non_empty_query(tmp_path):
@@ -118,7 +118,7 @@ def test_search_flow_matches_multi_term_summary_queries(tmp_path):
         file_summary.file_id,
         project.project_id,
     ]
-    _assert_low_sensitive({"results": [result.to_dict() for result in results]})
+    _assert_public_metadata({"results": [result.to_dict() for result in results]})
 
 
 def test_search_flow_preserves_source_order_when_rank_matches_same_terms(tmp_path):

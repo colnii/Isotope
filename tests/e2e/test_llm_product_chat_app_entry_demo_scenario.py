@@ -13,12 +13,12 @@ SCENARIO = "llm-product-chat-app-entry"
 REQUIRED_TEXT_FIELDS = (
     "scenario: llm-product-chat-app-entry",
     "transport: in_process",
-    "app_entry_preflight_ok: true",
+    "app_entry_readiness_check_ok: true",
     "user_message_entry_ok: true",
     "blocked_status_code: 412",
-    "blocked_result_status: blocked_by_preflight",
+    "blocked_result_status: blocked_by_readiness_check",
     "blocked_no_side_effects: true",
-    "ready_preflight_ready: true",
+    "ready_readiness_check_ready: true",
     "ready_status_code: 200",
     "ready_result_status: completed",
     "ready_forwarded_to_route: true",
@@ -26,19 +26,19 @@ REQUIRED_TEXT_FIELDS = (
     "codex_call_count: 0",
     "real_llm_status: fake_provider",
     "network_listener_status: not_used",
-    "memory_status: boundary_only",
+    "memory_status: active",
 )
 
 REQUIRED_JSON_FIELDS = {
     "scenario",
     "run_status",
     "transport",
-    "app_entry_preflight_ok",
+    "app_entry_readiness_check_ok",
     "user_message_entry_ok",
     "blocked_status_code",
     "blocked_result_status",
     "blocked_no_side_effects",
-    "ready_preflight_ready",
+    "ready_readiness_check_ready",
     "ready_status_code",
     "ready_result_status",
     "ready_forwarded_to_route",
@@ -127,12 +127,12 @@ def test_llm_product_chat_app_entry_demo_json_exposes_safe_gate_status_only():
     assert REQUIRED_JSON_FIELDS.issubset(data)
     assert data["scenario"] == SCENARIO
     assert data["transport"] == "in_process"
-    assert data["app_entry_preflight_ok"] is True
+    assert data["app_entry_readiness_check_ok"] is True
     assert data["user_message_entry_ok"] is True
     assert data["blocked_status_code"] == 412
-    assert data["blocked_result_status"] == "blocked_by_preflight"
+    assert data["blocked_result_status"] == "blocked_by_readiness_check"
     assert data["blocked_no_side_effects"] is True
-    assert data["ready_preflight_ready"] is True
+    assert data["ready_readiness_check_ready"] is True
     assert data["ready_status_code"] == 200
     assert data["ready_result_status"] == "completed"
     assert data["ready_forwarded_to_route"] is True
@@ -142,7 +142,7 @@ def test_llm_product_chat_app_entry_demo_json_exposes_safe_gate_status_only():
     assert data["codex_call_count"] == 0
     assert data["real_llm_status"] == "fake_provider"
     assert data["network_listener_status"] == "not_used"
-    assert data["memory_status"] == "boundary_only"
+    assert data["memory_status"] == "active"
     assert "run.completed" in data["event_types"]
     assert "artifact.created" in data["event_types"]
     _assert_no_forbidden_content_keys(data)
@@ -157,9 +157,9 @@ def test_llm_product_chat_app_entry_demo_trace_shows_block_then_ready_without_co
     assert result.returncode == 0, result.stderr
     assert "scenario: llm-product-chat-app-entry" in result.stdout
     assert "[1]" in result.stdout
-    assert "preflight blocked" in result.stdout
+    assert "readiness_check blocked" in result.stdout
     assert "no provider call" in result.stdout
-    assert "preflight ready" in result.stdout
+    assert "readiness_check ready" in result.stdout
     assert "user message accepted" in result.stdout
     assert "forwarded to product-chat route" in result.stdout
     assert "final answer artifact" in result.stdout

@@ -11,7 +11,7 @@ from isotope.features.files.flow import FileFlow
 from isotope.features.tasks.flow import TaskFlow
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 
 FORBIDDEN_KEYS = {
@@ -39,14 +39,14 @@ def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _assert_low_sensitive(value: Any) -> None:
+def _assert_public_metadata(value: Any) -> None:
     if isinstance(value, dict):
         assert FORBIDDEN_KEYS.isdisjoint(value)
         for nested in value.values():
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
     elif isinstance(value, list):
         for nested in value:
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
 
 
 def test_project_cli_creates_gets_lists_and_links_project_summaries_as_json(tmp_path):
@@ -112,9 +112,9 @@ def test_project_cli_creates_gets_lists_and_links_project_summaries_as_json(tmp_
     assert json.loads(get_result.stdout) == {"status": "ok", "project": linked}
     assert list_result.returncode == 0, list_result.stderr
     assert json.loads(list_result.stdout) == {"status": "ok", "projects": [linked]}
-    _assert_low_sensitive(created_payload)
-    _assert_low_sensitive(json.loads(get_result.stdout))
-    _assert_low_sensitive(json.loads(list_result.stdout))
+    _assert_public_metadata(created_payload)
+    _assert_public_metadata(json.loads(get_result.stdout))
+    _assert_public_metadata(json.loads(list_result.stdout))
 
 
 def test_project_cli_requires_project_id_for_get(tmp_path):
@@ -195,7 +195,7 @@ def test_project_cli_reads_project_detail_with_linked_summaries(tmp_path):
             "files": [file_summary.to_dict()],
         },
     }
-    _assert_low_sensitive(json.loads(detail_result.stdout))
+    _assert_public_metadata(json.loads(detail_result.stdout))
 
 
 def test_project_cli_detail_uses_refreshed_linked_summaries(tmp_path):
@@ -264,7 +264,7 @@ def test_project_cli_detail_uses_refreshed_linked_summaries(tmp_path):
     assert "stale file index summary" not in payload_text
     assert task.result_summary in payload_text
     assert file_summary.summary in payload_text
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_project_cli_creates_workspace_with_detail_and_workbench(tmp_path):
@@ -311,7 +311,7 @@ def test_project_cli_creates_workspace_with_detail_and_workbench(tmp_path):
         "task",
         "file",
     ]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_project_cli_appends_workspace_items_to_existing_project(tmp_path):
@@ -372,7 +372,7 @@ def test_project_cli_appends_workspace_items_to_existing_project(tmp_path):
         "files": 2,
         "search_results": 5,
     }
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_project_cli_workspace_add_uses_refreshed_linked_summaries(tmp_path):
@@ -439,4 +439,4 @@ def test_project_cli_workspace_add_uses_refreshed_linked_summaries(tmp_path):
     assert "stale file index summary" not in payload_text
     assert original_task_summary in payload_text
     assert original_file_summary in payload_text
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)

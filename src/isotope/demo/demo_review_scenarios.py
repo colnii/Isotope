@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .demo_common import _deferred_status
+from .demo_common import _route_status
 from ..interfaces.http import create_http_app
 from ..platform.schemas.refs import make_artifact_ref
 from ..platform.schemas.snapshots import ImportedSnapshot
@@ -148,12 +148,12 @@ def _run_approval_tool_runner_spike(root: Path) -> dict[str, Any]:
         "artifact_summary": artifact.summary,
         "event_count": len(event_types),
         "event_types": event_types,
-        "http_full_content_route_status": _deferred_status(http_full_content_response),
+        "http_full_content_route_status": _route_status(http_full_content_response),
         "filesystem_mutation_status": "not_used",
         "network_listener_status": "not_used",
         "model_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
         "api_friction": [
             "approval-gated input now uses server.submit_action; HTTP /runs/{run_id}/input still has no approval flag",
         ],
@@ -214,7 +214,12 @@ def _run_external_snapshot_review_spike(root: Path) -> dict[str, Any]:
     http_external_ingestion_response = app.request(
         "POST",
         "/external-ingestion",
-        json={"source_system": "example_provider"},
+        json={
+            "run_id": run_id,
+            "source_system": "example_provider",
+            "captured_at": "2026-05-01T00:05:00Z",
+            "body": {"message": "external snapshot review demo"},
+        },
     )
     event_types = [event.event_type for event in events]
     external_observations = [dict(observation) for observation in replay_state.external_observations]
@@ -274,14 +279,14 @@ def _run_external_snapshot_review_spike(root: Path) -> dict[str, Any]:
         ],
         "event_count": len(event_types),
         "event_types": event_types,
-        "http_external_ingestion_route_status": _deferred_status(http_external_ingestion_response),
-        "provider_status": "boundary_only",
+        "http_external_ingestion_route_status": _route_status(http_external_ingestion_response),
+        "provider_status": "active",
         "network_listener_status": "not_used",
         "model_status": "not_used",
         "filesystem_mutation_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
-        "memory_storage_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "active",
+        "memory_storage_status": "active",
         "projector_raw_content_read_status": "not_used",
     }
 

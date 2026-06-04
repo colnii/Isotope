@@ -9,7 +9,7 @@ from typing import Any
 from .scenarios import _run_agent_loop_planner_adapter_spike
 from ..demo_planner_helpers import (
     _planner_happy_fixture_summary,
-    _run_planner_blocked_deferred_fixture,
+    _run_planner_blocked_queued_fixture,
     _run_planner_malformed_action_fixture,
 )
 from ...platform.state.checkpoint_store import FileCheckpointStore
@@ -20,14 +20,14 @@ from ...runtime.in_process import InProcessServer
 def _run_agent_loop_planner_matrix_spike(root: Path) -> dict[str, Any]:
     root.mkdir(parents=True, exist_ok=True)
     happy = _run_agent_loop_planner_adapter_spike(root / "happy-path")
-    blocked = _run_planner_blocked_deferred_fixture()
+    blocked = _run_planner_blocked_queued_fixture()
     malformed = _run_planner_malformed_action_fixture(root / "malformed-action")
     fixtures = [happy, blocked, malformed]
-    app_deferred_friction = list(blocked["app_deferred_friction"])
+    app_queued_friction = list(blocked["app_queued_friction"])
     app_friction: list[dict[str, Any]] = []
     planner_matrix_ok = (
         happy["planner_adapter_friction_ok"] is True
-        and blocked["status"] == "blocked_deferred"
+        and blocked["status"] == "blocked_queued"
         and malformed["status"] == "failed_closed"
         and malformed["partial_events_appended"] is False
         and app_friction == []
@@ -44,18 +44,18 @@ def _run_agent_loop_planner_matrix_spike(root: Path) -> dict[str, Any]:
             malformed,
         ],
         "happy_path_ok": happy["planner_adapter_friction_ok"],
-        "blocked_deferred_ok": blocked["status"] == "blocked_deferred",
-        "malformed_fail_closed_ok": malformed["partial_events_appended"] is False,
+        "blocked_queued_ok": blocked["status"] == "blocked_queued",
+        "malformed_rejected_ok": malformed["partial_events_appended"] is False,
         "app_friction": app_friction,
         "app_friction_count": len(app_friction),
-        "app_deferred_friction": app_deferred_friction,
+        "app_queued_friction": app_queued_friction,
         "model_status": "not_used",
         "scheduler_status": "not_used",
         "provider_status": "not_used",
         "network_listener_status": "not_used",
         "filesystem_mutation_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
         "next_development_step": (
             "Add a branch-local fixture-backed planner runner API boundary only if the next app spike "
             "needs to reuse this matrix outside the demo entrypoint."
@@ -189,8 +189,8 @@ def _run_agent_loop_planner_restart_pause_spike(root: Path) -> dict[str, Any]:
         "provider_status": "not_used",
         "network_listener_status": "not_used",
         "filesystem_mutation_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
         "next_development_step": (
             "Pause branch-local agent-loop expansion unless a real app spike exposes a new gap."
         ),

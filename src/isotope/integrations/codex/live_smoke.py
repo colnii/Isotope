@@ -62,7 +62,7 @@ def run_codex_live_smoke(
     config: CodexLiveSmokeConfig | None = None,
     backend: Any | None = None,
 ) -> dict[str, Any]:
-    """Run a deliberate local Codex CLI smoke and return only a low-sensitive summary."""
+    """Run a deliberate local Codex CLI smoke and return only a public summary."""
 
     resolved_config = config or CodexLiveSmokeConfig()
     if not isinstance(resolved_config, CodexLiveSmokeConfig):
@@ -70,7 +70,7 @@ def run_codex_live_smoke(
     if not resolved_config.enabled:
         return {
             "status": "skipped",
-            "reason_code": "codex_live_smoke_not_enabled",
+            "reason_code": "codex_live_smoke_unavailable",
             "artifact_count": 0,
             "artifact_refs": [],
         }
@@ -133,7 +133,7 @@ def diagnose_codex_live_smoke(
     config: CodexLiveSmokeConfig | None = None,
     backend: Any | None = None,
 ) -> dict[str, Any]:
-    """Run the smoke and add a low-sensitive diagnosis for common local failures."""
+    """Run the smoke and add a public diagnosis for common local failures."""
 
     smoke_root = Path(root)
     result = run_codex_live_smoke(smoke_root, config=config, backend=backend)
@@ -196,7 +196,7 @@ def _diagnosis_for(root: Path, result: dict[str, Any]) -> dict[str, Any]:
     process_started = artifact_captured or status in {"completed", "failed", "timeout"}
     if status == "skipped":
         return _diagnosis(
-            category="not_enabled",
+            category="unavailable",
             process_started=False,
             artifact_captured=False,
             summary="live smoke is disabled",

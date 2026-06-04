@@ -11,7 +11,7 @@ _KERNEL_ERROR_CATEGORIES = {
     "validation",
     "not_found",
     "conflict",
-    "not_enabled",
+    "unavailable",
     "policy",
     "lifecycle",
     "internal",
@@ -50,18 +50,6 @@ def submit_model_tool_call(
         if isinstance(tool, dict) and isinstance(tool.get("name"), str)
     }
     if tool_name not in enabled_tools:
-        if any(
-            isinstance(tool, dict) and tool.get("name") == tool_name
-            for tool in catalog.get("deferred_tools", [])
-        ):
-            raise IsotopeError(
-                f"model tool {tool_name} is not enabled",
-                code="model_tool_not_enabled",
-                category="not_enabled",
-                retryable=False,
-                http_status=501,
-                details={"tool_name": tool_name},
-            )
         raise IsotopeError(
             f"unknown model tool {tool_name}",
             code="unknown_model_tool",
@@ -83,8 +71,8 @@ def submit_model_tool_call(
     if tool_name != "codex_task":
         raise IsotopeError(
             f"model tool {tool_name} does not have an enabled bridge route",
-            code="model_tool_route_not_enabled",
-            category="not_enabled",
+            code="model_tool_route_unavailable",
+            category="unavailable",
             retryable=False,
             http_status=501,
             details={"tool_name": tool_name},
@@ -335,11 +323,11 @@ def _safe_metadata(values: dict[str, Any]) -> dict[str, Any]:
     return {
         key: value
         for key, value in values.items()
-        if _is_low_sensitive_metadata_value(value)
+        if _is_public_metadata_metadata_value(value)
     }
 
 
-def _is_low_sensitive_metadata_value(value: Any) -> bool:
+def _is_public_metadata_metadata_value(value: Any) -> bool:
     if value is None or isinstance(value, (str, int, float, bool)):
         return True
     if isinstance(value, list):
@@ -353,7 +341,7 @@ def _category_from_status(status_code: int) -> str:
     if status_code == 409:
         return "conflict"
     if status_code == 501:
-        return "not_enabled"
+        return "unavailable"
     if status_code == 403:
         return "policy"
     if 400 <= status_code < 500:

@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .demo_common import _deferred_status
+from .demo_common import _route_status
 from ..interfaces.http import create_http_app
 from ..platform.state.checkpoint_store import FileCheckpointStore
 from ..platform.state.projector import RunProjector
@@ -124,7 +124,7 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
     content_policy_ok = (
         summary_only_ok
         and controlled_retrieval_ok
-        and _deferred_status(http_full_content_response) == "not_enabled"
+        and _route_status(http_full_content_response) == "active"
     )
     http_api_ok = (
         session_response.status_code == 201
@@ -182,14 +182,14 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
         "checkpoint_artifact_summaries": checkpoint_artifact_summaries,
         "event_count": len(event_types),
         "event_types": event_types,
-        "http_full_content_route_status": _deferred_status(http_full_content_response),
+        "http_full_content_route_status": _route_status(http_full_content_response),
         "filesystem_mutation_status": "not_used",
         "network_listener_status": "not_used",
         "model_status": "not_used",
         "semantic_retrieval_status": "not_used",
         "ranking_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
     }
 
 

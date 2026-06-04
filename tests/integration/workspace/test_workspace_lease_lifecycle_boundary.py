@@ -308,7 +308,7 @@ def test_agent_identity_alone_cannot_create_workspace_lease():
         )
 
 
-def test_unsupported_workspace_modes_remain_fail_closed():
+def test_unsupported_workspace_modes_remain_rejected():
     manager = workspace.WorkspaceManager()
 
     for mode in ("write", "shared_rw", "isolated_ro", "isolated_rw", "ephemeral"):

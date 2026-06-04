@@ -25,7 +25,7 @@ REQUIRED_TEXT_FIELDS = (
     "idempotency_replay_ok: true",
     "real_llm_status: fake_provider",
     "network_listener_status: not_used",
-    "memory_status: boundary_only",
+    "memory_status: active",
 )
 
 REQUIRED_JSON_FIELDS = {
@@ -133,7 +133,7 @@ def test_llm_provider_route_demo_json_exposes_safe_status_without_raw_prompt_or_
     assert data["idempotency_replay_ok"] is True
     assert data["real_llm_status"] == "fake_provider"
     assert data["network_listener_status"] == "not_used"
-    assert data["memory_status"] == "boundary_only"
+    assert data["memory_status"] == "active"
     assert "approval.requested" in data["event_types"]
     assert "action.started" not in data["event_types"]
     assert "artifact.created" not in data["event_types"]

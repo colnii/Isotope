@@ -139,7 +139,7 @@ def _capability_inputs_for_agent_loop(
         system_inputs["run_id"] = run_id
     if "execution_id" in properties:
         system_inputs["execution_id"] = new_id("exec")
-    return {**inputs, **system_inputs}
+    return {**system_inputs, **inputs}
 
 
 def _capability_run_root(api: Any, run_id: str, capability_id: str) -> Path:

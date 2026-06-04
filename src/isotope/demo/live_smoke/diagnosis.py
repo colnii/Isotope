@@ -1,4 +1,4 @@
-"""Low-sensitive diagnosis helpers for LLM live-smoke results."""
+"""Public diagnosis helpers for LLM live-smoke results."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Any
 
 from .terminal_diagnosis import (
     _llm_terminal_tool_diagnosis_for,
-    _llm_terminal_tool_preflight_for,
+    _llm_terminal_tool_readiness_check_for,
     _maybe_diagnose_terminal_tool_missing_configuration,
     _terminal_error_reason_summary,
 )
@@ -15,8 +15,8 @@ from .terminal_diagnosis import (
 def _legacy_deepseek_result(result: dict[str, Any]) -> dict[str, Any]:
     legacy = dict(result)
     reason_code = legacy.get("reason_code")
-    if reason_code == "llm_tool_call_live_smoke_not_enabled":
-        legacy["reason_code"] = "deepseek_tool_call_live_smoke_not_enabled"
+    if reason_code == "llm_tool_call_live_smoke_unavailable":
+        legacy["reason_code"] = "deepseek_tool_call_live_smoke_unavailable"
         legacy["provider"] = "deepseek"
     elif reason_code in {"llm_provider_not_configured", "llm_provider_api_key_missing"}:
         legacy["reason_code"] = "deepseek_api_key_missing"
@@ -31,7 +31,7 @@ def _llm_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
     status = result.get("status")
     if status == "skipped":
         return _diagnosis(
-            category="not_enabled",
+            category="unavailable",
             provider_request_started=False,
             approval_requested=False,
             codex_started=False,
@@ -69,9 +69,9 @@ def _llm_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
             summary="provider selected codex_task and Isotope stopped at approval",
             next_step="keep this as a dev-only readiness check until product route tests exist",
         )
-    if reason_code == "llm_tool_not_enabled":
+    if reason_code == "llm_tool_unavailable":
         return _diagnosis(
-            category="tool_not_enabled",
+            category="tool_unavailable",
             provider_request_started=False,
             approval_requested=False,
             codex_started=False,
@@ -98,23 +98,23 @@ def _llm_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
         )
     if reason_code == "llm_provider_selected_unoffered_tool":
         return _diagnosis(
-            category="tool_not_enabled",
+            category="tool_unavailable",
             provider_request_started=True,
             approval_requested=False,
             codex_started=False,
             summary="the provider selected a tool that was not offered in this smoke",
             next_step="tighten the provider response or include the intended tool in the smoke config",
         )
-    if reason_code == "model_tool_route_not_enabled":
+    if reason_code == "model_tool_route_unavailable":
         return _diagnosis(
-            category="tool_route_not_enabled",
+            category="tool_route_unavailable",
             provider_request_started=True,
             approval_requested=False,
             codex_started=False,
             summary="the model selected a tool that has no enabled bridge route",
             next_step="add route tests before exposing that tool to a real provider",
         )
-    if reason_code in {"model_tool_not_enabled", "unknown_model_tool"}:
+    if reason_code in {"model_tool_unavailable", "unknown_model_tool"}:
         return _diagnosis(
             category="provider_selected_unavailable_tool",
             provider_request_started=True,
@@ -138,7 +138,7 @@ def _llm_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
         approval_requested=False,
         codex_started=False,
         summary="LLM provider tool-call smoke failed with an unclassified result",
-        next_step="inspect low-sensitive reason_code before widening the integration",
+        next_step="inspect public reason_code before widening the integration",
     )
 
 
@@ -151,7 +151,7 @@ def _llm_product_chat_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
 
     if status == "skipped":
         return _product_chat_diagnosis(
-            category="not_enabled",
+            category="unavailable",
             provider_request_started=False,
             direct_answer_completed=False,
             approval_requested=False,
@@ -226,7 +226,7 @@ def _llm_product_chat_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
             approval_resolved=True,
             resume_completed=True,
             summary="product-chat smoke completed direct answer, approval pause, and resume final answer",
-            next_step="use this as a dev-only preflight before application-layer product chat wiring",
+            next_step="use this as a dev-only readiness_check before application-layer product chat wiring",
         )
 
     return _product_chat_diagnosis(
@@ -241,7 +241,7 @@ def _llm_product_chat_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def _llm_product_chat_preflight_for(result: dict[str, Any]) -> dict[str, Any]:
+def _llm_product_chat_readiness_check_for(result: dict[str, Any]) -> dict[str, Any]:
     diagnosis = result.get("diagnosis")
     if not isinstance(diagnosis, dict):
         diagnosis = {}
@@ -307,7 +307,7 @@ def _diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
     status = result.get("status")
     if status == "skipped":
         return _diagnosis(
-            category="not_enabled",
+            category="unavailable",
             provider_request_started=False,
             approval_requested=False,
             codex_started=False,
@@ -336,9 +336,9 @@ def _diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
             summary="DeepSeek selected codex_task and Isotope stopped at approval",
             next_step="keep this as a dev-only readiness check until product route tests exist",
         )
-    if reason_code == "llm_tool_not_enabled":
+    if reason_code == "llm_tool_unavailable":
         return _diagnosis(
-            category="tool_not_enabled",
+            category="tool_unavailable",
             provider_request_started=False,
             approval_requested=False,
             codex_started=False,
@@ -365,23 +365,23 @@ def _diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
         )
     if reason_code == "llm_provider_selected_unoffered_tool":
         return _diagnosis(
-            category="tool_not_enabled",
+            category="tool_unavailable",
             provider_request_started=True,
             approval_requested=False,
             codex_started=False,
             summary="the provider selected a tool that was not offered in this smoke",
             next_step="tighten the provider response or include the intended tool in the smoke config",
         )
-    if reason_code == "model_tool_route_not_enabled":
+    if reason_code == "model_tool_route_unavailable":
         return _diagnosis(
-            category="tool_route_not_enabled",
+            category="tool_route_unavailable",
             provider_request_started=True,
             approval_requested=False,
             codex_started=False,
             summary="the model selected a tool that has no enabled bridge route",
             next_step="add route tests before exposing that tool to a real provider",
         )
-    if reason_code in {"model_tool_not_enabled", "unknown_model_tool"}:
+    if reason_code in {"model_tool_unavailable", "unknown_model_tool"}:
         return _diagnosis(
             category="provider_selected_unavailable_tool",
             provider_request_started=True,
@@ -405,7 +405,7 @@ def _diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
         approval_requested=False,
         codex_started=False,
         summary="DeepSeek tool-call smoke failed with an unclassified result",
-        next_step="inspect low-sensitive reason_code before widening the integration",
+        next_step="inspect public reason_code before widening the integration",
     )
 
 

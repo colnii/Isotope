@@ -42,8 +42,8 @@ def test_llm_live_smoke_diagnosis_reexports_terminal_diagnosis_helpers():
         is llm_live_smoke_terminal_diagnosis._llm_terminal_tool_diagnosis_for
     )
     assert (
-        llm_live_smoke_diagnosis._llm_terminal_tool_preflight_for
-        is llm_live_smoke_terminal_diagnosis._llm_terminal_tool_preflight_for
+        llm_live_smoke_diagnosis._llm_terminal_tool_readiness_check_for
+        is llm_live_smoke_terminal_diagnosis._llm_terminal_tool_readiness_check_for
     )
     assert (
         llm_live_smoke_diagnosis._maybe_diagnose_terminal_tool_missing_configuration

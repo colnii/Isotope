@@ -20,8 +20,8 @@ REQUIRED_TEXT_FIELDS = (
     "controlled_retrieval_ok: true",
     "replay_ok: true",
     "checkpoint_ok: true",
-    "http_full_content_route_status: not_enabled",
-    "memory_status: boundary_only",
+    "http_full_content_route_status: active",
+    "memory_status: active",
 )
 
 REQUIRED_JSON_FIELDS = {
@@ -121,7 +121,7 @@ def test_artifact_review_json_cli_exposes_required_status_fields():
     assert data["controlled_retrieval_ok"] is True
     assert data["replay_ok"] is True
     assert data["checkpoint_ok"] is True
-    assert data["memory_status"] == "boundary_only"
+    assert data["memory_status"] == "active"
 
 
 def test_artifact_review_json_uses_structured_refs_without_full_content():
@@ -137,10 +137,10 @@ def test_artifact_review_json_uses_structured_refs_without_full_content():
     _assert_no_forbidden_content_keys(data)
 
 
-def test_artifact_review_keeps_deferred_integrations_disabled():
+def test_artifact_review_reports_active_http_content_route():
     data = _run_demo_json("--scenario", SCENARIO)
 
-    assert data["http_full_content_route_status"] in {"not_enabled", "deferred"}
+    assert data["http_full_content_route_status"] == "active"
     assert data["filesystem_mutation_status"] == "not_used"
     assert data["model_status"] == "not_used"
     assert data.get("network_listener_status", "not_used") == "not_used"

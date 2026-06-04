@@ -10,7 +10,7 @@ from typing import Any
 
 
 class FailureLedger:
-    """Append-only JSONL ledger for low-sensitive failure events."""
+    """Append-only JSONL ledger for public failure events."""
 
     def __init__(self, path: Path | str) -> None:
         self.path = Path(path).expanduser()

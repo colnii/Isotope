@@ -20,17 +20,17 @@ FORBIDDEN_CONTENT_KEYS = {
 }
 
 
-def _assert_low_sensitive(value: Any) -> None:
+def _assert_public_metadata(value: Any) -> None:
     if isinstance(value, dict):
         assert FORBIDDEN_CONTENT_KEYS.isdisjoint(value)
         for nested in value.values():
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
     elif isinstance(value, list):
         for nested in value:
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
 
 
-def test_workbench_flow_returns_low_sensitive_home_view(tmp_path):
+def test_workbench_flow_returns_public_metadata_home_view(tmp_path):
     project = ProjectFlow.in_process(tmp_path).create_project(
         name="portfolio demo",
         summary="autumn recruiting workspace",
@@ -72,7 +72,7 @@ def test_workbench_flow_returns_low_sensitive_home_view(tmp_path):
             "search_results": 1,
         },
     }
-    _assert_low_sensitive(view.to_dict())
+    _assert_public_metadata(view.to_dict())
 
 
 def test_workbench_flow_returns_empty_state_without_summaries(tmp_path):

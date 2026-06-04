@@ -1,4 +1,4 @@
-"""Supervisor lane state schema for low-sensitive read models."""
+"""Supervisor lane state schema for public read models."""
 
 from __future__ import annotations
 

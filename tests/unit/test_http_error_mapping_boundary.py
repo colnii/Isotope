@@ -90,16 +90,16 @@ def test_invalid_request_http_error_uses_stable_kernel_code(tmp_path):
     assert body["error"]["details"] == {"field": "goal"}
 
 
-def test_not_enabled_http_error_includes_stable_taxonomy_metadata(tmp_path):
+def test_external_ingestion_bad_request_includes_stable_taxonomy_metadata(tmp_path):
     app = create_http_app(tmp_path)
 
     response = _request(app, "POST", "/external-ingestion", {"payload": "raw"})
     body = _body(response)
 
-    assert response.status_code == 501
-    assert body["status"] == "not_enabled"
-    assert body["error"]["code"] == "not_enabled"
-    assert body["error"]["message"] == "external_ingestion is not enabled"
-    assert body["error"]["category"] == "not_enabled"
+    assert response.status_code == 400
+    assert body["status"] == "bad_request"
+    assert body["error"]["code"] == "invalid_request"
+    assert body["error"]["message"] == "external input must include run_id"
+    assert body["error"]["category"] == "validation"
     assert body["error"]["retryable"] is False
-    assert body["error"]["details"] == {"capability": "external_ingestion"}
+    assert body["error"]["details"] == {"field": "run_id"}

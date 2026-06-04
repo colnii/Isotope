@@ -24,7 +24,7 @@ def _build_parser() -> argparse.ArgumentParser:
     create_parser.add_argument("--title", required=True, help="Notification title.")
     create_parser.add_argument(
         "--source-ref-json",
-        help="Low-sensitive JSON object that links this notification to a source.",
+        help="Public JSON object that links this notification to a source.",
     )
     create_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 

@@ -1,4 +1,4 @@
-"""Supervisor active goal schema for low-sensitive state snapshots."""
+"""Supervisor active goal schema for public state snapshots."""
 
 from __future__ import annotations
 

@@ -27,11 +27,8 @@ def build_launch_work_order_prompt(
                 "不扩大到无关功能；不改用户未要求的仓库规则。"
             ),
             (
-                "coordination_preflight: 开工前先只读检查 "
-                "`git worktree list --porcelain` 和 `git branch --list`；"
-                "已有同主题 branch/worktree 时先复用或接入已有成果，"
-                "不要重复实现同一能力；没有对应分支时才创建清晰命名的新 branch/worktree；"
-                "不要跨到 memory/screen/capacity/research 等无关主题长臂管辖。"
+                "coordination: 使用当前工单指定的 cwd 和目标分支推进；"
+                "发现相关已有实现时直接复用，发现冲突时在结果里说明证据和处理方式。"
             ),
             (
                 "budget_hint: prompt-only，建议 20 分钟内给出状态，"

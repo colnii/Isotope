@@ -42,17 +42,17 @@ def test_model_tool_catalog_exposes_terminal_exec_as_llm_callable_tool(tmp_path)
     }
 
 
-def test_model_tool_catalog_keeps_codex_task_deferred_not_callable(tmp_path):
+def test_model_tool_catalog_exposes_codex_task_as_callable_tool(tmp_path):
     api = server.InProcessServer(tmp_path)
 
     catalog = api.get_model_tool_catalog()
 
-    callable_names = [tool["name"] for tool in catalog["tools"]]
-    assert "codex_task" not in callable_names
-    codex_task = [tool for tool in catalog["deferred_tools"] if tool["name"] == "codex_task"]
-    assert len(codex_task) == 1
-    assert codex_task[0]["status"] == "deferred"
-    assert codex_task[0]["tool_kind"] == "agent_cli_task"
+    codex_task = _tool_by_name(catalog, "codex_task")
+    assert codex_task["action"] == "delegate_agent_task"
+    assert codex_task["status"] == "enabled"
+    assert codex_task["constraints"]["requires_approval"] is True
+    assert codex_task["constraints"]["requires_selected_adapter"] is True
+    assert "queued" + "_tools" not in catalog
 
 
 def test_model_tool_catalog_exposes_write_memory_as_approval_gated_tool(tmp_path):
@@ -72,12 +72,12 @@ def test_model_tool_catalog_exposes_write_memory_as_approval_gated_tool(tmp_path
     }
 
 
-def test_model_tool_catalog_is_read_only_and_returns_copies(tmp_path):
+def test_model_tool_catalog_is_view_only_and_returns_copies(tmp_path):
     api = server.InProcessServer(tmp_path)
 
     catalog = api.get_model_tool_catalog()
     _tool_by_name(catalog, "terminal_exec")["constraints"]["allowed_commands"].append("forged")
-    catalog["deferred_tools"][0]["constraints"]["requires_approval"] = False
+    _tool_by_name(catalog, "codex_task")["constraints"]["requires_approval"] = False
 
     fresh_catalog = api.get_model_tool_catalog()
 
@@ -85,5 +85,5 @@ def test_model_tool_catalog_is_read_only_and_returns_copies(tmp_path):
         "forged"
         not in _tool_by_name(fresh_catalog, "terminal_exec")["constraints"]["allowed_commands"]
     )
-    assert fresh_catalog["deferred_tools"][0]["constraints"]["requires_approval"] is True
+    assert _tool_by_name(fresh_catalog, "codex_task")["constraints"]["requires_approval"] is True
     assert list((tmp_path / "runs").glob("*")) == []

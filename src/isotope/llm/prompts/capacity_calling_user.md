@@ -11,6 +11,6 @@
     "capacity_id": "string",
     "arguments": "object",
     "confidence": "number between 0 and 1",
-    "rationale": "short low-sensitive string"
+    "rationale": "short public string"
   }
 }

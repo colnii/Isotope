@@ -400,7 +400,7 @@ def test_memory_record_superseded_rejects_completed_non_memory_execution():
         )
 
 
-def test_executor_not_enabled_memory_service_still_cannot_create_supersession_event(tmp_path):
+def test_executor_unavailable_memory_service_still_cannot_create_supersession_event(tmp_path):
     registry = action_registry.ActionTypeRegistry(
         entries=[
             {
@@ -457,7 +457,7 @@ def test_executor_not_enabled_memory_service_still_cannot_create_supersession_ev
         artifact_store=artifact_store.ArtifactStore(tmp_path),
         workspace_manager=workspace.WorkspaceManager(),
         registry=registry,
-        memory_service=memory.NotEnabledMemoryService(),
+        memory_service=memory.UnavailableMemoryService(),
     )
 
     with pytest.raises(PermissionError, match="memory_write not enabled"):

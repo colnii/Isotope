@@ -184,7 +184,7 @@ def test_server_does_not_expose_direct_memory_write_api(tmp_path):
     assert not hasattr(api, "write_memory")
 
 
-def test_server_approved_write_memory_action_persists_record_and_low_sensitive_event(tmp_path):
+def test_server_approved_write_memory_action_persists_record_and_public_metadata_event(tmp_path):
     api = server.InProcessServer(tmp_path)
     session = api.create_session()
     run = api.create_run(session["session_id"], goal="promote structured memory")

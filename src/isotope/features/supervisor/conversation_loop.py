@@ -329,6 +329,7 @@ def _run_capability_decision(
         arguments=arguments,
         context=context,
     )
+    display_inputs = _capacity_display_inputs(capacity_id, inputs)
     yield SupervisorConversationEvent(
         event="capacity_start",
         payload={
@@ -336,13 +337,13 @@ def _run_capability_decision(
             "capacity_id": capacity_id,
             "title": capacity_id,
             "status": "running",
-            "input_summary": _safe_detail_value(inputs),
+            "input_summary": _safe_detail_value(display_inputs),
             "result_summary": {},
             "details": [
                 {
                     "label": "Inputs",
                     "kind": "json",
-                    "content": _safe_detail_value(inputs),
+                    "content": _safe_detail_value(display_inputs),
                 }
             ],
         },
@@ -361,7 +362,7 @@ def _run_capability_decision(
             if result_summary.get("agent_loop_tick_status") == "executed"
             else "blocked"
         )
-    except Exception as exc:  # noqa: BLE001 - stream low-sensitive capacity failure.
+    except Exception as exc:  # noqa: BLE001 - stream public capacity failure.
         result_summary = {
             "error_type": type(exc).__name__,
             "message": str(exc) or type(exc).__name__,
@@ -374,13 +375,13 @@ def _run_capability_decision(
             "capacity_id": capacity_id,
             "title": capacity_id,
             "status": status,
-            "input_summary": _safe_detail_value(inputs),
+            "input_summary": _safe_detail_value(display_inputs),
             "result_summary": _safe_detail_value(result_summary),
             "details": [
                 {
                     "label": "Inputs",
                     "kind": "json",
-                    "content": _safe_detail_value(inputs),
+                    "content": _safe_detail_value(display_inputs),
                 },
                 {
                     "label": "Result summary",
@@ -453,6 +454,11 @@ def _normalize_conversation_capability_inputs(
     capacity_id: str,
     inputs: dict[str, Any],
 ) -> dict[str, Any]:
+    if capacity_id == "coding_task.execute":
+        normalized = dict(inputs)
+        normalized.setdefault("run_id", "conversation_loop")
+        normalized.setdefault("execution_id", "conversation_loop")
+        return normalized
     if capacity_id != "research.search":
         return inputs
     if inputs.get("provider") == "tavily":
@@ -479,6 +485,25 @@ def _capability_input_names(capacity_id: str) -> set[str]:
 def _capacity_event_id(capacity_id: str) -> str:
     safe = "".join(char if char.isalnum() else "_" for char in capacity_id.lower())
     return f"capacity_{safe.strip('_') or 'unknown'}"
+
+
+def _capacity_display_inputs(capacity_id: str, inputs: dict[str, Any]) -> dict[str, Any]:
+    if capacity_id != "coding_task.execute":
+        return dict(inputs)
+    display = dict(inputs)
+    patch = display.get("patch")
+    if isinstance(patch, str):
+        display["patch"] = {
+            "line_count": len(patch.splitlines()),
+            "character_count": len(patch),
+        }
+    argv = display.get("argv")
+    if isinstance(argv, list):
+        display["argv"] = {
+            "argument_count": len(argv),
+            "command": argv[0] if argv and isinstance(argv[0], str) else None,
+        }
+    return display
 
 
 def _safe_detail_value(value: Any, *, depth: int = 0) -> Any:

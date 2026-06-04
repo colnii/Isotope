@@ -17,14 +17,6 @@ ACTION_LIFECYCLE_EVENTS = {
 }
 
 
-DEFERRED_ENDPOINTS = [
-    ("POST", "/memory/query"),
-    ("POST", "/external-ingestion"),
-    ("GET", "/runs/run_001/events/stream"),
-    ("GET", "/artifacts/artifact_001/content"),
-]
-
-
 def _request(app, method: str, path: str, json_body: Any = None):
     return app.request(method, path, json=json_body)
 
@@ -325,16 +317,3 @@ def test_malformed_idempotent_request_remains_error_without_side_effect_on_each_
     assert not ACTION_LIFECYCLE_EVENTS.intersection(_event_types(tmp_path, run["run_id"]))
     assert _artifact_files(tmp_path) == []
 
-
-def test_deferred_routes_do_not_gain_idempotent_side_effects(tmp_path):
-    app = create_http_app(tmp_path)
-
-    for method, path in DEFERRED_ENDPOINTS:
-        first = _request(app, method, path, {"idempotency_key": f"key:{method}:{path}"})
-        second = _request(app, method, path, {"idempotency_key": f"key:{method}:{path}"})
-        assert _status_code(first) in {404, 405, 501}
-        assert _status_code(second) in {404, 405, 501}
-        assert _json_body(first)["status"] in {"not_found", "method_not_allowed", "not_enabled"}
-        assert _json_body(second)["status"] in {"not_found", "method_not_allowed", "not_enabled"}
-
-    assert _event_types(tmp_path) == []

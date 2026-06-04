@@ -332,7 +332,7 @@ def _capture_kind_from_artifact_type(artifact_type: str) -> str:
     return artifact_type
 
 
-def _low_sensitive_backend_summary(
+def _public_metadata_backend_summary(
     request: ScreenBackendRequest,
     result: ScreenBackendResult,
 ) -> dict[str, Any]:

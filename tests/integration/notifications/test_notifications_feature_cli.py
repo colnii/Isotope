@@ -8,7 +8,7 @@ import sys
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 
 FORBIDDEN_CONTENT_KEYS = {
@@ -36,14 +36,14 @@ def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _assert_low_sensitive(value: Any) -> None:
+def _assert_public_metadata(value: Any) -> None:
     if isinstance(value, dict):
         assert FORBIDDEN_CONTENT_KEYS.isdisjoint(value)
         for nested in value.values():
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
     elif isinstance(value, list):
         for nested in value:
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
 
 
 def test_notification_cli_creates_lists_and_marks_read_as_json(tmp_path):
@@ -94,7 +94,7 @@ def test_notification_cli_creates_lists_and_marks_read_as_json(tmp_path):
     assert marked["unread"] is False
     assert marked["read_at"] is not None
     assert json.loads(read_result.stdout) == {"status": "ok", "notifications": [marked]}
-    _assert_low_sensitive(json.loads(read_result.stdout))
+    _assert_public_metadata(json.loads(read_result.stdout))
 
 
 def test_notification_cli_rejects_conflicting_read_filters(tmp_path):
@@ -128,4 +128,4 @@ def test_notification_cli_rejects_sensitive_source_ref_json(tmp_path):
     payload = json.loads(result.stdout)
     assert payload["status"] == "error"
     assert payload["error"]["code"] == "notification_runner_error"
-    assert payload["error"]["message"] == "source_ref must stay low-sensitive"
+    assert payload["error"]["message"] == "source_ref must stay public"

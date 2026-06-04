@@ -100,10 +100,10 @@ def test_get_artifact_record_does_not_return_full_content_or_append_events(tmp_p
     assert api.get_events(run_id) == before_events
 
 
-def test_get_artifact_record_does_not_open_http_full_content_route(tmp_path):
+def test_get_artifact_record_can_use_http_full_content_route(tmp_path):
     app = create_http_app(tmp_path)
     session = app.server.create_session()
-    run = app.server.create_run(session["session_id"], goal="artifact route still deferred")
+    run = app.server.create_run(session["session_id"], goal="artifact route active")
     source = app.server.create_source_artifact(
         run["run_id"],
         summary="source artifact summary",
@@ -113,8 +113,9 @@ def test_get_artifact_record_does_not_open_http_full_content_route(tmp_path):
     record = app.server.get_artifact_record(source["artifact_ref"])
     response = app.request("GET", f"/artifacts/{record['artifact_id']}/content")
 
-    assert response.status_code == 501
-    assert response.body["error"]["code"] == "not_enabled"
+    assert response.status_code == 200
+    assert response.body["status"] == "ok"
+    assert response.body["content"] == "source artifact durable content"
 
 
 def test_source_artifact_helper_preserves_basis_refs_in_summary_provenance(tmp_path):

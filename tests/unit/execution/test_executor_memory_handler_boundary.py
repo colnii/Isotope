@@ -145,17 +145,17 @@ def _record_value(record, key: str):
 def test_executor_accepts_explicit_memory_service(tmp_path):
     runner = _runner(
         tmp_path,
-        memory_service=memory.NotEnabledMemoryService(),
+        memory_service=memory.UnavailableMemoryService(),
     )
 
     assert isinstance(runner, executor.Executor)
 
 
-def test_authorized_write_memory_enters_not_enabled_memory_handler_boundary(tmp_path):
+def test_authorized_write_memory_enters_unavailable_memory_handler_boundary(tmp_path):
     proposal = _memory_proposal()
     runner = _runner(
         tmp_path,
-        memory_service=memory.NotEnabledMemoryService(),
+        memory_service=memory.UnavailableMemoryService(),
     )
 
     with pytest.raises(PermissionError, match="memory_write not enabled"):

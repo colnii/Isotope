@@ -135,8 +135,8 @@ def _run_agent_loop_friction_spike(root: Path) -> dict[str, Any]:
         "provider_status": "not_used",
         "network_listener_status": "not_used",
         "filesystem_mutation_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
         "next_development_step": (
             "Run the same friction review behind a real app-layer planner adapter; "
             "only reopen mainline if that produces non-empty app_friction."
@@ -288,8 +288,8 @@ def _run_agent_loop_planner_adapter_spike(root: Path) -> dict[str, Any]:
         "provider_status": "not_used",
         "network_listener_status": "not_used",
         "filesystem_mutation_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
         "next_development_step": (
             "Introduce a fixture-backed planner fixture matrix with one intentionally blocked path; "
             "only reopen mainline if that matrix produces non-empty app_friction."

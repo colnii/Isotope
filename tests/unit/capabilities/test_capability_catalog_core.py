@@ -65,7 +65,7 @@ def test_capability_catalog_module_exists():
     assert module.__name__ == "isotope.capabilities.catalog"
 
 
-def test_capability_serializes_to_low_sensitive_manifest_dict():
+def test_capability_serializes_to_public_metadata_manifest_dict():
     capability = _valid_capability()
 
     manifest = capability.to_manifest_dict()
@@ -236,7 +236,7 @@ def test_capability_status_rejects_malformed_env_mapping():
         catalog.get_capability_status("artifact.review", env=[])
 
 
-def test_module_level_default_manifest_uses_same_low_sensitive_contract():
+def test_module_level_default_manifest_uses_same_public_metadata_contract():
     module = _catalog_module()
 
     manifest = module.get_manifest(env={})
@@ -259,5 +259,5 @@ def test_default_catalog_registers_supervisor_request_context_capability():
     assert capability["shelf"] == "product_candidate"
     assert capability["input_contract"]["required"] == ["state_root", "cwd", "query"]
     assert capability["input_contract"]["properties"]["max_results"]["type"] == "integer"
-    assert "workspace_read_only" in capability["safety_boundaries"]
+    assert "workspace_view_only" in capability["safety_boundaries"]
     assert "writes_existing_supervisor_context_store" in capability["safety_boundaries"]

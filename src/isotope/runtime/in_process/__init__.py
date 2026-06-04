@@ -9,11 +9,12 @@ from typing import Any
 
 from ...execution.executor import Executor, ToolHandler
 from ...platform.events.events import CanonicalEvent
-from ...platform.errors import IsotopeError, not_enabled_result
+from ...platform.errors import IsotopeError
 from ...platform.ids import new_id, reserve_ids
 from ...platform.registry.actions import ActionTypeRegistry
 from ...memory import FileMemoryStore, LocalMemoryQueryService, LocalMemoryWriteService
 from ...platform.schemas.refs import ResourceRef
+from ...platform.state.checkpoint_store import FileCheckpointStore
 from ...platform.state.event_store import FileEventStore
 from ...platform.state.projector import RunProjector
 from ...policy import PolicyEngine
@@ -104,7 +105,11 @@ class InProcessServer(
         self.root = Path(root)
         reserve_ids(_existing_id_strings(self.root))
         self.event_store = FileEventStore(self.root)
-        self.checkpoint_store = checkpoint_store
+        self.checkpoint_store = (
+            checkpoint_store
+            if checkpoint_store is not None
+            else FileCheckpointStore(self.root / "checkpoints")
+        )
         self.artifact_store = ArtifactStore(self.root)
         self.memory_store = memory_store if memory_store is not None else FileMemoryStore(self.root)
         self.memory_write_service = (
@@ -213,8 +218,37 @@ class InProcessServer(
     def get_artifact_summary(self, ref, grants: dict) -> dict:
         return self.retrieval.get_artifact_summary(ref, grants)
 
-    def ingest_external_input(self, raw_input: dict) -> dict[str, str]:
-        return not_enabled_result("external_ingestion")
+    def ingest_external_input(self, raw_input: dict) -> dict[str, Any]:
+        if not isinstance(raw_input, dict):
+            raise IsotopeError(
+                "external input must be a JSON object",
+                code="invalid_request",
+                category="validation",
+                retryable=False,
+                http_status=400,
+                details={"field": "body"},
+            )
+        run_id = raw_input.get("run_id")
+        if not isinstance(run_id, str) or not run_id:
+            body = raw_input.get("body")
+            if isinstance(body, dict):
+                run_id = body.get("run_id")
+        if not isinstance(run_id, str) or not run_id:
+            raise IsotopeError(
+                "external input must include run_id",
+                code="invalid_request",
+                category="validation",
+                retryable=False,
+                http_status=400,
+                details={"field": "run_id"},
+            )
+        self._validate_read_run_id(run_id)
+        from ...rag.ingestion import ExternalIngestionService
+
+        return ExternalIngestionService(
+            event_store=self.event_store,
+            artifact_store=self.artifact_store,
+        ).ingest_raw(run_id, raw_input)
 
     def _validate_non_empty_string(self, field_name: str, value: object) -> None:
         if not isinstance(value, str) or not value:

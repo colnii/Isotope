@@ -10,7 +10,7 @@ from isotope.platform.schemas.refs import ResourceRef
 from .backend_policy import (
     _coerce_backend_config,
     _coerce_output_artifact,
-    _low_sensitive_backend_summary,
+    _public_metadata_backend_summary,
     _summary_contains_full_content,
     _validate_output_artifacts_match_policy,
     build_terminal_backend_request,
@@ -149,7 +149,7 @@ class TerminalBackendAdapter:
             reason_code=result.reason_code,
             retryable=result.retryable,
             resource_usage=dict(result.resource_usage),
-            backend_summary=_low_sensitive_backend_summary(request, result),
+            backend_summary=_public_metadata_backend_summary(request, result),
         )
 
     def _normalize_result(self, raw_result: Any) -> TerminalBackendResult:

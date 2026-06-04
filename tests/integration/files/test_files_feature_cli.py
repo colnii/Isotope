@@ -8,7 +8,7 @@ import sys
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 
 FORBIDDEN_KEYS = {
@@ -36,14 +36,14 @@ def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _assert_low_sensitive(value: Any) -> None:
+def _assert_public_metadata(value: Any) -> None:
     if isinstance(value, dict):
         assert FORBIDDEN_KEYS.isdisjoint(value)
         for nested in value.values():
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
     elif isinstance(value, list):
         for nested in value:
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
 
 
 def test_file_cli_creates_gets_and_lists_file_summaries_as_json(tmp_path):
@@ -77,9 +77,9 @@ def test_file_cli_creates_gets_and_lists_file_summaries_as_json(tmp_path):
     assert json.loads(get_result.stdout) == {"status": "ok", "file": file_summary}
     assert list_result.returncode == 0, list_result.stderr
     assert json.loads(list_result.stdout) == {"status": "ok", "files": [file_summary]}
-    _assert_low_sensitive(created_payload)
-    _assert_low_sensitive(json.loads(get_result.stdout))
-    _assert_low_sensitive(json.loads(list_result.stdout))
+    _assert_public_metadata(created_payload)
+    _assert_public_metadata(json.loads(get_result.stdout))
+    _assert_public_metadata(json.loads(list_result.stdout))
 
 
 def test_file_cli_requires_content_for_create(tmp_path):

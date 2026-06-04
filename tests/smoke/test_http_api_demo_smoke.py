@@ -126,7 +126,7 @@ def test_http_api_demo_smoke_runs_kernel_loop_without_network_or_listener(
         ("GET", "/artifacts/artifact_001/content"),
     ],
 )
-def test_http_api_demo_smoke_keeps_deferred_routes_absent_or_not_enabled(
+def test_http_api_demo_smoke_active_routes_validate_bad_requests(
     tmp_path,
     method,
     path,
@@ -135,6 +135,6 @@ def test_http_api_demo_smoke_keeps_deferred_routes_absent_or_not_enabled(
 
     response = _request(app, method, path, {"text": "ignored"})
 
-    assert _status_code(response) in {404, 405, 501}
+    assert _status_code(response) in {400, 404, 405}
     body = _json_body(response)
-    assert body["status"] in {"not_found", "method_not_allowed", "not_enabled"}
+    assert body["status"] in {"bad_request", "not_found", "method_not_allowed"}

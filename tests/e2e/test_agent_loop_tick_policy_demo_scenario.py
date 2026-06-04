@@ -115,7 +115,7 @@ def test_tick_policy_trace_json_reports_continue_and_stop_reasons():
     ]
 
 
-def test_tick_policy_trace_keeps_deferred_integrations_disabled():
+def test_tick_policy_trace_keeps_queued_integrations_disabled():
     data = _run_demo_json("--scenario", SCENARIO)
 
     assert data["transport"] == "in_process"

@@ -39,7 +39,7 @@ def _capacity(**overrides: Any) -> dict[str, Any]:
     data: dict[str, Any] = {
         "capacity_id": "artifact.review",
         "title": "Artifact Review",
-        "description": "Review low-sensitive artifact summaries.",
+        "description": "Review public artifact summaries.",
         "domain_tags": ["artifact", "review"],
         "input_contract": {
             "type": "object",
@@ -96,7 +96,7 @@ def test_select_capacity_call_asks_llm_to_choose_capacity_and_fill_arguments():
         "capacity_id": "string",
         "arguments": "object",
         "confidence": "number between 0 and 1",
-        "rationale": "short low-sensitive string",
+        "rationale": "short public string",
     }
     assert provider.calls[0]["max_tokens"] == 192
 
@@ -343,7 +343,7 @@ def test_select_capacity_call_rejects_unoffered_capacity():
         select_capacity_call(provider, goal="run a command", capacities=[_capacity()])
 
     assert exc_info.value.code == "llm_capacity_unoffered"
-    assert exc_info.value.category == "not_enabled"
+    assert exc_info.value.category == "unavailable"
     assert exc_info.value.details == {"capacity_id": "terminal.exec"}
 
 

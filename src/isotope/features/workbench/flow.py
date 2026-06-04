@@ -50,7 +50,7 @@ class WorkbenchView:
 
 
 class WorkbenchFlow:
-    """Thin home-view flow over low-sensitive feature summaries."""
+    """Thin home-view flow over public feature summaries."""
 
     def __init__(self, core: ProductCore):
         self.core = core

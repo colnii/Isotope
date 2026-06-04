@@ -67,7 +67,7 @@ def test_workbench_demo_plain_cli_prints_home_summary():
     assert "updated_at_present: true" in result.stdout
 
 
-def test_workbench_demo_json_exposes_low_sensitive_home_view_only():
+def test_workbench_demo_json_exposes_public_metadata_home_view_only():
     data = _run_demo_json("--scenario", SCENARIO)
 
     assert data["scenario"] == SCENARIO

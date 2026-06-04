@@ -58,10 +58,10 @@ def _write_memory_grants() -> dict:
     }
 
 
-def test_not_enabled_memory_store_boundary_exists_but_remains_unavailable():
-    assert hasattr(memory, "NotEnabledMemoryStore")
+def test_unavailable_memory_store_boundary_exists_but_remains_unavailable():
+    assert hasattr(memory, "UnavailableMemoryStore")
 
-    store = memory.NotEnabledMemoryStore()
+    store = memory.UnavailableMemoryStore()
 
     with pytest.raises(PermissionError, match="memory persistence|not enabled|memory_record"):
         store.save_record(
@@ -72,7 +72,7 @@ def test_not_enabled_memory_store_boundary_exists_but_remains_unavailable():
 
 
 def test_direct_persistence_without_action_execution_is_rejected(tmp_path):
-    store = memory.NotEnabledMemoryStore(tmp_path)
+    store = memory.UnavailableMemoryStore(tmp_path)
 
     with pytest.raises(PermissionError, match="execution|authorized|not enabled"):
         store.save_record(
@@ -83,7 +83,7 @@ def test_direct_persistence_without_action_execution_is_rejected(tmp_path):
 
 
 def test_direct_persistence_without_write_memory_grant_is_rejected(tmp_path):
-    store = memory.NotEnabledMemoryStore(tmp_path)
+    store = memory.UnavailableMemoryStore(tmp_path)
 
     with pytest.raises(PermissionError, match="write_memory|grant|not enabled"):
         store.save_record(
@@ -96,7 +96,7 @@ def test_direct_persistence_without_write_memory_grant_is_rejected(tmp_path):
 
 
 def test_malformed_record_is_rejected_by_persistence_boundary(tmp_path):
-    store = memory.NotEnabledMemoryStore(tmp_path)
+    store = memory.UnavailableMemoryStore(tmp_path)
 
     malformed_record = {
         "memory_id": "mem_bad",
@@ -113,7 +113,7 @@ def test_malformed_record_is_rejected_by_persistence_boundary(tmp_path):
 
 
 def test_rejected_persistence_leaves_no_partial_record(tmp_path):
-    store = memory.NotEnabledMemoryStore(tmp_path)
+    store = memory.UnavailableMemoryStore(tmp_path)
     record = _valid_memory_record()
 
     with pytest.raises(PermissionError, match="not enabled|memory"):
@@ -128,7 +128,7 @@ def test_rejected_persistence_leaves_no_partial_record(tmp_path):
 
 
 def test_rejected_direct_persistence_emits_no_success_event(tmp_path):
-    store = memory.NotEnabledMemoryStore(tmp_path)
+    store = memory.UnavailableMemoryStore(tmp_path)
     events_for_run = event_store.FileEventStore(tmp_path)
 
     before = events_for_run.list_events("run_001")
@@ -174,14 +174,14 @@ def test_projector_rebuild_still_does_not_read_memory_store(tmp_path):
 
 
 def test_memory_query_default_shape_remains_refs_summary_preview_only():
-    result = memory.NotEnabledMemoryService().query(
+    result = memory.UnavailableMemoryService().query(
         run_id="run_001",
         query="worked examples",
         grants={"memory": {"query": True}},
         caller_context={"run_id": "run_001"},
     )
 
-    assert result["status"] in {"not_enabled", "limited", "denied"}
+    assert result["status"] in {"unavailable", "limited", "denied"}
     assert "content" not in result
     assert "artifact_content" not in result
     assert "full_text" not in result

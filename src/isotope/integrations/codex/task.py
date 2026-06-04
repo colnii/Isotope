@@ -1,4 +1,4 @@
-"""Codex-as-tool adapter contract for future agent CLI task execution."""
+"""Codex-as-tool adapter contract for agent CLI task execution."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from .task_request import build_codex_task_request
 
 
 class CodexTaskAdapter:
-    """Adapter boundary around a future Codex CLI task backend."""
+    """Adapter boundary around the Codex CLI task backend."""
 
     def __init__(
         self,
@@ -112,7 +112,7 @@ class CodexTaskAdapter:
             reason_code=result.reason_code,
             retryable=result.retryable,
             resource_usage=dict(result.resource_usage),
-            adapter_summary=_low_sensitive_adapter_summary(request, result),
+            adapter_summary=_public_metadata_adapter_summary(request, result),
         )
 
     def _normalize_result(self, raw_result: Any) -> CodexTaskResult:
@@ -186,7 +186,7 @@ def _capture_kind_from_artifact_type(artifact_type: str) -> str:
     return artifact_type
 
 
-def _low_sensitive_adapter_summary(
+def _public_metadata_adapter_summary(
     request: CodexTaskRequest,
     result: CodexTaskResult,
 ) -> dict[str, Any]:

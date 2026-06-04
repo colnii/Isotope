@@ -12,7 +12,7 @@ def build_agent_loop_default_context(
     control: dict[str, Any],
     memory_limit: int = 4,
 ) -> dict[str, Any]:
-    """Build low-sensitive runtime context for one provider planner decision."""
+    """Build public runtime context for one provider planner decision."""
     return {
         "memory": _default_memory_context(
             api,

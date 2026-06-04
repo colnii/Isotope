@@ -48,7 +48,7 @@ class RecordingProvider:
         )
 
 
-def test_workbench_ask_flow_answers_from_low_sensitive_workbench_context(tmp_path):
+def test_workbench_ask_flow_answers_from_public_metadata_workbench_context(tmp_path):
     ProjectFlow.in_process(tmp_path).create_project(
         name="portfolio demo",
         summary="autumn recruiting workspace",
@@ -106,7 +106,7 @@ def test_workbench_ask_flow_answers_from_low_sensitive_workbench_context(tmp_pat
             "summary": "portfolio notes",
         },
     ]
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
     prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
     assert prompt_payload["question"] == "portfolio 下一步做什么？"
@@ -168,14 +168,14 @@ def test_workbench_ask_flow_rejects_empty_provider_answer(tmp_path):
         WorkbenchAskFlow.in_process(tmp_path, provider=provider).answer("下一步做什么？")
 
 
-def _assert_low_sensitive(value: Any) -> None:
+def _assert_public_metadata(value: Any) -> None:
     if isinstance(value, dict):
         assert FORBIDDEN_KEYS.isdisjoint(value)
         for nested in value.values():
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
     elif isinstance(value, list):
         for nested in value:
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
     elif isinstance(value, str):
         assert "PRIVATE_FILE_CONTENT_SHOULD_NOT_LEAK" not in value
         assert "PRIVATE_TASK_NOTE_SHOULD_NOT_LEAK" not in value

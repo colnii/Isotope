@@ -1,8 +1,11 @@
-"""Read-only Codex session supervisor flow."""
+"""Codex session supervisor flow."""
 
 from __future__ import annotations
 
+import sys
+
 # Re-import the full module contents
+from . import _flow_impl as _impl
 from ._flow_impl import *
 
 # Re-export all private names needed by downstream importers
@@ -17,6 +20,7 @@ from ._flow_impl import (
     _optional_string,
     _parse_timestamp,
     _pid_is_running,
+    _read_session_summary,
     _shorten,
     _shorten_optional,
     _supervisor_protocol_from_text,
@@ -31,3 +35,5 @@ from ._flow_impl import (
     _tmux_window_has_bell,
     _utc_now,
 )
+
+sys.modules[__name__] = _impl

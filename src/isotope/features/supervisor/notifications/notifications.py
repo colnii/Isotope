@@ -1,4 +1,4 @@
-"""Supervisor event bridge for low-sensitive notifications."""
+"""Supervisor event bridge for public notifications."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def notify_goal_status_written(
     webhook_url: str | None = None,
     webhook_secret: str | None = None,
 ) -> NotificationSummary | None:
-    source_ref = _low_sensitive_source_ref(
+    source_ref = _public_metadata_source_ref(
         ref_type="supervisor_goal_status",
         goal_id=goal_id,
         status=status,
@@ -54,7 +54,7 @@ def notify_decision_request_written(
     webhook_url: str | None = None,
     webhook_secret: str | None = None,
 ) -> NotificationSummary | None:
-    source_ref = _low_sensitive_source_ref(
+    source_ref = _public_metadata_source_ref(
         ref_type="supervisor_decision_request",
         goal_id=goal_id,
         request_id=request_id,
@@ -81,7 +81,7 @@ def notify_decision_answer_written(
     webhook_url: str | None = None,
     webhook_secret: str | None = None,
 ) -> None:
-    source_ref = _low_sensitive_source_ref(
+    source_ref = _public_metadata_source_ref(
         ref_type="supervisor_decision_answer",
         goal_id=goal_id,
         request_id=request_id,
@@ -104,7 +104,7 @@ def notify_decision_request_timeout(
     webhook_url: str | None = None,
     webhook_secret: str | None = None,
 ) -> NotificationSummary | None:
-    source_ref = _low_sensitive_source_ref(
+    source_ref = _public_metadata_source_ref(
         ref_type="supervisor_decision_timeout",
         goal_id=goal_id,
         request_id=request_id,
@@ -134,7 +134,7 @@ def notify_worker_integration_review_passed(
     webhook_url: str | None = None,
     webhook_secret: str | None = None,
 ) -> None:
-    source_ref = _low_sensitive_source_ref(
+    source_ref = _public_metadata_source_ref(
         ref_type="supervisor_worker_integration_review",
         record_id=record_id,
         status=status,
@@ -155,7 +155,7 @@ def notify_merge_worker_auto_archived(
     status: str = "done",
     group: str = "already_integrated",
 ) -> NotificationSummary | None:
-    source_ref = _low_sensitive_source_ref(
+    source_ref = _public_metadata_source_ref(
         ref_type="supervisor_merge_worker_archive",
         record_id=record_id,
         status=status,
@@ -181,7 +181,7 @@ def dispatch_supervisor_webhook(
         return False
     payload = {
         "event_type": event_type,
-        "source_ref": _low_sensitive_source_ref(**source_ref),
+        "source_ref": _public_metadata_source_ref(**source_ref),
     }
     body = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
     headers = {
@@ -202,7 +202,7 @@ def dispatch_supervisor_webhook(
     return True
 
 
-def _low_sensitive_source_ref(**fields: str | None) -> dict[str, Any]:
+def _public_metadata_source_ref(**fields: str | None) -> dict[str, Any]:
     return {
         key: value
         for key, value in fields.items()

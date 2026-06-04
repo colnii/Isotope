@@ -277,8 +277,8 @@ def _select_model_tools(
         missing = sorted(selected_names.difference(available))
         raise IsotopeError(
             "requested model tools are not enabled",
-            code="llm_tool_not_enabled",
-            category="not_enabled",
+            code="llm_tool_unavailable",
+            category="unavailable",
             retryable=False,
             http_status=501,
             details={"tool_names": missing},

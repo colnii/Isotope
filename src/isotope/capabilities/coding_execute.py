@@ -1,4 +1,4 @@
-"""Bounded native coding execution loop."""
+"""Limited native coding execution loop."""
 
 from __future__ import annotations
 
@@ -53,13 +53,13 @@ def validate_coding_execute_inputs(
         ),
         field_name="allowed_commands",
     )
-    input_mapping["timeout_seconds"] = _bounded_int(
+    input_mapping["timeout_seconds"] = _limited_int(
         input_mapping.get("timeout_seconds", 30),
         field_name="timeout_seconds",
         minimum=1,
         maximum=120,
     )
-    input_mapping["max_output_bytes"] = _bounded_int(
+    input_mapping["max_output_bytes"] = _limited_int(
         input_mapping.get(
             "max_output_bytes",
             default_terminal_capabilities()["max_output_bytes"],
@@ -210,7 +210,7 @@ def _string_list(
     return result
 
 
-def _bounded_int(value: Any, *, field_name: str, minimum: int, maximum: int) -> int:
+def _limited_int(value: Any, *, field_name: str, minimum: int, maximum: int) -> int:
     if not isinstance(value, int) or isinstance(value, bool):
         raise ValueError(f"{field_name} must be an integer")
     if value < minimum or value > maximum:

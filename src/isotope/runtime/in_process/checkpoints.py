@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from ...platform.errors import not_enabled_result
 from ...platform.state.projector import RunProjector
 
 
@@ -10,9 +9,7 @@ class InProcessCheckpointMixin:
     """Save runtime checkpoints through the projector boundary."""
 
     def save_checkpoint_for_run(self, run_id: str) -> dict[str, str]:
-        self._validate_read_run_id(run_id)
-        if self.checkpoint_store is None:
-            return not_enabled_result("checkpoint")
+        self._validate_known_run_id(run_id)
         checkpoint = RunProjector().save_checkpoint(run_id, self.event_store, self.checkpoint_store)
         return {
             "status": "saved",
@@ -21,9 +18,7 @@ class InProcessCheckpointMixin:
         }
 
     def save_checkpoint_history_for_run(self, run_id: str) -> dict[str, str]:
-        self._validate_read_run_id(run_id)
-        if self.checkpoint_store is None:
-            return not_enabled_result("checkpoint_history")
+        self._validate_known_run_id(run_id)
         checkpoint = RunProjector().save_checkpoint_history(run_id, self.event_store, self.checkpoint_store)
         return {
             "status": "saved",
@@ -33,4 +28,4 @@ class InProcessCheckpointMixin:
         }
 
     def create_checkpoint(self, run_id: str) -> dict[str, str]:
-        return not_enabled_result("checkpoint")
+        return self.save_checkpoint_for_run(run_id)

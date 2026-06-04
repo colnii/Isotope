@@ -31,7 +31,7 @@ class RecordingAskProvider:
         )
 
 
-def test_http_api_workbench_ask_route_answers_from_low_sensitive_context(tmp_path):
+def test_http_api_workbench_ask_route_answers_from_public_metadata_context(tmp_path):
     provider = RecordingAskProvider("建议先把作品集拆成一个可展示任务。")
     app = create_http_app(tmp_path, workbench_ask_provider=provider)
     _successful_json(
@@ -95,7 +95,7 @@ def test_http_api_workbench_ask_route_answers_from_low_sensitive_context(tmp_pat
     _assert_no_private_content(payload)
 
 
-def test_http_api_workbench_ask_route_is_not_enabled_without_provider(tmp_path):
+def test_http_api_workbench_ask_route_is_unavailable_without_provider(tmp_path):
     app = create_http_app(tmp_path)
 
     response = _request(
@@ -106,7 +106,7 @@ def test_http_api_workbench_ask_route_is_not_enabled_without_provider(tmp_path):
     )
 
     assert response.status_code == 501
-    assert response.body["error"]["code"] == "not_enabled"
+    assert response.body["error"]["code"] == "unavailable"
     assert response.body["error"]["capability"] == "workbench_ask"
 
 

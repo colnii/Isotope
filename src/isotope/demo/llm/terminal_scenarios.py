@@ -159,6 +159,6 @@ def _run_llm_terminal_tool_loop_demo(root: Path) -> dict[str, Any]:
         "real_llm_status": "fake_provider",
         "provider_status": "fake_tool_call",
         "network_listener_status": "not_used",
-        "memory_status": "boundary_only",
-        "memory_query_status": "not_enabled",
+        "memory_status": "active",
+        "memory_query_status": "unavailable",
     }

@@ -116,24 +116,22 @@ def test_model_tool_bridge_submits_enabled_codex_task_and_waits_for_approval(tmp
     assert not ACTION_EXECUTION_EVENTS.intersection(event_types)
 
 
-def test_model_tool_bridge_rejects_default_deferred_codex_task_without_side_effects(tmp_path):
+def test_model_tool_bridge_accepts_default_codex_task_without_execution_side_effects(tmp_path):
     app = create_http_app(tmp_path)
     run_id = _create_run(app)
-    before_events = _event_types(app, run_id)
 
-    with pytest.raises(IsotopeError) as exc_info:
-        submit_model_tool_call(
-            app,
-            run_id,
-            {
-                "tool_name": "codex_task",
-                "arguments": {"prompt": "Inspect the repository."},
-            },
-        )
+    result = submit_model_tool_call(
+        app,
+        run_id,
+        {
+            "tool_name": "codex_task",
+            "arguments": {"prompt": "Inspect the repository."},
+        },
+    )
 
-    assert exc_info.value.code == "model_tool_not_enabled"
-    assert exc_info.value.details == {"tool_name": "codex_task"}
-    assert _event_types(app, run_id) == before_events
+    assert result["status"] == "pending_user_approval"
+    assert result["tool_name"] == "codex_task"
+    assert "approval.requested" in _event_types(app, run_id)
     assert app.server.artifact_store.list_artifacts(run_id) == []
 
 
@@ -348,7 +346,7 @@ def test_model_tool_bridge_rejects_enabled_tool_without_bridge_route(tmp_path):
             },
         )
 
-    assert exc_info.value.code == "model_tool_route_not_enabled"
+    assert exc_info.value.code == "model_tool_route_unavailable"
     assert exc_info.value.details == {"tool_name": "write_artifact_tool"}
     assert _event_types(app, run_id) == before_events
     assert app.server.artifact_store.list_artifacts(run_id) == []

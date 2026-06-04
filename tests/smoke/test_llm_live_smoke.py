@@ -394,16 +394,16 @@ def test_llm_terminal_tool_diagnosis_reports_ready_without_leaks(tmp_path):
         "terminal_completed": True,
         "codex_started": False,
         "summary": "provider selected terminal_exec and Isotope completed the terminal action",
-        "next_step": "use this as a dev-only preflight before application-layer terminal wiring",
+        "next_step": "use this as a dev-only readiness_check before application-layer terminal wiring",
     }
-    assert result["preflight"] == {
+    assert result["readiness_check"] == {
         "ready": True,
         "gate": "passed",
         "category": "ready",
         "status": "completed",
         "reason_code": "llm_terminal_tool_live_smoke_completed",
         "summary": "provider selected terminal_exec and Isotope completed the terminal action",
-        "next_step": "use this as a dev-only preflight before application-layer terminal wiring",
+        "next_step": "use this as a dev-only readiness_check before application-layer terminal wiring",
     }
     rendered = repr(result)
     assert "TERMINAL_DIAG_STDOUT_SHOULD_NOT_LEAK" not in rendered
@@ -434,7 +434,7 @@ def test_llm_terminal_tool_smoke_cli_can_print_diagnosis(tmp_path, capsys):
     assert payload["codex_call_count"] == 0
     assert payload["result"]["status"] == "completed"
     assert payload["result"]["diagnosis"]["category"] == "ready"
-    assert payload["result"]["preflight"]["ready"] is True
+    assert payload["result"]["readiness_check"]["ready"] is True
     assert "TERMINAL_TOOL_CLI_FAKE_STDOUT_SHOULD_NOT_LEAK" not in repr(payload)
 
 
@@ -469,7 +469,7 @@ def test_llm_terminal_tool_smoke_cli_diagnoses_missing_provider_without_side_eff
                 "terminal_executed": False,
                 "terminal_tool_selected": False,
             },
-            "preflight": {
+            "readiness_check": {
                 "category": "missing_configuration",
                 "gate": "blocked",
                 "next_step": "configure ISOTOPE_LLM_PROVIDER and provider credentials before running terminal-tool smoke",
@@ -505,7 +505,7 @@ def test_llm_terminal_tool_diagnosis_reports_unoffered_tool_without_action_side_
     assert result["diagnosis"]["provider_request_started"] is True
     assert result["diagnosis"]["terminal_tool_selected"] is False
     assert result["diagnosis"]["terminal_executed"] is False
-    assert result["preflight"]["ready"] is False
+    assert result["readiness_check"]["ready"] is False
     assert "action.started" not in _event_types(app, run_id)
     assert "codex_task" not in repr(result)
 
@@ -539,7 +539,7 @@ def test_llm_terminal_tool_diagnosis_reports_invalid_terminal_arguments_without_
     assert result["diagnosis"]["category"] == "provider_tool_arguments_invalid"
     assert result["diagnosis"]["terminal_tool_selected"] is True
     assert result["diagnosis"]["terminal_executed"] is False
-    assert result["preflight"]["ready"] is False
+    assert result["readiness_check"]["ready"] is False
     assert "action.started" not in _event_types(app, run_id)
     assert "/bin/echo" not in repr(result)
 
@@ -576,7 +576,7 @@ def test_llm_terminal_tool_diagnosis_reports_pending_approval_without_execution(
     assert result["diagnosis"]["category"] == "terminal_approval_required"
     assert result["diagnosis"]["terminal_tool_selected"] is True
     assert result["diagnosis"]["terminal_executed"] is False
-    assert result["preflight"]["ready"] is False
+    assert result["readiness_check"]["ready"] is False
     assert "action.started" not in _event_types(app, run_id)
     assert "approval.requested" in _event_types(app, run_id)
     assert "PENDING_APPROVAL_STDOUT_SHOULD_NOT_LEAK" not in repr(result)
@@ -613,7 +613,7 @@ def test_llm_terminal_tool_diagnosis_reports_terminal_execution_failure_without_
     assert result["diagnosis"]["terminal_tool_selected"] is True
     assert result["diagnosis"]["terminal_executed"] is True
     assert result["diagnosis"]["terminal_completed"] is False
-    assert result["preflight"]["ready"] is False
+    assert result["readiness_check"]["ready"] is False
     assert "action.started" in _event_types(app, run_id)
     assert "action.failed" in _event_types(app, run_id)
     assert "stdout" not in repr(result).lower()
@@ -629,7 +629,7 @@ def test_llm_product_chat_live_smoke_is_skipped_by_default_without_side_effects(
 
     assert result == {
         "status": "skipped",
-        "reason_code": "llm_product_chat_live_smoke_not_enabled",
+        "reason_code": "llm_product_chat_live_smoke_unavailable",
         "provider": "auto",
         "case_count": 0,
         "cases": [],
@@ -746,16 +746,16 @@ def test_llm_product_chat_diagnosis_reports_ready_without_leaks(tmp_path):
         "approval_resolved": True,
         "resume_completed": True,
         "summary": "product-chat smoke completed direct answer, approval pause, and resume final answer",
-        "next_step": "use this as a dev-only preflight before application-layer product chat wiring",
+        "next_step": "use this as a dev-only readiness_check before application-layer product chat wiring",
     }
-    assert result["preflight"] == {
+    assert result["readiness_check"] == {
         "ready": True,
         "gate": "passed",
         "category": "ready",
         "status": "completed",
         "reason_code": "llm_product_chat_live_smoke_completed",
         "summary": "product-chat smoke completed direct answer, approval pause, and resume final answer",
-        "next_step": "use this as a dev-only preflight before application-layer product chat wiring",
+        "next_step": "use this as a dev-only readiness_check before application-layer product chat wiring",
     }
     assert len(provider.calls) == 3
     assert len(runner.calls) == 1
@@ -848,7 +848,7 @@ def test_llm_product_chat_smoke_cli_can_print_diagnosis(tmp_path, capsys):
     assert captured.err == ""
     assert payload["result"]["status"] == "completed"
     assert payload["result"]["diagnosis"]["category"] == "ready"
-    assert payload["result"]["preflight"]["ready"] is True
+    assert payload["result"]["readiness_check"]["ready"] is True
     assert payload["result"]["diagnosis"]["approval_resolved"] is True
     assert payload["runner_call_count"] == 1
 
@@ -940,7 +940,7 @@ def test_llm_product_chat_smoke_cli_diagnoses_missing_provider_without_side_effe
                 "resume_completed": False,
                 "summary": "LLM provider is not configured",
             },
-            "preflight": {
+            "readiness_check": {
                 "category": "missing_configuration",
                 "gate": "blocked",
                 "next_step": "configure ISOTOPE_LLM_PROVIDER and provider credentials before running product-chat smoke",
@@ -958,7 +958,7 @@ def test_llm_product_chat_smoke_cli_diagnoses_missing_provider_without_side_effe
     assert not (tmp_path / "runs").exists()
 
 
-def test_llm_product_chat_entry_cli_rejects_empty_message_without_preflight_side_effects(
+def test_llm_product_chat_entry_cli_rejects_empty_message_without_readiness_check_side_effects(
     tmp_path,
     capsys,
 ):
@@ -987,7 +987,7 @@ def test_llm_product_chat_entry_cli_rejects_empty_message_without_preflight_side
             "reason_code": "llm_product_chat_user_message_required",
             "status": "bad_request",
         },
-        "preflight": {
+        "readiness_check": {
             "category": "invalid_request",
             "gate": "blocked",
             "next_step": "pass a non-empty --message value",
@@ -1001,7 +1001,7 @@ def test_llm_product_chat_entry_cli_rejects_empty_message_without_preflight_side
     assert not (tmp_path / "runs").exists()
 
 
-def test_llm_product_chat_entry_cli_blocks_when_preflight_is_not_ready_without_side_effects(
+def test_llm_product_chat_entry_cli_blocks_when_readiness_check_is_not_ready_without_side_effects(
     tmp_path,
     capsys,
 ):
@@ -1024,23 +1024,23 @@ def test_llm_product_chat_entry_cli_blocks_when_preflight_is_not_ready_without_s
     assert payload["command"] == "llm_product_chat_app_entry"
     assert payload["codex_runner"] == "fake"
     assert payload["runner_call_count"] == 0
-    assert payload["preflight"]["ready"] is False
-    assert payload["preflight"]["category"] == "missing_configuration"
+    assert payload["readiness_check"]["ready"] is False
+    assert payload["readiness_check"]["category"] == "missing_configuration"
     assert payload["entry"] == {
         "explanation": {
             "next_step": "configure ISOTOPE_LLM_PROVIDER and provider credentials before running product-chat smoke",
             "summary": "LLM provider is not configured",
         },
         "http_status": 412,
-        "preflight_category": "missing_configuration",
-        "reason_code": "llm_product_chat_preflight_blocked",
-        "status": "blocked_by_preflight",
+        "readiness_check_category": "missing_configuration",
+        "reason_code": "llm_product_chat_readiness_check_blocked",
+        "status": "blocked_by_readiness_check",
     }
     assert "ENTRY_CLI_BLOCKED_MESSAGE_SHOULD_NOT_LEAK" not in repr(payload)
     assert not (tmp_path / "runs").exists()
 
 
-def test_llm_product_chat_entry_cli_runs_fake_provider_after_ready_preflight(
+def test_llm_product_chat_entry_cli_runs_fake_provider_after_ready_readiness_check(
     tmp_path,
     capsys,
 ):
@@ -1066,8 +1066,8 @@ def test_llm_product_chat_entry_cli_runs_fake_provider_after_ready_preflight(
     assert payload["command"] == "llm_product_chat_app_entry"
     assert payload["codex_runner"] == "fake"
     assert payload["runner_call_count"] == 1
-    assert payload["preflight"]["ready"] is True
-    assert payload["preflight"]["category"] == "ready"
+    assert payload["readiness_check"]["ready"] is True
+    assert payload["readiness_check"]["category"] == "ready"
     assert payload["entry"] == {
         "artifact_ref_present": True,
         "assistant_message_present": True,
@@ -1110,7 +1110,7 @@ def test_llm_product_chat_entry_cli_fake_provider_does_not_require_codex_executa
     payload = json.loads(captured.out)
     assert exit_code == 0
     assert captured.err == ""
-    assert payload["preflight"]["ready"] is True
+    assert payload["readiness_check"]["ready"] is True
     assert payload["entry"]["status"] == "completed"
     assert payload["runner_call_count"] == 1
     assert "ENTRY_CLI_MISSING_CODEX_MESSAGE_SHOULD_NOT_LEAK" not in repr(payload)
@@ -1123,13 +1123,13 @@ def test_llm_product_chat_entry_cli_pending_json_reports_safe_approval_next_step
 ):
     provider = SequencedChatProvider(
         [
-            _final_answer_response("ENTRY_CLI_PREFLIGHT_DIRECT_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_CLI_READINESS_CHECK_DIRECT_SHOULD_NOT_LEAK"),
             _provider_response(
-                prompt="ENTRY_CLI_PREFLIGHT_TOOL_PROMPT_SHOULD_NOT_LEAK",
-                call_id="call_entry_cli_preflight",
-                summary="entry cli preflight task",
+                prompt="ENTRY_CLI_READINESS_CHECK_TOOL_PROMPT_SHOULD_NOT_LEAK",
+                call_id="call_entry_cli_readiness_check",
+                summary="entry cli readiness_check task",
             ),
-            _final_answer_response("ENTRY_CLI_PREFLIGHT_RESUME_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_CLI_READINESS_CHECK_RESUME_SHOULD_NOT_LEAK"),
             _provider_response(
                 prompt="ENTRY_CLI_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK",
                 call_id="call_entry_cli_pending",
@@ -1398,7 +1398,7 @@ def test_llm_product_chat_entry_cli_fake_entry_pending_requires_fake_provider(
             "reason_code": "llm_product_chat_fake_entry_pending_requires_fake_provider",
             "status": "bad_request",
         },
-        "preflight": {
+        "readiness_check": {
             "category": "invalid_request",
             "gate": "blocked",
             "next_step": "pass --fake-provider with --fake-entry-pending, or remove --fake-entry-pending",
@@ -1412,7 +1412,7 @@ def test_llm_product_chat_entry_cli_fake_entry_pending_requires_fake_provider(
     assert "ENTRY_CLI_FLAG_REQUIRES_FAKE_PROVIDER_SHOULD_NOT_LEAK" not in repr(payload)
 
 
-def test_llm_product_chat_entry_cli_root_file_reports_safe_error_without_preflight_side_effects(
+def test_llm_product_chat_entry_cli_root_file_reports_safe_error_without_readiness_check_side_effects(
     tmp_path,
     capsys,
 ):
@@ -1491,7 +1491,7 @@ def test_llm_product_chat_entry_cli_resume_state_rejects_new_entry_flags_without
             "reason_code": "llm_product_chat_resume_state_conflicting_flags",
             "status": "bad_request",
         },
-        "preflight": {
+        "readiness_check": {
             "category": "invalid_request",
             "gate": "blocked",
             "next_step": "use --resume-state by itself, or start a new product-chat-entry request",
@@ -1512,13 +1512,13 @@ def test_llm_product_chat_entry_cli_pending_plain_output_reports_approval_next_s
 ):
     provider = SequencedChatProvider(
         [
-            _final_answer_response("ENTRY_CLI_PLAIN_PREFLIGHT_DIRECT_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_CLI_PLAIN_READINESS_CHECK_DIRECT_SHOULD_NOT_LEAK"),
             _provider_response(
-                prompt="ENTRY_CLI_PLAIN_PREFLIGHT_TOOL_PROMPT_SHOULD_NOT_LEAK",
-                call_id="call_entry_cli_plain_preflight",
-                summary="entry cli plain preflight task",
+                prompt="ENTRY_CLI_PLAIN_READINESS_CHECK_TOOL_PROMPT_SHOULD_NOT_LEAK",
+                call_id="call_entry_cli_plain_readiness_check",
+                summary="entry cli plain readiness_check task",
             ),
-            _final_answer_response("ENTRY_CLI_PLAIN_PREFLIGHT_RESUME_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_CLI_PLAIN_READINESS_CHECK_RESUME_SHOULD_NOT_LEAK"),
             _provider_response(
                 prompt="ENTRY_CLI_PLAIN_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK",
                 call_id="call_entry_cli_plain_pending",
@@ -1567,13 +1567,13 @@ def test_llm_product_chat_entry_cli_pending_json_writes_resume_state_without_lea
 ):
     provider = SequencedChatProvider(
         [
-            _final_answer_response("ENTRY_STATE_PREFLIGHT_DIRECT_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_STATE_READINESS_CHECK_DIRECT_SHOULD_NOT_LEAK"),
             _provider_response(
-                prompt="ENTRY_STATE_PREFLIGHT_TOOL_PROMPT_SHOULD_NOT_LEAK",
-                call_id="call_entry_state_preflight",
-                summary="entry state preflight task",
+                prompt="ENTRY_STATE_READINESS_CHECK_TOOL_PROMPT_SHOULD_NOT_LEAK",
+                call_id="call_entry_state_readiness_check",
+                summary="entry state readiness_check task",
             ),
-            _final_answer_response("ENTRY_STATE_PREFLIGHT_RESUME_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_STATE_READINESS_CHECK_RESUME_SHOULD_NOT_LEAK"),
             _provider_response(
                 prompt="ENTRY_STATE_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK",
                 call_id="call_entry_state_pending",
@@ -1616,7 +1616,7 @@ def test_llm_product_chat_entry_cli_pending_json_writes_resume_state_without_lea
     assert state["run_id"].startswith("run_")
     assert state["approval_id"].startswith("approval_")
     assert state["llm_result"]["approval_id"] == state["approval_id"]
-    assert state["preflight"]["ready"] is True
+    assert state["readiness_check"]["ready"] is True
     rendered_payload = repr(payload)
     rendered_state = repr(state)
     assert state["approval_id"] not in rendered_payload
@@ -1633,13 +1633,13 @@ def test_llm_product_chat_entry_cli_resume_state_approves_and_returns_final_answ
 ):
     first_provider = SequencedChatProvider(
         [
-            _final_answer_response("ENTRY_RESUME_PREFLIGHT_DIRECT_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_RESUME_READINESS_CHECK_DIRECT_SHOULD_NOT_LEAK"),
             _provider_response(
-                prompt="ENTRY_RESUME_PREFLIGHT_TOOL_PROMPT_SHOULD_NOT_LEAK",
-                call_id="call_entry_resume_preflight",
-                summary="entry resume preflight task",
+                prompt="ENTRY_RESUME_READINESS_CHECK_TOOL_PROMPT_SHOULD_NOT_LEAK",
+                call_id="call_entry_resume_readiness_check",
+                summary="entry resume readiness_check task",
             ),
-            _final_answer_response("ENTRY_RESUME_PREFLIGHT_RESUME_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_RESUME_READINESS_CHECK_RESUME_SHOULD_NOT_LEAK"),
             _provider_response(
                 prompt="ENTRY_RESUME_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK",
                 call_id="call_entry_resume_pending",
@@ -2172,12 +2172,12 @@ def test_llm_product_chat_entry_cli_resume_state_reports_mismatched_state_json(
 ):
     provider = SequencedChatProvider(
         [
-            _final_answer_response("ENTRY_MISMATCH_PREFLIGHT_DIRECT_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_MISMATCH_READINESS_CHECK_DIRECT_SHOULD_NOT_LEAK"),
             _provider_response(
-                prompt="ENTRY_MISMATCH_PREFLIGHT_TOOL_PROMPT_SHOULD_NOT_LEAK",
-                call_id="call_entry_mismatch_preflight",
+                prompt="ENTRY_MISMATCH_READINESS_CHECK_TOOL_PROMPT_SHOULD_NOT_LEAK",
+                call_id="call_entry_mismatch_readiness_check",
             ),
-            _final_answer_response("ENTRY_MISMATCH_PREFLIGHT_RESUME_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_MISMATCH_READINESS_CHECK_RESUME_SHOULD_NOT_LEAK"),
             _provider_response(
                 prompt="ENTRY_MISMATCH_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK",
                 call_id="call_entry_mismatch_pending",
@@ -2249,12 +2249,12 @@ def test_llm_product_chat_entry_cli_resume_state_reports_already_resumed_json(
 ):
     provider = SequencedChatProvider(
         [
-            _final_answer_response("ENTRY_ALREADY_PREFLIGHT_DIRECT_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_ALREADY_READINESS_CHECK_DIRECT_SHOULD_NOT_LEAK"),
             _provider_response(
-                prompt="ENTRY_ALREADY_PREFLIGHT_TOOL_PROMPT_SHOULD_NOT_LEAK",
-                call_id="call_entry_already_preflight",
+                prompt="ENTRY_ALREADY_READINESS_CHECK_TOOL_PROMPT_SHOULD_NOT_LEAK",
+                call_id="call_entry_already_readiness_check",
             ),
-            _final_answer_response("ENTRY_ALREADY_PREFLIGHT_RESUME_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_ALREADY_READINESS_CHECK_RESUME_SHOULD_NOT_LEAK"),
             _provider_response(
                 prompt="ENTRY_ALREADY_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK",
                 call_id="call_entry_already_pending",
@@ -2321,12 +2321,12 @@ def test_llm_product_chat_entry_cli_resume_state_plain_reports_missing_approval_
 ):
     provider = SequencedChatProvider(
         [
-            _final_answer_response("ENTRY_MISSING_PREFLIGHT_DIRECT_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_MISSING_READINESS_CHECK_DIRECT_SHOULD_NOT_LEAK"),
             _provider_response(
-                prompt="ENTRY_MISSING_PREFLIGHT_TOOL_PROMPT_SHOULD_NOT_LEAK",
-                call_id="call_entry_missing_preflight",
+                prompt="ENTRY_MISSING_READINESS_CHECK_TOOL_PROMPT_SHOULD_NOT_LEAK",
+                call_id="call_entry_missing_readiness_check",
             ),
-            _final_answer_response("ENTRY_MISSING_PREFLIGHT_RESUME_SHOULD_NOT_LEAK"),
+            _final_answer_response("ENTRY_MISSING_READINESS_CHECK_RESUME_SHOULD_NOT_LEAK"),
             _provider_response(
                 prompt="ENTRY_MISSING_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK",
                 call_id="call_entry_missing_pending",
@@ -2380,7 +2380,7 @@ def test_llm_product_chat_entry_cli_resume_state_plain_reports_missing_approval_
     assert "ENTRY_MISSING_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK" not in captured.out
 
 
-def test_llm_product_chat_entry_cli_plain_output_is_low_sensitive(tmp_path, capsys):
+def test_llm_product_chat_entry_cli_plain_output_is_public_metadata(tmp_path, capsys):
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
@@ -2399,7 +2399,7 @@ def test_llm_product_chat_entry_cli_plain_output_is_low_sensitive(tmp_path, caps
     assert exit_code == 0
     assert captured.err == ""
     assert "command: llm_product_chat_app_entry" in captured.out
-    assert "preflight_ready: true" in captured.out
+    assert "readiness_check_ready: true" in captured.out
     assert "entry_status: completed" in captured.out
     assert "assistant_message_present: true" in captured.out
     assert "ENTRY_CLI_PLAIN_MESSAGE_SHOULD_NOT_LEAK" not in captured.out
@@ -2416,7 +2416,7 @@ def test_deepseek_tool_call_live_smoke_is_skipped_by_default(tmp_path):
 
     assert result == {
         "status": "skipped",
-        "reason_code": "deepseek_tool_call_live_smoke_not_enabled",
+        "reason_code": "deepseek_tool_call_live_smoke_unavailable",
         "provider": "deepseek",
         "tool_name": "codex_task",
     }
@@ -2607,9 +2607,9 @@ def test_deepseek_tool_call_diagnosis_reports_unavailable_requested_tool(tmp_pat
         provider=provider,
     )
 
-    assert result["reason_code"] == "llm_tool_not_enabled"
+    assert result["reason_code"] == "llm_tool_unavailable"
     assert result["diagnosis"] == {
-        "category": "tool_not_enabled",
+        "category": "tool_unavailable",
         "provider_request_started": False,
         "approval_requested": False,
         "codex_started": False,
@@ -2647,7 +2647,7 @@ def test_deepseek_tool_call_diagnosis_reports_provider_selected_unoffered_tool(t
 
     assert result["reason_code"] == "llm_provider_selected_unoffered_tool"
     assert result["diagnosis"] == {
-        "category": "tool_not_enabled",
+        "category": "tool_unavailable",
         "provider_request_started": True,
         "approval_requested": False,
         "codex_started": False,

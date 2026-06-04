@@ -60,7 +60,7 @@ def _controlled_expand_preview_metadata(grants: dict[str, Any]) -> dict[str, Any
     if budget is None:
         raise ValueError("controlled expand preview metadata requires a valid budget")
     return {
-        "status": "deferred",
+        "status": "queued",
         "budget": budget,
         "content_policy": "summary_refs_provenance_only",
     }
@@ -147,13 +147,13 @@ def _denied_memory_query_result(
     }
 
 
-def _not_enabled_memory_query_result(
+def _unavailable_memory_query_result(
     controlled_expand: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
-        "status": "not_enabled",
+        "status": "unavailable",
         "capability": "memory_query",
-        "reason_code": "memory_query_not_enabled",
+        "reason_code": "memory_query_unavailable",
         "content_policy": "summary_refs_provenance_only",
         "results": [],
     }
@@ -203,7 +203,7 @@ def _validate_memory_record_shape(record: MemoryRecord | dict[str, Any]) -> None
             raise ValueError(f"memory record provenance.{field_name} must be a non-empty string")
 
 
-class NotEnabledMemoryStore:
+class UnavailableMemoryStore:
     """Not-enabled persistence boundary; it never writes durable records."""
 
     def __init__(self, root: str | Path | None = None) -> None:
@@ -356,7 +356,7 @@ class LocalMemoryQueryService:
         return result
 
 
-class NotEnabledMemoryQueryService:
+class UnavailableMemoryQueryService:
     """Not-enabled query boundary; it validates auth shape before refusing."""
 
     def __init__(self, memory_store=None) -> None:
@@ -417,11 +417,11 @@ class NotEnabledMemoryQueryService:
         controlled_expand_metadata = (
             _controlled_expand_preview_metadata(grants) if controlled_expand else None
         )
-        return _not_enabled_memory_query_result(controlled_expand_metadata)
+        return _unavailable_memory_query_result(controlled_expand_metadata)
 
 
-class NotEnabledMemoryService:
-    """Deferred memory query boundary for the v0.1 slice."""
+class UnavailableMemoryService:
+    """Queued memory query boundary for the v0.1 slice."""
 
     def write_record(
         self,
@@ -438,4 +438,4 @@ class NotEnabledMemoryService:
         grants: dict | None = None,
         caller_context: dict | None = None,
     ) -> dict[str, str]:
-        return {"status": "not_enabled", "capability": "memory_query"}
+        return {"status": "unavailable", "capability": "memory_query"}

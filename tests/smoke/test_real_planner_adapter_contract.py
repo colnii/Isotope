@@ -60,8 +60,8 @@ def _provider_result(parsed_output: dict[str, Any]) -> dict[str, Any]:
     return {
         "provider_result_id": "fake_provider_result_001",
         "provider_status": "completed",
-        "raw_prompt_quarantined": True,
-        "raw_response_quarantined": True,
+        "raw_prompt_filtered": True,
+        "raw_response_filtered": True,
         "parsed_planner_output": parsed_output,
     }
 
@@ -91,8 +91,8 @@ def test_real_planner_contract_executes_only_parsed_symbolic_output(tmp_path):
 
     assert result["contract_status"] == "accepted"
     assert result["provider_result_id"] == "fake_provider_result_001"
-    assert result["raw_prompt_quarantined"] is True
-    assert result["raw_response_quarantined"] is True
+    assert "raw_prompt_filtered" not in result
+    assert "raw_response_filtered" not in result
     assert result["planner_result"]["planner_status"] == "accepted"
     assert result["planner_result"]["selected_step"] == "submit_approval_gated_action"
     assert result["control"]["phase"] == "awaiting_approval"
@@ -105,13 +105,13 @@ def test_real_planner_contract_executes_only_parsed_symbolic_output(tmp_path):
     _assert_no_forbidden_provider_keys(result)
 
 
-def test_real_planner_contract_rejects_unquarantined_raw_payload_without_side_effects(tmp_path):
+def test_real_planner_contract_rejects_unfiltered_raw_payload_without_side_effects(tmp_path):
     api, run_id = _new_run(tmp_path)
     control = api.get_agent_loop_control(run_id)
     provider_result = _provider_result(
         _planner_output(control, "submit_approval_gated_action", _approval_request())
     )
-    provider_result["raw_response_quarantined"] = False
+    provider_result["raw_response_filtered"] = False
     provider_result["raw_response"] = "raw model text must stay outside kernel"
     before_events = list(api.get_events(run_id))
 

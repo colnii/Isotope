@@ -218,7 +218,7 @@ def test_editable_install_runs_json_demo_without_pythonpath(installed_python):
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert REQUIRED_DEMO_JSON_FIELDS.issubset(data)
-    assert data["memory_status"] == "boundary_only"
+    assert data["memory_status"] == "active"
     _assert_no_forbidden_content_keys(data)
 
 

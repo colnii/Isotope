@@ -16,14 +16,14 @@ FORBIDDEN_CONTENT_KEYS = {
 }
 
 
-def _assert_low_sensitive(value: Any) -> None:
+def _assert_public_metadata(value: Any) -> None:
     if isinstance(value, dict):
         assert FORBIDDEN_CONTENT_KEYS.isdisjoint(value)
         for nested in value.values():
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
     elif isinstance(value, list):
         for nested in value:
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
 
 
 def test_project_workspace_flow_creates_linked_detail_and_workbench_view(tmp_path):
@@ -62,7 +62,7 @@ def test_project_workspace_flow_creates_linked_detail_and_workbench_view(tmp_pat
         "project_detail": workspace.project_detail.to_dict(),
         "workbench": workspace.workbench.to_dict(),
     }
-    _assert_low_sensitive(workspace.to_dict())
+    _assert_public_metadata(workspace.to_dict())
 
 
 def test_project_workspace_flow_appends_task_and_file_to_existing_project(tmp_path):
@@ -107,4 +107,4 @@ def test_project_workspace_flow_appends_task_and_file_to_existing_project(tmp_pa
         "file",
         "file",
     ]
-    _assert_low_sensitive(appended.to_dict())
+    _assert_public_metadata(appended.to_dict())

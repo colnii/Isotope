@@ -83,7 +83,7 @@ def _capability(capability_id, shelf, **overrides):
         "domain_tags": tuple(capability_id.split(".")),
         "input_contract": {"type": "object"},
         "output_contract": {"type": "object"},
-        "safety_boundaries": ("low_sensitive_manifest_only",),
+        "safety_boundaries": ("public_metadata_manifest_only",),
         "default_enabled": True,
         "required_env": (),
         "network_required": False,
@@ -120,7 +120,7 @@ def test_runner_list_uses_capability_catalog_as_source_of_truth():
     ]
 
 
-def test_runner_describe_returns_low_sensitive_catalog_metadata():
+def test_runner_describe_returns_public_metadata_catalog_metadata():
     description = _runner().describe_capability("artifact.review")
 
     assert description["capability_id"] == "artifact.review"
@@ -142,7 +142,7 @@ def test_runner_discovers_supervisor_request_context_from_default_catalog():
     description = runner.describe_capability("supervisor.request_context")
     assert description["input_contract"]["required"] == ["state_root", "cwd", "query"]
     assert "codex_home" not in description["input_contract"]["properties"]
-    assert "workspace_read_only" in description["safety_boundaries"]
+    assert "workspace_view_only" in description["safety_boundaries"]
     assert "writes_existing_supervisor_context_store" in description["safety_boundaries"]
 
 
@@ -156,7 +156,7 @@ def test_runner_discovers_supervisor_worker_review_from_default_catalog():
     description = runner.describe_capability("supervisor.worker_review")
     assert description["input_contract"]["required"] == ["state_root"]
     assert "codex_home" not in description["input_contract"]["properties"]
-    assert "workspace_read_only" in description["safety_boundaries"]
+    assert "workspace_view_only" in description["safety_boundaries"]
     assert "no_merge_or_cleanup" in description["safety_boundaries"]
 
 
@@ -170,7 +170,7 @@ def test_runner_discovers_supervisor_integration_review_from_default_catalog():
     description = runner.describe_capability("supervisor.integration_review")
     assert description["input_contract"]["required"] == ["state_root"]
     assert "codex_home" not in description["input_contract"]["properties"]
-    assert "workspace_read_only" in description["safety_boundaries"]
+    assert "workspace_view_only" in description["safety_boundaries"]
     assert "no_merge_push_or_cleanup" in description["safety_boundaries"]
 
 
@@ -214,8 +214,8 @@ def test_runner_discovers_screen_report_from_default_catalog():
     assert _ids(search["capabilities"]) == ["screen.report"]
     description = runner.describe_capability("screen.report")
     assert description["input_contract"]["required"] == ["root", "run_id"]
-    assert "screen_artifact_read_only" in description["safety_boundaries"]
-    assert "low_sensitive_summary_only" in description["safety_boundaries"]
+    assert "screen_artifact_view_only" in description["safety_boundaries"]
+    assert "public_metadata_summary_only" in description["safety_boundaries"]
 
 
 def test_runner_discovers_research_search_from_default_catalog():
@@ -394,7 +394,7 @@ def test_runner_discovers_coding_task_execute_from_default_catalog():
         "execution_id",
     ]
     assert "no_codex_delegation" in description["safety_boundaries"]
-    assert "bounded_step_count" in description["safety_boundaries"]
+    assert "limited_step_count" in description["safety_boundaries"]
 
 
 def test_runner_executes_native_coding_task_in_isolated_workspace(tmp_path):
@@ -1014,7 +1014,7 @@ def test_runner_discovers_code_read_and_search_from_default_catalog():
     assert read_description["input_contract"]["required"] == ["root", "cwd", "path"]
     assert search_description["input_contract"]["required"] == ["root", "cwd", "query"]
     assert "relative_paths_only" in read_description["safety_boundaries"]
-    assert "bounded_excerpts_only" in read_description["safety_boundaries"]
+    assert "limited_excerpts_only" in read_description["safety_boundaries"]
     assert "no_filesystem_write" in search_description["safety_boundaries"]
 
 
@@ -1061,7 +1061,7 @@ def test_runner_reads_code_file_excerpt_without_side_effects(tmp_path):
     assert not list(root.rglob("*"))
 
 
-def test_runner_searches_code_with_bounded_line_excerpts(tmp_path):
+def test_runner_searches_code_with_limited_line_excerpts(tmp_path):
     workspace = tmp_path / "repo"
     (workspace / "src").mkdir(parents=True)
     (workspace / "src" / "app.py").write_text(
@@ -2229,7 +2229,7 @@ def test_integration_review_capability_runs_existing_readonly_review(monkeypatch
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
-def test_memory_query_capability_runs_existing_low_sensitive_query(tmp_path):
+def test_memory_query_capability_runs_existing_public_metadata_query(tmp_path):
     memory_dir = tmp_path / "memory"
     memory_dir.mkdir()
     _write_memory_record(
@@ -2308,7 +2308,7 @@ def test_memory_query_capability_runs_existing_low_sensitive_query(tmp_path):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
-def test_memory_promotion_preview_capability_returns_low_sensitive_proposal():
+def test_memory_promotion_preview_capability_returns_public_metadata_proposal():
     result = _runner().run_capability(
         "memory.promotion.preview",
         inputs={
@@ -2364,7 +2364,7 @@ def test_memory_promotion_preview_capability_returns_low_sensitive_proposal():
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
-def test_screen_report_capability_runs_existing_low_sensitive_report(tmp_path):
+def test_screen_report_capability_runs_existing_public_metadata_report(tmp_path):
     store = ArtifactStore(tmp_path)
     store.create_artifact(
         "run_screen",
@@ -2687,7 +2687,7 @@ def test_research_search_codex_gate_uses_research_flow_artifacts(
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
-def test_research_promote_capability_builds_low_sensitive_proposal_summary(tmp_path):
+def test_research_promote_capability_builds_public_metadata_proposal_summary(tmp_path):
     store = ArtifactStore(tmp_path)
     artifact = store.create_artifact(
         "run_research",

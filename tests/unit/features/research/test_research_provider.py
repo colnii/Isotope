@@ -22,6 +22,7 @@ def test_research_provider_registry_lists_implemented_and_planned_providers():
     descriptors = list_research_provider_descriptors()
 
     assert [descriptor.provider_id for descriptor in descriptors] == [
+        "fake",
         "codex",
         "tavily",
         "searxng",
@@ -33,7 +34,7 @@ def test_research_provider_registry_lists_implemented_and_planned_providers():
 
 
 
-def test_build_research_provider_reuses_tavily_preflight_provider(tmp_path):
+def test_build_research_provider_reuses_tavily_readiness_check_provider(tmp_path):
     provider = build_research_provider(
         "tavily",
         tavily_api_key="test-key",
@@ -79,11 +80,11 @@ def test_build_research_provider_uses_tavily_config_when_no_direct_key(
 
     with pytest.raises(ResearchProviderError) as exc_info:
         provider.run("agent memory retrieval")
-    assert exc_info.value.details["error_code"] == "network_execution_deferred"
+    assert exc_info.value.details["error_code"] == "network_execution_queued"
     assert "test-secret-key" not in json.dumps(exc_info.value.details)
 
 
-def test_tavily_preflight_provider_reports_missing_api_key_as_non_retryable():
+def test_tavily_readiness_check_provider_reports_missing_api_key_as_non_retryable():
     provider = TavilyResearchProvider(api_key=None)
 
     with pytest.raises(ResearchProviderError) as exc_info:
@@ -98,7 +99,7 @@ def test_tavily_preflight_provider_reports_missing_api_key_as_non_retryable():
     }
 
 
-def test_tavily_preflight_provider_reports_deferred_network_execution():
+def test_tavily_readiness_check_provider_reports_queued_network_execution():
     provider = TavilyResearchProvider(
         api_key="test-key",
         enable_network=False,
@@ -109,10 +110,10 @@ def test_tavily_preflight_provider_reports_deferred_network_execution():
     with pytest.raises(ResearchProviderError) as exc_info:
         provider.run("agent memory retrieval")
 
-    assert "preflight only" in str(exc_info.value)
+    assert "readiness_check only" in str(exc_info.value)
     assert exc_info.value.details == {
         "provider_id": "tavily",
-        "error_code": "network_execution_deferred",
+        "error_code": "network_execution_queued",
         "api_key_configured": True,
         "timeout_seconds": 7,
         "max_results": 3,

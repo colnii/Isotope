@@ -41,7 +41,7 @@ COPY_EXCLUDE_NAMES = {
     ".mypy_cache",
     ".ruff_cache",
 }
-READ_ONLY_MUTATION_POLICIES = {"read_only", "check"}
+READ_ONLY_MUTATION_POLICIES = {"view_only", "check"}
 
 
 class WindowsSmokeWorkspaceError(RuntimeError):
@@ -293,7 +293,7 @@ def resolve_windows_workspace(
     host_mode: str,
     workspace_strategy: str,
     source_root_kind: str | None = None,
-    mutation_policy: str = "read_only",
+    mutation_policy: str = "view_only",
     temp_root: str = "C:\\isotope-smoke",
     run_id: str = "run",
     allow_direct_mutation: bool = False,
@@ -360,7 +360,7 @@ def resolve_windows_workspace(
             run_id=run_id,
             reason="windows_path_length_risk",
         )
-    return _direct_workspace_decision(source_text, source_kind, reason="safe_windows_local_read_only")
+    return _direct_workspace_decision(source_text, source_kind, reason="safe_windows_local_view_only")
 
 
 def classify_windows_source_root(source_root: str | Path) -> str:
@@ -405,7 +405,7 @@ def redact_public_summary(
     diagnostic_report: dict[str, Any],
     redaction_paths: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Build the low-sensitive summary from diagnostic report data."""
+    """Build the public summary from diagnostic report data."""
 
     _non_empty_string("status", status)
     _non_empty_string("reason_code", reason_code)

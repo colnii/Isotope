@@ -137,8 +137,8 @@ def test_provider_planner_tick_runs_fake_provider_through_tick_execution(tmp_pat
     assert result["provider_result"]["agent_id"] == "agent_loop"
     assert result["provider_result"]["tick_id"] == "tick_001"
     assert result["provider_result"]["decision_id"] == "decision_001"
-    assert result["provider_result"]["raw_prompt_quarantined"] is True
-    assert result["provider_result"]["raw_response_quarantined"] is True
+    assert "raw_prompt_filtered" not in result["provider_result"]
+    assert "raw_response_filtered" not in result["provider_result"]
     assert result["planner_contract_result"]["planner_result"]["selected_step"] == (
         "call_capability"
     )

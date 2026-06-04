@@ -9,7 +9,7 @@ _CATEGORIES = {
     "validation",
     "not_found",
     "conflict",
-    "not_enabled",
+    "unavailable",
     "policy",
     "lifecycle",
     "internal",
@@ -91,22 +91,6 @@ class IsotopePermissionError(PermissionError):
         self.details = safe_details
 
 
-def not_enabled_result(capability: str) -> dict[str, Any]:
-    _validate_string("capability", capability)
-    return {
-        "status": "not_enabled",
-        "capability": capability,
-        "error": {
-            "code": "not_enabled",
-            "message": f"{capability} is not enabled",
-            "category": "not_enabled",
-            "retryable": False,
-            "details": {"capability": capability},
-            "capability": capability,
-        },
-    }
-
-
 def _validate_string(field_name: str, value: object) -> None:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{field_name} must be a non-empty string")
@@ -118,10 +102,10 @@ def _validate_details(details: dict[str, Any]) -> None:
             raise ValueError("details cannot include raw content, provider payloads, or secrets")
         if isinstance(value, (list, tuple)):
             if not all(_is_safe_scalar(item) for item in value):
-                raise ValueError("details values must be low-sensitive scalar metadata")
+                raise ValueError("details values must be public scalar metadata")
             continue
         if isinstance(value, (dict, set)) or not _is_safe_scalar(value):
-            raise ValueError("details values must be low-sensitive scalar metadata")
+            raise ValueError("details values must be public scalar metadata")
 
 
 def _is_safe_scalar(value: object) -> bool:
@@ -137,5 +121,4 @@ __all__ = [
     "IsotopePermissionError",
     "KernelError",
     "KernelPermissionError",
-    "not_enabled_result",
 ]

@@ -21,7 +21,7 @@ REQUIRED_TEXT_FIELDS = (
     "replay_ok: true",
     "checkpoint_ok: true",
     "interactive_shell_status: not_used",
-    "memory_status: boundary_only",
+    "memory_status: active",
 )
 
 REQUIRED_JSON_FIELDS = {
@@ -109,7 +109,7 @@ def test_terminal_exec_json_cli_exposes_required_status_fields_without_raw_outpu
     assert data["terminal_output_verified"] is True
     assert data["replay_ok"] is True
     assert data["checkpoint_ok"] is True
-    assert data["memory_status"] == "boundary_only"
+    assert data["memory_status"] == "active"
     _assert_no_forbidden_content_keys(data)
     assert "terminal-demo-output" not in json.dumps(data, sort_keys=True)
 
@@ -125,13 +125,13 @@ def test_terminal_exec_json_uses_structured_artifact_ref():
     assert data["terminal_artifact_summary"] == "terminal command completed: printf"
 
 
-def test_terminal_exec_keeps_deferred_integrations_disabled():
+def test_terminal_exec_keeps_queued_integrations_disabled():
     data = _run_demo_json("--scenario", SCENARIO)
 
     assert data["interactive_shell_status"] == "not_used"
     assert data["network_listener_status"] == "not_used"
     assert data["model_status"] == "not_used"
-    assert data["memory_status"] == "boundary_only"
+    assert data["memory_status"] == "active"
 
 
 def test_terminal_exec_trace_shows_controlled_runtime_without_raw_output():

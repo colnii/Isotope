@@ -6,7 +6,7 @@ import threading
 
 import isotope.runtime.in_process as runtime
 from isotope.features.supervisor.desktop_snapshot import (
-    _low_sensitive_preview,
+    _public_metadata_preview,
     build_desktop_snapshot,
 )
 from isotope.features.supervisor.planner.decision_requests import record_decision_request
@@ -184,10 +184,10 @@ def test_desktop_snapshot_includes_runtime_pending_approval_without_command_leak
     assert "SHOULD_NOT_LEAK" not in json.dumps(snapshot, ensure_ascii=False)
 
 
-def test_low_sensitive_preview_guard_rejects_secrets_and_long_content():
-    assert _low_sensitive_preview("Short status summary.") == "Short status summary."
-    assert _low_sensitive_preview("token=sk-test-secret") is None
-    assert _low_sensitive_preview("x" * 2200) is None
+def test_public_metadata_preview_guard_rejects_secrets_and_long_content():
+    assert _public_metadata_preview("Short status summary.") == "Short status summary."
+    assert _public_metadata_preview("token=sk-test-secret") is None
+    assert _public_metadata_preview("x" * 2200) is None
 
 
 def test_desktop_snapshot_endpoint_serves_real_snapshot(tmp_path):
@@ -218,7 +218,7 @@ def test_desktop_snapshot_endpoint_serves_real_snapshot(tmp_path):
     assert payload["source"]["kind"] == "real"
 
 
-def test_desktop_snapshot_endpoint_allows_browser_preflight(tmp_path):
+def test_desktop_snapshot_endpoint_allows_browser_readiness_check(tmp_path):
     server = create_dashboard_server(
         codex_home=tmp_path,
         host="127.0.0.1",

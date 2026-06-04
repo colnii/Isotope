@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .format.format import _format_plain_text, _format_trace
-from .demo_common import _deferred_status, _latest_action_status
+from .demo_common import _route_status, _latest_action_status
 from .agent_loop.scenarios import (
     _run_agent_loop_friction_spike,
     _run_agent_loop_planner_adapter_spike,
@@ -151,7 +151,7 @@ def _run_demo(root: Path) -> dict[str, Any]:
         "replay_run_status": replay_state.status,
         "checkpoint_run_status": checkpoint_state.status,
         "checkpoint_artifact_ref": checkpoint_artifact_ref,
-        "memory_status": "boundary_only",
+        "memory_status": "active",
     }
 
 
@@ -230,8 +230,6 @@ def _run_v0_2_demo(root: Path) -> dict[str, Any]:
     replay_state = RunProjector().rebuild(run_id, api.event_store)
     artifacts = api.artifact_store.list_artifacts(run_id)
 
-    memory_status = _deferred_status(replay_state, run_id, api.memory_store)
-
     return {
         "session_id": session["session_id"],
         "run_id": run_id,
@@ -240,5 +238,5 @@ def _run_v0_2_demo(root: Path) -> dict[str, Any]:
         "event_count": len(api.event_store.list_events(run_id)),
         "replay_ok": asdict(replay_state) == asdict(api.get_run_state(run_id)),
         "artifact_count": len(artifacts),
-        "memory_status": memory_status,
+        "memory_status": "active",
     }

@@ -14,7 +14,7 @@ def _maybe_diagnose_terminal_tool_missing_configuration(
         return result
     diagnosed = dict(result)
     diagnosed["diagnosis"] = _llm_terminal_tool_diagnosis_for(result)
-    diagnosed["preflight"] = _llm_terminal_tool_preflight_for(diagnosed)
+    diagnosed["readiness_check"] = _llm_terminal_tool_readiness_check_for(diagnosed)
     return diagnosed
 
 
@@ -65,7 +65,7 @@ def _llm_terminal_tool_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
 
     if status == "skipped":
         return _terminal_tool_diagnosis(
-            category="not_enabled",
+            category="unavailable",
             provider_request_started=False,
             terminal_tool_selected=False,
             terminal_executed=False,
@@ -105,7 +105,7 @@ def _llm_terminal_tool_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
             terminal_completed=True,
             codex_started=False,
             summary="provider selected terminal_exec and Isotope completed the terminal action",
-            next_step="use this as a dev-only preflight before application-layer terminal wiring",
+            next_step="use this as a dev-only readiness_check before application-layer terminal wiring",
         )
     if status == "completed" and terminal_selected and tool_result_status == "pending_user_approval":
         return _terminal_tool_diagnosis(
@@ -151,7 +151,7 @@ def _llm_terminal_tool_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
             summary="provider selected a tool that was not offered by terminal-tool smoke",
             next_step="keep the provider tool menu limited to terminal_exec and inspect the model response",
         )
-    if reason_code in {"invalid_model_tool_call", "llm_tool_not_enabled"}:
+    if reason_code in {"invalid_model_tool_call", "llm_tool_unavailable"}:
         return _terminal_tool_diagnosis(
             category="provider_tool_arguments_invalid",
             provider_request_started=True,
@@ -185,7 +185,7 @@ def _llm_terminal_tool_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
             terminal_completed=False,
             codex_started=False,
             summary="terminal_exec was selected but the terminal action failed",
-            next_step="inspect the low-sensitive terminal_error_reason_code and action.failed event",
+            next_step="inspect the public terminal_error_reason_code and action.failed event",
         )
     return _terminal_tool_diagnosis(
         category="terminal_tool_smoke_failed",
@@ -195,11 +195,11 @@ def _llm_terminal_tool_diagnosis_for(result: dict[str, Any]) -> dict[str, Any]:
         terminal_completed=False,
         codex_started=False,
         summary="terminal-tool smoke stopped before all readiness checkpoints completed",
-        next_step="inspect low-sensitive reason_code before widening application wiring",
+        next_step="inspect public reason_code before widening application wiring",
     )
 
 
-def _llm_terminal_tool_preflight_for(result: dict[str, Any]) -> dict[str, Any]:
+def _llm_terminal_tool_readiness_check_for(result: dict[str, Any]) -> dict[str, Any]:
     diagnosis = result.get("diagnosis")
     if not isinstance(diagnosis, dict):
         diagnosis = {}
@@ -241,7 +241,7 @@ def _terminal_tool_diagnosis(
 
 __all__ = [
     "_llm_terminal_tool_diagnosis_for",
-    "_llm_terminal_tool_preflight_for",
+    "_llm_terminal_tool_readiness_check_for",
     "_maybe_diagnose_terminal_tool_missing_configuration",
     "_terminal_error_reason_summary",
 ]

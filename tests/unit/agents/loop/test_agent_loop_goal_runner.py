@@ -116,7 +116,7 @@ def test_agent_loop_goal_runner_stops_before_planner_when_user_paused(tmp_path):
     _assert_no_forbidden_content_keys(result)
 
 
-def test_in_process_runtime_exposes_bounded_goal_runner(tmp_path):
+def test_in_process_runtime_exposes_limited_goal_runner(tmp_path):
     api, run_id = _new_run(tmp_path)
 
     result = api.run_agent_loop_until_stop(

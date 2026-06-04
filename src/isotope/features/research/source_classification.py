@@ -1,4 +1,4 @@
-"""Low-sensitive source classification for research reports."""
+"""Public source classification for research reports."""
 
 from __future__ import annotations
 

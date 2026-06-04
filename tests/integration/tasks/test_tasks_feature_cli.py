@@ -8,7 +8,7 @@ import sys
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 
 FORBIDDEN_KEYS = {
@@ -36,14 +36,14 @@ def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _assert_low_sensitive(value: Any) -> None:
+def _assert_public_metadata(value: Any) -> None:
     if isinstance(value, dict):
         assert FORBIDDEN_KEYS.isdisjoint(value)
         for nested in value.values():
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
     elif isinstance(value, list):
         for nested in value:
-            _assert_low_sensitive(nested)
+            _assert_public_metadata(nested)
 
 
 def test_task_cli_runs_one_task_as_json(tmp_path):
@@ -67,7 +67,7 @@ def test_task_cli_runs_one_task_as_json(tmp_path):
     assert task["status"] == "completed"
     assert task["turn_count"] == 1
     assert task["result_ref"]["ref_type"] == "artifact"
-    _assert_low_sensitive(payload)
+    _assert_public_metadata(payload)
 
 
 def test_task_cli_gets_and_lists_task_summaries_as_json(tmp_path):
@@ -93,8 +93,8 @@ def test_task_cli_gets_and_lists_task_summaries_as_json(tmp_path):
     assert json.loads(get_result.stdout) == {"status": "ok", "task": task}
     assert list_result.returncode == 0, list_result.stderr
     assert json.loads(list_result.stdout) == {"status": "ok", "tasks": [task]}
-    _assert_low_sensitive(json.loads(get_result.stdout))
-    _assert_low_sensitive(json.loads(list_result.stdout))
+    _assert_public_metadata(json.loads(get_result.stdout))
+    _assert_public_metadata(json.loads(list_result.stdout))
 
 
 def test_task_cli_requires_message_for_run(tmp_path):

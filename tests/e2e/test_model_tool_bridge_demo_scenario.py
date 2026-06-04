@@ -23,7 +23,7 @@ REQUIRED_TEXT_FIELDS = (
     "codex_artifact_type: codex_task_transcript",
     "real_llm_status: not_used",
     "provider_status: not_used",
-    "memory_status: boundary_only",
+    "memory_status: active",
 )
 
 REQUIRED_JSON_FIELDS = {
@@ -131,7 +131,7 @@ def test_model_tool_bridge_json_cli_exposes_safe_status_without_raw_prompt_or_ou
     assert data["model_status"] == "deterministic_decision_only"
     assert data["real_llm_status"] == "not_used"
     assert data["provider_status"] == "not_used"
-    assert data["memory_status"] == "boundary_only"
+    assert data["memory_status"] == "active"
     _assert_no_forbidden_content_keys(data)
     rendered = json.dumps(data, sort_keys=True)
     for forbidden in FORBIDDEN_OUTPUT_TEXT:
