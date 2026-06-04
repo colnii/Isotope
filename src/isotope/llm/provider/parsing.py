@@ -234,7 +234,7 @@ def _tool_description(tool: dict[str, Any]) -> str:
     return "; ".join(piece for piece in pieces if piece)
 
 
-def _validate_messages(messages: list[dict[str, str]]) -> None:
+def _validate_messages(messages: list[dict[str, Any]]) -> None:
     if not isinstance(messages, list) or not messages:
         raise ValueError("messages must be a non-empty list")
     for message in messages:
@@ -244,8 +244,37 @@ def _validate_messages(messages: list[dict[str, str]]) -> None:
         content = message.get("content")
         if role not in {"system", "user", "assistant", "tool"}:
             raise ValueError("message role must be system, user, assistant, or tool")
-        if not isinstance(content, str) or not content.strip():
-            raise ValueError("message content must be a non-empty string")
+        if isinstance(content, str):
+            if not content.strip():
+                raise ValueError("message content must be a non-empty string")
+            continue
+        if role == "user" and _is_valid_user_content_blocks(content):
+            continue
+        raise ValueError("message content must be a non-empty string or user content blocks")
+
+
+def _is_valid_user_content_blocks(content: Any) -> bool:
+    if not isinstance(content, list) or not content:
+        return False
+    for block in content:
+        if not isinstance(block, dict):
+            return False
+        block_type = block.get("type")
+        if block_type == "text":
+            text = block.get("text")
+            if not isinstance(text, str) or not text.strip():
+                return False
+            continue
+        if block_type == "image_url":
+            image_url = block.get("image_url")
+            if not isinstance(image_url, dict):
+                return False
+            url = image_url.get("url")
+            if not isinstance(url, str) or not url.startswith("data:image/"):
+                return False
+            continue
+        return False
+    return True
 
 
 def _validate_model_tools(tools: Any) -> list[dict[str, Any]]:

@@ -150,6 +150,77 @@ def test_openai_compatible_provider_uses_configured_chat_completions_contract():
     assert response.content == "summary result"
 
 
+def test_openai_compatible_provider_allows_user_image_url_content_blocks():
+    captured: dict = {}
+
+    def fake_transport(url, payload, headers, timeout):
+        captured["payload"] = payload
+        return {
+            "id": "chatcmpl_test",
+            "model": "vision-chat",
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "message": {"role": "assistant", "content": "saw image"},
+                }
+            ],
+            "usage": {"total_tokens": 5},
+        }
+
+    provider = OpenAICompatibleChatProvider(
+        provider="custom",
+        api_key="test_secret",
+        base_url="https://api.custom.example.com/v1",
+        model="vision-chat",
+        transport=fake_transport,
+    )
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Describe this screen."},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "data:image/png;base64,ZmFrZS1pbWFnZS1ieXRlcw=="
+                    },
+                },
+            ],
+        }
+    ]
+
+    response = provider.generate(messages, max_tokens=64)
+
+    assert captured["payload"]["messages"] == messages
+    assert response.content == "saw image"
+
+
+def test_openai_compatible_provider_rejects_invalid_image_url_content_blocks():
+    provider = OpenAICompatibleChatProvider(
+        provider="custom",
+        api_key="test_secret",
+        base_url="https://api.custom.example.com/v1",
+        model="vision-chat",
+        transport=lambda url, payload, headers, timeout: {},
+    )
+
+    with pytest.raises(ValueError, match="user content blocks"):
+        provider.generate(
+            [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Describe this screen."},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": "https://example.com/image.png"},
+                        },
+                    ],
+                }
+            ]
+        )
+
+
 def test_openai_compatible_provider_streams_chat_completion_deltas():
     captured: dict = {}
 

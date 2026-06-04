@@ -61,7 +61,7 @@ class DeepSeekChatProvider:
 
     def generate(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         *,
         max_tokens: int = 512,
     ) -> LLMResponse:
@@ -102,7 +102,7 @@ class DeepSeekChatProvider:
 
     def stream_generate(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         *,
         max_tokens: int = 512,
     ) -> Iterator[LLMStreamChunk]:
@@ -161,7 +161,7 @@ class OpenAICompatibleChatProvider:
 
     def generate(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         *,
         max_tokens: int = 512,
     ) -> LLMResponse:
@@ -201,7 +201,7 @@ class OpenAICompatibleChatProvider:
 
     def stream_generate(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         *,
         max_tokens: int = 512,
     ) -> Iterator[LLMStreamChunk]:

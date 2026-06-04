@@ -229,7 +229,8 @@ def test_runner_discovers_screen_observe_from_default_catalog():
     assert description["input_contract"]["required"] == ["target_selector"]
     assert "policy_gated_screen_observe" in description["safety_boundaries"]
     assert "low_sensitive_report_only" in description["safety_boundaries"]
-    assert "no_screenshot_content" in description["safety_boundaries"]
+    assert "no_screenshot_content_in_events" in description["safety_boundaries"]
+    assert "screenshot_content_for_model_observation" in description["safety_boundaries"]
 
 
 def test_runner_discovers_research_search_from_default_catalog():

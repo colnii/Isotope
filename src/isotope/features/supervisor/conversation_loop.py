@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
@@ -21,6 +21,11 @@ from isotope.llm.provider import LLMResponse
 from isotope.platform.schemas.input_contract import contract_properties
 
 from .desktop_chat_context import compact_desktop_chat_history_messages
+from .conversation_observations import (
+    capacity_observation_from_event_payload,
+    capacity_observation_message_content,
+    model_observation_from_agent_loop,
+)
 
 
 class SupervisorConversationProvider(Protocol):
@@ -29,7 +34,7 @@ class SupervisorConversationProvider(Protocol):
 
     def generate(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         *,
         max_tokens: int = 512,
     ) -> LLMResponse:
@@ -42,6 +47,7 @@ class SupervisorConversationEvent:
     payload: dict[str, Any]
     provider: str = "unknown"
     model: str = "unknown"
+    private: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
 
 
 def run_supervisor_conversation_events(
@@ -99,12 +105,10 @@ def run_supervisor_conversation_events(
                 yield event
                 if event.event == "capacity_result":
                     observations.append(
-                        {
-                            "kind": "capacity_observation",
-                            "capacity_id": event.payload["capacity_id"],
-                            "status": event.payload["status"],
-                            "result_summary": event.payload.get("result_summary", {}),
-                        }
+                        capacity_observation_from_event_payload(
+                            payload=event.payload,
+                            private=event.private,
+                        )
                     )
             continue
         if decision["kind"] == "report_capability_gap":
@@ -166,7 +170,7 @@ def _conversation_messages(
     *,
     history: list[dict[str, str]] | None,
     observations: list[dict[str, Any]] | None = None,
-) -> list[dict[str, str]]:
+) -> list[dict[str, Any]]:
     messages = [
         {
             "role": "system",
@@ -180,10 +184,7 @@ def _conversation_messages(
         messages.append(
             {
                 "role": "user",
-                "content": _json_context_message(
-                    "capacity_observation",
-                    {"kind": "capacity_observations", "items": observations},
-                ),
+                "content": capacity_observation_message_content(observations),
             }
         )
     messages.extend(_history_messages(history))
@@ -208,18 +209,10 @@ def _history_messages(history: list[dict[str, str]] | None) -> list[dict[str, st
     return compact_desktop_chat_history_messages(clean)
 
 
-def _json_context_message(label: str, value: dict[str, Any]) -> str:
-    return f"{label}:\n" + json.dumps(
-        value,
-        ensure_ascii=False,
-        sort_keys=True,
-    )
-
-
 def _generate_with_timeout(
     provider: SupervisorConversationProvider,
     *,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, Any]],
     max_tokens: int,
     timeout_seconds: float | None,
 ) -> LLMResponse:
@@ -357,6 +350,15 @@ def _run_capability_decision(
             timeout_seconds=timeout_seconds,
         )
         result_summary = agent_loop_json_summary({"agent_loop": agent_loop})
+        private = {
+            "model_observation": model_observation_from_agent_loop(
+                capacity_id=capacity_id,
+                status="ok",
+                result_summary=result_summary,
+                agent_loop=agent_loop,
+                state_root=state_root,
+            )
+        }
         status = (
             "ok"
             if result_summary.get("agent_loop_tick_status") == "executed"
@@ -366,6 +368,14 @@ def _run_capability_decision(
         result_summary = {
             "error_type": type(exc).__name__,
             "message": str(exc) or type(exc).__name__,
+        }
+        private = {
+            "model_observation": {
+                "kind": "capacity_observation",
+                "capacity_id": capacity_id,
+                "status": "error",
+                "result_summary": result_summary,
+            }
         }
         status = "error"
     yield SupervisorConversationEvent(
@@ -390,6 +400,7 @@ def _run_capability_decision(
                 },
             ],
         },
+        private=private,
     )
 
 

@@ -523,7 +523,16 @@ def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(
                     {
                         "artifact_type": "screen_screenshot",
                         "summary": "screen screenshot captured",
-                        "content": "raw screenshot bytes must not leak",
+                        "content": json.dumps(
+                            {
+                                "encoding": "base64",
+                                "media_type": "image/png",
+                                "width": 64,
+                                "height": 32,
+                                "data": "ZmFrZS1pbWFnZS1ieXRlcw==",
+                            },
+                            sort_keys=True,
+                        ),
                     },
                 ],
                 "reason_code": "screen_observe_captured",
@@ -591,6 +600,24 @@ def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(
         ensure_ascii=False,
     )
     assert "raw screenshot bytes" not in rendered_events
-    second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
+    second_messages = provider.calls[1]["messages"]
+    second_prompt = json.dumps(second_messages, ensure_ascii=False)
     assert "capacity_observation" in second_prompt
-    assert "raw screenshot bytes" not in second_prompt
+    image_urls = _message_image_urls(second_messages)
+    assert image_urls == ["data:image/png;base64,ZmFrZS1pbWFnZS1ieXRlcw=="]
+    assert "ZmFrZS1pbWFnZS1ieXRlcw==" not in rendered_events
+
+
+def _message_image_urls(messages: list[dict[str, Any]]) -> list[str]:
+    urls: list[str] = []
+    for message in messages:
+        content = message.get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict) or block.get("type") != "image_url":
+                continue
+            image_url = block.get("image_url")
+            if isinstance(image_url, dict) and isinstance(image_url.get("url"), str):
+                urls.append(image_url["url"])
+    return urls
