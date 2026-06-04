@@ -9,10 +9,9 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
-from urllib.parse import unquote, urlparse
+from urllib.parse import urlparse
 
 from ..notifications.bell_events import default_bell_events_path, read_latest_bell_events
-from ..notifications.context import read_recent_context_results
 from ..desktop_chat import (
     DesktopChatProvider,
     stream_desktop_chat_events,
@@ -20,31 +19,12 @@ from ..desktop_chat import (
 from ..desktop_snapshot import build_desktop_snapshot
 from isotope.llm.capacity_calling import CapacityCallingProvider
 from isotope.runtime.in_process import InProcessServer
-from isotope.workspace.artifacts import ArtifactStore
 from ..dashboard.html import dashboard_page_html
-from ..planner.decision_requests import (
-    DEFAULT_DECISION_TIMEOUT_SECONDS,
-    read_active_decision_requests,
-    read_recent_decision_answers,
-    record_decision_answer,
-)
-from ..daemon import (
-    start_supervisor_daemon,
-    start_supervisor_watcher,
-    stop_supervisor_daemon,
-    stop_supervisor_watcher,
-    supervisor_daemon_status,
-    supervisor_watcher_status,
-)
-from ..state.fanout import DEFAULT_FANOUT_LIMIT
+from ..planner.decision_requests import record_decision_answer
 from ..flow import CodexSupervisorFlow, _tmux_capture_pane
 from ..planner.goal_planner import plan_supervisor_goals
 from ..planner.goal_queue import record_supervisor_goal
-from ..state.lane_state import (
-    DEFAULT_MAX_CONTINUE_COUNT,
-    DEFAULT_PROMPT_COOLDOWN_SECONDS,
-    record_lane_prompt,
-)
+from ..state.lane_state import record_lane_prompt
 from ..llm_action.llm_summary import (
     SummaryProvider,
     generate_llm_action_decision,
@@ -53,22 +33,30 @@ from ..llm_action.llm_summary import (
 from isotope.llm.provider import resolve_llm_chat_provider
 from ...ask.pool import resolve_workbench_ask_provider_from_env
 from ..registry import TmuxBellHookRepair, repair_tmux_bell_hooks, send_to_managed_codex
-from ..state.multi_worker import build_multi_worker_status_payload
 from ..runner import (
     EXECUTABLE_ADVICE_KINDS,
     EXECUTABLE_ADVICE_TEXT,
-    DEFAULT_MAX_CONTEXT_REQUESTS,
-    DEFAULT_MAX_FAILURE_RETRIES,
-    DEFAULT_MAX_RUN_MINUTES,
-    DEFAULT_WORKER_CODEX_CONFIG,
-    DEFAULT_WORKER_CODEX_MODEL,
     _advice_payload,
-    _dashboard_payload,
 )
-from ..state.projection import build_supervisor_state_snapshot
+from .routes.dashboard import (
+    active_goal_dicts_for_codex_home,
+    build_dashboard_web_payload,
+    decision_answer_dicts,
+    decision_request_dicts,
+    recent_context_results_for_report,
+)
+from .routes.desktop import (
+    desktop_approval_resolve_id,
+    desktop_chat_history,
+)
+from .routes.desktop_artifacts import (
+    desktop_screen_artifact_content_id,
+    screen_screenshot_artifact_payload,
+)
+from .routes.goals import write_goal_plan_candidates
+from .routes.service_actions import SERVICE_ACTION_PATHS, run_service_action
 
 
-SERVICE_ACTION_PATHS = {"/daemon/start", "/daemon/stop", "/watcher/start", "/watcher/stop"}
 CORS_ALLOW_METHODS = "GET, POST, OPTIONS"
 CORS_ALLOW_HEADERS = "content-type"
 
@@ -129,7 +117,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
     def desktop_screen_artifact_content_payload(self, artifact_id: str) -> dict[str, Any]:
         return {
             "status": "ok",
-            **_screen_screenshot_artifact_payload(self.codex_home, artifact_id),
+            **screen_screenshot_artifact_payload(self.codex_home, artifact_id),
         }
 
     def resolve_desktop_approval_payload(
@@ -185,7 +173,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
     def llm_action_payload(self) -> dict[str, Any]:
         report = self._scan_report()
         payload = _advice_payload(report)
-        recent_context_results = _recent_context_results_for_report(
+        recent_context_results = recent_context_results_for_report(
             codex_home=self.codex_home,
             report=report,
         )
@@ -199,7 +187,7 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
             provider,
             recent_context_results,
             None,
-            _decision_answer_dicts(self.codex_home),
+            decision_answer_dicts(self.codex_home),
         )
         return payload
 
@@ -246,79 +234,6 @@ def create_dashboard_server(
     )
 
 
-def build_dashboard_web_payload(
-    report: Any,
-    *,
-    codex_home: Path,
-    workspace_cwd: Path,
-    state_snapshot: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Build the `/dashboard.json` payload used by the local web page."""
-    if state_snapshot is None:
-        state_snapshot = build_supervisor_state_snapshot(codex_home=codex_home)
-    payload = _dashboard_payload(
-        report,
-        active_goals=state_snapshot["active_goals"],
-        decision_requests=state_snapshot["active_decisions"],
-        notifications=state_snapshot["notifications"]["recent"],
-        multi_worker=build_multi_worker_status_payload(root=codex_home),
-        state_snapshot=state_snapshot,
-    )
-    payload["daemon"] = supervisor_daemon_status(codex_home=codex_home)
-    payload["watcher"] = supervisor_watcher_status(codex_home=codex_home)
-    payload["workspace_cwd"] = str(workspace_cwd)
-    return payload
-
-
-def _active_goal_dicts_for_codex_home(
-    codex_home: Path,
-    *,
-    limit: int = 20,
-    include_status: bool = False,
-) -> list[dict[str, Any]]:
-    return list(
-        build_supervisor_state_snapshot(
-            codex_home=codex_home,
-            goal_limit=limit,
-        )["active_goals"]
-    )
-
-
-def _recent_context_results_for_report(
-    *,
-    codex_home: Path,
-    report: Any,
-) -> list[dict[str, Any]]:
-    cwd = _context_cwd_for_report(report)
-    results = read_recent_context_results(
-        codex_home=codex_home,
-        cwd=Path(cwd) if cwd else None,
-    )
-    return [result.to_dict() for result in results]
-
-
-def _decision_request_dicts(codex_home: Path) -> list[dict[str, Any]]:
-    return [
-        request.to_dict()
-        for request in read_active_decision_requests(codex_home=codex_home)
-    ]
-
-
-def _decision_answer_dicts(codex_home: Path) -> list[dict[str, Any]]:
-    return [
-        dict(answer)
-        for answer in read_recent_decision_answers(codex_home=codex_home)
-    ]
-
-
-def _context_cwd_for_report(report: Any) -> str | None:
-    for session in report.sessions:
-        cwd = getattr(session, "cwd", None)
-        if isinstance(cwd, str) and cwd:
-            return cwd
-    return None
-
-
 class _DashboardRequestHandler(BaseHTTPRequestHandler):
     server: SupervisorDashboardServer
 
@@ -347,7 +262,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                 content_type="application/json; charset=utf-8",
             )
             return
-        artifact_id = _desktop_screen_artifact_content_id(path)
+        artifact_id = desktop_screen_artifact_content_id(path)
         if artifact_id is not None:
             self._send_desktop_screen_artifact_content(artifact_id)
             return
@@ -367,7 +282,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/desktop/chat":
             self._send_desktop_chat()
             return
-        approval_id = _desktop_approval_resolve_id(path)
+        approval_id = desktop_approval_resolve_id(path)
         if approval_id is not None:
             self._send_desktop_approval_resolution(approval_id)
             return
@@ -466,7 +381,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             payload = self._read_json_body()
             question = _required_string(payload.get("question"), "question")
             max_tokens = _positive_int(payload.get("max_tokens"), "max_tokens", default=512)
-            history = _desktop_chat_history(payload.get("history"))
+            history = desktop_chat_history(payload.get("history"))
         except ValueError as exc:
             self._send_json(
                 {
@@ -592,7 +507,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             payload = self._read_json_body()
             write = bool(payload.get("write"))
             if write and isinstance(payload.get("candidates"), list):
-                planned = _write_goal_plan_candidates(
+                planned = write_goal_plan_candidates(
                     codex_home=self.server.codex_home,
                     payload=payload,
                 )
@@ -609,7 +524,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                     limit=_positive_int(payload.get("limit"), "limit", default=3),
                     planning_trigger="web",
                 )
-            planned["active_goals"] = _active_goal_dicts_for_codex_home(
+            planned["active_goals"] = active_goal_dicts_for_codex_home(
                 self.server.codex_home,
                 include_status=True,
             )
@@ -653,8 +568,8 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             {
                 "status": "ok",
                 "answered": answered,
-                "decision_requests": _decision_request_dicts(self.server.codex_home),
-                "recent_decision_answers": _decision_answer_dicts(self.server.codex_home),
+                "decision_requests": decision_request_dicts(self.server.codex_home),
+                "recent_decision_answers": decision_answer_dicts(self.server.codex_home),
             }
         )
 
@@ -683,7 +598,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             {
                 "status": "ok",
                 "goal": goal.to_dict(),
-                "active_goals": _active_goal_dicts_for_codex_home(
+                "active_goals": active_goal_dicts_for_codex_home(
                     self.server.codex_home,
                     include_status=True,
                 ),
@@ -693,7 +608,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
     def _send_service_action(self, path: str) -> None:
         try:
             self._read_json_body()
-            result = _run_service_action(self.server, path)
+            result = run_service_action(self.server, path)
         except ValueError as exc:
             self._send_json(
                 {
@@ -795,98 +710,6 @@ def _required_string(value: object, field: str) -> str:
     return value.strip()
 
 
-def _desktop_approval_resolve_id(path: str) -> str | None:
-    prefix = "/desktop/approvals/"
-    suffix = "/resolve"
-    if not path.startswith(prefix) or not path.endswith(suffix):
-        return None
-    approval_id = unquote(path[len(prefix):-len(suffix)])
-    if "/" in approval_id or not approval_id:
-        return None
-    return approval_id
-
-
-def _desktop_screen_artifact_content_id(path: str) -> str | None:
-    prefix = "/desktop/artifacts/"
-    suffix = "/screen-content"
-    if not path.startswith(prefix) or not path.endswith(suffix):
-        return None
-    artifact_id = unquote(path[len(prefix) : -len(suffix)])
-    if "/" in artifact_id or not artifact_id:
-        return None
-    return artifact_id
-
-
-def _screen_screenshot_artifact_payload(root: Path, artifact_id: str) -> dict[str, Any]:
-    store = ArtifactStore(root)
-    artifact = store.get_metadata(artifact_id, include_provenance=True)
-    if artifact.get("artifact_type") != "screen_screenshot":
-        raise ValueError("artifact is not a screen_screenshot")
-    artifact_path = _artifact_file_for_id(root, artifact_id)
-    if artifact_path is None:
-        raise FileNotFoundError(f"artifact not found: {artifact_id}")
-    try:
-        image = json.loads(store.get_content(artifact_id))
-    except json.JSONDecodeError as exc:
-        raise ValueError("screen screenshot artifact content is malformed") from exc
-    if not isinstance(image, dict):
-        raise ValueError("screen screenshot artifact content must be an object")
-    if image.get("encoding") != "base64":
-        raise ValueError("screen screenshot artifact must use base64 encoding")
-    media_type = image.get("media_type")
-    data = image.get("data")
-    if not isinstance(media_type, str) or not media_type.startswith("image/"):
-        raise ValueError("screen screenshot artifact media_type must be an image")
-    if not isinstance(data, str) or not data:
-        raise ValueError("screen screenshot artifact data must be non-empty")
-    return {
-        "artifact": {
-            "artifactType": artifact["artifact_type"],
-            "summary": artifact["summary"],
-            "ref": _artifact_ref_for_path(root, artifact_path, artifact_id),
-            "provenance": artifact.get("provenance", {}),
-        },
-        "image": {
-            "mediaType": media_type,
-            "width": image.get("width"),
-            "height": image.get("height"),
-            "data": data,
-            "dataUrl": f"data:{media_type};base64,{data}",
-        },
-        "file": {
-            "path": str(artifact_path),
-            "directory": str(artifact_path.parent),
-            "downloadFilename": f"{artifact_id}.{_image_extension(media_type)}",
-        },
-    }
-
-
-def _artifact_file_for_id(root: Path, artifact_id: str) -> Path | None:
-    matches = sorted((root / "runs").glob(f"*/artifacts/{artifact_id}.json"))
-    return matches[0] if matches else None
-
-
-def _artifact_ref_for_path(root: Path, artifact_path: Path, artifact_id: str) -> dict[str, str]:
-    try:
-        run_id = artifact_path.relative_to(root).parts[1]
-    except (ValueError, IndexError):
-        run_id = ""
-    return {
-        "ref_type": "artifact",
-        "scope": "run",
-        "run_id": run_id,
-        "artifact_id": artifact_id,
-    }
-
-
-def _image_extension(media_type: str) -> str:
-    if media_type == "image/jpeg":
-        return "jpg"
-    if media_type == "image/png":
-        return "png"
-    return media_type.removeprefix("image/").replace("+xml", "") or "img"
-
-
 def _env_number(name: str, *, default: float) -> float:
     raw = os.environ.get(name)
     if raw is None or raw == "":
@@ -906,55 +729,6 @@ def _optional_string(value: object) -> str | None:
     return value.strip()
 
 
-def _run_service_action(
-    server: SupervisorDashboardServer,
-    path: str,
-) -> dict[str, Any]:
-    if path == "/daemon/start":
-        return {
-            "target": "daemon",
-            "action": "start",
-            "service": start_supervisor_daemon(
-                codex_home=server.codex_home,
-                interval=30,
-                limit=server.limit,
-                stale_after=server.stale_after_seconds,
-                active_within=server.active_within_seconds,
-                prompt_cooldown=DEFAULT_PROMPT_COOLDOWN_SECONDS,
-                max_continue_count=DEFAULT_MAX_CONTINUE_COUNT,
-                max_context_requests=DEFAULT_MAX_CONTEXT_REQUESTS,
-                max_failure_retries=DEFAULT_MAX_FAILURE_RETRIES,
-                decision_timeout=DEFAULT_DECISION_TIMEOUT_SECONDS,
-                max_run_minutes=DEFAULT_MAX_RUN_MINUTES,
-                max_fanout_launches=DEFAULT_FANOUT_LIMIT,
-                worker_codex_model=DEFAULT_WORKER_CODEX_MODEL,
-                worker_codex_config=DEFAULT_WORKER_CODEX_CONFIG,
-            ),
-        }
-    if path == "/daemon/stop":
-        return {
-            "target": "daemon",
-            "action": "stop",
-            "service": stop_supervisor_daemon(codex_home=server.codex_home),
-        }
-    if path == "/watcher/start":
-        return {
-            "target": "watcher",
-            "action": "start",
-            "service": start_supervisor_watcher(
-                codex_home=server.codex_home,
-                interval=60,
-            ),
-        }
-    if path == "/watcher/stop":
-        return {
-            "target": "watcher",
-            "action": "stop",
-            "service": stop_supervisor_watcher(codex_home=server.codex_home),
-        }
-    raise ValueError("unknown service action")
-
-
 def _positive_int(value: object, field: str, *, default: int) -> int:
     if value is None:
         return default
@@ -967,87 +741,3 @@ def _positive_int(value: object, field: str, *, default: int) -> int:
     if number <= 0:
         raise ValueError(f"{field} must be a positive integer")
     return number
-
-
-def _desktop_chat_history(value: object) -> list[dict[str, str]]:
-    if value is None:
-        return []
-    if not isinstance(value, list):
-        raise ValueError("history must be a list")
-    history: list[dict[str, str]] = []
-    for item in value:
-        if not isinstance(item, dict):
-            continue
-        role = item.get("role")
-        content = item.get("content")
-        if role not in {"user", "assistant"}:
-            continue
-        if not isinstance(content, str):
-            continue
-        clean_content = content.strip()
-        if not clean_content:
-            continue
-        history.append({"role": role, "content": clean_content})
-    return history[-12:]
-
-
-def _write_goal_plan_candidates(
-    *,
-    codex_home: Path,
-    payload: dict[str, Any],
-) -> dict[str, Any]:
-    candidates = _goal_plan_candidates(payload)
-    written = [
-        record_supervisor_goal(
-            codex_home=codex_home,
-            cwd=Path.cwd(),
-            goal=candidate["goal"],
-            target_name=candidate.get("target_name"),
-        ).to_dict()
-        for candidate in candidates
-    ]
-    return {
-        "status": "ok",
-        "mode": "write",
-        "root": str(Path.cwd()),
-        "user_goal": _optional_string(payload.get("goal")),
-        "planning_trigger": "web",
-        "sources": [],
-        "candidates": candidates,
-        "written_goals": written,
-        "plan_summary": _optional_string(payload.get("plan_summary")),
-        "phases": payload.get("phases") if isinstance(payload.get("phases"), list) else [],
-        "parallel_recommendations": payload.get("parallel_recommendations")
-        if isinstance(payload.get("parallel_recommendations"), list)
-        else [],
-        "stop_conditions": payload.get("stop_conditions")
-        if isinstance(payload.get("stop_conditions"), list)
-        else [],
-        "acceptance_conditions": payload.get("acceptance_conditions")
-        if isinstance(payload.get("acceptance_conditions"), list)
-        else [],
-    }
-
-
-def _goal_plan_candidates(payload: dict[str, Any]) -> list[dict[str, str]]:
-    raw_candidates = payload.get("candidates")
-    if not isinstance(raw_candidates, list) or not raw_candidates:
-        raise ValueError("candidates must not be empty")
-    candidates: list[dict[str, str]] = []
-    for raw in raw_candidates:
-        if not isinstance(raw, dict):
-            continue
-        goal = _optional_string(raw.get("goal"))
-        if goal is None:
-            continue
-        target_name = _optional_string(raw.get("target_name"))
-        reason = _optional_string(raw.get("reason"))
-        item = {"goal": goal}
-        if target_name is not None:
-            item["target_name"] = target_name
-        if reason is not None:
-            item["reason"] = reason
-        candidates.append(item)
-    if not candidates:
-        raise ValueError("candidates must contain usable goals")
-    return candidates
