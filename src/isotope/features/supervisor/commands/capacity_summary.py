@@ -50,6 +50,7 @@ def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         if isinstance(screen_report, Mapping):
             summary.update(_agent_loop_screen_report_summary(screen_report))
         summary.update(_agent_loop_memory_query_summary(capability_run))
+        summary.update(_agent_loop_memory_recall_summary(capability_run))
         summary.update(_agent_loop_research_search_summary(capability_run))
         summary.update(_agent_loop_research_promotion_summary(capability_run))
         summary.update(_agent_loop_project_status_summary(capability_run))
@@ -154,6 +155,27 @@ def _agent_loop_memory_query_summary(
     content_policy = memory_query.get("content_policy")
     if isinstance(content_policy, str) and content_policy:
         summary["agent_loop_memory_query_content_policy"] = content_policy
+    return summary
+
+
+def _agent_loop_memory_recall_summary(
+    capability_run: Mapping[str, Any],
+) -> dict[str, Any]:
+    if capability_run.get("capability_id") != "memory.recall":
+        return {}
+    memory_recall = capability_run.get("memory_recall")
+    if not isinstance(memory_recall, Mapping):
+        return {}
+    results = memory_recall.get("results")
+    summary: dict[str, Any] = {
+        "agent_loop_memory_recall_status": memory_recall.get("status"),
+        "agent_loop_memory_recall_result_count": (
+            len(results) if isinstance(results, list) else 0
+        ),
+    }
+    content_policy = memory_recall.get("content_policy")
+    if isinstance(content_policy, str) and content_policy:
+        summary["agent_loop_memory_recall_content_policy"] = content_policy
     return summary
 
 

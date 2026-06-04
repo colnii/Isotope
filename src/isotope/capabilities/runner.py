@@ -64,9 +64,11 @@ from .extensions import (
 from .memory import (
     MEMORY_PROMOTION_PREVIEW_CAPABILITY,
     MEMORY_QUERY_CAPABILITY,
+    MEMORY_RECALL_CAPABILITY,
     is_memory_readonly_capability,
     run_memory_promotion_preview,
     run_memory_query,
+    run_memory_recall,
     validate_memory_readonly_inputs,
 )
 from .research import (
@@ -556,6 +558,8 @@ class CapabilityRunner:
 
         if capability_id == MEMORY_QUERY_CAPABILITY:
             return run_memory_query(inputs=input_mapping)
+        if capability_id == MEMORY_RECALL_CAPABILITY:
+            return run_memory_recall(inputs=input_mapping)
         if capability_id == MEMORY_PROMOTION_PREVIEW_CAPABILITY:
             return run_memory_promotion_preview(inputs=input_mapping)
         if capability_id == RESEARCH_PROMOTE_CAPABILITY:

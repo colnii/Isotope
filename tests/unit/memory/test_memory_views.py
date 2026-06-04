@@ -82,6 +82,7 @@ def test_memory_views_build_memory_query_payload_without_content(tmp_path):
     payload = build_memory_query_payload(root=tmp_path, query="integration boundary")
 
     assert payload["status"] == "ok"
+    assert payload["content_policy"] == "memory_record_refs_expandable"
     assert payload["query"] == "integration boundary"
     assert payload["summary"] == {"total": 2, "matched": 1, "hidden_records": 0}
     assert payload["results"] == [
@@ -98,7 +99,7 @@ def test_memory_views_build_memory_query_payload_without_content(tmp_path):
             "quality": "candidate",
         }
     ]
-    assert "content" not in json.dumps(payload)
+    assert '"secret"' not in json.dumps(payload)
     assert "raw memory" not in json.dumps(payload)
 
 

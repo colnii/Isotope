@@ -591,6 +591,17 @@ def test_runner_discovers_supervisor_worker_review_from_default_catalog():
     assert "no_merge_or_cleanup" in description["safety_boundaries"]
 
 
+def test_memory_recall_capability_is_registered_as_readonly_product_candidate():
+    runner = _runner()
+
+    assert "memory.recall" in _ids(runner.list_capabilities())
+    description = runner.describe_capability("memory.recall")
+    assert description["shelf"] == "product_candidate"
+    assert description["network_required"] is False
+    assert description["input_contract"]["required"] == ["root", "query"]
+    assert description["input_contract"]["properties"]["root"]["x-system-input"] is True
+
+
 def test_runner_discovers_supervisor_goal_plan_from_default_catalog():
     runner = _runner()
 
@@ -2970,6 +2981,63 @@ def test_memory_query_capability_runs_existing_public_metadata_query(tmp_path):
             "record_id": "mem_capability",
             "scope": "run",
             "summary": "Capability runner can recall memory boundaries.",
+            "source_refs": [{"ref_type": "artifact", "artifact_id": "artifact_memory"}],
+            "provenance": {
+                "run_id": "run_memory",
+                "execution_id": "exec_memory",
+                "action_type": "write_memory",
+            },
+            "quality": "verified",
+        }
+    ]
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
+
+
+def test_memory_recall_capability_runs_state_root_preview_query(tmp_path):
+    memory_dir = tmp_path / "memory"
+    memory_dir.mkdir()
+    _write_memory_record(
+        memory_dir,
+        MemoryRecord(
+            memory_id="mem_recall",
+            scope="run",
+            content={"raw": "raw memory content must not leak"},
+            summary="Capability runner can recall app-level memory previews.",
+            source_refs=[{"ref_type": "artifact", "artifact_id": "artifact_memory"}],
+            provenance={
+                "run_id": "run_memory",
+                "execution_id": "exec_memory",
+                "action_type": "write_memory",
+            },
+            created_at="2026-06-04T00:00:00Z",
+            supersedes=[],
+            quality="verified",
+        ),
+    )
+
+    result = _runner().run_capability(
+        "memory.recall",
+        inputs={
+            "root": str(tmp_path),
+            "query": "app-level memory previews",
+            "scope": "run",
+        },
+    )
+
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "memory.recall"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_readonly"
+    recall = result["memory_recall"]
+    assert recall["status"] == "ok"
+    assert recall["content_policy"] == "memory_record_refs_expandable"
+    assert recall["summary"]["matched"] == 1
+    assert recall["results"] == [
+        {
+            "record_id": "mem_recall",
+            "scope": "run",
+            "summary": "Capability runner can recall app-level memory previews.",
             "source_refs": [{"ref_type": "artifact", "artifact_id": "artifact_memory"}],
             "provenance": {
                 "run_id": "run_memory",

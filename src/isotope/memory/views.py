@@ -83,6 +83,7 @@ def build_memory_query_payload(
     )
     return {
         "status": "ok",
+        "content_policy": "memory_record_refs_expandable",
         "store": {
             "root": str(root_path),
             "path": str(root_path / "memory"),

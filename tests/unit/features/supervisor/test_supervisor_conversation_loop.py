@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 import json
 import time
 from typing import Any
@@ -19,6 +20,7 @@ from isotope.features.supervisor.registry import (
     default_registry_path,
 )
 from isotope.llm.provider import LLMResponse
+from isotope.platform.schemas.memory import MemoryRecord
 
 
 class RecordingConversationProvider:
@@ -169,6 +171,14 @@ def _write_goal_planning_docs(root) -> None:
     (docs / "agent-task-queue.md").write_text("目标规划已是 capacity。\n", encoding="utf-8")
     (docs / "supervisor-capability-map.md").write_text(
         "supervisor.goal_plan 可生成目标规划。\n",
+        encoding="utf-8",
+    )
+
+
+def _write_memory_record(memory_dir, record: MemoryRecord) -> None:
+    memory_dir.mkdir(parents=True, exist_ok=True)
+    memory_dir.joinpath(f"{record.memory_id}.json").write_text(
+        json.dumps(asdict(record), sort_keys=True),
         encoding="utf-8",
     )
 
@@ -392,6 +402,80 @@ def test_conversation_loop_executes_goal_plan_capacity_from_chat(
     assert "capacity_observation" in second_prompt
     assert "chat-goal-plan-capacity" in second_prompt
     assert "raw_response" not in second_prompt
+
+
+def test_conversation_loop_recalls_existing_state_root_memory_without_run_id(
+    tmp_path,
+) -> None:
+    memory_dir = tmp_path / "state" / "memory"
+    _write_memory_record(
+        memory_dir,
+        MemoryRecord(
+            memory_id="mem_desktop_recall",
+            scope="run",
+            content={"raw": "raw memory content must not leak"},
+            summary="Desktop chat should recall this state-root memory preview.",
+            source_refs=[{"ref_type": "artifact", "artifact_id": "artifact_memory"}],
+            provenance={
+                "run_id": "run_real_memory",
+                "execution_id": "exec_real_memory",
+                "action_type": "write_memory",
+            },
+            created_at="2026-06-04T00:00:00Z",
+            supersedes=[],
+            quality="verified",
+        ),
+    )
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "memory.recall",
+                    "arguments": {
+                        "query": "state-root memory preview",
+                        "scope": "run",
+                    },
+                    "rationale": "Recall public memory preview.",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "找到了相关记忆。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path / "repo",
+            user_message="查一下 state-root memory preview 的记忆",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[0].payload["capacity_id"] == "memory.recall"
+    assert events[0].payload["input_summary"] == {
+        "query": "state-root memory preview",
+        "root": str(tmp_path / "state"),
+        "scope": "run",
+    }
+    assert events[1].payload["status"] == "ok"
+    summary = events[1].payload["result_summary"]
+    assert summary["agent_loop_memory_recall_status"] == "ok"
+    assert summary["agent_loop_memory_recall_result_count"] == 1
+    rendered_events = json.dumps([event.payload for event in events], ensure_ascii=False)
+    assert "Desktop chat should recall this state-root memory preview." in rendered_events
+    assert "raw memory content must not leak" not in rendered_events
 
 
 def test_conversation_loop_filters_model_supplied_inputs_to_capability_contract(

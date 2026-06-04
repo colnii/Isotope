@@ -7,11 +7,13 @@ from typing import Any, Mapping
 
 from ..memory import LocalMemoryQueryService
 from ..memory.promotion import build_memory_promotion_proposal
+from ..memory.views import build_memory_query_payload
 from ..platform.schemas.input_contract import missing_required_input_keys
 from ..platform.state.memory_store import FileMemoryStore
 
 
 MEMORY_QUERY_CAPABILITY = "memory.query"
+MEMORY_RECALL_CAPABILITY = "memory.recall"
 MEMORY_PROMOTION_PREVIEW_CAPABILITY = "memory.promotion.preview"
 VALID_MEMORY_QUERY_SCOPES = frozenset({"thread", "run", "session"})
 VALID_MEMORY_PROMOTION_SCOPES = frozenset({"thread", "run", "session"})
@@ -20,6 +22,7 @@ VALID_MEMORY_PROMOTION_SCOPES = frozenset({"thread", "run", "session"})
 def is_memory_readonly_capability(capability_id: str) -> bool:
     return capability_id in {
         MEMORY_QUERY_CAPABILITY,
+        MEMORY_RECALL_CAPABILITY,
         MEMORY_PROMOTION_PREVIEW_CAPABILITY,
     }
 
@@ -30,17 +33,22 @@ def validate_memory_readonly_inputs(
     inputs: Mapping[str, Any] | None,
     missing_inputs: list[str],
 ) -> dict[str, Any]:
-    if capability_id != MEMORY_QUERY_CAPABILITY:
-        if capability_id == MEMORY_PROMOTION_PREVIEW_CAPABILITY:
-            return _validate_memory_promotion_preview_inputs(
-                inputs=inputs,
-                missing_inputs=missing_inputs,
-            )
-        return dict(inputs or {})
-    return _validate_memory_query_inputs(
-        inputs=inputs,
-        missing_inputs=missing_inputs,
-    )
+    if capability_id == MEMORY_QUERY_CAPABILITY:
+        return _validate_memory_query_inputs(
+            inputs=inputs,
+            missing_inputs=missing_inputs,
+        )
+    if capability_id == MEMORY_RECALL_CAPABILITY:
+        return _validate_memory_recall_inputs(
+            inputs=inputs,
+            missing_inputs=missing_inputs,
+        )
+    if capability_id == MEMORY_PROMOTION_PREVIEW_CAPABILITY:
+        return _validate_memory_promotion_preview_inputs(
+            inputs=inputs,
+            missing_inputs=missing_inputs,
+        )
+    return dict(inputs or {})
 
 
 def run_memory_query(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -78,6 +86,32 @@ def run_memory_query(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         "status": "completed",
         "runner_kind": "deterministic_readonly",
         "memory_query": payload,
+    }
+
+
+def run_memory_recall(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
+    required_inputs = ["root", "query"]
+    missing_inputs = _missing_inputs(required_inputs, inputs)
+    if missing_inputs:
+        raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
+    input_mapping = _validate_memory_recall_inputs(
+        inputs=inputs,
+        missing_inputs=missing_inputs,
+    )
+    payload = build_memory_query_payload(
+        root=input_mapping["root"],
+        query=input_mapping["query"],
+        scope=input_mapping.get("scope"),
+        run_id=input_mapping.get("run_id"),
+        session_id=input_mapping.get("session_id"),
+        limit=input_mapping["limit"],
+    )
+    return {
+        "kind": "capability_run_result",
+        "capability_id": MEMORY_RECALL_CAPABILITY,
+        "status": "completed",
+        "runner_kind": "deterministic_readonly",
+        "memory_recall": payload,
     }
 
 
@@ -165,6 +199,39 @@ def _validate_memory_query_inputs(
             or expand_budget <= 0
         ):
             raise ValueError("expand_budget must be a positive integer")
+    return normalized
+
+
+def _validate_memory_recall_inputs(
+    *,
+    inputs: Mapping[str, Any] | None,
+    missing_inputs: list[str],
+) -> dict[str, Any]:
+    input_mapping = inputs or {}
+    for name in ("root", "query"):
+        if name in missing_inputs:
+            continue
+        value = input_mapping.get(name)
+        if not isinstance(value, str):
+            raise ValueError(f"{name} must be a string")
+        if not value.strip():
+            raise ValueError(f"{name} must be a non-empty string")
+
+    scope = input_mapping.get("scope")
+    if scope is not None and scope not in VALID_MEMORY_QUERY_SCOPES:
+        raise ValueError("scope must be thread, run, or session")
+
+    for name in ("run_id", "session_id"):
+        value = input_mapping.get(name)
+        if value is not None and (not isinstance(value, str) or not value.strip()):
+            raise ValueError(f"{name} must be a non-empty string")
+
+    limit = input_mapping.get("limit", 20)
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+        raise ValueError("limit must be a positive integer")
+
+    normalized = dict(input_mapping)
+    normalized["limit"] = limit
     return normalized
 
 

@@ -1446,6 +1446,73 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="memory.recall",
+                    title="Memory Recall",
+                    description=(
+                        "Search local state-root memory previews without requiring "
+                        "the model to know an internal agent-loop run id."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=("memory", "recall", "query", "preview", "provenance"),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "query"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "x-system-input": True,
+                                "description": "Runtime root containing memory/*.json.",
+                            },
+                            "query": {
+                                "type": "string",
+                                "description": "Public memory search query.",
+                            },
+                            "scope": {
+                                "type": "string",
+                                "enum": ["thread", "run", "session"],
+                                "description": "Optional memory scope filter.",
+                            },
+                            "run_id": {
+                                "type": "string",
+                                "description": (
+                                    "Optional provenance run id filter when the "
+                                    "user names a run."
+                                ),
+                            },
+                            "session_id": {
+                                "type": "string",
+                                "description": (
+                                    "Optional provenance session id filter when "
+                                    "the user names a session."
+                                ),
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Maximum records to preview.",
+                                "default": 20,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "content_policy",
+                            "summary",
+                            "results",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "memory_preview_only",
+                        "summary_refs_provenance_only",
+                        "no_memory_record_content",
+                        "no_source_artifact_full_content_read",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="memory.promotion.preview",
                     title="Memory Promotion Preview",
                     description=(

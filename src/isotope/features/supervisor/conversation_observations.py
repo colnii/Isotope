@@ -168,6 +168,7 @@ def capability_result_detail_from_agent_loop(
 def _capability_result_detail_label(capacity_id: str) -> str:
     labels = {
         "memory.query": "Memory query result",
+        "memory.recall": "Memory recall result",
         "code.search": "Code search result",
         "code.read": "Code read result",
         "code.apply_patch": "Patch result",
@@ -192,7 +193,7 @@ def _capability_result_observation(
     capability_run = _agent_loop_capability_run(agent_loop)
     if not isinstance(capability_run, dict):
         return None
-    if capacity_id == "memory.query":
+    if capacity_id in {"memory.query", "memory.recall"}:
         return _memory_query_observation(capability_run)
     if capacity_id == "code.search":
         return _code_search_observation(capability_run)
@@ -213,6 +214,10 @@ def _capability_result_observation(
 
 def _memory_query_observation(capability_run: dict[str, Any]) -> dict[str, Any] | None:
     memory_query = capability_run.get("memory_query")
+    kind = "memory_query"
+    if not isinstance(memory_query, dict):
+        memory_query = capability_run.get("memory_recall")
+        kind = "memory_recall"
     if not isinstance(memory_query, dict):
         return None
     results = memory_query.get("results")
@@ -225,7 +230,7 @@ def _memory_query_observation(capability_run: dict[str, Any]) -> dict[str, Any] 
             if safe_result is not None:
                 safe_results.append(safe_result)
     return {
-        "kind": "memory_query",
+        "kind": kind,
         "status": (
             memory_query.get("status")
             if isinstance(memory_query.get("status"), str)

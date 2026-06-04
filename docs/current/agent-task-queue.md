@@ -146,6 +146,10 @@
   `controlled_expand` 有 expand grant 和正预算时会物化 matched
   `MemoryRecord.content` 的 budgeted `materialized_text`，不读取 source
   artifact full content。
+- `memory.recall` 是面向 Supervisor / desktop chat 的应用层记忆召回能力：
+  它从当前 `state_root` 的 `memory/*.json` 搜索 summary / refs / provenance preview，
+  不要求模型知道内部 agent-loop `run_id`，也不返回 raw memory content。
+  `memory.query` 保留为需要显式 `run_id` 的 agent-loop 内部精确查询能力。
 - `memory.promotion` 已有 proposal boundary 第一片：只把 structured artifact
   metadata 或 accepted external observation metadata 整理为待批准的
   `write_memory` `ActionProposal`；raw text / raw content 会 fail closed，且
