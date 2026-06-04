@@ -31,5 +31,5 @@ def test_codex_operation_executes_request_context_via_agent_loop_capacity(tmp_pa
     assert result["agent_loop"]["planner_output_summary"]["capability_id"] == (
         "supervisor.codex_operation"
     )
-    assert result["agent_loop_summary"]["agent_loop_executed"] is True
-    assert result["agent_loop_summary"]["agent_loop_tick_status"] == "executed"
+    assert result["agent_loop_result"]["agent_loop_executed"] is True
+    assert result["agent_loop_result"]["agent_loop_tick_status"] == "executed"

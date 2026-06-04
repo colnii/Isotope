@@ -276,7 +276,7 @@ def test_runner_discovers_supervisor_project_status_from_default_catalog():
 
     assert description["input_contract"]["required"] == ["state_root"]
     assert description["input_contract"]["properties"]["state_root"]["type"] == "string"
-    assert "project_state_summary" in description["output_contract"]["fields"]
+    assert "project_state" in description["output_contract"]["fields"]
     assert "read_only_state_projection" in description["safety_boundaries"]
 
 
@@ -291,7 +291,7 @@ def test_project_status_capability_returns_low_sensitive_snapshot_summary(tmp_pa
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "supervisor.project_status"
     assert result["status"] == "completed"
-    summary = result["project_state_summary"]
+    summary = result["project_state"]
     assert summary["snapshot_id"]
     assert summary["counts"]["runningAgents"] == 0
     assert "raw" not in json.dumps(result, ensure_ascii=False).lower()
@@ -335,7 +335,7 @@ def test_project_status_capability_includes_self_repair_worker_status(tmp_path):
         inputs={"state_root": str(tmp_path)},
     )
 
-    workers = result["project_state_summary"]["self_repair_workers"]
+    workers = result["project_state"]["self_repair_workers"]
     assert len(workers) == 1
     worker = workers[0]
     assert worker["record_id"] == "managed-self-repair"
@@ -418,7 +418,7 @@ def test_project_status_capability_includes_latest_self_repair_summary(tmp_path)
         inputs={"state_root": str(tmp_path)},
     )
 
-    latest = result["project_state_summary"]["latest_self_repair"]
+    latest = result["project_state"]["latest_self_repair"]
     assert latest == {
         "record_id": "managed-new-repair",
         "name": "new-repair",

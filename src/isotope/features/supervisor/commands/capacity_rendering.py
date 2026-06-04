@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from isotope.features.supervisor.commands.capacity_summary import agent_loop_json_summary
+from isotope.features.supervisor.commands.capacity_result import agent_loop_json_result
 
 
 def print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
@@ -34,47 +34,47 @@ def print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
             f"{supervisor_decision.get('next_action')}"
         )
     _print_capacity_blockers(payload, selection=selection, launch_plan=launch_plan)
-    agent_loop_summary = agent_loop_json_summary(payload)
-    print(f"agent_loop_executed: {agent_loop_summary['agent_loop_executed']}")
-    if agent_loop_summary["agent_loop_executed"]:
+    agent_loop_result = agent_loop_json_result(payload)
+    print(f"agent_loop_executed: {agent_loop_result['agent_loop_executed']}")
+    if agent_loop_result["agent_loop_executed"]:
         print(
             "agent_loop_next_tick_kind: "
-            f"{agent_loop_summary.get('agent_loop_next_tick_kind')}"
+            f"{agent_loop_result.get('agent_loop_next_tick_kind')}"
         )
         print(
             "agent_loop_planner_selected_step: "
-            f"{agent_loop_summary.get('agent_loop_planner_selected_step')}"
+            f"{agent_loop_result.get('agent_loop_planner_selected_step')}"
         )
         print(
-            f"agent_loop_tick_status: {agent_loop_summary.get('agent_loop_tick_status')}"
+            f"agent_loop_tick_status: {agent_loop_result.get('agent_loop_tick_status')}"
         )
         print(
             "agent_loop_tick_after_stop_reason: "
-            f"{agent_loop_summary.get('agent_loop_tick_after_stop_reason')}"
+            f"{agent_loop_result.get('agent_loop_tick_after_stop_reason')}"
         )
-        artifact_id = agent_loop_summary.get("agent_loop_artifact_id")
+        artifact_id = agent_loop_result.get("agent_loop_artifact_id")
         if artifact_id is not None:
             print(f"agent_loop_artifact_ref: {artifact_id}")
         print(
             "agent_loop_post_step_phase: "
-            f"{agent_loop_summary.get('agent_loop_post_step_phase')}"
+            f"{agent_loop_result.get('agent_loop_post_step_phase')}"
         )
         print(
             "agent_loop_post_step_should_continue: "
-            f"{agent_loop_summary.get('agent_loop_post_step_should_continue')}"
+            f"{agent_loop_result.get('agent_loop_post_step_should_continue')}"
         )
         print(
             "agent_loop_post_step_stop_reason: "
-            f"{agent_loop_summary.get('agent_loop_post_step_stop_reason')}"
+            f"{agent_loop_result.get('agent_loop_post_step_stop_reason')}"
         )
-        memory_query_status = agent_loop_summary.get("agent_loop_memory_query_status")
+        memory_query_status = agent_loop_result.get("agent_loop_memory_query_status")
         if memory_query_status is not None:
             print(f"agent_loop_memory_query_status: {memory_query_status}")
             print(
                 "agent_loop_memory_query_result_count: "
-                f"{agent_loop_summary.get('agent_loop_memory_query_result_count')}"
+                f"{agent_loop_result.get('agent_loop_memory_query_result_count')}"
             )
-            content_policy = agent_loop_summary.get(
+            content_policy = agent_loop_result.get(
                 "agent_loop_memory_query_content_policy"
             )
             if content_policy is not None:
@@ -82,35 +82,35 @@ def print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
                     "agent_loop_memory_query_content_policy: "
                     f"{content_policy}"
                 )
-        research_status = agent_loop_summary.get("agent_loop_research_search_status")
+        research_status = agent_loop_result.get("agent_loop_research_search_status")
         if research_status is not None:
             print(f"agent_loop_research_search_status: {research_status}")
             print(
                 "agent_loop_research_provider: "
-                f"{agent_loop_summary.get('agent_loop_research_provider')}"
+                f"{agent_loop_result.get('agent_loop_research_provider')}"
             )
             print(
                 "agent_loop_research_source_count: "
-                f"{agent_loop_summary.get('agent_loop_research_source_count')}"
+                f"{agent_loop_result.get('agent_loop_research_source_count')}"
             )
             print(
                 "agent_loop_research_artifact_count: "
-                f"{agent_loop_summary.get('agent_loop_research_artifact_count')}"
+                f"{agent_loop_result.get('agent_loop_research_artifact_count')}"
             )
-        promotion_status = agent_loop_summary.get(
+        promotion_status = agent_loop_result.get(
             "agent_loop_research_promotion_status"
         )
         if promotion_status is not None:
             print(f"agent_loop_research_promotion_status: {promotion_status}")
             print(
                 "agent_loop_research_promotion_action_type: "
-                f"{agent_loop_summary.get('agent_loop_research_promotion_action_type')}"
+                f"{agent_loop_result.get('agent_loop_research_promotion_action_type')}"
             )
             print(
                 "agent_loop_research_promotion_memory_write: "
-                f"{agent_loop_summary.get('agent_loop_research_promotion_memory_write')}"
+                f"{agent_loop_result.get('agent_loop_research_promotion_memory_write')}"
             )
-            quality_gate_status = agent_loop_summary.get(
+            quality_gate_status = agent_loop_result.get(
                 "agent_loop_research_promotion_quality_gate_status"
             )
             if quality_gate_status is not None:

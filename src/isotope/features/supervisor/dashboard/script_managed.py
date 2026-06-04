@@ -59,7 +59,7 @@ DASHBOARD_SCRIPT_MANAGED = r'''    function renderMultiWorkerStatus(multiWorker)
         capacities.textContent = "capacity_id: " + worker.capacity_ids.join(", ");
         card.append(capacities);
       }
-      if (worker.recent_capacity_summary) {
+      if (worker.recent_capacity_result) {
         const capacity = document.createElement("div");
         capacity.className = "multi-worker-detail";
         capacity.textContent = "最近能力：" + capacityRunDetailText(capacityRunFromWorker(worker));
@@ -92,13 +92,13 @@ DASHBOARD_SCRIPT_MANAGED = r'''    function renderMultiWorkerStatus(multiWorker)
     }
 
     function capacityRunFromWorker(worker) {
-      const recent = worker && worker.recent_capacity_summary
-        ? worker.recent_capacity_summary
+      const recent = worker && worker.recent_capacity_result
+        ? worker.recent_capacity_result
         : {};
       return {
         worker: worker ? worker.name : null,
         capacity_id: recent.capacity_id,
-        agent_loop_summary: recent.agent_loop_summary
+        agent_loop_result: recent.agent_loop_result
       };
     }
 

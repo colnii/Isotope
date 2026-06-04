@@ -35,7 +35,7 @@ class DeterministicCapacityProvider:
         )
 
 
-FORBIDDEN_AGENT_LOOP_SUMMARY_KEYS = {
+FORBIDDEN_AGENT_LOOP_RESULT_KEYS = {
     "action_result",
     "capability_run",
     "content",
@@ -79,7 +79,7 @@ def _resolve_codex_executable(executable: str) -> str:
 
 def _assert_no_agent_loop_raw_payload(value):
     if isinstance(value, dict):
-        forbidden = FORBIDDEN_AGENT_LOOP_SUMMARY_KEYS.intersection(value)
+        forbidden = FORBIDDEN_AGENT_LOOP_RESULT_KEYS.intersection(value)
         assert forbidden == set()
         for nested in value.values():
             _assert_no_agent_loop_raw_payload(nested)
@@ -334,7 +334,7 @@ def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path)
     assert capability_run["status"] == "completed"
 
 
-def test_supervisor_capacity_plan_exposes_public_metadata_agent_loop_json_summary(tmp_path):
+def test_supervisor_capacity_plan_exposes_public_metadata_agent_loop_json_result(tmp_path):
     provider = DeterministicCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
         '"rationale":"low risk review"}'
@@ -347,8 +347,9 @@ def test_supervisor_capacity_plan_exposes_public_metadata_agent_loop_json_summar
         execute_agent_loop=True,
     )
 
-    assert result["agent_loop_summary"] == capacity_command.agent_loop_json_summary(result)
-    assert result["agent_loop_summary"] == {
+    assert "agent_loop" + "_summary" not in result
+    assert result["agent_loop_result"] == capacity_command.agent_loop_json_result(result)
+    assert result["agent_loop_result"] == {
         "agent_loop_executed": True,
         "agent_loop_next_tick_kind": "planner_step",
         "agent_loop_planner_selected_step": "call_capability",
@@ -361,7 +362,7 @@ def test_supervisor_capacity_plan_exposes_public_metadata_agent_loop_json_summar
         "agent_loop_post_step_should_continue": True,
         "agent_loop_post_step_stop_reason": None,
     }
-    _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
+    _assert_no_agent_loop_raw_payload(result["agent_loop_result"])
 
 
 def test_supervisor_capacity_plan_reports_ready_supervisor_decision(tmp_path):
@@ -547,7 +548,7 @@ def test_execute_capacity_action_requires_matching_ready_decision(tmp_path, monk
     assert calls == []
 
 
-def test_execute_capacity_action_returns_public_metadata_agent_loop_summary(
+def test_execute_capacity_action_returns_public_metadata_agent_loop_result(
     tmp_path, monkeypatch
 ):
     agent_loop = {
@@ -615,7 +616,7 @@ def test_execute_capacity_action_returns_public_metadata_agent_loop_summary(
     )
 
     assert result["agent_loop"] == agent_loop
-    assert result["agent_loop_summary"] == {
+    assert result["agent_loop_result"] == {
         "agent_loop_executed": True,
         "agent_loop_next_tick_kind": "planner_step",
         "agent_loop_planner_selected_step": "call_capability",
@@ -626,7 +627,7 @@ def test_execute_capacity_action_returns_public_metadata_agent_loop_summary(
         "agent_loop_post_step_should_continue": True,
         "agent_loop_post_step_stop_reason": None,
     }
-    _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
+    _assert_no_agent_loop_raw_payload(result["agent_loop_result"])
     records = FileMemoryStore(codex_home).list_records(scope="run")
     assert len(records) == 1
     record = records[0]
@@ -634,7 +635,7 @@ def test_execute_capacity_action_returns_public_metadata_agent_loop_summary(
         "kind": "capacity_call",
         "worker_name": "capa",
         "capacity_id": "artifact.review",
-        "agent_loop_summary": result["agent_loop_summary"],
+        "agent_loop_result": result["agent_loop_result"],
     }
     assert record.provenance["action_type"] == "capacity_call"
     assert record.summary == "capa called artifact.review via agent loop."
@@ -852,13 +853,13 @@ def test_supervisor_capacity_plan_applies_root_default_for_memory_query(tmp_path
     assert capability_run["capability_id"] == "memory.query"
     assert capability_run["status"] == "completed"
     assert capability_run["memory_query"]["results"][0]["record_id"] == "mem_capacity"
-    assert result["agent_loop_summary"]["agent_loop_memory_query_status"] == "ok"
-    assert result["agent_loop_summary"]["agent_loop_memory_query_result_count"] == 1
+    assert result["agent_loop_result"]["agent_loop_memory_query_status"] == "ok"
+    assert result["agent_loop_result"]["agent_loop_memory_query_result_count"] == 1
     assert (
-        result["agent_loop_summary"]["agent_loop_memory_query_content_policy"]
+        result["agent_loop_result"]["agent_loop_memory_query_content_policy"]
         == "memory_record_refs_expandable"
     )
-    _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
+    _assert_no_agent_loop_raw_payload(result["agent_loop_result"])
     assert "raw memory content" not in json.dumps(result)
 
 
@@ -911,15 +912,15 @@ def test_supervisor_capacity_plan_summarizes_screen_report_agent_loop_result(tmp
     assert capability_run["capability_id"] == "screen.report"
     assert capability_run["status"] == "completed"
     assert capability_run["screen_report"]["summary"]["control_status"] == "planned"
-    assert result["agent_loop_summary"]["agent_loop_screen_report_status"] == "ok"
-    assert result["agent_loop_summary"]["agent_loop_screen_observe_status"] == (
+    assert result["agent_loop_result"]["agent_loop_screen_report_status"] == "ok"
+    assert result["agent_loop_result"]["agent_loop_screen_observe_status"] == (
         "no_screen_artifacts"
     )
-    assert result["agent_loop_summary"]["agent_loop_screen_control_status"] == "planned"
-    assert result["agent_loop_summary"]["agent_loop_screen_screenshot_available"] is False
-    assert result["agent_loop_summary"]["agent_loop_screen_interferes_with_screen"] is True
+    assert result["agent_loop_result"]["agent_loop_screen_control_status"] == "planned"
+    assert result["agent_loop_result"]["agent_loop_screen_screenshot_available"] is False
+    assert result["agent_loop_result"]["agent_loop_screen_interferes_with_screen"] is True
     assert "raw screen control payload" not in json.dumps(result)
-    _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
+    _assert_no_agent_loop_raw_payload(result["agent_loop_result"])
 
 
 def test_supervisor_capacity_plan_summarizes_research_search_agent_loop_result(
@@ -1004,14 +1005,14 @@ def test_supervisor_capacity_plan_summarizes_research_search_agent_loop_result(
     research_search = capability_run["research_search"]
     assert research_search["status"] == "ok"
     assert research_search["provider"] == "codex_delegated"
-    assert result["agent_loop_summary"]["agent_loop_research_search_status"] == "ok"
-    assert result["agent_loop_summary"]["agent_loop_research_provider"] == (
+    assert result["agent_loop_result"]["agent_loop_research_search_status"] == "ok"
+    assert result["agent_loop_result"]["agent_loop_research_provider"] == (
         "codex_delegated"
     )
-    assert result["agent_loop_summary"]["agent_loop_research_source_count"] == 1
-    assert result["agent_loop_summary"]["agent_loop_research_artifact_count"] == 2
-    assert "raw_transcript" not in json.dumps(result["agent_loop_summary"])
-    _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
+    assert result["agent_loop_result"]["agent_loop_research_source_count"] == 1
+    assert result["agent_loop_result"]["agent_loop_research_artifact_count"] == 2
+    assert "raw_transcript" not in json.dumps(result["agent_loop_result"])
+    _assert_no_agent_loop_raw_payload(result["agent_loop_result"])
 
 
 def test_supervisor_capacity_plan_summarizes_research_promote_agent_loop_result(tmp_path):
@@ -1072,24 +1073,24 @@ def test_supervisor_capacity_plan_summarizes_research_promote_agent_loop_result(
     assert promotion["action_type"] == "write_memory"
     assert promotion["memory_write"] == "proposal_only"
     assert (
-        result["agent_loop_summary"]["agent_loop_research_promotion_status"] == "ok"
+        result["agent_loop_result"]["agent_loop_research_promotion_status"] == "ok"
     )
     assert (
-        result["agent_loop_summary"]["agent_loop_research_promotion_action_type"]
+        result["agent_loop_result"]["agent_loop_research_promotion_action_type"]
         == "write_memory"
     )
     assert (
-        result["agent_loop_summary"]["agent_loop_research_promotion_memory_write"]
+        result["agent_loop_result"]["agent_loop_research_promotion_memory_write"]
         == "proposal_only"
     )
     assert (
-        result["agent_loop_summary"][
+        result["agent_loop_result"][
             "agent_loop_research_promotion_quality_gate_status"
         ]
         == "promotable"
     )
-    assert "raw report body" not in json.dumps(result["agent_loop_summary"])
-    _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
+    assert "raw report body" not in json.dumps(result["agent_loop_result"])
+    _assert_no_agent_loop_raw_payload(result["agent_loop_result"])
 
 
 def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_execution(tmp_path):
@@ -1267,7 +1268,7 @@ def test_supervisor_capacity_command_handler_prints_json_status_reason(capsys):
     assert payload["status"] == "blocked"
     assert payload["status_reason"] == "not_launchable"
     assert payload["agent_loop"] is None
-    assert payload["agent_loop_summary"] == {"agent_loop_executed": False}
+    assert payload["agent_loop_result"] == {"agent_loop_executed": False}
 
 
 def test_loop_capacity_payload_explains_no_offered_capacities():
@@ -1343,7 +1344,7 @@ def test_loop_capacity_payload_propagates_blocked_reason_from_plan():
     assert payload["capacity_call_specs"] == []
 
 
-def test_loop_capacity_payload_propagates_agent_loop_summary_from_plan():
+def test_loop_capacity_payload_propagates_agent_loop_result_from_plan():
     decision = {
         "kind": "supervisor_capacity_decision",
         "next_action": "blocked",
@@ -1364,7 +1365,7 @@ def test_loop_capacity_payload_propagates_agent_loop_summary_from_plan():
                 "status": "blocked",
                 "status_reason": "not_launchable",
                 "capacity_blocked_reason": "not_allowlisted",
-                "agent_loop_summary": summary,
+                "agent_loop_result": summary,
                 "supervisor_decision": decision,
             }
 
@@ -1375,8 +1376,8 @@ def test_loop_capacity_payload_propagates_agent_loop_summary_from_plan():
         api=StubCapacityApi(),
     )
 
-    assert payload["agent_loop_summary"] == summary
-    _assert_no_agent_loop_raw_payload(payload["agent_loop_summary"])
+    assert payload["agent_loop_result"] == summary
+    _assert_no_agent_loop_raw_payload(payload["agent_loop_result"])
 
 
 def test_loop_capacity_payload_passes_supervisor_capacity_input_defaults(tmp_path):

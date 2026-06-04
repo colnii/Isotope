@@ -179,8 +179,8 @@ def _format_supervisor_capacity_handoff_trace_plain_text(result: dict[str, Any])
 def _format_supervisor_capacity_dashboard_smoke_plain_text(
     result: dict[str, Any],
 ) -> str:
-    recent = result["dashboard_recent_capacity_summary"]
-    loop = recent["agent_loop_summary"]
+    recent = result["dashboard_recent_capacity_result"]
+    loop = recent["agent_loop_result"]
     lines = [
         f"scenario: {result['scenario']}",
         (

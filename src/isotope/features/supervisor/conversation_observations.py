@@ -22,7 +22,7 @@ def capacity_observation_from_event_payload(
         "kind": "capacity_observation",
         "capacity_id": payload["capacity_id"],
         "status": payload["status"],
-        "result_summary": payload.get("result_summary", {}),
+        "result": payload.get("result", {}),
     }
 
 
@@ -65,7 +65,7 @@ def model_observation_from_agent_loop(
     *,
     capacity_id: str,
     status: str,
-    result_summary: dict[str, Any],
+    result: dict[str, Any],
     agent_loop: dict[str, Any],
     state_root: Path,
 ) -> dict[str, Any]:
@@ -73,7 +73,7 @@ def model_observation_from_agent_loop(
         "kind": "capacity_observation",
         "capacity_id": capacity_id,
         "status": status,
-        "result_summary": result_summary,
+        "result": result,
     }
     result = _capability_result_observation(
         capacity_id=capacity_id,
@@ -184,7 +184,7 @@ def _capability_result_detail_label(capacity_id: str) -> str:
         "code.search": "Code search result",
         "code.read": "Code read result",
         "code.apply_patch": "Patch result",
-        "artifact.diff_summary": "Artifact summary",
+        "artifact.diff_summary": "Artifact result",
         "skills.search": "Skills search result",
         "skills.describe": "Skill description",
         "mcp.servers.list": "MCP servers",
@@ -219,7 +219,7 @@ def _capability_result_observation(
     if capacity_id == "code.apply_patch":
         return _patch_result_observation(capability_run)
     if capacity_id == "artifact.diff_summary":
-        return _artifact_summary_observation(capability_run)
+        return _artifact_result_observation(capability_run)
     if capacity_id == "supervisor.project_status":
         return _project_status_observation(capability_run)
     if capacity_id == "isotope.self_repair":
@@ -561,14 +561,14 @@ def _patch_result_observation(capability_run: dict[str, Any]) -> dict[str, Any] 
     }
 
 
-def _artifact_summary_observation(
+def _artifact_result_observation(
     capability_run: dict[str, Any],
 ) -> dict[str, Any] | None:
     artifact = capability_run.get("artifact")
     if not isinstance(artifact, dict):
         return None
     return {
-        "kind": "artifact_summary",
+        "kind": "artifact_result",
         "artifact_id": _string_value(artifact.get("artifact_id")),
         "artifact_type": _string_value(artifact.get("artifact_type")),
         "summary": _string_value(artifact.get("summary")),
@@ -609,13 +609,13 @@ def _string_dict_value(value: Any) -> dict[str, str]:
 
 
 def _project_status_observation(capability_run: dict[str, Any]) -> dict[str, Any] | None:
-    summary = capability_run.get("project_state_summary")
+    summary = capability_run.get("project_state")
     if not isinstance(summary, dict):
         return None
     return {
-        "kind": "project_state_summary",
+        "kind": "project_state",
         "status": capability_run.get("status"),
-        "project_state_summary": {
+        "project_state": {
             "snapshot_id": summary.get("snapshot_id"),
             "generated_at": summary.get("generated_at"),
             "source": summary.get("source"),

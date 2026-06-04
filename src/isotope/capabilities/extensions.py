@@ -137,7 +137,7 @@ def _mcp_capability_definitions(capability_type: type[Any]) -> list[Any]:
             },
             safety_boundaries=(
                 "configured_servers_only",
-                "command_summary_only",
+                "configured_server_listing",
                 "no_tool_call",
             ),
             default_enabled=True,
@@ -220,7 +220,7 @@ def _mcp_capability_definitions(capability_type: type[Any]) -> list[Any]:
             safety_boundaries=(
                 "configured_servers_only",
                 "allowlisted_tools_only",
-                "bounded_result_summary",
+                "bounded_result_projection",
             ),
             default_enabled=True,
             network_required=False,

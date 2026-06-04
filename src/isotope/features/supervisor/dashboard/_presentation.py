@@ -837,16 +837,16 @@ def print_dashboard_capacity_summaries(payload: dict[str, Any]) -> None:
     for worker in workers:
         if not isinstance(worker, dict):
             continue
-        recent = worker.get("recent_capacity_summary")
+        recent = worker.get("recent_capacity_result")
         if not isinstance(recent, dict):
             continue
-        print(f"- {_dashboard_capacity_summary_text(worker, recent)}")
+        print(f"- {_dashboard_capacity_result_text(worker, recent)}")
 
 
 def _dashboard_supervised_capacity_run_text(run: dict[str, Any]) -> str:
     loop = (
-        run.get("agent_loop_summary")
-        if isinstance(run.get("agent_loop_summary"), dict)
+        run.get("agent_loop_result")
+        if isinstance(run.get("agent_loop_result"), dict)
         else {}
     )
     return _dashboard_capacity_line_text(
@@ -857,13 +857,13 @@ def _dashboard_supervised_capacity_run_text(run: dict[str, Any]) -> str:
     )
 
 
-def _dashboard_capacity_summary_text(
+def _dashboard_capacity_result_text(
     worker: dict[str, Any],
     recent: dict[str, Any],
 ) -> str:
     loop = (
-        recent.get("agent_loop_summary")
-        if isinstance(recent.get("agent_loop_summary"), dict)
+        recent.get("agent_loop_result")
+        if isinstance(recent.get("agent_loop_result"), dict)
         else {}
     )
     return _dashboard_capacity_line_text(

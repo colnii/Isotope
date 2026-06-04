@@ -88,8 +88,9 @@ def test_desktop_chat_capacity_result_can_feed_model_and_http_artifact_content(
     capacity_result = events[2]["data"]
     assert capacity_result["capacity_id"] == "memory.query"
     assert capacity_result["status"] == "ok"
-    assert capacity_result["result_summary"]["agent_loop_memory_query_status"] == "ok"
-    assert capacity_result["result_summary"]["agent_loop_memory_query_result_count"] == 1
+    assert "result" + "_summary" not in capacity_result
+    assert capacity_result["result"]["agent_loop_memory_query_status"] == "ok"
+    assert capacity_result["result"]["agent_loop_memory_query_result_count"] == 1
     memory_detail = _detail_content(capacity_result, "Memory query result")
     assert memory_detail["results"][0]["record_id"] == "mem_product_chain"
     assert (
@@ -104,7 +105,7 @@ def test_desktop_chat_capacity_result_can_feed_model_and_http_artifact_content(
     assert "Raw product chain memory content." not in second_turn
     assert "raw_response" not in second_turn
 
-    artifact_id = capacity_result["result_summary"]["agent_loop_artifact_id"]
+    artifact_id = capacity_result["result"]["agent_loop_artifact_id"]
     content_app = create_http_app(tmp_path / "supervisor" / "conversation-loop-runs")
     artifact_response = content_app.request("GET", f"/artifacts/{artifact_id}/content")
 

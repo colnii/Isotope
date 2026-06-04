@@ -31,7 +31,7 @@ def test_execute_llm_action_routes_request_context_through_codex_operation_capac
         "kind": "call_capacity",
         "capacity_id": "supervisor.codex_operation",
         "operation": "request_context",
-        "agent_loop_summary": {"agent_loop_executed": True},
+        "agent_loop_result": {"agent_loop_executed": True},
     }
     api = RecordingApi(expected)
     args = argparse.Namespace(

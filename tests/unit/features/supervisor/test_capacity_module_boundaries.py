@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from isotope.features.supervisor.commands import capacity_rendering, capacity_summary
+from isotope.features.supervisor.commands import capacity_rendering, capacity_result
 from isotope.features.supervisor.commands.handlers import capacity as capacity_command
 
 
 def test_capacity_handler_reexports_summary_and_rendering_boundaries():
     assert (
-        capacity_command.agent_loop_json_summary
-        is capacity_summary.agent_loop_json_summary
+        capacity_command.agent_loop_json_result
+        is capacity_result.agent_loop_json_result
     )
     assert (
         capacity_command._print_capacity_plan_plain
@@ -15,7 +15,7 @@ def test_capacity_handler_reexports_summary_and_rendering_boundaries():
     )
 
 
-def test_capacity_summary_extracts_public_metadata_agent_loop_fields():
+def test_capacity_result_extracts_public_metadata_agent_loop_fields():
     payload = {
         "agent_loop": {
             "handoff": {
@@ -51,7 +51,7 @@ def test_capacity_summary_extracts_public_metadata_agent_loop_fields():
         }
     }
 
-    summary = capacity_summary.agent_loop_json_summary(payload)
+    summary = capacity_result.agent_loop_json_result(payload)
 
     assert summary == {
         "agent_loop_executed": True,

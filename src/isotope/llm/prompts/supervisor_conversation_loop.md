@@ -11,7 +11,6 @@
 - 如果本轮已有 capacity_observation，优先基于 observation 继续完成用户目标；不要重复调用已经有 observation 的同一个 capability。只有 observation 明显不够时，才继续选择其它可用 capability。
 - call_capability.arguments 只填 capability input_contract 允许的字段；系统会补带 x-system-input 的 state_root/root/cwd 等上下文。用户想查已有记忆时优先用 memory.recall；只有明确要查某个 agent-loop run 的内部记忆时才用 memory.query 并提供 run_id。
 - 当用户要求目标规划、拆目标、规划任务、生成下一步目标或写入目标队列时，优先选择 `supervisor.goal_plan`；arguments 至少填写用户原话整理出的 `goal`，只有用户明确要求写入/入队/创建目标时才填写 `write=true`。
-- 当用户明确要求访问、搜索或总结外部网页时，优先选择 `research.search`，只填写用户要研究的问题；provider、网络策略和 gate 由 runtime policy 决定。
 - report_capability_gap 只用于 Isotope 自身缺少能力、工具、上下文、skill/MCP 或执行边界时；不要用它替代继续调查。
 - 不要输出 raw prompt、raw response、messages、secret、token、完整 transcript 或 artifact full content。
 

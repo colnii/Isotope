@@ -338,7 +338,7 @@ def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) 
     assert events[0].payload["status"] == "running"
     assert events[1].payload["capacity_id"] == "artifact.review"
     assert events[1].payload["status"] == "ok"
-    assert events[1].payload["result_summary"]["agent_loop_tick_status"] == "executed"
+    assert events[1].payload["result"]["agent_loop_tick_status"] == "executed"
     assert events[2].payload == {"text": "能力已执行，低敏结果已经返回。"}
     assert len(provider.calls) == 2
     second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
@@ -399,14 +399,14 @@ def test_conversation_loop_executes_goal_plan_capacity_from_chat(
         "delta",
     ]
     assert events[0].payload["capacity_id"] == "supervisor.goal_plan"
-    assert events[0].payload["input_summary"] == {
+    assert events[0].payload["inputs"] == {
         "state_root": str(state_root),
         "cwd": str(workspace),
         "goal": user_goal,
     }
     assert events[1].payload["capacity_id"] == "supervisor.goal_plan"
     assert events[1].payload["status"] == "ok"
-    assert events[1].payload["result_summary"]["agent_loop_tick_status"] == "executed"
+    assert events[1].payload["result"]["agent_loop_tick_status"] == "executed"
     assert events[2].payload["text"] == "已通过目标规划 capacity 生成候选目标。"
     assert read_active_supervisor_goals(codex_home=state_root) == ()
     second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
@@ -462,7 +462,7 @@ def test_conversation_loop_writes_goal_plan_when_user_explicitly_requests_queue(
         )
     )
 
-    assert events[0].payload["input_summary"]["write"] is True
+    assert events[0].payload["inputs"]["write"] is True
     assert events[1].payload["status"] == "ok"
     active_goals = read_active_supervisor_goals(codex_home=state_root)
     assert len(active_goals) == 1
@@ -532,15 +532,15 @@ def test_conversation_loop_recalls_existing_state_root_memory_without_run_id(
         "delta",
     ]
     assert events[0].payload["capacity_id"] == "memory.recall"
-    assert events[0].payload["input_summary"] == {
+    assert events[0].payload["inputs"] == {
         "query": "state-root memory preview",
         "root": str(tmp_path / "state"),
         "scope": "run",
     }
     assert events[1].payload["status"] == "ok"
-    summary = events[1].payload["result_summary"]
-    assert summary["agent_loop_memory_recall_status"] == "ok"
-    assert summary["agent_loop_memory_recall_result_count"] == 1
+    result = events[1].payload["result"]
+    assert result["agent_loop_memory_recall_status"] == "ok"
+    assert result["agent_loop_memory_recall_result_count"] == 1
     rendered_events = json.dumps([event.payload for event in events], ensure_ascii=False)
     assert "Desktop chat should recall this state-root memory preview." in rendered_events
     assert "raw memory content must not leak" not in rendered_events
@@ -621,14 +621,14 @@ def test_conversation_loop_filters_model_supplied_inputs_to_capability_contract(
         "capacity_result",
         "delta",
     ]
-    inputs = events[0].payload["input_summary"]
+    inputs = events[0].payload["inputs"]
     assert inputs == {
         "query": "capacity research integration",
         "root": str(tmp_path),
     }
     assert events[1].payload["capacity_id"] == "research.search"
     assert events[1].payload["status"] == "ok"
-    assert events[1].payload["result_summary"]["agent_loop_research_provider"] == (
+    assert events[1].payload["result"]["agent_loop_research_provider"] == (
         "codex_delegated"
     )
     assert events[2].payload == {"text": "research.search 已执行。"}
@@ -723,11 +723,11 @@ def test_conversation_loop_uses_internal_research_provider_policy(
         )
     )
 
-    inputs = events[0].payload["input_summary"]
+    inputs = events[0].payload["inputs"]
     assert inputs == {"query": "https://example.com/research", "root": str(tmp_path)}
     assert events[0].event == "capacity_start"
     assert events[1].event == "capacity_result"
-    assert events[1].payload["result_summary"]["agent_loop_research_provider"] == (
+    assert events[1].payload["result"]["agent_loop_research_provider"] == (
         "codex_delegated"
     )
     assert provider_calls == [
@@ -786,11 +786,11 @@ def test_conversation_loop_can_use_project_status_without_fixed_route(
     ]
     assert events[0].payload["capacity_id"] == "supervisor.project_status"
     assert events[1].payload["status"] == "ok"
-    assert events[1].payload["result_summary"]["agent_loop_project_status_status"] == (
+    assert events[1].payload["result"]["agent_loop_project_status_status"] == (
         "completed"
     )
     second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
-    assert "project_state_summary" in second_prompt
+    assert "project_state" in second_prompt
     assert "把 Desktop chat 打成黄金路径" in second_prompt
     assert events[2].payload == {"text": "当前有 Desktop chat 目标正在推进。"}
 
@@ -864,7 +864,7 @@ def test_conversation_loop_project_status_observes_self_repair_worker_status(
         "capacity_result",
         "delta",
     ]
-    assert events[1].payload["result_summary"][
+    assert events[1].payload["result"][
         "agent_loop_project_status_self_repair_count"
     ] == 1
     second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
@@ -945,12 +945,12 @@ def test_conversation_loop_project_status_observes_latest_self_repair_summary(
         "capacity_result",
         "delta",
     ]
-    summary = events[1].payload["result_summary"]
-    assert summary["agent_loop_project_status_latest_self_repair_status"] == "done"
-    assert summary["agent_loop_project_status_latest_self_repair_name"] == (
+    result = events[1].payload["result"]
+    assert result["agent_loop_project_status_latest_self_repair_status"] == "done"
+    assert result["agent_loop_project_status_latest_self_repair_name"] == (
         "desktop-self-repair"
     )
-    assert summary["agent_loop_project_status_latest_self_repair_merge_suitable"] is True
+    assert result["agent_loop_project_status_latest_self_repair_merge_suitable"] is True
     second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
     observation_message = provider.calls[1]["messages"][1]["content"]
     assert "latest_self_repair" in second_prompt
@@ -1037,8 +1037,8 @@ def test_conversation_loop_can_launch_codex_assisted_self_repair(
         "delta",
     ]
     assert events[0].payload["capacity_id"] == "isotope.self_repair"
-    assert "state_root" not in events[0].payload["input_summary"]
-    assert events[1].payload["result_summary"]["agent_loop_self_repair_status"] == (
+    assert "state_root" not in events[0].payload["inputs"]
+    assert events[1].payload["result"]["agent_loop_self_repair_status"] == (
         "launched"
     )
     second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
@@ -1102,7 +1102,7 @@ def test_conversation_loop_returns_capacity_error_when_execution_times_out(
         "delta",
     ]
     assert events[1].payload["status"] == "error"
-    assert events[1].payload["result_summary"] == {
+    assert events[1].payload["result"] == {
         "error_type": "TimeoutError",
         "message": "capacity execution timed out",
     }
@@ -1209,7 +1209,7 @@ def test_conversation_loop_executes_native_coding_capacity_with_safe_observation
     ]
     assert events[0].payload["capacity_id"] == "coding_task.execute"
     assert events[1].payload["status"] == "ok"
-    assert events[1].payload["result_summary"]["agent_loop_tick_status"] == "executed"
+    assert events[1].payload["result"]["agent_loop_tick_status"] == "executed"
     assert events[2].payload["text"] == "已完成 native coding capacity。"
     assert (workspace / "src" / "app.py").read_text(encoding="utf-8") == "value = 1\n"
     materialized = (
@@ -1282,7 +1282,7 @@ def test_conversation_loop_runs_coding_task_run_through_existing_agent_loop(
     ]
     assert events[0].payload["capacity_id"] == "coding_task.run"
     assert events[1].payload["status"] == "ok"
-    summary = events[1].payload["result_summary"]
+    summary = events[1].payload["result"]
     assert summary["agent_loop_coding_status"] == "verified"
     assert summary["agent_loop_coding_context_calls"] >= 2
     assert summary["agent_loop_coding_review_handle_available"] is True
@@ -1366,7 +1366,7 @@ def test_coding_task_run_allows_bounded_revision_after_failed_verification(
         )
     )
 
-    summary = events[1].payload["result_summary"]
+    summary = events[1].payload["result"]
     assert events[1].payload["status"] == "ok"
     assert summary["agent_loop_coding_status"] == "verified"
     assert summary["agent_loop_coding_tick_count"] == 2
@@ -1431,7 +1431,7 @@ def test_conversation_loop_applies_reviewed_native_coding_diff(tmp_path) -> None
     )
 
     assert events[1].payload["status"] == "ok"
-    summary = events[1].payload["result_summary"]
+    summary = events[1].payload["result"]
     assert summary["agent_loop_reviewed_apply_status"] == "applied"
     assert summary["agent_loop_reviewed_apply_source_workspace_write"] == "performed"
     assert summary["agent_loop_reviewed_apply_applied_files"] == ["src/app.py"]
@@ -1701,10 +1701,10 @@ def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(
     ]
     assert events[0].payload["capacity_id"] == "screen.observe"
     assert events[1].payload["status"] == "ok"
-    assert events[1].payload["result_summary"]["agent_loop_tick_status"] == "executed"
-    assert events[1].payload["result_summary"]["agent_loop_screen_report_status"] == "ok"
-    assert events[1].payload["result_summary"]["agent_loop_screen_observe_status"] == "captured"
-    assert events[1].payload["result_summary"][
+    assert events[1].payload["result"]["agent_loop_tick_status"] == "executed"
+    assert events[1].payload["result"]["agent_loop_screen_report_status"] == "ok"
+    assert events[1].payload["result"]["agent_loop_screen_observe_status"] == "captured"
+    assert events[1].payload["result"][
         "agent_loop_screen_screenshot_available"
     ] is True
     screen_artifact_details = [

@@ -61,7 +61,7 @@ def test_supervisor_worker_manager_groups_memory_events_and_capacity_calls(
                 "worker_id": "worker-a",
                 "capacity_id": "artifact.review",
                 "arguments": {"secret": "PRIVATE_CAPACITY_ARGUMENT"},
-                "agent_loop_summary": {
+                "agent_loop_result": {
                     "agent_loop_executed": True,
                     "agent_loop_planner_selected_step": "call_capability",
                     "agent_loop_tick_status": "executed",
@@ -129,11 +129,11 @@ def test_supervisor_worker_manager_groups_memory_events_and_capacity_calls(
     assert workers["worker-a"]["memory_records_total"] == 2
     assert workers["worker-a"]["capacity_calls_total"] == 1
     assert workers["worker-a"]["capacity_ids"] == ["artifact.review"]
-    assert workers["worker-a"]["recent_capacity_summary"] == {
+    assert workers["worker-a"]["recent_capacity_result"] == {
         "record_id": "mem_worker_a_capacity",
         "capacity_id": "artifact.review",
         "summary": "Worker A selected artifact.review.",
-        "agent_loop_summary": {
+        "agent_loop_result": {
             "agent_loop_executed": True,
             "agent_loop_planner_selected_step": "call_capability",
             "agent_loop_tick_status": "executed",
@@ -205,7 +205,7 @@ def test_supervisor_worker_manager_plain_output_shows_supervised_capacity_runs(
                 "worker_id": "worker-a",
                 "capacity_id": "artifact.review",
                 "arguments": {"secret": "PRIVATE_CAPACITY_ARGUMENT"},
-                "agent_loop_summary": {
+                "agent_loop_result": {
                     "agent_loop_executed": True,
                     "agent_loop_planner_selected_step": "call_capability",
                     "agent_loop_tick_status": "executed",
@@ -254,7 +254,7 @@ def test_supervisor_dashboard_json_includes_multi_worker_status(tmp_path, capsys
                 "worker_id": "worker-a",
                 "capacity_id": "artifact.review",
                 "arguments": {"secret": "PRIVATE_CAPACITY_ARGUMENT"},
-                "agent_loop_summary": {
+                "agent_loop_result": {
                     "agent_loop_executed": True,
                     "agent_loop_tick_status": "executed",
                     "agent_loop_tick_after_stop_reason": "tick_budget_exhausted",
@@ -303,11 +303,11 @@ def test_supervisor_dashboard_json_includes_multi_worker_status(tmp_path, capsys
     assert payload["multi_worker"]["summary"]["capacity_calls_total"] == 1
     workers = {worker["name"]: worker for worker in payload["multi_worker"]["workers"]}
     assert workers["worker-a"]["capacity_ids"] == ["artifact.review"]
-    assert workers["worker-a"]["recent_capacity_summary"] == {
+    assert workers["worker-a"]["recent_capacity_result"] == {
         "record_id": "mem_worker_a_capacity",
         "capacity_id": "artifact.review",
         "summary": "Worker A selected artifact.review.",
-        "agent_loop_summary": {
+        "agent_loop_result": {
             "agent_loop_executed": True,
             "agent_loop_tick_status": "executed",
             "agent_loop_tick_after_stop_reason": "tick_budget_exhausted",
@@ -319,7 +319,7 @@ def test_supervisor_dashboard_json_includes_multi_worker_status(tmp_path, capsys
     assert "PRIVATE_" not in output
 
 
-def test_supervisor_dashboard_plain_shows_capacity_summary(tmp_path, capsys):
+def test_supervisor_dashboard_plain_shows_capacity_result(tmp_path, capsys):
     codex_home = tmp_path / ".codex"
     memory_dir = codex_home / "memory"
     memory_dir.mkdir(parents=True)
@@ -333,7 +333,7 @@ def test_supervisor_dashboard_plain_shows_capacity_summary(tmp_path, capsys):
                 "worker_id": "worker-a",
                 "capacity_id": "artifact.review",
                 "arguments": {"secret": "PRIVATE_CAPACITY_ARGUMENT"},
-                "agent_loop_summary": {
+                "agent_loop_result": {
                     "agent_loop_executed": True,
                     "agent_loop_planner_selected_step": "call_capability",
                     "agent_loop_tick_status": "executed",
@@ -466,12 +466,12 @@ def test_capacity_action_record_flows_into_dashboard_multi_worker_status(
     payload = json.loads(output)
     assert payload["multi_worker"]["summary"]["capacity_calls_total"] == 1
     workers = {worker["name"]: worker for worker in payload["multi_worker"]["workers"]}
-    recent_capacity = workers["capa"]["recent_capacity_summary"]
-    assert workers["capa"]["recent_capacity_summary"] == {
+    recent_capacity = workers["capa"]["recent_capacity_result"]
+    assert workers["capa"]["recent_capacity_result"] == {
         "record_id": recent_capacity["record_id"],
         "capacity_id": "artifact.review",
         "summary": "capa called artifact.review via agent loop.",
-        "agent_loop_summary": result["agent_loop_summary"],
+        "agent_loop_result": result["agent_loop_result"],
     }
     supervised = payload["multi_worker"]["supervised_execution"]
     assert supervised == {
@@ -484,7 +484,7 @@ def test_capacity_action_record_flows_into_dashboard_multi_worker_status(
                 "record_id": recent_capacity["record_id"],
                 "capacity_id": "artifact.review",
                 "summary": "capa called artifact.review via agent loop.",
-                "agent_loop_summary": result["agent_loop_summary"],
+                "agent_loop_result": result["agent_loop_result"],
             }
         ],
     }

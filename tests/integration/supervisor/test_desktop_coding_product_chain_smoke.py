@@ -145,7 +145,7 @@ def test_desktop_chat_can_drive_search_read_patch_and_diff_artifact(
     patch_detail = _detail_content(capacity_results[2], "Patch result")
     assert patch_detail["changed_files"] == ["src/app.py"]
     assert patch_detail["file_count"] == 1
-    diff_detail = _detail_content(capacity_results[3], "Artifact summary")
+    diff_detail = _detail_content(capacity_results[3], "Artifact result")
     assert diff_detail["artifact_type"] == "native_coding.diff_summary"
     assert diff_detail["summary"] == "1 changed file in desktop_code_workspace"
     assert (workspace / "src" / "app.py").read_text(encoding="utf-8") == (
@@ -168,7 +168,7 @@ def test_desktop_chat_can_drive_search_read_patch_and_diff_artifact(
     assert "raw_response" not in final_call
     assert "--- a/src/app.py" not in final_call
 
-    loop_artifact_id = capacity_results[-1]["result_summary"]["agent_loop_artifact_id"]
+    loop_artifact_id = capacity_results[-1]["result"]["agent_loop_artifact_id"]
     loop_content_app = create_http_app(
         state_root / "supervisor" / "conversation-loop-runs"
     )

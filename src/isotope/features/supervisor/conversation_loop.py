@@ -14,7 +14,7 @@ from uuid import uuid4
 from isotope.capabilities.runner import CapabilityRunner
 from isotope.features.supervisor.commands.handlers.capacity import (
     _execute_agent_loop_capacity_step,
-    agent_loop_json_summary,
+    agent_loop_json_result,
 )
 from isotope.features.supervisor.native_coding_run import (
     CODING_TASK_RUN_CAPABILITY,
@@ -159,7 +159,7 @@ def _conversation_context(
             "description": capability.get("description"),
             "shelf": capability.get("shelf"),
             "domain_tags": capability.get("domain_tags"),
-            **_conversation_capability_summary(capability),
+            **_conversation_capability_projection(capability),
         }
         for capability in runner.list_capabilities()
     ]
@@ -247,7 +247,7 @@ def _generate_with_timeout(
         executor.shutdown(wait=False, cancel_futures=True)
 
 
-def _conversation_capability_summary(capability: dict[str, Any]) -> dict[str, Any]:
+def _conversation_capability_projection(capability: dict[str, Any]) -> dict[str, Any]:
     input_contract = capability.get("input_contract")
     properties = (
         input_contract.get("properties", {})
@@ -292,13 +292,13 @@ def _conversation_input_properties(
     for name, schema in properties.items():
         if not isinstance(name, str) or not isinstance(schema, dict):
             continue
-        summary = {
+        property_result = {
             key: schema[key]
             for key in ("type", "enum", "default", "description")
             if key in schema
         }
-        if summary:
-            result[name] = summary
+        if property_result:
+            result[name] = property_result
     return result
 
 
@@ -352,8 +352,8 @@ def _run_capability_decision(
             "capacity_id": capacity_id,
             "title": title,
             "status": "running",
-            "input_summary": _safe_detail_value(display_inputs),
-            "result_summary": {},
+            "inputs": _safe_detail_value(display_inputs),
+            "result": {},
             "details": [
                 {
                     "label": "Inputs",
@@ -384,7 +384,7 @@ def _run_capability_decision(
                 state_root=state_root / "supervisor" / "conversation-loop-runs",
                 timeout_seconds=_capacity_timeout_seconds(capacity_id, timeout_seconds),
             )
-        result_summary = agent_loop_json_summary({"agent_loop": agent_loop})
+        result = agent_loop_json_result({"agent_loop": agent_loop})
         extra_details = [
             detail
             for detail in [
@@ -401,14 +401,14 @@ def _run_capability_decision(
             "model_observation": model_observation_from_agent_loop(
                 capacity_id=capacity_id,
                 status="ok",
-                result_summary=result_summary,
+                result=result,
                 agent_loop=agent_loop,
                 state_root=state_root,
             )
         }
-        status = _capacity_result_status(result_summary)
+        status = _capacity_result_status(result)
     except Exception as exc:  # noqa: BLE001 - stream public capacity failure.
-        result_summary = {
+        result = {
             "error_type": type(exc).__name__,
             "message": str(exc) or type(exc).__name__,
         }
@@ -418,7 +418,7 @@ def _run_capability_decision(
                 "kind": "capacity_observation",
                 "capacity_id": capacity_id,
                 "status": "error",
-                "result_summary": result_summary,
+                "result": result,
             }
         }
         status = "error"
@@ -429,8 +429,8 @@ def _run_capability_decision(
             "capacity_id": capacity_id,
             "title": title,
             "status": status,
-            "input_summary": _safe_detail_value(display_inputs),
-            "result_summary": _safe_detail_value(result_summary),
+            "inputs": _safe_detail_value(display_inputs),
+            "result": _safe_detail_value(result),
             "details": [
                 {
                     "label": "Inputs",
@@ -438,9 +438,9 @@ def _run_capability_decision(
                     "content": _safe_detail_value(display_inputs),
                 },
                 {
-                    "label": "Result summary",
+                    "label": "Result",
                     "kind": "json",
-                    "content": _safe_detail_value(result_summary),
+                    "content": _safe_detail_value(result),
                 },
                 *extra_details,
             ],
@@ -613,13 +613,13 @@ def _capacity_event_id(capacity_id: str) -> str:
     return f"capacity_{safe.strip('_') or 'unknown'}"
 
 
-def _capacity_result_status(result_summary: dict[str, Any]) -> str:
-    research_status = result_summary.get("agent_loop_research_search_status")
+def _capacity_result_status(result: dict[str, Any]) -> str:
+    research_status = result.get("agent_loop_research_search_status")
     if research_status in {"provider_failed", "validation_failed"}:
         return "blocked"
-    if result_summary.get("agent_loop_coding_status") == "verified":
+    if result.get("agent_loop_coding_status") == "verified":
         return "ok"
-    return "ok" if result_summary.get("agent_loop_tick_status") == "executed" else "blocked"
+    return "ok" if result.get("agent_loop_tick_status") == "executed" else "blocked"
 
 
 def _capability_title(capacity_id: str, *, context: dict[str, Any]) -> str:
@@ -737,7 +737,7 @@ def _record_capability_gap(
         ),
         "reason": _safe_string(raw_gap.get("reason"), default="capability gap reported"),
         "needed_context": _safe_string_list(raw_gap.get("needed_context")),
-        "user_goal_summary": user_message[:500],
+        "user_goal": user_message[:500],
         "suggested_next_capability": _safe_string(
             raw_gap.get("suggested_next_capability"),
             default="",

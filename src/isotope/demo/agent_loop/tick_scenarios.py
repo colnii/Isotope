@@ -333,10 +333,10 @@ def _run_supervisor_capacity_dashboard_smoke(root: Path) -> dict[str, Any]:
         worker["name"]: worker
         for worker in dashboard_payload["multi_worker"]["workers"]
     }
-    dashboard_recent = workers["capa"]["recent_capacity_summary"]
-    execution_summary = dict(executed["agent_loop_summary"])
-    memory_summary = dict(memory_record.content["agent_loop_summary"])
-    dashboard_summary = dict(dashboard_recent["agent_loop_summary"])
+    dashboard_recent = workers["capa"]["recent_capacity_result"]
+    execution_summary = dict(executed["agent_loop_result"])
+    memory_summary = dict(memory_record.content["agent_loop_result"])
+    dashboard_summary = dict(dashboard_recent["agent_loop_result"])
     app_friction: list[dict[str, Any]] = []
     capacity_dashboard_smoke_ok = (
         executed["kind"] == "call_capacity"
@@ -353,14 +353,14 @@ def _run_supervisor_capacity_dashboard_smoke(root: Path) -> dict[str, Any]:
         "executed": {
             "kind": executed["kind"],
             "capacity_id": executed["capacity_id"],
-            "agent_loop_summary": execution_summary,
+            "agent_loop_result": execution_summary,
         },
         "memory_record": {
             "record_id": memory_record.memory_id,
             "capacity_id": memory_record.content["capacity_id"],
-            "agent_loop_summary": memory_summary,
+            "agent_loop_result": memory_summary,
         },
-        "dashboard_recent_capacity_summary": dashboard_recent,
+        "dashboard_recent_capacity_result": dashboard_recent,
         "dashboard_capacity_calls_total": dashboard_payload["multi_worker"]["summary"][
             "capacity_calls_total"
         ],

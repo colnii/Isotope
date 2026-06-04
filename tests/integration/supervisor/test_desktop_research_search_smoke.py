@@ -114,18 +114,18 @@ def test_desktop_chat_research_search_reports_default_codex_failure(
     assert capacity_result["capacity_id"] == "research.search"
     assert capacity_result["title"] == "Research Search"
     assert capacity_result["status"] == "blocked"
-    assert capacity_result["input_summary"] == {
+    assert capacity_result["inputs"] == {
         "query": "desktop codex default failure",
         "root": str(tmp_path),
     }
-    assert capacity_result["result_summary"]["agent_loop_research_search_status"] == (
+    assert capacity_result["result"]["agent_loop_research_search_status"] == (
         "provider_failed"
     )
-    assert capacity_result["result_summary"]["agent_loop_research_error_code"] == (
+    assert capacity_result["result"]["agent_loop_research_error_code"] == (
         "research_provider_failed"
     )
     assert (
-        capacity_result["result_summary"]["agent_loop_research_error_message"]
+        capacity_result["result"]["agent_loop_research_error_message"]
         == "codex delegated research provider is not configured"
     )
     assert provider_calls == [{"provider_id": "codex", "workspace_root": str(tmp_path)}]

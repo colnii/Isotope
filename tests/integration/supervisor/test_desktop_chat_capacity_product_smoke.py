@@ -111,17 +111,17 @@ def test_desktop_chat_capacity_product_smoke_covers_core_actions(
     )
 
     assert research["start"]["capacity_id"] == "research.search"
-    assert research["start"]["input_summary"] == {
+    assert research["start"]["inputs"] == {
         "query": "Desktop chat capacity product smoke",
         "root": str(tmp_path),
     }
     assert research["result"]["status"] == "ok"
-    assert research["result"]["result_summary"]["agent_loop_research_provider"] == (
+    assert research["result"]["result"]["agent_loop_research_provider"] == (
         "codex_delegated"
     )
     assert _detail_labels(research["result"]) == {
         "Inputs",
-        "Result summary",
+        "Result",
         "Research artifacts",
     }
     assert "Research product smoke summary." in research["second_prompt"]
@@ -129,23 +129,23 @@ def test_desktop_chat_capacity_product_smoke_covers_core_actions(
     assert "raw_output" not in research["second_prompt"]
 
     assert project_status["start"]["capacity_id"] == "supervisor.project_status"
-    assert project_status["start"]["input_summary"] == {}
+    assert project_status["start"]["inputs"] == {}
     assert project_status["result"]["status"] == "ok"
-    assert project_status["result"]["result_summary"]["agent_loop_project_status_status"] == (
+    assert project_status["result"]["result"]["agent_loop_project_status_status"] == (
         "completed"
     )
-    assert "project_state_summary" in project_status["second_prompt"]
+    assert "project_state" in project_status["second_prompt"]
     assert "把 Desktop chat 打成可验收产品流" in project_status["second_prompt"]
     assert "raw_response" not in project_status["rendered"]
 
     assert self_repair["start"]["capacity_id"] == "isotope.self_repair"
-    assert "state_root" not in self_repair["start"]["input_summary"]
-    assert "cwd" not in self_repair["start"]["input_summary"]
+    assert "state_root" not in self_repair["start"]["inputs"]
+    assert "cwd" not in self_repair["start"]["inputs"]
     assert self_repair["result"]["status"] == "ok"
-    assert self_repair["result"]["result_summary"]["agent_loop_self_repair_status"] == (
+    assert self_repair["result"]["result"]["agent_loop_self_repair_status"] == (
         "launched"
     )
-    assert self_repair["result"]["result_summary"]["agent_loop_self_repair_managed_name"] == (
+    assert self_repair["result"]["result"]["agent_loop_self_repair_managed_name"] == (
         "desktop-self-repair"
     )
     assert "desktop-self-repair" in self_repair["second_prompt"]

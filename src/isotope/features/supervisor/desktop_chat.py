@@ -366,7 +366,7 @@ def build_desktop_chat_context(
 ) -> dict[str, Any]:
     runner = capacity_runner if capacity_runner is not None else CapabilityRunner()
     capabilities = [
-        _desktop_chat_capability_summary(capability)
+        _desktop_chat_capability_projection(capability)
         for capability in runner.list_capabilities()
     ]
     return {
@@ -406,7 +406,7 @@ def _desktop_chat_capacity_events(
         payload={
             **result,
             "status": "running",
-            "result_summary": {},
+            "result": {},
             "details": [
                 section
                 for section in result["details"]
@@ -466,11 +466,11 @@ def _capacity_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
         or "unknown"
     )
     arguments = _mapping(selection.get("arguments"))
-    result_summary = _mapping(plan.get("agent_loop_summary"))
+    result = _mapping(plan.get("agent_loop_result"))
     status = "ok" if plan.get("status") == "ok" else "blocked"
     if plan.get("status_reason") not in (None, "ready"):
-        result_summary = {
-            **result_summary,
+        result = {
+            **result,
             "status_reason": plan.get("status_reason"),
         }
     details = [
@@ -495,12 +495,12 @@ def _capacity_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
                 ),
             }
         )
-    if result_summary:
+    if result:
         details.append(
             {
-                "label": "结果摘要",
+                "label": "结果",
                 "kind": "json",
-                "content": _safe_detail_value(result_summary),
+                "content": _safe_detail_value(result),
             }
         )
     capability_run = _capability_run_from_plan(plan)
@@ -517,8 +517,8 @@ def _capacity_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
         "capacity_id": capacity_id,
         "title": _string(launch_plan.get("capability_title") or capacity_id),
         "status": status,
-        "input_summary": _safe_detail_value(arguments),
-        "result_summary": _safe_detail_value(result_summary),
+        "inputs": _safe_detail_value(arguments),
+        "result": _safe_detail_value(result),
         "details": details,
     }
 
@@ -529,8 +529,8 @@ def _capacity_error_projection(exc: Exception) -> dict[str, Any]:
         "capacity_id": "unknown",
         "title": "capacity 调用",
         "status": "error",
-        "input_summary": {},
-        "result_summary": {
+        "inputs": {},
+        "result": {
             "error_type": type(exc).__name__,
             "message": str(exc) or type(exc).__name__,
         },
@@ -613,7 +613,7 @@ def _string(value: Any) -> str:
     return value if isinstance(value, str) and value else str(value)
 
 
-def _desktop_chat_capability_summary(capability: dict[str, Any]) -> dict[str, Any]:
+def _desktop_chat_capability_projection(capability: dict[str, Any]) -> dict[str, Any]:
     input_contract = capability.get("input_contract")
     properties = (
         input_contract.get("properties", {})

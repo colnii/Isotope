@@ -13,7 +13,7 @@ def test_mcp_server_observation_keeps_command_summary_without_env(tmp_path) -> N
     observation = model_observation_from_agent_loop(
         capacity_id="mcp.servers.list",
         status="ok",
-        result_summary={},
+        result={},
         agent_loop=_agent_loop(
             {
                 "kind": "mcp_server_list",
@@ -49,7 +49,7 @@ def test_mcp_tool_search_observation_includes_tool_contract(tmp_path) -> None:
     observation = model_observation_from_agent_loop(
         capacity_id="mcp.tools.search",
         status="ok",
-        result_summary={},
+        result={},
         agent_loop=_agent_loop(
             {
                 "kind": "mcp_tool_search_result",
@@ -87,7 +87,7 @@ def test_mcp_tool_call_observation_includes_result_without_arguments(tmp_path) -
     observation = model_observation_from_agent_loop(
         capacity_id="mcp.tool.call",
         status="ok",
-        result_summary={},
+        result={},
         agent_loop=_agent_loop(
             {
                 "kind": "mcp_tool_call_result",

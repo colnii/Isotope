@@ -1,4 +1,4 @@
-"""Artifact-backed native coding summaries."""
+"""Artifact-backed native coding result artifacts."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def validate_artifact_output_inputs(
 
 
 def run_artifact_changed_files(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
-    return _run_artifact_summary(
+    return _run_artifact_result_artifact(
         capability_id=ARTIFACT_CHANGED_FILES_CAPABILITY,
         artifact_type="native_coding.changed_files",
         inputs=inputs,
@@ -50,14 +50,14 @@ def run_artifact_changed_files(*, inputs: Mapping[str, Any] | None) -> dict[str,
 
 
 def run_artifact_diff_summary(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
-    return _run_artifact_summary(
+    return _run_artifact_result_artifact(
         capability_id=ARTIFACT_DIFF_SUMMARY_CAPABILITY,
         artifact_type="native_coding.diff_summary",
         inputs=inputs,
     )
 
 
-def _run_artifact_summary(
+def _run_artifact_result_artifact(
     *,
     capability_id: str,
     artifact_type: str,
@@ -78,7 +78,7 @@ def _run_artifact_summary(
         artifact_type=artifact_type,
         changed_payload=changed_payload,
     )
-    summary = _artifact_summary(
+    description = _artifact_result_description(
         workspace_id=input_mapping["workspace_id"],
         changed_file_count=changed_payload["changed_file_count"],
     )
@@ -86,7 +86,7 @@ def _run_artifact_summary(
         run_id=input_mapping["run_id"],
         execution_id=input_mapping["execution_id"],
         artifact_type=artifact_type,
-        summary=summary,
+        summary=description,
         content=json.dumps(content, sort_keys=True),
     )
     return {
@@ -129,7 +129,7 @@ def _artifact_content(
     return content
 
 
-def _artifact_summary(*, workspace_id: str, changed_file_count: int) -> str:
+def _artifact_result_description(*, workspace_id: str, changed_file_count: int) -> str:
     noun = "file" if changed_file_count == 1 else "files"
     return f"{changed_file_count} changed {noun} in {workspace_id}"
 

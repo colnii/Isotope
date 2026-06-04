@@ -1,65 +1,65 @@
-"""Public summaries for Supervisor capacity execution payloads."""
+"""Public results for Supervisor capacity execution payloads."""
 
 from __future__ import annotations
 
 from typing import Any, Mapping
 
 
-def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
+def agent_loop_json_result(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Return public capacity handoff fields for JSON and plain output."""
     agent_loop = payload.get("agent_loop") if isinstance(payload, Mapping) else None
-    summary: dict[str, Any] = {"agent_loop_executed": isinstance(agent_loop, Mapping)}
+    result: dict[str, Any] = {"agent_loop_executed": isinstance(agent_loop, Mapping)}
     if not isinstance(agent_loop, Mapping):
-        return summary
+        return result
     if agent_loop.get("kind") == "native_coding_agent_loop":
-        summary.update(_agent_loop_native_coding_summary(agent_loop))
-        return summary
+        result.update(_agent_loop_native_coding_result(agent_loop))
+        return result
 
     handoff = agent_loop.get("handoff")
     if isinstance(handoff, Mapping):
-        summary["agent_loop_next_tick_kind"] = handoff.get("initial_next_tick_kind")
-        summary["agent_loop_post_step_phase"] = handoff.get("post_step_phase")
-        summary["agent_loop_post_step_should_continue"] = handoff.get(
+        result["agent_loop_next_tick_kind"] = handoff.get("initial_next_tick_kind")
+        result["agent_loop_post_step_phase"] = handoff.get("post_step_phase")
+        result["agent_loop_post_step_should_continue"] = handoff.get(
             "post_step_should_continue"
         )
-        summary["agent_loop_post_step_stop_reason"] = handoff.get(
+        result["agent_loop_post_step_stop_reason"] = handoff.get(
             "post_step_stop_reason"
         )
 
-    planner_summary = agent_loop.get("planner_output_summary")
-    if isinstance(planner_summary, Mapping):
-        summary["agent_loop_planner_selected_step"] = planner_summary.get(
+    planner_result = agent_loop.get("planner_output_summary")
+    if isinstance(planner_result, Mapping):
+        result["agent_loop_planner_selected_step"] = planner_result.get(
             "selected_step"
         )
 
     tick_result = agent_loop.get("tick_result")
     if not isinstance(tick_result, Mapping):
-        return summary
-    summary["agent_loop_tick_status"] = tick_result.get("tick_status")
+        return result
+    result["agent_loop_tick_status"] = tick_result.get("tick_status")
     after_policy = tick_result.get("after_policy")
     if isinstance(after_policy, Mapping):
-        summary["agent_loop_tick_after_stop_reason"] = after_policy.get(
+        result["agent_loop_tick_after_stop_reason"] = after_policy.get(
             "must_stop_reason"
         )
     artifact_ref = _agent_loop_artifact_ref(tick_result)
     if isinstance(artifact_ref, Mapping):
-        summary["agent_loop_artifact_id"] = artifact_ref.get("artifact_id")
+        result["agent_loop_artifact_id"] = artifact_ref.get("artifact_id")
     capability_run = _agent_loop_capability_run(tick_result)
     if isinstance(capability_run, Mapping):
         screen_report = capability_run.get("screen_report")
         if isinstance(screen_report, Mapping):
-            summary.update(_agent_loop_screen_report_summary(screen_report))
-        summary.update(_agent_loop_memory_query_summary(capability_run))
-        summary.update(_agent_loop_memory_recall_summary(capability_run))
-        summary.update(_agent_loop_research_search_summary(capability_run))
-        summary.update(_agent_loop_research_promotion_summary(capability_run))
-        summary.update(_agent_loop_project_status_summary(capability_run))
-        summary.update(_agent_loop_self_repair_summary(capability_run))
-        summary.update(_agent_loop_reviewed_apply_summary(capability_run))
-    return summary
+            result.update(_agent_loop_screen_report_result(screen_report))
+        result.update(_agent_loop_memory_query_result(capability_run))
+        result.update(_agent_loop_memory_recall_result(capability_run))
+        result.update(_agent_loop_research_search_result(capability_run))
+        result.update(_agent_loop_research_promotion_result(capability_run))
+        result.update(_agent_loop_project_status_result(capability_run))
+        result.update(_agent_loop_self_repair_result(capability_run))
+        result.update(_agent_loop_reviewed_apply_result(capability_run))
+    return result
 
 
-def _agent_loop_native_coding_summary(agent_loop: Mapping[str, Any]) -> dict[str, Any]:
+def _agent_loop_native_coding_result(agent_loop: Mapping[str, Any]) -> dict[str, Any]:
     reviewed_apply = agent_loop.get("reviewed_apply_request")
     changed_files = (
         reviewed_apply.get("changed_files")
@@ -87,7 +87,7 @@ def _agent_loop_native_coding_summary(agent_loop: Mapping[str, Any]) -> dict[str
     }
 
 
-def agent_loop_handoff_summary(
+def agent_loop_handoff_result(
     tick_policy_before: Mapping[str, Any],
     tick_policy_after: Mapping[str, Any],
 ) -> dict[str, Any]:
@@ -135,27 +135,27 @@ def _agent_loop_capability_run(
     return capability_run if isinstance(capability_run, Mapping) else None
 
 
-def _agent_loop_screen_report_summary(
+def _agent_loop_screen_report_result(
     screen_report: Mapping[str, Any],
 ) -> dict[str, Any]:
-    summary: dict[str, Any] = {
+    result: dict[str, Any] = {
         "agent_loop_screen_report_status": screen_report.get("status")
     }
-    screen_summary = screen_report.get("summary")
-    if not isinstance(screen_summary, Mapping):
-        return summary
-    summary["agent_loop_screen_observe_status"] = screen_summary.get("observe_status")
-    summary["agent_loop_screen_control_status"] = screen_summary.get("control_status")
-    summary["agent_loop_screen_screenshot_available"] = screen_summary.get(
+    screen_result = screen_report.get("summary")
+    if not isinstance(screen_result, Mapping):
+        return result
+    result["agent_loop_screen_observe_status"] = screen_result.get("observe_status")
+    result["agent_loop_screen_control_status"] = screen_result.get("control_status")
+    result["agent_loop_screen_screenshot_available"] = screen_result.get(
         "screenshot_available"
     )
-    summary["agent_loop_screen_interferes_with_screen"] = screen_summary.get(
+    result["agent_loop_screen_interferes_with_screen"] = screen_result.get(
         "interferes_with_screen"
     )
-    return summary
+    return result
 
 
-def _agent_loop_memory_query_summary(
+def _agent_loop_memory_query_result(
     capability_run: Mapping[str, Any],
 ) -> dict[str, Any]:
     if capability_run.get("capability_id") != "memory.query":
@@ -164,7 +164,7 @@ def _agent_loop_memory_query_summary(
     if not isinstance(memory_query, Mapping):
         return {}
     results = memory_query.get("results")
-    summary: dict[str, Any] = {
+    result: dict[str, Any] = {
         "agent_loop_memory_query_status": memory_query.get("status"),
         "agent_loop_memory_query_result_count": (
             len(results) if isinstance(results, list) else 0
@@ -172,11 +172,11 @@ def _agent_loop_memory_query_summary(
     }
     content_policy = memory_query.get("content_policy")
     if isinstance(content_policy, str) and content_policy:
-        summary["agent_loop_memory_query_content_policy"] = content_policy
-    return summary
+        result["agent_loop_memory_query_content_policy"] = content_policy
+    return result
 
 
-def _agent_loop_memory_recall_summary(
+def _agent_loop_memory_recall_result(
     capability_run: Mapping[str, Any],
 ) -> dict[str, Any]:
     if capability_run.get("capability_id") != "memory.recall":
@@ -185,7 +185,7 @@ def _agent_loop_memory_recall_summary(
     if not isinstance(memory_recall, Mapping):
         return {}
     results = memory_recall.get("results")
-    summary: dict[str, Any] = {
+    result: dict[str, Any] = {
         "agent_loop_memory_recall_status": memory_recall.get("status"),
         "agent_loop_memory_recall_result_count": (
             len(results) if isinstance(results, list) else 0
@@ -193,11 +193,11 @@ def _agent_loop_memory_recall_summary(
     }
     content_policy = memory_recall.get("content_policy")
     if isinstance(content_policy, str) and content_policy:
-        summary["agent_loop_memory_recall_content_policy"] = content_policy
-    return summary
+        result["agent_loop_memory_recall_content_policy"] = content_policy
+    return result
 
 
-def _agent_loop_research_search_summary(
+def _agent_loop_research_search_result(
     capability_run: Mapping[str, Any],
 ) -> dict[str, Any]:
     if capability_run.get("capability_id") != "research.search":
@@ -205,7 +205,7 @@ def _agent_loop_research_search_summary(
     research_search = capability_run.get("research_search")
     if not isinstance(research_search, Mapping):
         return {}
-    summary: dict[str, Any] = {
+    result: dict[str, Any] = {
         "agent_loop_research_search_status": research_search.get("status"),
         "agent_loop_research_provider": research_search.get("provider"),
         "agent_loop_research_source_count": research_search.get("source_count"),
@@ -213,19 +213,19 @@ def _agent_loop_research_search_summary(
     }
     report_summary = research_search.get("report_summary")
     if isinstance(report_summary, str) and report_summary:
-        summary["agent_loop_research_report_summary"] = report_summary
+        result["agent_loop_research_report"] = report_summary
     source_previews = research_search.get("source_previews")
     if isinstance(source_previews, list):
-        summary["agent_loop_research_source_previews"] = source_previews[:5]
+        result["agent_loop_research_source_previews"] = source_previews[:5]
     error = research_search.get("error")
     if isinstance(error, Mapping):
-        summary["agent_loop_research_error_code"] = error.get("code")
-        summary["agent_loop_research_error_message"] = error.get("message")
-        summary["agent_loop_research_error_retryable"] = error.get("retryable")
-    return summary
+        result["agent_loop_research_error_code"] = error.get("code")
+        result["agent_loop_research_error_message"] = error.get("message")
+        result["agent_loop_research_error_retryable"] = error.get("retryable")
+    return result
 
 
-def _agent_loop_research_promotion_summary(
+def _agent_loop_research_promotion_result(
     capability_run: Mapping[str, Any],
 ) -> dict[str, Any]:
     if capability_run.get("capability_id") != "research.promote":
@@ -243,7 +243,7 @@ def _agent_loop_research_promotion_summary(
     }
 
 
-def _agent_loop_reviewed_apply_summary(
+def _agent_loop_reviewed_apply_result(
     capability_run: Mapping[str, Any],
 ) -> dict[str, Any]:
     if capability_run.get("capability_id") != "coding_task.apply_reviewed_diff":
@@ -269,12 +269,12 @@ def _agent_loop_reviewed_apply_summary(
     }
 
 
-def _agent_loop_project_status_summary(
+def _agent_loop_project_status_result(
     capability_run: Mapping[str, Any],
 ) -> dict[str, Any]:
     if capability_run.get("capability_id") != "supervisor.project_status":
         return {}
-    project_status = capability_run.get("project_state_summary")
+    project_status = capability_run.get("project_state")
     if not isinstance(project_status, Mapping):
         return {}
     counts = project_status.get("counts")
@@ -302,7 +302,7 @@ def _agent_loop_project_status_summary(
     }
 
 
-def _agent_loop_self_repair_summary(
+def _agent_loop_self_repair_result(
     capability_run: Mapping[str, Any],
 ) -> dict[str, Any]:
     if capability_run.get("capability_id") != "isotope.self_repair":

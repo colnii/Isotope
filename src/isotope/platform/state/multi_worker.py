@@ -11,7 +11,7 @@ from isotope.platform.state.worker_event_channel import DEFAULT_CHANNEL, WORKER_
 
 
 CAPACITY_KINDS = {"capacity_call", "capacity_call_selection"}
-AGENT_LOOP_SUMMARY_KEYS = {
+AGENT_LOOP_RESULT_KEYS = {
     "agent_loop_executed",
     "agent_loop_next_tick_kind",
     "agent_loop_planner_selected_step",
@@ -120,7 +120,7 @@ def render_multi_worker_status_plain(payload: dict[str, Any]) -> str:
         for run in capacity_runs:
             if not isinstance(run, dict):
                 continue
-            loop = run.get("agent_loop_summary")
+            loop = run.get("agent_loop_result")
             if not isinstance(loop, dict):
                 loop = {}
             lines.append(
@@ -135,7 +135,7 @@ def render_multi_worker_status_plain(payload: dict[str, Any]) -> str:
             )
             summary_text = run.get("summary")
             if isinstance(summary_text, str) and summary_text:
-                lines.append(f"  capacity_summary: {summary_text}")
+                lines.append(f"  capacity_result: {summary_text}")
     if not workers:
         lines.append("workers: none")
         return "\n".join(lines)
@@ -211,7 +211,7 @@ def _build_worker_payload(
         "broadcast_events_total": len(broadcast_events),
         "capacity_calls_total": len(capacity_records),
         "capacity_ids": capacity_ids,
-        "recent_capacity_summary": _recent_capacity_summary(capacity_records),
+        "recent_capacity_result": _recent_capacity_result(capacity_records),
         "recent_memory": _recent_memory_preview(related_memory),
         "recent_event": _recent_event_preview(related_events),
     }
@@ -228,7 +228,7 @@ def _build_supervised_execution_payload(
         1
         for record in memory_records
         if _is_capacity_call(record)
-        and _agent_loop_summary(record.content.get("agent_loop_summary")).get(
+        and _agent_loop_result(record.content.get("agent_loop_result")).get(
             "agent_loop_executed"
         )
         is True
@@ -237,19 +237,19 @@ def _build_supervised_execution_payload(
         capacity_calls_total = worker.get("capacity_calls_total")
         if isinstance(capacity_calls_total, int) and capacity_calls_total > 0:
             capacity_workers_total += 1
-        recent_capacity = worker.get("recent_capacity_summary")
+        recent_capacity = worker.get("recent_capacity_result")
         if not isinstance(recent_capacity, dict):
             continue
-        agent_loop_summary = recent_capacity.get("agent_loop_summary")
-        if not isinstance(agent_loop_summary, dict):
-            agent_loop_summary = {"agent_loop_executed": False}
+        agent_loop_result = recent_capacity.get("agent_loop_result")
+        if not isinstance(agent_loop_result, dict):
+            agent_loop_result = {"agent_loop_executed": False}
         recent_capacity_runs.append(
             {
                 "worker": worker.get("name"),
                 "record_id": recent_capacity.get("record_id"),
                 "capacity_id": recent_capacity.get("capacity_id"),
                 "summary": recent_capacity.get("summary", ""),
-                "agent_loop_summary": dict(agent_loop_summary),
+                "agent_loop_result": dict(agent_loop_result),
             }
         )
     return {
@@ -320,7 +320,7 @@ def _capacity_id(record: MemoryRecord) -> str | None:
     return None
 
 
-def _recent_capacity_summary(records: list[MemoryRecord]) -> dict[str, Any] | None:
+def _recent_capacity_result(records: list[MemoryRecord]) -> dict[str, Any] | None:
     record = _latest_record(records)
     if record is None:
         return None
@@ -328,19 +328,19 @@ def _recent_capacity_summary(records: list[MemoryRecord]) -> dict[str, Any] | No
         "record_id": record.memory_id,
         "capacity_id": _capacity_id(record),
         "summary": record.summary,
-        "agent_loop_summary": _agent_loop_summary(
-            record.content.get("agent_loop_summary")
+        "agent_loop_result": _agent_loop_result(
+            record.content.get("agent_loop_result")
         ),
     }
 
 
-def _agent_loop_summary(value: Any) -> dict[str, Any]:
+def _agent_loop_result(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         return {"agent_loop_executed": False}
     return {
         key: item
         for key, item in value.items()
-        if key in AGENT_LOOP_SUMMARY_KEYS
+        if key in AGENT_LOOP_RESULT_KEYS
         and (isinstance(item, (str, bool, int, float)) or item is None)
     }
 

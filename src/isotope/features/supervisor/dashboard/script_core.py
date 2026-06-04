@@ -16,8 +16,8 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
 
     function capacityRunDetailText(run) {
       const item = run && typeof run === "object" ? run : {};
-      const loop = item.agent_loop_summary && typeof item.agent_loop_summary === "object"
-        ? item.agent_loop_summary
+      const loop = item.agent_loop_result && typeof item.agent_loop_result === "object"
+        ? item.agent_loop_result
         : {};
       return [
         item.worker || "unknown",

@@ -139,7 +139,7 @@ def test_desktop_chat_screen_observe_original_image_endpoint_smoke(tmp_path, mon
         capacity_result = events[2]["data"]
         assert capacity_result["capacity_id"] == "screen.observe"
         assert capacity_result["status"] == "ok"
-        assert capacity_result["result_summary"][
+        assert capacity_result["result"][
             "agent_loop_screen_screenshot_available"
         ] is True
         rendered_events = json.dumps(events, ensure_ascii=False)

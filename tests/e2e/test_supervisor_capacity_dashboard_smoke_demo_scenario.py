@@ -64,14 +64,14 @@ def test_supervisor_capacity_dashboard_smoke_json_links_execution_memory_and_das
     assert data["scenario"] == SCENARIO
     assert data["capacity_dashboard_smoke_ok"] is True
     assert data["executed"]["kind"] == "call_capacity"
-    execution_summary = data["executed"]["agent_loop_summary"]
-    memory_summary = data["memory_record"]["agent_loop_summary"]
-    dashboard_summary = data["dashboard_recent_capacity_summary"]["agent_loop_summary"]
+    execution_summary = data["executed"]["agent_loop_result"]
+    memory_summary = data["memory_record"]["agent_loop_result"]
+    dashboard_summary = data["dashboard_recent_capacity_result"]["agent_loop_result"]
     assert execution_summary == memory_summary == dashboard_summary
     assert dashboard_summary["agent_loop_tick_status"] == "executed"
     assert dashboard_summary["agent_loop_planner_selected_step"] == "call_capability"
     assert dashboard_summary["agent_loop_artifact_id"].startswith("artifact_")
-    assert data["dashboard_recent_capacity_summary"]["capacity_id"] == "artifact.review"
+    assert data["dashboard_recent_capacity_result"]["capacity_id"] == "artifact.review"
     assert data["dashboard_capacity_calls_total"] == 1
     assert data["app_friction"] == []
     assert data["provider_status"] == "fixture_only"

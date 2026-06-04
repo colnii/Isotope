@@ -189,7 +189,7 @@ def run_supervisor_project_status(
         "capability_id": SUPERVISOR_PROJECT_STATUS_CAPABILITY,
         "status": "completed",
         "runner_kind": "deterministic_readonly",
-        "project_state_summary": summary,
+        "project_state": summary,
     }
 
 

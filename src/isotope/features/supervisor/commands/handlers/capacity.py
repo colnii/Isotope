@@ -23,9 +23,9 @@ from isotope.capabilities.supervisor import SUPERVISOR_CODEX_OPERATION_CAPABILIT
 from isotope.features.supervisor.commands.capacity_rendering import (
     print_capacity_plan_plain,
 )
-from isotope.features.supervisor.commands.capacity_summary import (
-    agent_loop_handoff_summary,
-    agent_loop_json_summary,
+from isotope.features.supervisor.commands.capacity_result import (
+    agent_loop_handoff_result,
+    agent_loop_json_result,
 )
 from isotope.llm.capacity_calling import CapacityCallingProvider, select_capacity_call
 from isotope.llm.pool import PoolEntry, resolve_pool_entries_from_env
@@ -183,7 +183,7 @@ def build_supervisor_capacity_plan(
             ),
             "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
         }
-        payload["agent_loop_summary"] = agent_loop_json_summary(payload)
+        payload["agent_loop_result"] = agent_loop_json_result(payload)
         return payload
     if selection_payload["status"] != "ready_to_call":
         payload = {
@@ -206,7 +206,7 @@ def build_supervisor_capacity_plan(
             ),
             "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
         }
-        payload["agent_loop_summary"] = agent_loop_json_summary(payload)
+        payload["agent_loop_result"] = agent_loop_json_result(payload)
         return payload
     node = capacity_graph_node_from_call_selection(selection_payload)
     graph = build_capacity_graph([node])
@@ -248,7 +248,7 @@ def build_supervisor_capacity_plan(
         ),
         "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
     }
-    payload["agent_loop_summary"] = agent_loop_json_summary(payload)
+    payload["agent_loop_result"] = agent_loop_json_result(payload)
     blocked_reason = _capacity_blocked_reason(
         status_reason=status_reason,
         launch_plan=launch_plan,
@@ -319,20 +319,20 @@ def execute_capacity_action(
             else Path(args.codex_home) / "supervisor" / "capacity-loop-runs"
         ),
     )
-    agent_loop_summary = agent_loop_json_summary({"agent_loop": agent_loop})
+    agent_loop_result = agent_loop_json_result({"agent_loop": agent_loop})
     _record_capacity_call_memory(
         codex_home=Path(args.codex_home),
         worker_name=getattr(args, "name", None),
         capacity_id=capacity_id,
         agent_loop=agent_loop,
-        agent_loop_summary=agent_loop_summary,
+        agent_loop_result=agent_loop_result,
     )
     return {
         "kind": "call_capacity",
         "capacity_id": capacity_id,
         "goal": goal if isinstance(goal, str) and goal else f"Call {capacity_id}",
         "agent_loop": agent_loop,
-        "agent_loop_summary": agent_loop_summary,
+        "agent_loop_result": agent_loop_result,
     }
 
 
@@ -356,14 +356,14 @@ def execute_codex_operation_via_agent_loop(
         inputs=capability_inputs,
         state_root=Path(state_root),
     )
-    agent_loop_summary = agent_loop_json_summary({"agent_loop": agent_loop})
+    agent_loop_result = agent_loop_json_result({"agent_loop": agent_loop})
     return {
         "kind": "call_capacity",
         "capacity_id": SUPERVISOR_CODEX_OPERATION_CAPABILITY,
         "operation": operation,
         "goal": goal.strip(),
         "agent_loop": agent_loop,
-        "agent_loop_summary": agent_loop_summary,
+        "agent_loop_result": agent_loop_result,
     }
 
 
@@ -449,9 +449,9 @@ def loop_capacity_decision_payload(
         blocked_reason = "no_offered_capacities"
     if isinstance(blocked_reason, str) and blocked_reason:
         payload["capacity_blocked_reason"] = blocked_reason
-    agent_loop_summary = plan.get("agent_loop_summary")
-    if isinstance(agent_loop_summary, dict):
-        payload["agent_loop_summary"] = copy.deepcopy(agent_loop_summary)
+    agent_loop_result = plan.get("agent_loop_result")
+    if isinstance(agent_loop_result, dict):
+        payload["agent_loop_result"] = copy.deepcopy(agent_loop_result)
     return payload
 
 
@@ -511,7 +511,7 @@ def _record_capacity_call_memory(
     worker_name: Any,
     capacity_id: str,
     agent_loop: Mapping[str, Any],
-    agent_loop_summary: Mapping[str, Any],
+    agent_loop_result: Mapping[str, Any],
 ) -> None:
     worker = (
         worker_name if isinstance(worker_name, str) and worker_name else "supervisor"
@@ -526,7 +526,7 @@ def _record_capacity_call_memory(
             "kind": "capacity_call",
             "worker_name": worker,
             "capacity_id": capacity_id,
-            "agent_loop_summary": dict(agent_loop_summary),
+            "agent_loop_result": dict(agent_loop_result),
         },
         summary=f"{worker} called {capacity_id} via agent loop.",
         source_refs=[],
@@ -641,7 +641,7 @@ def _execute_agent_loop_capacity_step(
         "step_request": step_request,
         "step_result": step_result,
         "tick_policy_after": tick_policy_after,
-        "handoff": agent_loop_handoff_summary(
+        "handoff": agent_loop_handoff_result(
             tick_result["before_policy"],
             tick_policy_after,
         ),
@@ -754,7 +754,7 @@ def _no_offered_capacities_plan(
         ),
         "safety": _capacity_plan_safety(execute_agent_loop=execute_agent_loop),
     }
-    payload["agent_loop_summary"] = agent_loop_json_summary(payload)
+    payload["agent_loop_result"] = agent_loop_json_result(payload)
     return payload
 
 
