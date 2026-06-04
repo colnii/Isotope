@@ -64,6 +64,16 @@ CURRENT_ENTRY_FILES = [
     "docs/current/terminology.md",
 ]
 
+SUPERPOWERS_SPEC_FILES = [
+    "docs/superpowers/specs/2026-06-03-state-memory-artifact-projection-design.md",
+    "docs/superpowers/specs/2026-06-04-agent-group-chat-design.md",
+    "docs/superpowers/specs/2026-06-04-desktop-chat-golden-path-design.md",
+    "docs/superpowers/specs/2026-06-04-native-coding-product-maturity-design.md",
+    "docs/superpowers/specs/2026-06-04-qq-group-chatbot-complete-design.md",
+    "docs/superpowers/specs/2026-06-04-skills-mcp-client-bridge-design.md",
+    "docs/superpowers/specs/2026-06-04-vector-hybrid-retrieval-design.md",
+]
+
 FORBIDDEN_PATTERNS = [
     r"\b" + "Unavailable" + "Memory",
     r"\b" + "Unavailable" + "ExternalIngestionService" + r"\b",
@@ -119,6 +129,19 @@ CURRENT_ENTRY_NEGATIVE_ACTION_PATTERNS = [
     "暂不",
 ]
 
+SUPERPOWERS_SPEC_FORBIDDEN_PATTERNS = [
+    r"\blow[-_ ]sensitive\b",
+    r"\b" + "bounded" + r"\b",
+    r"\bread[-_ ]only\b",
+    r"\b" + "readonly" + r"\b",
+    r"\bsummary[-_ ]only\b",
+    r"\bpreview[-_ ]only\b",
+    r"\bfail[-_ ]closed\b",
+    r"\bnot[-_ ]enabled\b",
+    r"\b" + "deferred" + r"\b",
+    r"\b" + "preflight" + r"\b",
+]
+
 
 def test_model_facing_surfaces_do_not_train_conservative_semantics():
     violations = []
@@ -148,6 +171,17 @@ def test_current_entry_docs_use_positive_execution_path_language():
         text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
         for pattern in CURRENT_ENTRY_NEGATIVE_ACTION_PATTERNS:
             if pattern in text:
+                violations.append(f"{relative_path}: {pattern}")
+
+    assert violations == []
+
+
+def test_superpowers_specs_do_not_retrain_conservative_design_language():
+    violations = []
+    for relative_path in SUPERPOWERS_SPEC_FILES:
+        text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for pattern in SUPERPOWERS_SPEC_FORBIDDEN_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
                 violations.append(f"{relative_path}: {pattern}")
 
     assert violations == []

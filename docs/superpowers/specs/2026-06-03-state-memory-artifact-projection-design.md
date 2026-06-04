@@ -11,10 +11,10 @@ ledgers or raw artifact files.
 
 The repository already has the contracts needed for this boundary:
 
-- `build_supervisor_state_snapshot(...)` returns the low-sensitive
+- `build_supervisor_state_snapshot(...)` returns the projected
   `SupervisorStateSnapshot` payload used by dashboard and desktop snapshot.
 - `MemoryRecord`, `FileMemoryStore`, and `isotope.memory.views` expose structured
-  memory records and low-sensitive memory previews.
+  memory records and public memory previews.
 - `RetrievalService.get_artifact_summary(...)` exposes artifact summary,
   reference, and provenance without returning full content.
 
@@ -29,13 +29,13 @@ In scope:
 
 - Add tests that make the projection boundary explicit for dashboard,
   desktop/current-batch, multi-worker, memory, and artifact summary inputs.
-- Extend `SupervisorStateSnapshot` with low-sensitive memory and artifact
-  summary sections that are safe for view adapters.
+- Extend `SupervisorStateSnapshot` with structured memory and artifact evidence
+  sections that view adapters can render directly.
 - Keep multi-worker state derived from `MemoryRecord` values, not private
   worker JSONL files.
 - Keep current-batch derived from the already projected active goals and
   managed-worker summaries.
-- Keep artifact views summary-only through the retrieval contract.
+- Keep artifact views on the retrieval contract's projected evidence payload.
 
 Out of scope:
 
@@ -50,7 +50,7 @@ Out of scope:
 The boundary is layered:
 
 1. Store/projector/retrieval layer reads durable files and validates schema.
-2. Projection layer converts data into low-sensitive public payloads.
+2. Projection layer converts data into structured public payloads.
 3. View adapters consume projection payloads and render JSON/plain UI output.
 
 The important rule is not "no file reads anywhere"; it is "no private file
@@ -93,7 +93,7 @@ future explicit full-content grant path is added.
 
 Malformed memory records are already skipped or rejected by the memory store
 depending on storage mode. Malformed artifacts should be skipped by the
-Supervisor state projection when building a low-sensitive dashboard snapshot,
+Supervisor state projection when building a dashboard snapshot,
 because a single bad artifact file should not break the whole Supervisor view.
 Direct retrieval of a specific artifact summary should keep raising the existing
 typed validation errors.
@@ -102,11 +102,11 @@ typed validation errors.
 
 Tests should prove:
 
-- `SupervisorStateSnapshot` includes low-sensitive memory and artifact summary
+- `SupervisorStateSnapshot` includes structured memory and artifact evidence
   sections without raw memory content or artifact content.
 - Multi-worker summaries can be built from supplied `MemoryRecord` values.
 - Dashboard/current-batch can consume the projected snapshot active goals.
-- Artifact summary retrieval remains summary-only.
+- Artifact summary retrieval remains on the projected evidence path.
 
 Run the targeted tests first, then the existing supervisor state, desktop
 snapshot, memory view, and multi-worker tests.

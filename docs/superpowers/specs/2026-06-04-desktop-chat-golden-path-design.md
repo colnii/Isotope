@@ -30,10 +30,10 @@ model:
 
 - registered capabilities and their contracts;
 - project state, memory, artifacts, approvals, and worker summaries;
-- bounded native code-editing for small, explicit patches;
+- scoped native code-editing for small, explicit patches;
 - Codex-backed worker launch as the main path for non-trivial code changes;
 - web/search and installable extension options where available;
-- low-sensitive execution observations after each action.
+- structured execution observations after each action.
 
 The UI should show what the model is doing in user language:
 
@@ -68,7 +68,7 @@ dashboard first.
 
 ## Code-Change Use Case
 
-When the user asks for a concrete code change, the model can use bounded native
+When the user asks for a concrete code change, the model can use scoped native
 coding or launch a Codex worker. The result shown in Desktop chat should include:
 
 - what changed;
@@ -90,7 +90,7 @@ available actions:
 - search for a solution;
 - use or install a skill/MCP when allowed;
 - launch Codex in an isolated worktree to perform non-trivial Isotope changes;
-- use bounded native coding only for small, explicit patches;
+- use scoped native coding for small, explicit patches;
 - run targeted verification;
 - present the diff and result back to the user;
 - retry the original goal after repair when practical.
@@ -108,11 +108,11 @@ code changes.
 
 The model may continue autonomously for low-risk actions:
 
-- read-only inspection;
+- project inspection;
 - web/search research;
 - creating an isolated worktree;
 - launching Codex to edit Isotope inside that worktree;
-- applying small explicit patches through bounded native coding;
+- applying small explicit patches through scoped native coding;
 - running allowlisted verification commands;
 - summarizing diff and verification results.
 
@@ -130,7 +130,7 @@ The model must stop for approval before high-risk actions:
 - `stream_desktop_chat_events(...)` remains the Desktop chat backend stream.
 - `run_supervisor_conversation_events(...)` remains the model-action loop.
 - `CapabilityRunner.list_capabilities()` remains the capability metadata source.
-- `coding_task.execute` remains the first bounded native code-change capability.
+- `coding_task.execute` remains the first scoped native code-change capability.
 - Codex worker/capacity support is the expected executor for non-trivial
   Isotope self-repair.
 - Supervisor state projections remain the source for project-state answers.

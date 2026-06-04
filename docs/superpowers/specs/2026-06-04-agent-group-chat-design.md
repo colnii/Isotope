@@ -34,7 +34,7 @@ The first useful version should support this flow:
 2. Supervisor creates a group and registers two or three internal agents, such
    as planner, implementer, and reviewer.
 3. Supervisor posts the initial task message into the group.
-4. Each agent receives the low-sensitive group context and produces a candidate
+4. Each agent receives the projected group context and produces a candidate
    reply or chooses silence.
 5. The arbiter selects the visible replies for this turn and queues or drops
    the rest with reasons.
@@ -76,8 +76,8 @@ summary.
 - `to_member`: member id, `supervisor`, or `null` for broadcast.
 - `message_type`: `task`, `reply`, `question`, `observation`, `summary`,
   `interrupt`, or `status`.
-- `summary`: required low-sensitive message text.
-- `payload`: optional low-sensitive structured metadata.
+- `summary`: required public message text.
+- `payload`: optional structured metadata.
 - `created_at`.
 
 `AgentTurn` is one coordinated group-chat tick:
@@ -137,7 +137,7 @@ Create group:
 Run one turn:
 
 1. Load group, active members, and recent public messages.
-2. For each active member, build a low-sensitive context with group goal,
+2. For each active member, build a projected context with group goal,
    member role, recent selected messages, and allowed capabilities metadata.
 3. Ask each member provider for one candidate message.
 4. Pass candidates into the conversation arbiter.
@@ -156,7 +156,7 @@ Desktop chat integration:
 
 - Public payloads must reject raw model/provider fields using the existing raw
   conversation payload guard pattern.
-- Group messages carry summaries and low-sensitive metadata only.
+- Group messages carry public message text and structured metadata.
 - Capability execution remains allowlisted and contract-filtered.
 - Each turn has a visible-message limit.
 - Agent members can be paused or archived without deleting history.

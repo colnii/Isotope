@@ -512,7 +512,7 @@ Core responsibilities:
 
 - manage candidate agent messages;
 - arbitrate who speaks;
-- track internal notes and deferred candidates;
+- track internal notes and held candidates;
 - apply group policy and role-card constraints;
 - pass capability requests to the capability bridge;
 - produce reply actions with reasons and send policies.

@@ -20,13 +20,13 @@ Isotope acts as an MCP client and a local skills discovery host.
 
 The first slice includes:
 
-- read-only discovery of local Codex skills from configured skill roots;
+- skill discovery from configured local Codex skill roots;
 - importing metadata for all current Codex skills on this machine as a test
   scenario;
 - on-demand skill description by reading one selected `SKILL.md`;
 - discovery of explicitly configured MCP stdio servers;
 - MCP `tools/list` and `tools/call` for allowed configured servers;
-- low-sensitive capability start/result observations in Desktop chat.
+- structured capability start/result observations in Desktop chat.
 
 The first slice does not include:
 
@@ -74,7 +74,7 @@ Add `src/isotope/capabilities/extensions.py` as the capability adapter layer.
 It exposes these product capabilities:
 
 - `skills.search`: list or filter local skills by text query.
-- `skills.describe`: return the selected skill's metadata and bounded body.
+- `skills.describe`: return the selected skill's metadata and capped body.
 - `mcp.servers.list`: show configured MCP servers and readiness.
 - `mcp.tools.search`: list or filter tools from a configured server.
 - `mcp.tool.call`: call one tool on one configured server.
@@ -89,7 +89,7 @@ only when no available capability can move the goal forward.
 
 ## Data Contracts
 
-Skill search returns low-sensitive metadata:
+Skill search returns structured metadata:
 
 - `skill_id`;
 - `name`;
@@ -98,7 +98,7 @@ Skill search returns low-sensitive metadata:
 - `relative_path`;
 - `readiness`.
 
-Skill describe returns the selected metadata plus a bounded text body. The body
+Skill describe returns the selected metadata plus a capped text body. The body
 is only returned after explicit selection and should be capped to prevent prompt
 overflow. The returned `SKILL.md` should be treated as current-task skill
 context, lower priority than system, developer, repository `AGENTS.md`, and
@@ -132,7 +132,7 @@ MCP tool call returns:
 - `server_id`;
 - `tool_name`;
 - `structured_content` when available;
-- bounded text content summaries;
+- capped text content summaries;
 - resource links or embedded resources as metadata only;
 - `is_error` and a readable error summary for tool-level failures.
 
@@ -142,7 +142,7 @@ Keep configuration explicit and local.
 
 For skills, default roots may include the user's current Codex skill directory
 when present, such as `$CODEX_HOME/skills` or `~/.codex/skills`. The import path
-is read-only. Invalid or unreadable skills are skipped with a readiness reason
+is metadata discovery. Invalid or unreadable skills are skipped with a readiness reason
 instead of failing the whole scan.
 
 For MCP, use an Isotope-owned local configuration file or environment-provided
@@ -200,7 +200,7 @@ Targeted tests should cover:
 - all current local Codex skills can be imported into the skill registry in a
   live/local smoke command without injecting every skill metadata entry or body
   into the baseline prompt;
-- `skills.describe` returns one selected bounded body;
+- `skills.describe` returns one selected capped body;
 - a fixture MCP stdio server can be listed and called;
 - MCP tool-level failure returns a structured capability result with `is_error`;
 - unknown server/tool and disabled server/tool are rejected before launch;

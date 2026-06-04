@@ -26,7 +26,7 @@ overlap scorer in `src/isotope/memory/views.py`.
 
 The existing memory and Supervisor projection rules still apply:
 
-- retrieval previews must stay low-sensitive by default;
+- retrieval previews use the same public projection fields by default;
 - full memory content is only materialized through controlled expand grants;
 - artifact full content must not be read through summary retrieval;
 - view and LLM-facing payloads should keep using public contracts instead of
@@ -114,7 +114,7 @@ Out of scope for the first implementation slice:
 
 The retrieval stack should be layered:
 
-1. `RetrievalDocument`: a low-sensitive document shape with id, title, summary,
+1. `RetrievalDocument`: a projected document shape with id, title, summary,
    optional body text, metadata, and sensitivity flags.
 2. `SparseRetriever`: wraps the existing BM25 scorer.
 3. `VectorStore`: protocol for indexing/querying dense vectors through a
@@ -209,12 +209,12 @@ dependency isolation.
 - LanceDB import, schema, or query failures are converted to dense-unavailable
   metadata before falling back.
 - Malformed memory records keep the current store behavior.
-- Backend-specific exceptions are converted into low-sensitive retrieval status
+- Backend-specific exceptions are converted into structured retrieval status
   metadata.
 
 ## Security And Privacy
 
-Index documents must be built from the same low-sensitive fields that the caller
+Index documents must be built from the same public projection fields that the caller
 is already allowed to expose. For the first memory slice, the dense index text is
 limited to summary, source refs, provenance preview fields, scope, and quality.
 `MemoryRecord.content` is not embedded by default.

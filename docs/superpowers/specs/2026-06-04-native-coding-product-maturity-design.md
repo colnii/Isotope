@@ -6,7 +6,7 @@ Date: 2026-06-04
 
 Make native coding usable as a product feature from Supervisor/Desktop chat:
 the user gives a natural-language coding goal, Isotope uses the existing agent
-loop to inspect the repository, propose and execute a bounded change in an
+loop to inspect the repository, propose and execute a scoped change in an
 isolated workspace, verify it, and return reviewable evidence before anything is
 applied to the source workspace.
 
@@ -71,8 +71,8 @@ Model understanding must come from agent-loop-mediated observations:
 
 1. The model receives the user goal and capability manifest.
 2. The model calls `code.search` or `code.read` to inspect relevant files.
-3. The system executes those calls against `cwd` and returns bounded,
-   low-sensitive observations.
+3. The system executes those calls against `cwd` and returns structured
+   observations.
 4. The model asks for more context or proposes a patch and verification.
 5. The system applies and verifies the change in an isolated workspace.
 6. The model uses the result summary to either revise or report a reviewable
@@ -90,14 +90,14 @@ Keep the existing layers:
 3. The model selects `call_capability`.
 4. The existing agent loop executes the capability call.
 5. `CapabilityRunner` enforces the selected capability input contract.
-6. Capability runners perform bounded filesystem, workspace, test, or artifact
+6. Capability runners perform scoped filesystem, workspace, test, or artifact
    actions.
-7. The conversation loop streams low-sensitive capacity events and observations
+7. The conversation loop streams structured capacity events and observations
    back to the model and UI.
 
 `coding_task.run` should fit into this path. It should not bypass
 `CapabilityRunner`, agent-loop control, workspace isolation, artifact storage,
-or low-sensitive projection.
+or structured projection.
 
 ## Data Flow
 
@@ -107,7 +107,7 @@ User request:
 
 Context collection:
 
-`code.search/code.read -> bounded observations -> model planning`
+`code.search/code.read -> structured observations -> model planning`
 
 Execution:
 
@@ -168,7 +168,7 @@ In scope:
 - Let the model propose patches and verification through structured capability
   calls.
 - Run patch and verification in an isolated workspace.
-- Return low-sensitive evidence: changed files, diff summary, verification
+- Return structured evidence: changed files, diff summary, verification
   status, and blocker reasons.
 - Hide raw patch, raw argv, prompts, transcripts, and raw file content from UI
   summaries.
@@ -193,8 +193,8 @@ The product entrypoint should distinguish:
 - `error`: implementation failure or malformed capability result.
 
 Verification failure should not end the product flow immediately. The existing
-agent loop should receive the low-sensitive failure summary and may attempt a
-bounded revision until `max_steps` is exhausted.
+agent loop should receive the structured failure report and may attempt a
+scoped revision until `max_steps` is exhausted.
 
 ## Review And Apply
 
@@ -224,8 +224,8 @@ Targeted tests should prove:
   before patch execution.
 - A verified isolated change returns changed files, verification status, and
   artifact refs without mutating the source workspace.
-- A failing verification can trigger a bounded revision.
-- Raw patch and argv do not appear in low-sensitive capacity events.
+- A failing verification can trigger a scoped revision.
+- Raw patch and argv stay out of public capacity events.
 
 Run targeted unit tests for capabilities, agent-loop step execution, and
 Supervisor conversation events before broader Supervisor/Desktop tests.
@@ -241,7 +241,7 @@ Implement in thin slices:
 3. Add context collection using existing `code.search` and `code.read`.
 4. Add single-pass patch and verification by reusing `coding_task.execute` or
    its component capabilities.
-5. Add bounded revision after verification failure.
+5. Add scoped revision after verification failure.
 6. Add review/apply separation for moving isolated changes back to source.
 
 Each slice should keep the existing `coding_task.execute` contract stable unless
