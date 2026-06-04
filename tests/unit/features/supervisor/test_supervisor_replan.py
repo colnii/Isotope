@@ -97,7 +97,7 @@ def test_supervisor_replan_turns_worker_review_candidates_into_read_snapshot_adv
         "auto_merge": False,
         "auto_archive": False,
         "delete_branch": False,
-        "note": "只生成下一轮建议，不自动合并、不自动归档、不删除 worktree 或分支。",
+        "note": "基于现有状态生成下一步建议；合并、归档和 worktree 清理由对应执行入口处理。",
     }
     kinds = [item["kind"] for item in payload["recommendations"]]
     assert kinds == [
@@ -117,7 +117,7 @@ def test_supervisor_replan_turns_worker_review_candidates_into_read_snapshot_adv
         "last_status": "done",
     }
     assert merge_advice["read_snapshot"] is True
-    assert "不自动合并" in merge_advice["guardrail"]
+    assert "合并、归档和 worktree 清理交给对应执行入口" in merge_advice["execution_note"]
     assert merge_advice["next_actions"] == [
         "审查 git diff",
         "运行建议验证命令",
@@ -169,7 +169,7 @@ def test_supervisor_replan_reports_active_goals_without_worker_candidates():
             "validation_commands": [],
             "reviewer_command": None,
             "read_snapshot": True,
-            "guardrail": "只提出继续/拆分建议；不自动启动、不自动归档、不自动合并。",
+            "execution_note": "推进可继续目标，必要时拆出下一轮 worker；归档和合并交给对应执行入口。",
         }
     ]
 
@@ -305,7 +305,7 @@ def test_supervisor_replan_plain_output_keeps_safety_visible():
 
     assert "[Supervisor Replan]" in text
     assert "总建议：1 / 复查合并 1 / 继续拆分 0 / 归档等待 0 / 恢复/归档 0 / active goals 0" in text
-    assert "安全：只生成下一轮建议，不自动合并、不自动归档、不删除 worktree 或分支。" in text
+    assert "执行规则：基于现有状态生成下一步建议；合并、归档和 worktree 清理由对应执行入口处理。" in text
     assert "复查合并：merge-ready / managed-001" in text
 
 
@@ -478,4 +478,42 @@ def test_supervisor_replan_cli_plain_prints_read_snapshot_advice(
     text = capsys.readouterr().out
     assert "[Supervisor Replan]" in text
     assert "继续拆分：blocked-worker / managed-012" in text
-    assert "安全：只生成下一轮建议，不自动合并、不自动归档、不删除 worktree 或分支。" in text
+    assert "执行规则：基于现有状态生成下一步建议；合并、归档和 worktree 清理由对应执行入口处理。" in text
+
+
+def test_supervisor_replan_uses_execution_protocol_language():
+    payload = build_supervisor_replan(
+        worker_reviews={
+            "automation_candidates": {
+                "review_then_merge": [
+                    {
+                        "record_id": "managed-001",
+                        "name": "merge-ready",
+                        "reason": "worker 已完成且有本地改动。",
+                    }
+                ],
+                "continue_or_split": [
+                    {
+                        "record_id": "managed-002",
+                        "name": "blocked-worker",
+                        "reason": "worker 汇报 blocked。",
+                    }
+                ],
+            }
+        },
+        active_goals=[],
+    )
+    rendered = render_supervisor_replan_plain(payload)
+    combined = f"{payload!r}\n{rendered}"
+
+    for term in (
+        "guardrail",
+        "护栏",
+        "只生成",
+        "只提出",
+        "不自动",
+        "不删除",
+        "只读",
+        "不要",
+    ):
+        assert term not in combined

@@ -10,26 +10,28 @@ _BUCKETS: tuple[tuple[str, str, str], ...] = (
     (
         "review_then_merge",
         "复查合并",
-        "只提出复查合并建议；不自动合并、不删除 worktree 或分支。",
+        "复查 diff、测试和提交关系；合并、归档和 worktree 清理交给对应执行入口。",
     ),
     (
         "continue_or_split",
         "继续拆分",
-        "只提出继续/拆分建议；不自动启动、不自动归档、不自动合并。",
+        "推进可继续目标，必要时拆出下一轮 worker；归档和合并交给对应执行入口。",
     ),
     (
         "archive_or_wait",
         "归档等待",
-        "只提出归档/等待建议；不自动归档、不删除登记或 worktree。",
+        "已集成或等待类记录进入归档判断；登记和 worktree 清理由对应执行入口处理。",
     ),
     (
         "recover_or_archive",
         "恢复/归档",
-        "只提出恢复/归档建议；不自动恢复、不自动归档、不删除 worktree 或分支。",
+        "恢复、归档或冲突处理按证据分流；分支和 worktree 清理由对应执行入口处理。",
     ),
 )
-_BUCKET_LABELS = {kind: label for kind, label, _guardrail in _BUCKETS}
-_BUCKET_GUARDRAILS = {kind: guardrail for kind, _label, guardrail in _BUCKETS}
+_BUCKET_LABELS = {kind: label for kind, label, _execution_note in _BUCKETS}
+_BUCKET_EXECUTION_NOTES = {
+    kind: execution_note for kind, _label, execution_note in _BUCKETS
+}
 
 _INTEGRATION_GROUPS: tuple[str, ...] = (
     "ready_to_integrate",
@@ -58,7 +60,7 @@ _INTEGRATION_NEXT_ACTIONS = {
         "要求 worker 提交、继续或拆分下一轮任务",
     ],
     "conflict_risk": [
-        "不要自动合并",
+        "进入冲突处理路径",
         "交给人工或专门 worker 处理 rebase/merge conflict",
         "冲突处理后重新运行 integration-review",
     ],
@@ -73,8 +75,9 @@ def build_supervisor_replan(
 ) -> dict[str, Any]:
     """Build next-step advice for the next Supervisor loop.
 
-    The function consumes existing read models only. It does not start workers,
-    merge branches, archive records, or touch git state.
+    The function consumes existing read models and returns the next execution
+    advice. Worker launch, merge, archive, and git mutations stay in their
+    dedicated command paths.
     """
 
     worker_payload = worker_reviews if isinstance(worker_reviews, dict) else {}
@@ -88,7 +91,7 @@ def build_supervisor_replan(
     if not isinstance(automation_candidates, dict):
         automation_candidates = {}
 
-    for kind, _label, _guardrail in _BUCKETS:
+    for kind, _label, _execution_note in _BUCKETS:
         raw_items = automation_candidates.get(kind)
         if not isinstance(raw_items, list):
             continue
@@ -158,7 +161,7 @@ def render_supervisor_replan_plain(payload: dict[str, Any]) -> str:
             recover_or_archive=summary.get("recover_or_archive", 0),
             active_goals=summary.get("active_goals", 0),
         ),
-        f"安全：{safety.get('note') or '只读建议。'}",
+        f"执行规则：{safety.get('note') or '基于现有状态生成下一步建议。'}",
     ]
     if _has_integration_summary(summary):
         lines.append(
@@ -197,7 +200,7 @@ def render_supervisor_replan_plain(payload: dict[str, Any]) -> str:
                     record_id=item.get("record_id") or "无 worker record",
                 ),
                 f"  原因：{item.get('reason') or '无'}",
-                f"  护栏：{item.get('guardrail') or '只读建议。'}",
+                f"  执行规则：{item.get('execution_note') or '基于现有状态生成下一步建议。'}",
             ]
         )
         next_actions = item.get("next_actions")
@@ -227,7 +230,7 @@ def _candidate_recommendation(
         "validation_commands": _string_list(candidate.get("validation_commands")),
         "reviewer_command": candidate.get("reviewer_command"),
         "read_snapshot": True,
-        "guardrail": _BUCKET_GUARDRAILS[kind],
+        "execution_note": _BUCKET_EXECUTION_NOTES[kind],
     }
 
 
@@ -256,7 +259,7 @@ def _active_goal_recommendation(goal: dict[str, Any]) -> dict[str, Any]:
         "validation_commands": [],
         "reviewer_command": None,
         "read_snapshot": True,
-        "guardrail": _BUCKET_GUARDRAILS["continue_or_split"],
+        "execution_note": _BUCKET_EXECUTION_NOTES["continue_or_split"],
     }
 
 
@@ -312,7 +315,7 @@ def _integration_recommendation(
         "validation_commands": _integration_validation_commands(worker),
         "reviewer_command": None,
         "read_snapshot": True,
-        "guardrail": _BUCKET_GUARDRAILS[kind],
+        "execution_note": _BUCKET_EXECUTION_NOTES[kind],
         "integration_group": integration_group,
         "base_ref": worker.get("base_ref"),
         "base_commit": worker.get("base_commit"),
@@ -492,5 +495,5 @@ def _safety() -> dict[str, Any]:
         "auto_merge": False,
         "auto_archive": False,
         "delete_branch": False,
-        "note": "只生成下一轮建议，不自动合并、不自动归档、不删除 worktree 或分支。",
+        "note": "基于现有状态生成下一步建议；合并、归档和 worktree 清理由对应执行入口处理。",
     }
