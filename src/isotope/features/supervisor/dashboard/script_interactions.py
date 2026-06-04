@@ -42,7 +42,11 @@ DASHBOARD_SCRIPT_INTERACTIONS = r'''    async function copyResumeCommand(item, b
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error ? payload.error.message : "执行失败");
         button.textContent = "已执行";
-        loadDashboard();
+        if (payload.dashboard) {
+          renderDashboardPayload(payload.dashboard);
+        } else {
+          loadDashboard();
+        }
       } catch (error) {
         button.textContent = text(error.message);
       }

@@ -3067,6 +3067,7 @@ def test_codex_supervisor_web_executes_current_worker_lifecycle_plan(tmp_path):
         capture_output: bool,
     ) -> subprocess.CompletedProcess[str]:
         calls.append(command)
+        _record_cleanup_lifecycle_execution(codex_home, executed=True)
         assert check is False
         assert text is True
         assert capture_output is True
@@ -3125,6 +3126,11 @@ def test_codex_supervisor_web_executes_current_worker_lifecycle_plan(tmp_path):
     assert response.status == 200
     assert payload["status"] == "ok"
     assert payload["execution"]["executed"]["kind"] == "cleanup_worktree"
+    assert payload["dashboard"]["status"] == "ok"
+    assert payload["dashboard"]["worker_lifecycle_execution"]["execution_status"] == "executed"
+    assert payload["dashboard"]["worker_lifecycle_execution"]["result_summary"] == (
+        "deleted source-worker"
+    )
     assert calls == [
         [
             "isotope-supervisor",
@@ -3207,18 +3213,32 @@ def _record_cleanup_lifecycle_execution(
     codex_home: Path,
     *,
     with_result: bool = False,
+    executed: bool = False,
 ) -> None:
-    result = (
-        {
+    result = None
+    if executed:
+        result = {
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "deleted": [
+                {
+                    "kind": "delete_worktree",
+                    "target_name": "source-worker",
+                    "managed": {
+                        "record_id": "managed-source",
+                        "name": "source-worker",
+                    },
+                }
+            ],
+        }
+    elif with_result:
+        result = {
             "kind": "cleanup_worktree",
             "source": "worker_lifecycle",
             "skipped": True,
             "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
             "count": 1,
         }
-        if with_result
-        else None
-    )
     record_worker_lifecycle_decision(
         codex_home=codex_home,
         worker_lifecycle_decision={

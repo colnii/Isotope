@@ -310,4 +310,5 @@ def test_dashboard_html_includes_worker_lifecycle_card() -> None:
     assert "copyWorkerLifecycleExecutionCommand" in html
     assert "executeWorkerLifecyclePlan" in html
     assert "/worker-lifecycle/execute" in html
+    assert "renderDashboardPayload(payload.dashboard)" in html
     assert "renderWorkerLifecycle" in html

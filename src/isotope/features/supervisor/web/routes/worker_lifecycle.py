@@ -81,6 +81,7 @@ def run_worker_lifecycle_execute(
         "command": command,
         "process": process,
         "execution": result_payload,
+        "dashboard": server.dashboard_payload(),
     }
 
 
