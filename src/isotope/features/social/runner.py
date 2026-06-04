@@ -13,6 +13,11 @@ from .beta_check import QQBetaCheckConfig, check_qq_beta_pack
 from .beta_pack import QQBetaPackConfig, create_qq_beta_pack
 from .character_card import CharacterCard
 from .config import SocialGroupPolicy, SocialOperationsConfig
+from .dry_run_review import (
+    QQDryRunReviewConfig,
+    build_qq_dry_run_review,
+    write_qq_dry_run_review,
+)
 from .lorebook import Lorebook, LorebookEntry
 from .operations import SocialOperationsController
 from .profile_pack import (
@@ -168,6 +173,15 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     startup_check.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    review_dry_run = qq_subparsers.add_parser(
+        "review-dry-run",
+        help="Write an operator review report from recorded QQ dry-run decisions.",
+    )
+    review_dry_run.add_argument("--state-root", required=True, help="State root directory.")
+    review_dry_run.add_argument("--group", required=True, help="QQ group id.")
+    review_dry_run.add_argument("--output", required=True, help="Review report JSON file.")
+    review_dry_run.add_argument("--json", action="store_true", help="Print JSON output.")
+
     for name, help_text in (
         ("pause", "Pause one QQ group."),
         ("resume", "Resume one QQ group."),
@@ -248,6 +262,8 @@ def _handle_qq(args: argparse.Namespace) -> dict[str, Any]:
         return _handle_beta_check(args)
     if args.command == "startup-check":
         return _handle_startup_check(args)
+    if args.command == "review-dry-run":
+        return _handle_review_dry_run(args)
     if args.command in {"pause", "resume"}:
         return _handle_pause_resume(args)
     if args.command == "inspect":
@@ -463,6 +479,27 @@ def _handle_startup_check(args: argparse.Namespace) -> dict[str, Any]:
     return payload
 
 
+def _handle_review_dry_run(args: argparse.Namespace) -> dict[str, Any]:
+    state_file = _state_path(Path(args.state_root))
+    output = Path(args.output)
+    report = build_qq_dry_run_review(
+        QQDryRunReviewConfig(
+            state_file=state_file,
+            group_id=str(args.group),
+            output=output,
+        )
+    )
+    write_qq_dry_run_review(output, report)
+    return {
+        "status": "ok",
+        "command": "review-dry-run",
+        "output": str(output),
+        "ready_for_send": bool(report["ready_for_send"]),
+        "summary": report["summary"],
+        "warnings": report["warnings"],
+    }
+
+
 def _handle_pause_resume(args: argparse.Namespace) -> dict[str, Any]:
     config = _load_config(Path(args.config_json))
     state_root = Path(args.state_root)
@@ -528,12 +565,28 @@ def _runtime_from_adapter(
         adapter=adapter,
         character_card=_character_card_from_config(config),
         operations=operations,
-        config=SocialRuntimeConfig(
-            bot_user_id=_config_string(config, "bot_user_id"),
-            dry_run=bool(config.get("dry_run", True)),
-        ),
+        config=_runtime_config_from_config(config),
         lorebook=_optional_lorebook_from_config(config),
         sticker_library=_optional_stickers_from_config(config),
+    )
+
+
+def _runtime_config_from_config(config: dict[str, Any]) -> SocialRuntimeConfig:
+    runtime = _dict_field(config, "runtime", default={})
+    return SocialRuntimeConfig(
+        bot_user_id=_config_string(config, "bot_user_id"),
+        dry_run=bool(config.get("dry_run", True)),
+        wake_keywords=_string_tuple_from_list(runtime.get("wake_keywords", [])),
+        autonomy_score=_ratio(runtime.get("autonomy_score", 1.0), "runtime.autonomy_score"),
+        sticker_emotion=_string_value(
+            runtime.get("sticker_emotion", "ack"),
+            "runtime.sticker_emotion",
+        ),
+        sticker_scene_tags=_string_tuple_from_list(runtime.get("sticker_scene_tags", [])),
+        allow_sticker_only=_bool_value(
+            runtime.get("allow_sticker_only", False),
+            "runtime.allow_sticker_only",
+        ),
     )
 
 
@@ -684,10 +737,31 @@ def _config_string(config: dict[str, Any], key: str) -> str:
     return value.strip()
 
 
+def _string_value(value: object, field_name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field_name} must be a non-empty string")
+    return value.strip()
+
+
 def _string_tuple_from_list(value: object) -> tuple[str, ...]:
     if not isinstance(value, list):
         raise ValueError("expected a JSON array of strings")
     return tuple(str(item) for item in value)
+
+
+def _ratio(value: object, field_name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field_name} must be between 0 and 1")
+    result = float(value)
+    if result < 0 or result > 1:
+        raise ValueError(f"{field_name} must be between 0 and 1")
+    return result
+
+
+def _bool_value(value: object, field_name: str) -> bool:
+    if not isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a bool")
+    return value
 
 
 def _print_plain(payload: dict[str, Any]) -> None:

@@ -35,9 +35,9 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
   --bot-user-id <bot_qq> --websocket-url ws://127.0.0.1:3001 --json
 ```
 
-The pack writes `health.sh`, `startup-check.sh`, `dry-run.sh`, `send-run.sh`,
-`pause.sh`, `resume.sh`, and `export-log.sh`. Run `send-run.sh` only with
-`ISOTOPE_QQ_ENABLE_SEND=1`.
+The pack writes `health.sh`, `startup-check.sh`, `dry-run.sh`,
+`review-dry-run.sh`, `send-run.sh`, `pause.sh`, `resume.sh`, and
+`export-log.sh`. Run `send-run.sh` only with `ISOTOPE_QQ_ENABLE_SEND=1`.
 
 Generate an editable profile pack and apply it to the beta pack before checking
 or running it:
@@ -122,6 +122,8 @@ isotope-social qq replay --config-json .isotope/qq-beta/config.json \
   --output .isotope/qq-beta/logs/replay-report.json --json
 isotope-social qq startup-check --pack-dir .isotope/qq-beta \
   --replay-report .isotope/qq-beta/logs/replay-report.json --json
+isotope-social qq review-dry-run --state-root .isotope/qq-beta/state \
+  --group <group_id> --output .isotope/qq-beta/logs/dry-run-review.json --json
 isotope-social qq inspect role --config-json config.json
 isotope-social qq inspect lorebook --config-json config.json
 isotope-social qq inspect stickers --config-json config.json
@@ -173,13 +175,25 @@ isotope-social qq live-run --config-json config.json --state-root .isotope/qq \
   --websocket-url ws://127.0.0.1:3001 --max-events 10 --json
 ```
 
+After dry-run, write the review report:
+
+```bash
+isotope-social qq review-dry-run --state-root .isotope/qq \
+  --group <group_id> --output .isotope/qq/dry-run-review.json --json
+```
+
 Before enabling sends, review:
 
 - wake reason;
 - selected or rejected candidates;
 - sticker selection reasons;
+- `dry-run-review.json` summary, `sticker_candidate_count`, and `warnings`;
 - capability reports;
 - whether send feedback from a previous turn suppresses repeated replies.
+
+`ready_for_send` in the review report is a report field, not a send permit. Real
+sends still require the operator to inspect warnings and manually set
+`ISOTOPE_QQ_ENABLE_SEND=1`.
 
 To enable real sends in the controlled group, use the same live command with
 `--send`:
@@ -228,6 +242,7 @@ Run this checklist for each controlled beta day:
 - Run `qq startup-check` and require `ready: true`.
 - Run `./health.sh` before consuming messages.
 - Start in dry-run and review at least five representative messages.
+- Run `qq review-dry-run` or `./review-dry-run.sh` and inspect warnings.
 - Enable sends only after dry-run decisions look correct.
 - Check health and adapter state at least once per session.
 - Inspect role card and sticker library after any config change.

@@ -57,8 +57,9 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 ```
 
 The generated pack contains `config.json`, `state/`, `logs/`, `health.sh`,
-`startup-check.sh`, `dry-run.sh`, `send-run.sh`, `pause.sh`, `resume.sh`,
-`export-log.sh`, and a `README.md` with the first-run order.
+`startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`, `send-run.sh`,
+`pause.sh`, `resume.sh`, `export-log.sh`, and a `README.md` with the first-run
+order.
 
 Generate editable role and sticker files before the first real session:
 
@@ -144,6 +145,18 @@ isotope-social qq live-run --config-json config.json --state-root .isotope/qq \
   --websocket-url ws://127.0.0.1:3001 --max-events 10 --json
 ```
 
+Write an operator review report from those dry-run decisions:
+
+```bash
+isotope-social qq review-dry-run --state-root .isotope/qq \
+  --group <controlled_group_id> --output .isotope/qq/dry-run-review.json --json
+```
+
+The report writes `ready_for_send`, `summary`, per-turn proposed and rejected
+actions, `sticker_candidate_count`, and `warnings`. `ready_for_send` is not
+permission to send; it is only a review field. Read the warnings and still
+enable sends manually.
+
 Enable sends only after dry-run decisions are acceptable:
 
 ```bash
@@ -171,6 +184,7 @@ cd .isotope/qq-beta
 ./startup-check.sh
 ./health.sh
 ./dry-run.sh
+./review-dry-run.sh
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 ./export-log.sh
 ```

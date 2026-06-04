@@ -13,6 +13,7 @@ SCRIPT_NAMES = (
     "health.sh",
     "startup-check.sh",
     "dry-run.sh",
+    "review-dry-run.sh",
     "send-run.sh",
     "pause.sh",
     "resume.sh",
@@ -113,6 +114,9 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
     if name == "dry-run.sh":
         command = _live_run_command(config, max_events=config.max_events, send=False)
         return f"{common}\n./startup-check.sh 1>&2\n{command}\n"
+    if name == "review-dry-run.sh":
+        command = _review_dry_run_command(config)
+        return f"{common}\n{command}\n"
     if name == "send-run.sh":
         command = _live_run_command(config, max_events=config.max_events, send=True)
         return (
@@ -201,6 +205,22 @@ def _startup_check_command() -> str:
     return " ".join(shlex.quote(part) for part in parts)
 
 
+def _review_dry_run_command(config: QQBetaPackConfig) -> str:
+    parts = [
+        "isotope-social",
+        "qq",
+        "review-dry-run",
+        "--state-root",
+        "state",
+        "--group",
+        config.group_id,
+        "--output",
+        "logs/dry-run-review.json",
+        "--json",
+    ]
+    return " ".join(shlex.quote(part) for part in parts)
+
+
 def _quote_command_part(part: str) -> str:
     if part == '"$ONEBOT_ACCESS_TOKEN"':
         return part
@@ -281,9 +301,10 @@ OneBot WebSocket: `{config.websocket_url}`
 1. Apply an editable profile pack and run replay.
 2. Run `./startup-check.sh`.
 3. Run `./health.sh`.
-4. Run `./dry-run.sh` and review the JSON output.
-5. Inspect `state/social-qq-state.json` and exported logs.
-6. Only after dry-run behavior is acceptable, run:
+4. Run `./dry-run.sh`.
+5. Run `./review-dry-run.sh` and inspect `logs/dry-run-review.json`.
+6. Inspect `state/social-qq-state.json` and exported logs.
+7. Only after dry-run behavior is acceptable, run:
 
 ```bash
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
@@ -298,6 +319,7 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 Automated scripts start in dry-run. `send-run.sh` refuses to send unless
 `ISOTOPE_QQ_ENABLE_SEND=1` is set for that command. `dry-run.sh` and
 `send-run.sh` both run `startup-check.sh` before connecting to OneBot.
+`review-dry-run.sh` only writes a review report; it does not enable sends.
 """
 
 

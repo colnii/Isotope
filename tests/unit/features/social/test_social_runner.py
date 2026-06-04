@@ -415,6 +415,82 @@ def test_social_runner_qq_live_run_defaults_to_dry_run(
     assert FakeLiveOneBotClient.instances[0].sent_group_messages == []
 
 
+def test_social_runner_qq_review_dry_run_writes_operator_report(
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    FakeLiveOneBotClient.instances = []
+    monkeypatch.setattr(runner, "OneBotWebSocketClient", FakeLiveOneBotClient, raising=False)
+    config_payload = _config()
+    config_payload["runtime"] = {
+        "sticker_emotion": "positive",
+        "sticker_scene_tags": ["review"],
+        "allow_sticker_only": True,
+    }
+    config = _write_json(tmp_path / "config.json", config_payload)
+    state_root = tmp_path / "state"
+    report_path = tmp_path / "dry-run-review.json"
+
+    assert main(
+        [
+            "qq",
+            "live-run",
+            "--config-json",
+            str(config),
+            "--state-root",
+            str(state_root),
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--max-events",
+            "1",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    code = main(
+        [
+            "qq",
+            "review-dry-run",
+            "--state-root",
+            str(state_root),
+            "--group",
+            "99999",
+            "--output",
+            str(report_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "review-dry-run"
+    assert payload["output"] == str(report_path)
+    assert payload["ready_for_send"] is False
+    assert payload["summary"] == {
+        "decision_count": 1,
+        "dry_run_decision_count": 1,
+        "proposed_action_count": 1,
+        "selected_action_count": 0,
+        "rejected_action_count": 1,
+        "sticker_candidate_count": 1,
+        "send_feedback_count": 0,
+    }
+
+    report = _read_json(report_path)
+    assert report["kind"] == "qq_dry_run_review"
+    assert report["ready_for_send"] is False
+    assert report["turns"][0]["wake_reason"] == "mention:bot_qq"
+    assert report["turns"][0]["proposed"][0]["candidate_id"] == "reply_sticker"
+    assert report["turns"][0]["proposed"][0]["sticker"]["sticker_id"] == "ship-it"
+    assert report["turns"][0]["rejected"]["reply_sticker"] == (
+        "dry_run:not selected for sending"
+    )
+    assert "dry_run_candidates_not_selected" in report["warnings"]
+
+
 def test_social_runner_qq_live_run_send_records_feedback(
     tmp_path: Path,
     capsys,
@@ -553,6 +629,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
         "health.sh",
         "pause.sh",
         "resume.sh",
+        "review-dry-run.sh",
         "send-run.sh",
         "startup-check.sh",
     ]
@@ -575,6 +652,12 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert "--max-events 7" in dry_run
     assert "--send" not in dry_run
     assert "./startup-check.sh" in dry_run
+
+    review = (output_dir / "review-dry-run.sh").read_text(encoding="utf-8")
+    assert " qq review-dry-run " in review
+    assert "--state-root state" in review
+    assert "--group 99999" in review
+    assert "--output logs/dry-run-review.json" in review
 
     send_run = (output_dir / "send-run.sh").read_text(encoding="utf-8")
     assert "ISOTOPE_QQ_ENABLE_SEND" in send_run
