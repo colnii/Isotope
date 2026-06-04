@@ -23,7 +23,7 @@ REQUIRED_TEXT_FIELDS = (
     "codex_started_before_approval: false",
     "codex_call_count: 0",
     "idempotency_replay_ok: true",
-    "real_llm_status: fake_provider",
+    "real_llm_status: deterministic_test_provider",
     "network_listener_status: not_used",
     "memory_status: active",
 )
@@ -131,7 +131,7 @@ def test_llm_provider_route_demo_json_exposes_safe_status_without_raw_prompt_or_
     assert data["codex_started_before_approval"] is False
     assert data["codex_call_count"] == 0
     assert data["idempotency_replay_ok"] is True
-    assert data["real_llm_status"] == "fake_provider"
+    assert data["real_llm_status"] == "deterministic_test_provider"
     assert data["network_listener_status"] == "not_used"
     assert data["memory_status"] == "active"
     assert "approval.requested" in data["event_types"]

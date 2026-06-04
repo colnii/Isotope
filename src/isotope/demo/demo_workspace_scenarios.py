@@ -219,7 +219,7 @@ def _run_workbench_demo(root: Path) -> dict[str, Any]:
 
 def _run_workbench_ask_demo(root: Path) -> dict[str, Any]:
     root.mkdir(parents=True, exist_ok=True)
-    provider = _FakeWorkbenchAskProvider(
+    provider = _DeterministicWorkbenchAskProvider(
         "建议先把作品集项目拆成一个可展示任务。"
     )
     app = create_http_app(root, workbench_ask_provider=provider)
@@ -274,9 +274,9 @@ def _run_workbench_ask_demo(root: Path) -> dict[str, Any]:
     }
 
 
-class _FakeWorkbenchAskProvider:
-    provider = "fake"
-    model = "fake-workbench-ask"
+class _DeterministicWorkbenchAskProvider:
+    provider = "deterministic_test"
+    model = "deterministic-workbench-ask"
 
     def __init__(self, answer: str) -> None:
         self.answer = answer
@@ -295,5 +295,5 @@ class _FakeWorkbenchAskProvider:
             content=self.answer,
             finish_reason="stop",
             usage={"prompt_tokens": 0, "completion_tokens": 0},
-            raw={"fake": True, "message_count": len(messages), "max_tokens": max_tokens},
+            raw={"deterministic_test": True, "message_count": len(messages), "max_tokens": max_tokens},
         )

@@ -24,7 +24,7 @@ REQUIRED_TEXT_FIELDS = (
     "ready_forwarded_to_route: true",
     "provider_call_count: 1",
     "codex_call_count: 0",
-    "real_llm_status: fake_provider",
+    "real_llm_status: deterministic_test_provider",
     "network_listener_status: not_used",
     "memory_status: active",
 )
@@ -140,7 +140,7 @@ def test_llm_product_chat_app_entry_demo_json_exposes_safe_gate_status_only():
     assert data["artifact_ref_present"] is True
     assert data["provider_call_count"] == 1
     assert data["codex_call_count"] == 0
-    assert data["real_llm_status"] == "fake_provider"
+    assert data["real_llm_status"] == "deterministic_test_provider"
     assert data["network_listener_status"] == "not_used"
     assert data["memory_status"] == "active"
     assert "run.completed" in data["event_types"]

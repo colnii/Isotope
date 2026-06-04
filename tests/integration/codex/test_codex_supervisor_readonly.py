@@ -3063,7 +3063,7 @@ def test_codex_supervisor_web_can_add_goal_from_page(tmp_path):
 def test_codex_supervisor_web_can_plan_goals_from_page(tmp_path):
     from isotope.features.supervisor import web
 
-    class FakeProvider:
+    class DeterministicProvider:
         def __init__(self) -> None:
             self.calls = 0
 
@@ -3100,7 +3100,7 @@ def test_codex_supervisor_web_can_plan_goals_from_page(tmp_path):
                 ensure_ascii=False,
             )
 
-    provider = FakeProvider()
+    provider = DeterministicProvider()
     codex_home = tmp_path / ".codex"
     server = web.create_dashboard_server(
         codex_home=codex_home,
@@ -3429,7 +3429,7 @@ def test_codex_supervisor_web_returns_manual_llm_action_without_sending(
     )
     send_calls: list[list[str]] = []
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             assert "command_suggestions" in messages[1]["content"]
             return '{"kind":"send_status","target_name":"lane-a","reason":"先看进度。"}'
@@ -3452,7 +3452,7 @@ def test_codex_supervisor_web_returns_manual_llm_action_without_sending(
         stale_after_seconds=999999,
         active_within_seconds=180,
         send_run=fake_run,
-        llm_action_provider=FakeProvider(),
+        llm_action_provider=DeterministicProvider(),
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -3530,7 +3530,7 @@ def test_codex_supervisor_web_returns_ask_user_after_context_gate(
         lambda cwd: None,
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert "目录迁移文档和现状冲突" in content
@@ -3554,7 +3554,7 @@ def test_codex_supervisor_web_returns_ask_user_after_context_gate(
         limit=5,
         stale_after_seconds=999999,
         active_within_seconds=180,
-        llm_action_provider=FakeProvider(),
+        llm_action_provider=DeterministicProvider(),
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -4193,7 +4193,7 @@ def test_codex_supervisor_runner_loop_uses_decision_answer_to_continue_goal(
     capsys.readouterr()
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"recent_decision_answers"' in content
@@ -4212,7 +4212,7 @@ def test_codex_supervisor_runner_loop_uses_decision_answer_to_continue_goal(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     captured: dict[str, object] = {}
 
@@ -5178,7 +5178,7 @@ def test_codex_supervisor_runner_loop_prioritizes_active_goals_over_stale_resume
     assert exit_code == 0
     capsys.readouterr()
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -5190,7 +5190,7 @@ def test_codex_supervisor_runner_loop_prioritizes_active_goals_over_stale_resume
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     exit_code = supervisor_main(
@@ -5252,7 +5252,7 @@ def test_codex_supervisor_llm_action_prompt_scopes_to_active_goal_over_old_sessi
         active_goals=active_goals,
     )["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             payload = json.loads(messages[1]["content"])
             assert payload["active_goals"][0]["target_name"] == "goal-worker"
@@ -5274,7 +5274,7 @@ def test_codex_supervisor_llm_action_prompt_scopes_to_active_goal_over_old_sessi
     decision = generate_llm_action_decision(
         report,
         suggestions,
-        FakeProvider(),
+        DeterministicProvider(),
         active_goals=active_goals,
     )
 
@@ -5317,7 +5317,7 @@ def test_codex_supervisor_llm_action_rejects_old_resume_with_active_goal(
         active_goals=active_goals,
     )["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, _messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -5333,7 +5333,7 @@ def test_codex_supervisor_llm_action_rejects_old_resume_with_active_goal(
         generate_llm_action_decision(
             report,
             suggestions,
-            FakeProvider(),
+            DeterministicProvider(),
             active_goals=active_goals,
         )
 
@@ -5496,7 +5496,7 @@ def test_codex_supervisor_web_rejects_invalid_manual_llm_action(tmp_path):
     workspace.mkdir()
     _write_managed_tmux_record(codex_home, workspace=workspace)
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return '{"kind":"delete_branch","reason":"危险动作"}'
 
@@ -5507,7 +5507,7 @@ def test_codex_supervisor_web_rejects_invalid_manual_llm_action(tmp_path):
         limit=5,
         stale_after_seconds=999999,
         active_within_seconds=180,
-        llm_action_provider=FakeProvider(),
+        llm_action_provider=DeterministicProvider(),
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -5932,7 +5932,7 @@ def test_codex_supervisor_generate_llm_action_rejects_merge_even_with_worker_rev
         "safety": {"auto_merge": False},
     }
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"worker_reviews"' in content
@@ -5950,7 +5950,7 @@ def test_codex_supervisor_generate_llm_action_rejects_merge_even_with_worker_rev
         generate_llm_action_decision(
             report,
             suggestions,
-            FakeProvider(),
+            DeterministicProvider(),
             worker_reviews=worker_reviews,
         )
 
@@ -6137,7 +6137,7 @@ def test_codex_supervisor_generate_llm_action_rejects_missing_workspace_not_in_w
         }
     ]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert str(missing_workspace) not in content
@@ -6152,7 +6152,7 @@ def test_codex_supervisor_generate_llm_action_rejects_missing_workspace_not_in_w
             )
 
     with pytest.raises(ValueError, match="unknown workspace"):
-        generate_llm_action_decision(report, suggestions, FakeProvider())
+        generate_llm_action_decision(report, suggestions, DeterministicProvider())
 
 
 def test_codex_supervisor_llm_action_messages_explain_recent_context_should_not_repeat():
@@ -6467,7 +6467,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json(
     )
     suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             assert "send_continue" in messages[1]["content"]
             return json.dumps(
@@ -6479,7 +6479,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_whitelisted_json(
                 ensure_ascii=False,
             )
 
-    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+    decision = generate_llm_action_decision(report, suggestions, DeterministicProvider())
 
     assert decision == {
         "kind": "send_continue",
@@ -6510,7 +6510,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_resume_session():
     )
     suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"can_resume": true' in content
@@ -6525,7 +6525,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_resume_session():
                 ensure_ascii=False,
             )
 
-    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+    decision = generate_llm_action_decision(report, suggestions, DeterministicProvider())
 
     assert decision == {
         "kind": "resume_session",
@@ -6570,7 +6570,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_session():
     )
     suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"kind": "launch_session"' in content
@@ -6586,7 +6586,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_session():
                 ensure_ascii=False,
             )
 
-    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+    decision = generate_llm_action_decision(report, suggestions, DeterministicProvider())
 
     assert decision == {
         "kind": "launch_session",
@@ -6635,7 +6635,7 @@ def test_codex_supervisor_generate_llm_action_decision_passes_capacity_decisions
         "blocking_reasons": [],
     }
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"capacity_decisions"' in content
@@ -6653,7 +6653,7 @@ def test_codex_supervisor_generate_llm_action_decision_passes_capacity_decisions
     result = generate_llm_action_decision(
         report,
         suggestions,
-        FakeProvider(),
+        DeterministicProvider(),
         capacity_decisions=[decision],
     )
 
@@ -6844,7 +6844,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_call_capacity(tmp
         "blocking_reasons": [],
     }
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"call_capacity"' in content
@@ -6861,7 +6861,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_call_capacity(tmp
     result = generate_llm_action_decision(
         report,
         suggestions,
-        FakeProvider(),
+        DeterministicProvider(),
         capacity_decisions=[decision],
     )
 
@@ -6943,7 +6943,7 @@ def test_codex_supervisor_generate_llm_action_decision_can_launch_named_suggesti
         ],
     )["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert "可只输出 target_name" in content
@@ -6956,7 +6956,7 @@ def test_codex_supervisor_generate_llm_action_decision_can_launch_named_suggesti
                 ensure_ascii=False,
             )
 
-    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+    decision = generate_llm_action_decision(report, suggestions, DeterministicProvider())
 
     assert decision["kind"] == "launch_session"
     assert decision["target_name"] == "supervisor-goal-planner"
@@ -6983,7 +6983,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_action_alias_for_
     )
     suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -6996,7 +6996,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_action_alias_for_
                 ensure_ascii=False,
             )
 
-    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+    decision = generate_llm_action_decision(report, suggestions, DeterministicProvider())
 
     assert decision["kind"] == "launch_session"
     assert decision["target_name"] == "search-rag-bm25"
@@ -7035,7 +7035,7 @@ def test_codex_supervisor_generate_llm_action_decision_rejects_running_target_la
         active_goals=active_goals,
     )["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -7052,7 +7052,7 @@ def test_codex_supervisor_generate_llm_action_decision_rejects_running_target_la
         generate_llm_action_decision(
             report,
             suggestions,
-            FakeProvider(),
+            DeterministicProvider(),
             active_goals=active_goals,
         )
 
@@ -7074,7 +7074,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_worker_pro
     )
     suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"worker_profiles"' in content
@@ -7091,7 +7091,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_launch_worker_pro
                 ensure_ascii=False,
             )
 
-    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+    decision = generate_llm_action_decision(report, suggestions, DeterministicProvider())
 
     assert decision["kind"] == "launch_session"
     assert decision["target_name"] == "quick-smoke"
@@ -7116,7 +7116,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_request_context()
     )
     suggestions = _advice_payload(report, include_all_managed=True)["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"context_capability"' in content
@@ -7131,7 +7131,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_request_context()
                 ensure_ascii=False,
             )
 
-    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+    decision = generate_llm_action_decision(report, suggestions, DeterministicProvider())
 
     assert decision == {
         "kind": "request_context",
@@ -7171,7 +7171,7 @@ def test_codex_supervisor_generate_llm_action_decision_rejects_ask_user_without_
         ),
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -7190,7 +7190,7 @@ def test_codex_supervisor_generate_llm_action_decision_rejects_ask_user_without_
         generate_llm_action_decision(
             report,
             _advice_payload(report)["command_suggestions"],
-            FakeProvider(),
+            DeterministicProvider(),
             recent_context_results=[
                 {
                     "cwd": "/home/lumber/Github/isotope",
@@ -7220,7 +7220,7 @@ def test_codex_supervisor_generate_llm_action_decision_rejects_ask_user_before_c
         ),
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -7239,7 +7239,7 @@ def test_codex_supervisor_generate_llm_action_decision_rejects_ask_user_before_c
         generate_llm_action_decision(
             report,
             _advice_payload(report)["command_suggestions"],
-            FakeProvider(),
+            DeterministicProvider(),
             recent_context_results=[],
         )
 
@@ -7263,7 +7263,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_ask_user_after_ga
         ),
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"decision_gate"' in content
@@ -7284,7 +7284,7 @@ def test_codex_supervisor_generate_llm_action_decision_accepts_ask_user_after_ga
     decision = generate_llm_action_decision(
         report,
         _advice_payload(report)["command_suggestions"],
-        FakeProvider(),
+        DeterministicProvider(),
         recent_context_results=[
             {
                 "cwd": "/home/lumber/Github/isotope",
@@ -7356,7 +7356,7 @@ def test_codex_supervisor_runner_advice_plain_prints_ask_user_question(
         lambda cwd: None,
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert "目录迁移文档和现状冲突" in content
@@ -7375,7 +7375,7 @@ def test_codex_supervisor_runner_advice_plain_prints_ask_user_question(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     exit_code = supervisor_main(
@@ -7419,7 +7419,7 @@ def test_codex_supervisor_generate_llm_action_decision_extracts_noisy_json():
     )
     suggestions = _advice_payload(report)["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return (
                 "我会按这个格式返回：{\"kind\":\"monitor\"}\n"
@@ -7428,7 +7428,7 @@ def test_codex_supervisor_generate_llm_action_decision_extracts_noisy_json():
                 "```"
             )
 
-    decision = generate_llm_action_decision(report, suggestions, FakeProvider())
+    decision = generate_llm_action_decision(report, suggestions, DeterministicProvider())
 
     assert decision["kind"] == "send_status"
     assert decision["target_name"] == "lane-a"
@@ -7456,12 +7456,12 @@ def test_codex_supervisor_generate_llm_action_decision_reports_raw_excerpt_for_n
     )
     suggestions = _advice_payload(report)["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return "我需要更多上下文，暂时不能决定。"
 
     with pytest.raises(ValueError, match="raw=我需要更多上下文"):
-        generate_llm_action_decision(report, suggestions, FakeProvider())
+        generate_llm_action_decision(report, suggestions, DeterministicProvider())
 
 
 def test_codex_supervisor_send_status_text_requires_protocol_report():
@@ -7504,12 +7504,12 @@ def test_codex_supervisor_generate_llm_action_decision_rejects_unsupported_actio
     )
     suggestions = _advice_payload(report)["command_suggestions"]
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return '{"kind":"delete_branch","reason":"危险动作"}'
 
     with pytest.raises(ValueError, match="unsupported LLM action"):
-        generate_llm_action_decision(report, suggestions, FakeProvider())
+        generate_llm_action_decision(report, suggestions, DeterministicProvider())
 
 
 def test_codex_supervisor_generate_llm_action_decision_falls_back_without_targets():
@@ -7547,16 +7547,16 @@ def test_codex_supervisor_runner_advise_can_add_llm_action(
         lambda session: False,
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             assert "command_suggestions" in messages[1]["content"]
             return '{"kind":"send_status","target_name":"lane-a","reason":"先看进度。"}'
 
     captured: dict[str, object] = {}
 
-    def fake_resolver(**kwargs: object) -> FakeProvider:
+    def fake_resolver(**kwargs: object) -> DeterministicProvider:
         captured.update(kwargs)
-        return FakeProvider()
+        return DeterministicProvider()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
@@ -7624,7 +7624,7 @@ def test_codex_supervisor_runner_llm_action_becomes_primary_command_suggestion(
             + "\n"
         )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"resume_context_hint": "large_session_file"' in content
@@ -7640,7 +7640,7 @@ def test_codex_supervisor_runner_llm_action_becomes_primary_command_suggestion(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     exit_code = supervisor_main(
@@ -7708,7 +7708,7 @@ def test_codex_supervisor_runner_supervise_llm_action_passes_worker_reviews(
         "safety": {"auto_merge": False, "delete_branch": False},
     }
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             payload = json.loads(messages[1]["content"])
             assert payload["worker_reviews"]["workers"][0]["name"] == "worker-a"
@@ -7729,7 +7729,7 @@ def test_codex_supervisor_runner_supervise_llm_action_passes_worker_reviews(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.collect_worker_reviews",
@@ -7800,7 +7800,7 @@ def test_codex_supervisor_runner_llm_action_scopes_to_workspace_root(
         lambda cwd: None,
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert "external-session" not in content
@@ -7810,7 +7810,7 @@ def test_codex_supervisor_runner_llm_action_scopes_to_workspace_root(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     exit_code = supervisor_main(
@@ -8168,7 +8168,7 @@ def test_codex_supervisor_runner_supervise_json_includes_llm_summary_and_advice(
         ],
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             assert "active-session" in messages[1]["content"]
             assert "recommendation" in messages[1]["content"]
@@ -8176,9 +8176,9 @@ def test_codex_supervisor_runner_supervise_json_includes_llm_summary_and_advice(
 
     captured: dict[str, object] = {}
 
-    def fake_resolver(**kwargs: object) -> FakeProvider:
+    def fake_resolver(**kwargs: object) -> DeterministicProvider:
         captured.update(kwargs)
-        return FakeProvider()
+        return DeterministicProvider()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
@@ -8318,7 +8318,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_sends_whitelisted_action(
         lambda session: "› 这是可输入的托管窗口\n  gpt-5.5 xhigh · main",
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert (
@@ -8331,7 +8331,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_sends_whitelisted_action(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     calls: list[list[str]] = []
 
@@ -8408,7 +8408,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_blocks_busy_tmux_send(
         ),
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"managed_terminal_ready": false' in content
@@ -8419,7 +8419,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_blocks_busy_tmux_send(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     calls: list[list[str]] = []
 
@@ -8496,7 +8496,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_uses_selected_target_comm
         lambda session: "› 等待输入\n  gpt-5.5 xhigh · main",
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"target_name": "lane-a"' in content
@@ -8508,7 +8508,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_uses_selected_target_comm
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     calls: list[list[str]] = []
 
@@ -8586,7 +8586,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_skips_monitor(
         return subprocess.CompletedProcess(command, 0, "", "")
 
     monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", fake_run)
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"can_resume": true' in content
@@ -8594,7 +8594,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_skips_monitor(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     exit_code = supervisor_main(
@@ -8648,7 +8648,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_resume_session(
         ],
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"can_resume": true' in content
@@ -8665,7 +8665,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_resume_session(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
@@ -8875,7 +8875,7 @@ def test_codex_supervisor_runner_supervise_resume_skips_running_process_cwd(
         raising=False,
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -8889,7 +8889,7 @@ def test_codex_supervisor_runner_supervise_resume_skips_running_process_cwd(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     def fake_resume_managed_codex(*args: object, **kwargs: object) -> object:
@@ -8950,7 +8950,7 @@ def test_codex_supervisor_runner_supervise_resume_skips_missing_cwd(
         ],
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -8964,7 +8964,7 @@ def test_codex_supervisor_runner_supervise_resume_skips_missing_cwd(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     def fake_resume_managed_codex(*args: object, **kwargs: object) -> object:
@@ -9015,7 +9015,7 @@ def test_codex_supervisor_runner_supervise_context_rejects_missing_cwd(
         events=[_assistant_message("2026-05-16T11:59:20Z", "仍在整理状态。")],
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -9029,7 +9029,7 @@ def test_codex_supervisor_runner_supervise_context_rejects_missing_cwd(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     exit_code = supervisor_main(
@@ -9078,7 +9078,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
         ],
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"available_workspaces"' in content
@@ -9096,7 +9096,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
@@ -9206,7 +9206,7 @@ def test_codex_supervisor_runner_supervise_launch_uses_light_worker_profile(
         ],
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -9222,7 +9222,7 @@ def test_codex_supervisor_runner_supervise_launch_uses_light_worker_profile(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
@@ -9299,7 +9299,7 @@ def test_codex_supervisor_runner_supervise_launch_uses_isolated_worktree(
         ],
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -9314,7 +9314,7 @@ def test_codex_supervisor_runner_supervise_launch_uses_isolated_worktree(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
@@ -9409,7 +9409,7 @@ def test_codex_supervisor_runner_supervise_launch_preserves_subdir_in_worktree(
         ],
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -9424,7 +9424,7 @@ def test_codex_supervisor_runner_supervise_launch_preserves_subdir_in_worktree(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
@@ -9516,7 +9516,7 @@ def test_codex_supervisor_runner_supervise_launch_respects_prompt_cooldown(
     )
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -9531,7 +9531,7 @@ def test_codex_supervisor_runner_supervise_launch_respects_prompt_cooldown(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     popen_calls: list[list[str]] = []
 
@@ -9644,7 +9644,7 @@ def test_codex_supervisor_runner_supervise_launch_skips_running_named_process(
         raising=False,
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -9659,7 +9659,7 @@ def test_codex_supervisor_runner_supervise_launch_skips_running_named_process(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     def fake_launch_managed_codex(*args: object, **kwargs: object) -> object:
@@ -9721,7 +9721,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_request_context(
         events=[_assistant_message("2026-05-16T11:59:20Z", "上一轮已完成。")],
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"context_capability"' in content
@@ -9737,7 +9737,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_request_context(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
@@ -9964,7 +9964,7 @@ def test_codex_supervisor_runner_supervise_request_context_replans_same_iteratio
         lambda session: "› 等待输入\n  gpt-5.5 xhigh · main",
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         calls = 0
 
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -9992,7 +9992,7 @@ def test_codex_supervisor_runner_supervise_request_context_replans_same_iteratio
                 ensure_ascii=False,
             )
 
-    provider = FakeProvider()
+    provider = DeterministicProvider()
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: provider,
@@ -10068,7 +10068,7 @@ def test_codex_supervisor_runner_supervise_respects_max_context_requests(
         lambda cwd: None,
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         calls = 0
 
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -10093,7 +10093,7 @@ def test_codex_supervisor_runner_supervise_respects_max_context_requests(
                 ensure_ascii=False,
             )
 
-    provider = FakeProvider()
+    provider = DeterministicProvider()
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: provider,
@@ -10161,7 +10161,7 @@ def test_codex_supervisor_runner_supervise_default_allows_context_followup(
         lambda cwd: None,
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         calls = 0
 
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -10176,7 +10176,7 @@ def test_codex_supervisor_runner_supervise_default_allows_context_followup(
                 ensure_ascii=False,
             )
 
-    provider = FakeProvider()
+    provider = DeterministicProvider()
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: provider,
@@ -10249,7 +10249,7 @@ def test_codex_supervisor_runner_supervise_context_followup_can_ask_user_after_g
         lambda cwd: None,
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         calls = 0
 
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -10279,7 +10279,7 @@ def test_codex_supervisor_runner_supervise_context_followup_can_ask_user_after_g
                 ensure_ascii=False,
             )
 
-    provider = FakeProvider()
+    provider = DeterministicProvider()
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: provider,
@@ -10631,7 +10631,7 @@ def test_codex_supervisor_runner_loop_with_goal_context_request_feeds_next_plann
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
     seen_context_on_second_call = False
 
-    class FakeProvider:
+    class DeterministicProvider:
         calls = 0
 
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -10655,7 +10655,7 @@ def test_codex_supervisor_runner_loop_with_goal_context_request_feeds_next_plann
             seen_context_on_second_call = True
             return '{"kind":"monitor","reason":"已读到上下文，等待下一轮决策。"}'
 
-    provider = FakeProvider()
+    provider = DeterministicProvider()
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: provider,
@@ -10706,13 +10706,13 @@ def test_codex_supervisor_runner_loop_without_active_goal_idles(
         events=[_assistant_message("2026-05-16T11:59:20Z", "上一轮已完成。")],
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             raise AssertionError("loop without active goals should not ask LLM to invent work")
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     exit_code = supervisor_main(
@@ -12533,16 +12533,16 @@ def test_codex_supervisor_runner_scan_can_add_llm_summary(
         ],
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             assert "active-session" in messages[1]["content"]
             return "窗口 A 正在读文件，暂时不用介入。"
 
     captured: dict[str, object] = {}
 
-    def fake_resolver(**kwargs: object) -> FakeProvider:
+    def fake_resolver(**kwargs: object) -> DeterministicProvider:
         captured.update(kwargs)
-        return FakeProvider()
+        return DeterministicProvider()
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
@@ -14021,7 +14021,7 @@ def test_codex_supervisor_runner_loop_defaults_to_llm_driver(
     )
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert '"allowed_kinds"' in content
@@ -14030,7 +14030,7 @@ def test_codex_supervisor_runner_loop_defaults_to_llm_driver(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     calls: list[list[str]] = []
 
@@ -14126,7 +14126,7 @@ def test_codex_supervisor_runner_loop_reports_process_backend_as_managed(
     )
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert f'"available_workspaces": ["{workspace}"]' in content
@@ -14135,7 +14135,7 @@ def test_codex_supervisor_runner_loop_reports_process_backend_as_managed(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     exit_code = supervisor_main(
@@ -14724,7 +14724,7 @@ def test_codex_supervisor_runner_loop_goal_can_launch_first_worker(
     goal = "实现 Supervisor goal 入口，并补最小测试。"
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert f'"available_workspaces": ["{workspace}"]' in content
@@ -14743,7 +14743,7 @@ def test_codex_supervisor_runner_loop_goal_can_launch_first_worker(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     captured: dict[str, object] = {}
 
@@ -14849,7 +14849,7 @@ def test_codex_supervisor_runner_loop_uses_persisted_goal_queue(
     add_payload = json.loads(capsys.readouterr().out)
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
             assert f'"available_workspaces": ["{workspace}"]' in content
@@ -14868,7 +14868,7 @@ def test_codex_supervisor_runner_loop_uses_persisted_goal_queue(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     captured: dict[str, object] = {}
 
@@ -14988,13 +14988,13 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
         lambda cwd: None,
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             raise AssertionError("fanout should execute without a single-action LLM pick")
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     captured: list[list[str]] = []
 
@@ -15371,13 +15371,13 @@ def test_codex_supervisor_runner_loop_pauses_fanout_on_blocked_worker(
         encoding="utf-8",
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             raise AssertionError("paused fanout should not ask LLM for another action")
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     exit_code = supervisor_main(
@@ -16450,7 +16450,7 @@ def test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context(
     capsys.readouterr()
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
 
-    class FakeProvider:
+    class DeterministicProvider:
         def __init__(self) -> None:
             self.calls = 0
 
@@ -16478,7 +16478,7 @@ def test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context(
                 ensure_ascii=False,
             )
 
-    provider = FakeProvider()
+    provider = DeterministicProvider()
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: provider,
@@ -16583,7 +16583,7 @@ def test_codex_supervisor_runner_loop_records_goal_level_decision_request(
     capsys.readouterr()
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
 
-    class FakeProvider:
+    class DeterministicProvider:
         def __init__(self) -> None:
             self.calls = 0
 
@@ -16616,7 +16616,7 @@ def test_codex_supervisor_runner_loop_records_goal_level_decision_request(
                 ensure_ascii=False,
             )
 
-    provider = FakeProvider()
+    provider = DeterministicProvider()
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: provider,
@@ -16774,7 +16774,7 @@ def test_codex_supervisor_runner_loop_can_continue_multiple_lanes_with_default_b
     )
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
 
-    class FakeProvider:
+    class DeterministicProvider:
         calls = 0
 
         def summarize(self, messages: list[dict[str, str]]) -> str:
@@ -16792,7 +16792,7 @@ def test_codex_supervisor_runner_loop_can_continue_multiple_lanes_with_default_b
                 ensure_ascii=False,
             )
 
-    provider = FakeProvider()
+    provider = DeterministicProvider()
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
         lambda **_: provider,
@@ -16879,7 +16879,7 @@ def test_codex_supervisor_runner_supervise_resume_respects_prompt_cooldown(
     )
     monkeypatch.setattr("isotope.features.supervisor.runner._sleep", lambda seconds: None)
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -16893,7 +16893,7 @@ def test_codex_supervisor_runner_supervise_resume_respects_prompt_cooldown(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     popen_calls: list[list[str]] = []
 
@@ -16971,7 +16971,7 @@ def test_codex_supervisor_runner_supervise_invalid_llm_action_falls_back_to_moni
         lambda cwd: None,
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -16985,7 +16985,7 @@ def test_codex_supervisor_runner_supervise_invalid_llm_action_falls_back_to_moni
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
     exit_code = supervisor_main(
@@ -19132,7 +19132,7 @@ def test_codex_supervisor_pooled_provider_strips_thinking():
     provider = PooledSummaryProvider(
         entries=(
             PoolEntry(
-                provider="fake",
+                provider="deterministic_test",
                 api_key="fake-key",
                 base_url="https://fake-chat.example.com/v1",
                 model="fake-model",
@@ -19187,7 +19187,7 @@ def test_codex_supervisor_pooled_provider_calls_openai_compatible_shape():
     provider = PooledSummaryProvider(
         entries=(
             PoolEntry(
-                provider="fake",
+                provider="deterministic_test",
                 api_key="fake-key",
                 base_url="https://fake-openai.example.com",
                 model="fake-chat-v1",
@@ -19572,7 +19572,7 @@ def test_codex_supervisor_pooled_provider_uses_per_entry_max_tokens():
     provider = PooledSummaryProvider(
         entries=(
             PoolEntry(
-                provider="fake",
+                provider="deterministic_test",
                 api_key="fake-key",
                 base_url="https://fake-reasoning.example.com",
                 model="reasoning-model",
@@ -19606,7 +19606,7 @@ def test_codex_supervisor_pooled_provider_falls_back_max_tokens_to_global():
     provider = PooledSummaryProvider(
         entries=(
             PoolEntry(
-                provider="fake",
+                provider="deterministic_test",
                 api_key="fake-key",
                 base_url="https://fake.example.com",
                 model="fake-model",
@@ -19699,12 +19699,12 @@ def test_codex_supervisor_generate_llm_summary_returns_provider_text(tmp_path):
     )
     report = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan()
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             assert "active-session" in messages[1]["content"]
             return "窗口 A 正在读文件，暂时不用介入。"
 
-    assert generate_llm_summary(report, FakeProvider()) == "窗口 A 正在读文件，暂时不用介入。"
+    assert generate_llm_summary(report, DeterministicProvider()) == "窗口 A 正在读文件，暂时不用介入。"
 
 
 def _add_supervisor_goal(

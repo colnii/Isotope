@@ -34,7 +34,7 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
         },
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             raise AssertionError("merge dispatch should not wait for planner LLM")
 
@@ -55,7 +55,7 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.flow._git_branch_for",
@@ -397,7 +397,7 @@ def test_supervisor_loop_waits_when_merge_worker_is_already_running(
         lambda cwd: None,
     )
 
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             payload = json.loads(messages[1]["content"])
             assert payload["planner_priority"][0]["reason"] == "running_merge_worker"
@@ -415,7 +415,7 @@ def test_supervisor_loop_waits_when_merge_worker_is_already_running(
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.launch_managed_codex",

@@ -1,4 +1,4 @@
-"""Fake LLM providers and responses for developer demo scenarios."""
+"""Deterministic LLM providers and responses for developer demo scenarios."""
 
 from __future__ import annotations
 

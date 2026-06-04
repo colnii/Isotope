@@ -19,7 +19,7 @@ from isotope.llm.provider import LLMResponse, LLMStreamChunk
 
 
 class RecordingDesktopChatProvider:
-    provider = "fake"
+    provider = "deterministic_test"
     model = "fake-desktop-chat"
 
     def __init__(self, content: str = "loop 正在监督 worker。") -> None:
@@ -223,7 +223,7 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
     ) == "loop 正在监督 worker。"
     assert events[-1]["data"] == {
         "status": "ok",
-        "provider": "fake",
+        "provider": "deterministic_test",
         "model": "fake-desktop-chat",
     }
     assert "context" not in body
@@ -525,7 +525,7 @@ def test_desktop_chat_endpoint_sends_developer_capacity_question_to_llm_with_con
     assert answer == "我会按上下文列出 capacity。"
     assert events[-1]["data"] == {
         "status": "ok",
-        "provider": "fake",
+        "provider": "deterministic_test",
         "model": "fake-desktop-chat",
     }
     messages = provider.calls[0]["messages"]

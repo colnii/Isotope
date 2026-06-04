@@ -1,4 +1,4 @@
-"""Fake providers and runners for LLM live-smoke CLI tests."""
+"""Deterministic providers and runners for LLM live-smoke CLI tests."""
 
 from __future__ import annotations
 
@@ -13,27 +13,27 @@ from ...llm.provider import (
 )
 
 
-class _RecordingFakeCodexRunner:
+class _RecordingDeterministicCodexRunner:
     def __init__(self) -> None:
         self.calls: list[dict[str, Any]] = []
 
-    def __call__(self, argv: Any, **kwargs: Any) -> "_FakeCompletedProcess":
+    def __call__(self, argv: Any, **kwargs: Any) -> "_DeterministicCompletedProcess":
         self.calls.append({"argv_count": len(list(argv)), "timeout": kwargs.get("timeout")})
-        return _FakeCompletedProcess()
+        return _DeterministicCompletedProcess()
 
 
-class _FakeCompletedProcess:
+class _DeterministicCompletedProcess:
     returncode = 0
-    stdout = '{"event":"task_complete","secret":"PRODUCT_CHAT_CLI_FAKE_STDOUT_SHOULD_NOT_LEAK"}\n'
+    stdout = '{"event":"task_complete","secret":"PRODUCT_CHAT_CLI_DETERMINISTIC_STDOUT_SHOULD_NOT_LEAK"}\n'
     stderr = ""
 
 
-def _fake_codex_executable_resolver(executable: str) -> str | None:
+def _deterministic_codex_executable_resolver(executable: str) -> str | None:
     if not isinstance(executable, str) or not executable:
         return None
     if "/" in executable or "\\" in executable:
         return None
-    return str(Path("/tmp/isotope-fake-codex-bin") / executable)
+    return str(Path("/tmp/isotope-deterministic-codex-bin") / executable)
 
 
 class _SequencedProductChatSmokeProvider:
@@ -60,11 +60,11 @@ class _SequencedProductChatSmokeProvider:
                 finish_reason="tool_calls",
                 usage={"prompt_tokens": 11, "completion_tokens": 5, "total_tokens": 16},
                 tool_call=LLMToolCall(
-                    call_id="call_product_chat_cli_fake",
+                    call_id="call_product_chat_cli_deterministic",
                     tool_name="codex_task",
                     arguments={
-                        "prompt": "PRODUCT_CHAT_CLI_FAKE_PROMPT_SHOULD_NOT_LEAK",
-                        "summary": "product chat CLI fake provider task",
+                        "prompt": "PRODUCT_CHAT_CLI_DETERMINISTIC_PROMPT_SHOULD_NOT_LEAK",
+                        "summary": "product chat CLI deterministic test provider task",
                     },
                 ),
             ),
@@ -84,11 +84,11 @@ class _SequencedProductChatSmokeProvider:
                     finish_reason="tool_calls",
                     usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
                     tool_call=LLMToolCall(
-                        call_id="call_product_chat_entry_cli_fake",
+                        call_id="call_product_chat_entry_cli_deterministic",
                         tool_name="codex_task",
                         arguments={
                             "prompt": "PRODUCT_CHAT_ENTRY_CLI_PENDING_PROMPT_SHOULD_NOT_LEAK",
-                            "summary": "product chat entry CLI fake pending task",
+                            "summary": "product chat entry CLI deterministic pending task",
                         },
                     ),
                 )
@@ -113,15 +113,15 @@ class _SequencedProductChatSmokeProvider:
     ) -> LLMFinalAnswerResponse | LLMToolCallResponse:
         del messages, tools, max_tokens
         if not self._responses:
-            raise ValueError("fake product-chat smoke provider exhausted")
+            raise ValueError("deterministic product-chat smoke provider exhausted")
         return self._responses.pop(0)
 
 
-def _fake_product_chat_provider() -> _SequencedProductChatSmokeProvider:
+def _deterministic_product_chat_provider() -> _SequencedProductChatSmokeProvider:
     return _SequencedProductChatSmokeProvider()
 
 
-def _fake_product_chat_entry_provider(
+def _deterministic_product_chat_entry_provider(
     *,
     entry_pending: bool = False,
 ) -> _SequencedProductChatSmokeProvider:
@@ -131,7 +131,7 @@ def _fake_product_chat_entry_provider(
     )
 
 
-class _FakeTerminalToolProvider:
+class _DeterministicTerminalToolProvider:
     provider = "deepseek"
     model = "deepseek-v4-flash"
 
@@ -158,18 +158,18 @@ class _FakeTerminalToolProvider:
             finish_reason="tool_calls",
             usage={"prompt_tokens": 8, "completion_tokens": 4, "total_tokens": 12},
             tool_call=LLMToolCall(
-                call_id="call_terminal_tool_cli_fake",
+                call_id="call_terminal_tool_cli_deterministic",
                 tool_name="terminal_exec",
                 arguments={
-                    "argv": ["printf", "TERMINAL_TOOL_CLI_FAKE_STDOUT_SHOULD_NOT_LEAK"],
-                    "summary": "terminal tool CLI fake provider command",
+                    "argv": ["printf", "TERMINAL_TOOL_CLI_DETERMINISTIC_STDOUT_SHOULD_NOT_LEAK"],
+                    "summary": "terminal tool CLI deterministic test provider command",
                 },
             ),
         )
 
 
-def _fake_terminal_tool_provider() -> _FakeTerminalToolProvider:
-    return _FakeTerminalToolProvider()
+def _deterministic_terminal_tool_provider() -> _DeterministicTerminalToolProvider:
+    return _DeterministicTerminalToolProvider()
 
 
 def _provider_call_count(provider: ToolCallProvider | None) -> int:

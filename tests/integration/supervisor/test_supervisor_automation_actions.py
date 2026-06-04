@@ -666,13 +666,13 @@ def _run_supervise(
 
 
 def _patch_provider(monkeypatch: pytest.MonkeyPatch, action: dict[str, Any]) -> None:
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(action, ensure_ascii=False)
 
     monkeypatch.setattr(
         "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
-        lambda **_: FakeProvider(),
+        lambda **_: DeterministicProvider(),
     )
 
 

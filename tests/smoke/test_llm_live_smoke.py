@@ -18,7 +18,7 @@ import isotope.llm.provider as llm_provider
 from isotope.llm.provider import LLMToolCall, LLMToolCallResponse
 
 
-class FakeCompletedProcess:
+class DeterministicCompletedProcess:
     def __init__(self, *, stdout: str = "") -> None:
         self.returncode = 0
         self.stdout = stdout
@@ -26,7 +26,7 @@ class FakeCompletedProcess:
 
 
 class RecordingProcessRunner:
-    def __init__(self, result: FakeCompletedProcess) -> None:
+    def __init__(self, result: DeterministicCompletedProcess) -> None:
         self.result = result
         self.calls: list[dict[str, Any]] = []
 
@@ -228,7 +228,7 @@ def test_llm_provider_resolution_reports_unsupported_provider_without_secret_lea
 
 
 def test_llm_tool_call_live_smoke_reports_unified_missing_configuration_without_side_effects(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -297,11 +297,11 @@ def test_llm_terminal_tool_live_smoke_offers_only_terminal_exec_and_runs_without
     assert "Codex" not in rendered
 
 
-def test_llm_terminal_tool_smoke_cli_runs_fake_provider_without_codex(tmp_path, capsys):
+def test_llm_terminal_tool_smoke_cli_runs_deterministic_provider_without_codex(tmp_path, capsys):
     exit_code = llm_live_smoke.main(
         [
             "terminal-tool",
-            "--fake-provider",
+            "--deterministic-provider",
             "--json",
             "--root",
             str(tmp_path),
@@ -323,7 +323,7 @@ def test_llm_terminal_tool_smoke_cli_runs_fake_provider_without_codex(tmp_path, 
     assert payload["result"]["tool_name"] == "terminal_exec"
     assert payload["result"]["tool_result_status"] == "completed"
     rendered = repr(payload)
-    assert "TERMINAL_TOOL_CLI_FAKE_STDOUT_SHOULD_NOT_LEAK" not in rendered
+    assert "TERMINAL_TOOL_CLI_DETERMINISTIC_STDOUT_SHOULD_NOT_LEAK" not in rendered
     assert "codex_task" not in rendered
 
 
@@ -414,7 +414,7 @@ def test_llm_terminal_tool_smoke_cli_can_print_diagnosis(tmp_path, capsys):
     exit_code = llm_live_smoke.main(
         [
             "terminal-tool",
-            "--fake-provider",
+            "--deterministic-provider",
             "--diagnose",
             "--json",
             "--root",
@@ -435,7 +435,7 @@ def test_llm_terminal_tool_smoke_cli_can_print_diagnosis(tmp_path, capsys):
     assert payload["result"]["status"] == "completed"
     assert payload["result"]["diagnosis"]["category"] == "ready"
     assert payload["result"]["readiness_check"]["ready"] is True
-    assert "TERMINAL_TOOL_CLI_FAKE_STDOUT_SHOULD_NOT_LEAK" not in repr(payload)
+    assert "TERMINAL_TOOL_CLI_DETERMINISTIC_STDOUT_SHOULD_NOT_LEAK" not in repr(payload)
 
 
 def test_llm_terminal_tool_smoke_cli_diagnoses_missing_provider_without_side_effects(tmp_path, capsys):
@@ -620,7 +620,7 @@ def test_llm_terminal_tool_diagnosis_reports_terminal_execution_failure_without_
 
 
 def test_llm_product_chat_live_smoke_is_skipped_by_default_without_side_effects(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     provider = SequencedChatProvider([])
     app = _product_chat_http_app(tmp_path, runner, provider)
     before_sessions = list(app.server._sessions)
@@ -641,7 +641,7 @@ def test_llm_product_chat_live_smoke_is_skipped_by_default_without_side_effects(
 
 def test_llm_product_chat_live_smoke_covers_final_tool_pause_and_resume_without_leaks(tmp_path):
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"event":"task_complete","secret":"PRODUCT_SMOKE_STDOUT_SHOULD_NOT_LEAK"}\n')
+        DeterministicCompletedProcess(stdout='{"event":"task_complete","secret":"PRODUCT_SMOKE_STDOUT_SHOULD_NOT_LEAK"}\n')
     )
     provider = SequencedChatProvider(
         [
@@ -717,7 +717,7 @@ def test_llm_product_chat_live_smoke_covers_final_tool_pause_and_resume_without_
 
 def test_llm_product_chat_diagnosis_reports_ready_without_leaks(tmp_path):
     runner = RecordingProcessRunner(
-        FakeCompletedProcess(stdout='{"event":"task_complete","secret":"PRODUCT_DIAG_STDOUT_SHOULD_NOT_LEAK"}\n')
+        DeterministicCompletedProcess(stdout='{"event":"task_complete","secret":"PRODUCT_DIAG_STDOUT_SHOULD_NOT_LEAK"}\n')
     )
     provider = SequencedChatProvider(
         [
@@ -764,11 +764,11 @@ def test_llm_product_chat_diagnosis_reports_ready_without_leaks(tmp_path):
     assert "PRODUCT_DIAG_STDOUT_SHOULD_NOT_LEAK" not in rendered
 
 
-def test_llm_product_chat_smoke_cli_runs_fake_provider_without_network(tmp_path, capsys):
+def test_llm_product_chat_smoke_cli_runs_deterministic_provider_without_network(tmp_path, capsys):
     exit_code = llm_live_smoke.main(
         [
             "product-chat",
-            "--fake-provider",
+            "--deterministic-provider",
             "--json",
             "--root",
             str(tmp_path),
@@ -783,7 +783,7 @@ def test_llm_product_chat_smoke_cli_runs_fake_provider_without_network(tmp_path,
     assert exit_code == 0
     assert captured.err == ""
     assert payload["command"] == "llm_product_chat_live_smoke"
-    assert payload["codex_runner"] == "fake"
+    assert payload["codex_runner"] == "deterministic_test"
     assert payload["runner_call_count"] == 1
     assert payload["result"]["status"] == "completed"
     assert payload["result"]["reason_code"] == "llm_product_chat_live_smoke_completed"
@@ -796,23 +796,23 @@ def test_llm_product_chat_smoke_cli_runs_fake_provider_without_network(tmp_path,
         "resume_final_answer",
     ]
     rendered = repr(payload)
-    assert "PRODUCT_CHAT_CLI_FAKE_PROMPT_SHOULD_NOT_LEAK" not in rendered
-    assert "PRODUCT_CHAT_CLI_FAKE_STDOUT_SHOULD_NOT_LEAK" not in rendered
+    assert "PRODUCT_CHAT_CLI_DETERMINISTIC_PROMPT_SHOULD_NOT_LEAK" not in rendered
+    assert "PRODUCT_CHAT_CLI_DETERMINISTIC_STDOUT_SHOULD_NOT_LEAK" not in rendered
 
 
-def test_llm_product_chat_smoke_cli_fake_provider_does_not_require_codex_executable(
+def test_llm_product_chat_smoke_cli_deterministic_provider_does_not_require_codex_executable(
     tmp_path,
     capsys,
 ):
     exit_code = llm_live_smoke.main(
         [
             "product-chat",
-            "--fake-provider",
+            "--deterministic-provider",
             "--json",
             "--root",
             str(tmp_path),
             "--codex-executable",
-            "__missing_codex_for_fake_product_chat__",
+            "__missing_codex_for_deterministic_product_chat__",
             "--max-tokens",
             "64",
         ],
@@ -831,7 +831,7 @@ def test_llm_product_chat_smoke_cli_can_print_diagnosis(tmp_path, capsys):
     exit_code = llm_live_smoke.main(
         [
             "product-chat",
-            "--fake-provider",
+            "--deterministic-provider",
             "--diagnose",
             "--json",
             "--root",
@@ -869,7 +869,7 @@ def test_llm_product_chat_smoke_cli_reports_missing_provider_without_side_effect
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_live_smoke",
         "result": {
             "case_count": 0,
@@ -925,7 +925,7 @@ def test_llm_product_chat_smoke_cli_diagnoses_missing_provider_without_side_effe
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_live_smoke",
         "result": {
             "case_count": 0,
@@ -979,7 +979,7 @@ def test_llm_product_chat_entry_cli_rejects_empty_message_without_readiness_chec
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry",
         "entry": {
             "error_code": "invalid_request",
@@ -1022,7 +1022,7 @@ def test_llm_product_chat_entry_cli_blocks_when_readiness_check_is_not_ready_wit
     assert exit_code == 2
     assert captured.err == ""
     assert payload["command"] == "llm_product_chat_app_entry"
-    assert payload["codex_runner"] == "fake"
+    assert payload["codex_runner"] == "deterministic_test"
     assert payload["runner_call_count"] == 0
     assert payload["readiness_check"]["ready"] is False
     assert payload["readiness_check"]["category"] == "missing_configuration"
@@ -1040,14 +1040,14 @@ def test_llm_product_chat_entry_cli_blocks_when_readiness_check_is_not_ready_wit
     assert not (tmp_path / "runs").exists()
 
 
-def test_llm_product_chat_entry_cli_runs_fake_provider_after_ready_readiness_check(
+def test_llm_product_chat_entry_cli_runs_deterministic_provider_after_ready_readiness_check(
     tmp_path,
     capsys,
 ):
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--message",
             "ENTRY_CLI_READY_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -1064,7 +1064,7 @@ def test_llm_product_chat_entry_cli_runs_fake_provider_after_ready_readiness_che
     assert exit_code == 0
     assert captured.err == ""
     assert payload["command"] == "llm_product_chat_app_entry"
-    assert payload["codex_runner"] == "fake"
+    assert payload["codex_runner"] == "deterministic_test"
     assert payload["runner_call_count"] == 1
     assert payload["readiness_check"]["ready"] is True
     assert payload["readiness_check"]["category"] == "ready"
@@ -1082,24 +1082,24 @@ def test_llm_product_chat_entry_cli_runs_fake_provider_after_ready_readiness_che
     rendered = repr(payload)
     assert "ENTRY_CLI_READY_MESSAGE_SHOULD_NOT_LEAK" not in rendered
     assert "PRODUCT_CHAT_ENTRY_CLI_FINAL_ANSWER_SHOULD_NOT_LEAK" not in rendered
-    assert "PRODUCT_CHAT_CLI_FAKE_STDOUT_SHOULD_NOT_LEAK" not in rendered
+    assert "PRODUCT_CHAT_CLI_DETERMINISTIC_STDOUT_SHOULD_NOT_LEAK" not in rendered
 
 
-def test_llm_product_chat_entry_cli_fake_provider_does_not_require_codex_executable(
+def test_llm_product_chat_entry_cli_deterministic_provider_does_not_require_codex_executable(
     tmp_path,
     capsys,
 ):
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--message",
             "ENTRY_CLI_MISSING_CODEX_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
             "--root",
             str(tmp_path),
             "--codex-executable",
-            "__missing_codex_for_fake_product_chat_entry__",
+            "__missing_codex_for_deterministic_product_chat_entry__",
             "--max-tokens",
             "64",
         ],
@@ -1137,12 +1137,12 @@ def test_llm_product_chat_entry_cli_pending_json_reports_safe_approval_next_step
             ),
         ]
     )
-    monkeypatch.setattr(llm_live_smoke, "_fake_product_chat_entry_provider", lambda: provider)
+    monkeypatch.setattr(llm_live_smoke, "_deterministic_product_chat_entry_provider", lambda: provider)
 
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--message",
             "ENTRY_CLI_PENDING_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -1175,7 +1175,7 @@ def test_llm_product_chat_entry_cli_pending_json_reports_safe_approval_next_step
     assert "ENTRY_CLI_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK" not in rendered
 
 
-def test_llm_product_chat_entry_cli_fake_entry_pending_flag_writes_resume_state(
+def test_llm_product_chat_entry_cli_deterministic_entry_pending_flag_writes_resume_state(
     tmp_path,
     capsys,
 ):
@@ -1184,8 +1184,8 @@ def test_llm_product_chat_entry_cli_fake_entry_pending_flag_writes_resume_state(
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
-            "--fake-entry-pending",
+            "--deterministic-provider",
+            "--deterministic-entry-pending",
             "--message",
             "ENTRY_CLI_FLAG_PENDING_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -1226,8 +1226,8 @@ def test_llm_product_chat_entry_cli_state_file_directory_reports_safe_save_error
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
-            "--fake-entry-pending",
+            "--deterministic-provider",
+            "--deterministic-entry-pending",
             "--message",
             "ENTRY_CLI_STATE_SAVE_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -1246,7 +1246,7 @@ def test_llm_product_chat_entry_cli_state_file_directory_reports_safe_save_error
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry",
         "error": {
             "category": "validation",
@@ -1277,8 +1277,8 @@ def test_llm_product_chat_entry_cli_state_file_unwritable_parent_reports_safe_sa
         exit_code = llm_live_smoke.main(
             [
                 "product-chat-entry",
-                "--fake-provider",
-                "--fake-entry-pending",
+                "--deterministic-provider",
+                "--deterministic-entry-pending",
                 "--message",
                 "ENTRY_CLI_STATE_SAVE_PARENT_MESSAGE_SHOULD_NOT_LEAK",
                 "--json",
@@ -1299,7 +1299,7 @@ def test_llm_product_chat_entry_cli_state_file_unwritable_parent_reports_safe_sa
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry",
         "error": {
             "category": "validation",
@@ -1329,8 +1329,8 @@ def test_llm_product_chat_entry_cli_state_file_parent_not_directory_reports_safe
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
-            "--fake-entry-pending",
+            "--deterministic-provider",
+            "--deterministic-entry-pending",
             "--message",
             "ENTRY_CLI_STATE_PARENT_FILE_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -1349,7 +1349,7 @@ def test_llm_product_chat_entry_cli_state_file_parent_not_directory_reports_safe
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry",
         "error": {
             "category": "validation",
@@ -1368,16 +1368,16 @@ def test_llm_product_chat_entry_cli_state_file_parent_not_directory_reports_safe
     assert "ENTRY_CLI_STATE_PARENT_FILE_MESSAGE_SHOULD_NOT_LEAK" not in rendered
 
 
-def test_llm_product_chat_entry_cli_fake_entry_pending_requires_fake_provider(
+def test_llm_product_chat_entry_cli_deterministic_entry_pending_requires_deterministic_provider(
     tmp_path,
     capsys,
 ):
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-entry-pending",
+            "--deterministic-entry-pending",
             "--message",
-            "ENTRY_CLI_FLAG_REQUIRES_FAKE_PROVIDER_SHOULD_NOT_LEAK",
+            "ENTRY_CLI_FLAG_REQUIRES_DETERMINISTIC_PROVIDER_SHOULD_NOT_LEAK",
             "--json",
             "--root",
             str(tmp_path),
@@ -1390,26 +1390,26 @@ def test_llm_product_chat_entry_cli_fake_entry_pending_requires_fake_provider(
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry",
         "entry": {
             "error_code": "invalid_request",
             "http_status": 400,
-            "reason_code": "llm_product_chat_fake_entry_pending_requires_fake_provider",
+            "reason_code": "llm_product_chat_deterministic_entry_pending_requires_deterministic_provider",
             "status": "bad_request",
         },
         "readiness_check": {
             "category": "invalid_request",
             "gate": "blocked",
-            "next_step": "pass --fake-provider with --fake-entry-pending, or remove --fake-entry-pending",
+            "next_step": "pass --deterministic-provider with --deterministic-entry-pending, or remove --deterministic-entry-pending",
             "ready": False,
-            "reason_code": "llm_product_chat_fake_entry_pending_requires_fake_provider",
+            "reason_code": "llm_product_chat_deterministic_entry_pending_requires_deterministic_provider",
             "status": "bad_request",
-            "summary": "--fake-entry-pending only applies to the fake provider",
+            "summary": "--deterministic-entry-pending only applies to the deterministic test provider",
         },
         "runner_call_count": 0,
     }
-    assert "ENTRY_CLI_FLAG_REQUIRES_FAKE_PROVIDER_SHOULD_NOT_LEAK" not in repr(payload)
+    assert "ENTRY_CLI_FLAG_REQUIRES_DETERMINISTIC_PROVIDER_SHOULD_NOT_LEAK" not in repr(payload)
 
 
 def test_llm_product_chat_entry_cli_root_file_reports_safe_error_without_readiness_check_side_effects(
@@ -1422,7 +1422,7 @@ def test_llm_product_chat_entry_cli_root_file_reports_safe_error_without_readine
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--message",
             "ENTRY_ROOT_FILE_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -1437,7 +1437,7 @@ def test_llm_product_chat_entry_cli_root_file_reports_safe_error_without_readine
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry",
         "error": {
             "category": "validation",
@@ -1472,7 +1472,7 @@ def test_llm_product_chat_entry_cli_resume_state_rejects_new_entry_flags_without
             "ENTRY_CLI_RESUME_CONFLICT_MESSAGE_SHOULD_NOT_LEAK",
             "--state-file",
             str(tmp_path / "other-state.json"),
-            "--fake-entry-pending",
+            "--deterministic-entry-pending",
             "--json",
         ],
         environ={},
@@ -1483,7 +1483,7 @@ def test_llm_product_chat_entry_cli_resume_state_rejects_new_entry_flags_without
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry_resume",
         "entry": {
             "error_code": "invalid_request",
@@ -1526,12 +1526,12 @@ def test_llm_product_chat_entry_cli_pending_plain_output_reports_approval_next_s
             ),
         ]
     )
-    monkeypatch.setattr(llm_live_smoke, "_fake_product_chat_entry_provider", lambda: provider)
+    monkeypatch.setattr(llm_live_smoke, "_deterministic_product_chat_entry_provider", lambda: provider)
 
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--message",
             "ENTRY_CLI_PENDING_PLAIN_MESSAGE_SHOULD_NOT_LEAK",
             "--root",
@@ -1581,13 +1581,13 @@ def test_llm_product_chat_entry_cli_pending_json_writes_resume_state_without_lea
             ),
         ]
     )
-    monkeypatch.setattr(llm_live_smoke, "_fake_product_chat_entry_provider", lambda: provider)
+    monkeypatch.setattr(llm_live_smoke, "_deterministic_product_chat_entry_provider", lambda: provider)
     state_file = tmp_path / "entry-state.json"
 
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--message",
             "ENTRY_STATE_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -1647,12 +1647,12 @@ def test_llm_product_chat_entry_cli_resume_state_approves_and_returns_final_answ
             ),
         ]
     )
-    monkeypatch.setattr(llm_live_smoke, "_fake_product_chat_entry_provider", lambda: first_provider)
+    monkeypatch.setattr(llm_live_smoke, "_deterministic_product_chat_entry_provider", lambda: first_provider)
     state_file = tmp_path / "entry-resume-state.json"
     first_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--message",
             "ENTRY_RESUME_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -1674,12 +1674,12 @@ def test_llm_product_chat_entry_cli_resume_state_approves_and_returns_final_answ
     resume_provider = SequencedChatProvider(
         [_final_answer_response("ENTRY_RESUME_FINAL_ANSWER_SHOULD_NOT_LEAK")]
     )
-    monkeypatch.setattr(llm_live_smoke, "_fake_product_chat_entry_provider", lambda: resume_provider)
+    monkeypatch.setattr(llm_live_smoke, "_deterministic_product_chat_entry_provider", lambda: resume_provider)
 
     resume_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--resume-state",
             str(state_file),
             "--json",
@@ -1732,8 +1732,8 @@ def test_llm_product_chat_entry_cli_resume_state_reports_already_resolved_approv
     first_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
-            "--fake-entry-pending",
+            "--deterministic-provider",
+            "--deterministic-entry-pending",
             "--message",
             "ENTRY_APPROVAL_RESOLVED_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -1757,7 +1757,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_already_resolved_approv
     first_resume_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--resume-state",
             str(state_file),
             "--json",
@@ -1772,7 +1772,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_already_resolved_approv
     second_resume_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--resume-state",
             str(state_file),
             "--json",
@@ -1787,7 +1787,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_already_resolved_approv
     assert second_resume_exit == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry_resume",
         "error": {
             "category": "conflict",
@@ -1814,8 +1814,8 @@ def test_llm_product_chat_entry_cli_resume_state_reports_unwritable_mark_without
     first_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
-            "--fake-entry-pending",
+            "--deterministic-provider",
+            "--deterministic-entry-pending",
             "--message",
             "ENTRY_RESUME_MARK_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -1836,7 +1836,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_unwritable_mark_without
         resume_exit = llm_live_smoke.main(
             [
                 "product-chat-entry",
-                "--fake-provider",
+                "--deterministic-provider",
                 "--resume-state",
                 str(state_file),
                 "--json",
@@ -1853,7 +1853,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_unwritable_mark_without
     assert resume_exit == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry_resume",
         "error": {
             "category": "validation",
@@ -1883,8 +1883,8 @@ def test_llm_product_chat_entry_cli_resume_state_rejects_wrong_root_without_path
     first_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
-            "--fake-entry-pending",
+            "--deterministic-provider",
+            "--deterministic-entry-pending",
             "--message",
             "ENTRY_ROOT_MISMATCH_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -1903,7 +1903,7 @@ def test_llm_product_chat_entry_cli_resume_state_rejects_wrong_root_without_path
     resume_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--resume-state",
             str(state_file),
             "--root",
@@ -1918,7 +1918,7 @@ def test_llm_product_chat_entry_cli_resume_state_rejects_wrong_root_without_path
     assert resume_exit == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry_resume",
         "error": {
             "category": "validation",
@@ -1948,8 +1948,8 @@ def test_llm_product_chat_entry_cli_resume_state_root_file_reports_safe_error(
     first_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
-            "--fake-entry-pending",
+            "--deterministic-provider",
+            "--deterministic-entry-pending",
             "--message",
             "ENTRY_RESUME_ROOT_FILE_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -1970,7 +1970,7 @@ def test_llm_product_chat_entry_cli_resume_state_root_file_reports_safe_error(
     resume_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--resume-state",
             str(state_file),
             "--json",
@@ -1983,7 +1983,7 @@ def test_llm_product_chat_entry_cli_resume_state_root_file_reports_safe_error(
     assert resume_exit == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry_resume",
         "error": {
             "category": "validation",
@@ -2012,7 +2012,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_missing_file_without_pa
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--resume-state",
             str(state_file),
             "--json",
@@ -2025,7 +2025,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_missing_file_without_pa
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry_resume",
         "error": {
             "category": "not_found",
@@ -2052,7 +2052,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_malformed_json_without_
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--resume-state",
             str(state_file),
             "--json",
@@ -2065,7 +2065,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_malformed_json_without_
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry_resume",
         "error": {
             "category": "validation",
@@ -2092,7 +2092,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_directory_path_without_
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--resume-state",
             str(state_dir),
             "--json",
@@ -2105,7 +2105,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_directory_path_without_
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry_resume",
         "error": {
             "category": "validation",
@@ -2133,7 +2133,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_unreadable_file_without
         exit_code = llm_live_smoke.main(
             [
                 "product-chat-entry",
-                "--fake-provider",
+                "--deterministic-provider",
                 "--resume-state",
                 str(state_file),
                 "--json",
@@ -2148,7 +2148,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_unreadable_file_without
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry_resume",
         "error": {
             "category": "validation",
@@ -2184,12 +2184,12 @@ def test_llm_product_chat_entry_cli_resume_state_reports_mismatched_state_json(
             ),
         ]
     )
-    monkeypatch.setattr(llm_live_smoke, "_fake_product_chat_entry_provider", lambda: provider)
+    monkeypatch.setattr(llm_live_smoke, "_deterministic_product_chat_entry_provider", lambda: provider)
     state_file = tmp_path / "entry-mismatch-state.json"
     first_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--message",
             "ENTRY_MISMATCH_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -2209,7 +2209,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_mismatched_state_json(
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--resume-state",
             str(state_file),
             "--json",
@@ -2222,7 +2222,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_mismatched_state_json(
     assert exit_code == 2
     assert captured.err == ""
     assert payload == {
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "command": "llm_product_chat_app_entry_resume",
         "error": {
             "category": "validation",
@@ -2261,12 +2261,12 @@ def test_llm_product_chat_entry_cli_resume_state_reports_already_resumed_json(
             ),
         ]
     )
-    monkeypatch.setattr(llm_live_smoke, "_fake_product_chat_entry_provider", lambda: provider)
+    monkeypatch.setattr(llm_live_smoke, "_deterministic_product_chat_entry_provider", lambda: provider)
     state_file = tmp_path / "entry-already-state.json"
     first_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--message",
             "ENTRY_ALREADY_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -2286,7 +2286,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_already_resumed_json(
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--resume-state",
             str(state_file),
             "--json",
@@ -2333,12 +2333,12 @@ def test_llm_product_chat_entry_cli_resume_state_plain_reports_missing_approval_
             ),
         ]
     )
-    monkeypatch.setattr(llm_live_smoke, "_fake_product_chat_entry_provider", lambda: provider)
+    monkeypatch.setattr(llm_live_smoke, "_deterministic_product_chat_entry_provider", lambda: provider)
     state_file = tmp_path / "entry-missing-state.json"
     first_exit = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--message",
             "ENTRY_MISSING_MESSAGE_SHOULD_NOT_LEAK",
             "--json",
@@ -2356,7 +2356,7 @@ def test_llm_product_chat_entry_cli_resume_state_plain_reports_missing_approval_
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--resume-state",
             str(state_file),
         ],
@@ -2384,7 +2384,7 @@ def test_llm_product_chat_entry_cli_plain_output_is_public_metadata(tmp_path, ca
     exit_code = llm_live_smoke.main(
         [
             "product-chat-entry",
-            "--fake-provider",
+            "--deterministic-provider",
             "--message",
             "ENTRY_CLI_PLAIN_MESSAGE_SHOULD_NOT_LEAK",
             "--root",
@@ -2407,7 +2407,7 @@ def test_llm_product_chat_entry_cli_plain_output_is_public_metadata(tmp_path, ca
 
 
 def test_deepseek_tool_call_live_smoke_is_skipped_by_default(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -2426,7 +2426,7 @@ def test_deepseek_tool_call_live_smoke_is_skipped_by_default(tmp_path):
 
 def test_deepseek_tool_call_live_smoke_reports_missing_key_without_side_effects(tmp_path, monkeypatch):
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -2447,8 +2447,8 @@ def test_deepseek_tool_call_live_smoke_reports_missing_key_without_side_effects(
     assert runner.calls == []
 
 
-def test_deepseek_tool_call_live_smoke_submits_pending_approval_with_fake_provider(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+def test_deepseek_tool_call_live_smoke_submits_pending_approval_with_deterministic_provider(tmp_path):
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     provider = RecordingToolProvider(_provider_response())
@@ -2476,7 +2476,7 @@ def test_deepseek_tool_call_live_smoke_submits_pending_approval_with_fake_provid
 
 
 def test_deepseek_tool_call_live_smoke_result_does_not_expose_prompt(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     provider = RecordingToolProvider(_provider_response("LIVE_SMOKE_PROMPT_SHOULD_NOT_LEAK"))
@@ -2493,7 +2493,7 @@ def test_deepseek_tool_call_live_smoke_result_does_not_expose_prompt(tmp_path):
 
 
 def test_deepseek_tool_call_diagnosis_reports_ready_without_starting_codex(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     provider = RecordingToolProvider(_provider_response())
@@ -2522,7 +2522,7 @@ def test_deepseek_tool_call_diagnosis_reports_missing_key_without_side_effects(
     monkeypatch,
 ):
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     before_events = _event_types(app, run_id)
@@ -2548,7 +2548,7 @@ def test_deepseek_tool_call_diagnosis_reports_missing_key_without_side_effects(
 def test_deepseek_tool_call_diagnosis_reports_provider_request_failure_without_secret_leak(
     tmp_path,
 ):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     provider = RecordingToolProvider(RuntimeError("network failed: SECRET_PROVIDER_TEXT"))
@@ -2572,7 +2572,7 @@ def test_deepseek_tool_call_diagnosis_reports_provider_request_failure_without_s
 
 
 def test_deepseek_tool_call_diagnosis_reports_invalid_provider_response(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     provider = RecordingToolProvider(ValueError("text response: SECRET_MODEL_TEXT"))
@@ -2592,7 +2592,7 @@ def test_deepseek_tool_call_diagnosis_reports_invalid_provider_response(tmp_path
 
 
 def test_deepseek_tool_call_diagnosis_reports_unavailable_requested_tool(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     provider = RecordingToolProvider(_provider_response())
@@ -2621,7 +2621,7 @@ def test_deepseek_tool_call_diagnosis_reports_unavailable_requested_tool(tmp_pat
 
 
 def test_deepseek_tool_call_diagnosis_reports_provider_selected_unoffered_tool(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
     provider = RecordingToolProvider(
@@ -2663,7 +2663,7 @@ def test_deepseek_tool_call_diagnosis_reports_provider_selected_unoffered_tool(t
     reason="live LLM provider smoke is opt-in and requires unified provider configuration",
 )
 def test_live_llm_tool_call_smoke_reaches_provider_without_starting_codex(tmp_path):
-    runner = RecordingProcessRunner(FakeCompletedProcess(stdout='{"event":"task_complete"}\n'))
+    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
     app = _codex_http_app(tmp_path, runner)
     run_id = _create_run(app)
 

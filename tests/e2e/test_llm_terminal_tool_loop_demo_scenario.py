@@ -24,7 +24,7 @@ REQUIRED_TEXT_FIELDS = (
     "final_answer_artifact_ref_present: true",
     "provider_call_count: 2",
     "codex_call_count: 0",
-    "real_llm_status: fake_provider",
+    "real_llm_status: deterministic_test_provider",
     "network_listener_status: not_used",
     "memory_status: active",
 )
@@ -145,7 +145,7 @@ def test_llm_terminal_tool_loop_demo_json_exposes_safe_terminal_status_only():
     assert data["final_answer_status"] == "completed"
     assert data["final_answer_artifact_ref_present"] is True
     assert data["codex_call_count"] == 0
-    assert data["real_llm_status"] == "fake_provider"
+    assert data["real_llm_status"] == "deterministic_test_provider"
     assert data["network_listener_status"] == "not_used"
     assert data["memory_status"] == "active"
     assert "approval.requested" not in data["event_types"]

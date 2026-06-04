@@ -58,12 +58,12 @@ from .config import (
 from .diagnosis import (
     _maybe_diagnose_terminal_tool_missing_configuration,
 )
-from .fakes import (
-    _RecordingFakeCodexRunner,
-    _fake_codex_executable_resolver,
-    _fake_product_chat_entry_provider,
-    _fake_product_chat_provider,
-    _fake_terminal_tool_provider,
+from .deterministic_providers import (
+    _RecordingDeterministicCodexRunner,
+    _deterministic_codex_executable_resolver,
+    _deterministic_product_chat_entry_provider,
+    _deterministic_product_chat_provider,
+    _deterministic_terminal_tool_provider,
     _provider_call_count,
 )
 from .parser import _build_arg_parser
@@ -120,7 +120,7 @@ def _run_terminal_tool_smoke_command_at_root(
 ) -> int:
     from ...interfaces.http import create_http_app
 
-    provider = _fake_terminal_tool_provider() if args.fake_provider else None
+    provider = _deterministic_terminal_tool_provider() if args.deterministic_provider else None
     if provider is None:
         resolution = resolve_llm_tool_call_provider(environ)
         if resolution.provider is None:
@@ -200,8 +200,8 @@ def _run_product_chat_smoke_command_at_root(
     from ...integrations.codex.server import CodexCliServerConfig
     from ...interfaces.http import create_llm_product_chat_http_app
 
-    provider = _fake_product_chat_provider() if args.fake_provider else None
-    runner = _RecordingFakeCodexRunner()
+    provider = _deterministic_product_chat_provider() if args.deterministic_provider else None
+    runner = _RecordingDeterministicCodexRunner()
     app = create_llm_product_chat_http_app(
         root,
         config=CodexCliServerConfig(
@@ -212,7 +212,7 @@ def _run_product_chat_smoke_command_at_root(
         ),
         provider=provider,
         process_runner=runner,
-        executable_resolver=_fake_codex_executable_resolver,
+        executable_resolver=_deterministic_codex_executable_resolver,
     )
     config = LLMProductChatLiveSmokeConfig(
         enabled=True,
@@ -232,7 +232,7 @@ def _run_product_chat_smoke_command_at_root(
         )
     payload = {
         "command": "llm_product_chat_live_smoke",
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "result": result,
         "runner_call_count": len(runner.calls),
     }
@@ -313,18 +313,18 @@ def _run_product_chat_entry_command_at_root(
     from ...integrations.codex.server import CodexCliServerConfig
     from ...interfaces.http import create_llm_product_chat_http_app
 
-    if args.fake_provider:
+    if args.deterministic_provider:
         provider = (
-            _fake_product_chat_entry_provider(entry_pending=True)
-            if args.fake_entry_pending
-            else _fake_product_chat_entry_provider()
+            _deterministic_product_chat_entry_provider(entry_pending=True)
+            if args.deterministic_entry_pending
+            else _deterministic_product_chat_entry_provider()
         )
     else:
         provider = None
     if provider is None:
         resolution = resolve_llm_tool_call_provider(environ)
         provider = resolution.provider
-    runner = _RecordingFakeCodexRunner()
+    runner = _RecordingDeterministicCodexRunner()
     app = create_llm_product_chat_http_app(
         root,
         config=CodexCliServerConfig(
@@ -335,7 +335,7 @@ def _run_product_chat_entry_command_at_root(
         ),
         provider=provider,
         process_runner=runner,
-        executable_resolver=_fake_codex_executable_resolver,
+        executable_resolver=_deterministic_codex_executable_resolver,
     )
     config = LLMProductChatLiveSmokeConfig(
         enabled=True,
@@ -383,7 +383,7 @@ def _run_product_chat_entry_command_at_root(
 
     payload = {
         "command": "llm_product_chat_app_entry",
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "readiness_check": readiness_check,
         "entry": entry,
         "runner_call_count": len(runner.calls),
@@ -438,11 +438,11 @@ def _run_product_chat_entry_resume_command(
             _print_product_chat_entry_resume_plain(payload)
         return _product_chat_entry_exit_code(payload)
 
-    provider = _fake_product_chat_entry_provider() if args.fake_provider else None
+    provider = _deterministic_product_chat_entry_provider() if args.deterministic_provider else None
     if provider is None:
         resolution = resolve_llm_tool_call_provider(environ)
         provider = resolution.provider
-    runner = _RecordingFakeCodexRunner()
+    runner = _RecordingDeterministicCodexRunner()
     app = create_llm_product_chat_http_app(
         root,
         config=CodexCliServerConfig(
@@ -453,7 +453,7 @@ def _run_product_chat_entry_resume_command(
         ),
         provider=provider,
         process_runner=runner,
-        executable_resolver=_fake_codex_executable_resolver,
+        executable_resolver=_deterministic_codex_executable_resolver,
     )
 
     try:
@@ -497,7 +497,7 @@ def _run_product_chat_entry_resume_command(
 
     payload = {
         "command": "llm_product_chat_app_entry_resume",
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "approval": approval,
         "entry": entry,
         "runner_call_count": len(runner.calls),

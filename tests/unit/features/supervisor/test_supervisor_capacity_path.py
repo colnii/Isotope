@@ -15,8 +15,8 @@ from isotope.platform.state.memory_store import FileMemoryStore
 from isotope.workspace.artifacts import ArtifactStore
 
 
-class FakeCapacityProvider:
-    provider = "fake"
+class DeterministicCapacityProvider:
+    provider = "deterministic_test"
     model = "capacity-test"
 
     def __init__(self, content: str):
@@ -156,7 +156,7 @@ def test_capacity_provider_uses_codex_pool_entry_without_api_key(tmp_path):
 
 
 def test_supervisor_capacity_plan_uses_capacity_calling_graph_and_capability_runner(tmp_path):
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
         '"rationale":"low risk review"}'
     )
@@ -183,7 +183,7 @@ def test_supervisor_capacity_plan_uses_capacity_calling_graph_and_capability_run
 
 
 def test_supervisor_capacity_plan_can_skip_when_no_capacity_is_needed(tmp_path):
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         '{"capacity_id":null,"arguments":{},"confidence":0.91,'
         '"rationale":"plain greeting"}'
     )
@@ -211,7 +211,7 @@ def test_supervisor_capacity_plan_passes_selection_arguments_to_launch_plan(tmp_
         encoding="utf-8",
     )
     state_root = tmp_path / "supervisor-state"
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         json.dumps(
             {
                 "capacity_id": "supervisor.request_context",
@@ -246,7 +246,7 @@ def test_supervisor_capacity_plan_passes_selection_arguments_to_launch_plan(tmp_
 
 
 def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path):
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
         '"rationale":"low risk review"}'
     )
@@ -295,7 +295,7 @@ def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path)
 
 
 def test_supervisor_capacity_plan_exposes_public_metadata_agent_loop_json_summary(tmp_path):
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
         '"rationale":"low risk review"}'
     )
@@ -325,7 +325,7 @@ def test_supervisor_capacity_plan_exposes_public_metadata_agent_loop_json_summar
 
 
 def test_supervisor_capacity_plan_reports_ready_supervisor_decision(tmp_path):
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
         '"rationale":"low risk review"}'
     )
@@ -349,7 +349,7 @@ def test_supervisor_capacity_plan_reports_ready_supervisor_decision(tmp_path):
 
 
 def test_supervisor_capacity_plan_only_offers_readiness_check_launchable_capabilities(tmp_path):
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
         '"rationale":"low risk review"}'
     )
@@ -413,7 +413,7 @@ def test_supervisor_capacity_plan_only_offers_readiness_check_launchable_capabil
 
 
 def test_supervisor_capacity_plan_blocks_when_no_capabilities_can_be_offered(tmp_path):
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         '{"capacity_id":"llm.artifact.review","arguments":{},"confidence":0.91,'
         '"rationale":"provider required"}'
     )
@@ -671,7 +671,7 @@ def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_pa
         "Supervisor request_context can retrieve capacity arguments.\n",
         encoding="utf-8",
     )
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         '{"capacity_id":"supervisor.request_context","arguments":{'
         f'"codex_home":"{tmp_path / "supervisor-state"}",'
         f'"cwd":"{workspace}",'
@@ -710,7 +710,7 @@ def test_supervisor_capacity_plan_passes_arguments_into_agent_loop_inputs(tmp_pa
 
 def test_supervisor_capacity_plan_applies_state_root_default_for_review_capability(tmp_path):
     state_root = tmp_path / "supervisor-state"
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         '{"capacity_id":"supervisor.integration_review","arguments":{},'
         '"confidence":0.88,"rationale":"review managed workers"}'
     )
@@ -767,7 +767,7 @@ def test_supervisor_capacity_plan_applies_root_default_for_memory_query(tmp_path
         ),
         encoding="utf-8",
     )
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         json.dumps(
             {
                 "capacity_id": "memory.query",
@@ -840,7 +840,7 @@ def test_supervisor_capacity_plan_summarizes_screen_report_agent_loop_result(tmp
             sort_keys=True,
         ),
     )
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         json.dumps(
             {
                 "capacity_id": "screen.report",
@@ -931,7 +931,7 @@ def test_supervisor_capacity_plan_summarizes_research_search_agent_loop_result(
     )
 
     root = tmp_path / "runtime"
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         json.dumps(
             {
                 "capacity_id": "research.search",
@@ -994,7 +994,7 @@ def test_supervisor_capacity_plan_summarizes_research_promote_agent_loop_result(
             }
         ),
     )
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         json.dumps(
             {
                 "capacity_id": "research.promote",
@@ -1053,7 +1053,7 @@ def test_supervisor_capacity_plan_summarizes_research_promote_agent_loop_result(
 
 
 def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_execution(tmp_path):
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         '{"capacity_id":"context.search","arguments":{},"confidence":0.77,'
         '"rationale":"needs query"}'
     )
@@ -1109,7 +1109,7 @@ def test_supervisor_capacity_plan_blocks_missing_inputs_without_graph_call_or_ex
 
 
 def test_supervisor_capacity_plan_does_not_execute_unlaunchable_capacity(tmp_path):
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         '{"capacity_id":"context.search","arguments":{"query":"capacity"},'
         '"confidence":0.77,"rationale":"not allowlisted"}'
     )
@@ -1177,7 +1177,7 @@ def test_supervisor_capacity_command_handler_is_thin_and_runner_delegates():
     assert runner._COMMAND_HANDLERS["capacity"] is capacity_command.handle_capacity_command
     assert capacity_command.handle_capacity_command(
         args,
-        provider=FakeCapacityProvider(
+        provider=DeterministicCapacityProvider(
             '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
             '"rationale":"low risk review"}'
         ),
@@ -1215,7 +1215,7 @@ def test_supervisor_capacity_command_handler_prints_json_status_reason(capsys):
 
     exit_code = capacity_command.handle_capacity_command(
         args,
-        provider=FakeCapacityProvider(
+        provider=DeterministicCapacityProvider(
             '{"capacity_id":"context.search","arguments":{"query":"capacity"},'
             '"confidence":0.77,"rationale":"not allowlisted"}'
         ),
@@ -1391,7 +1391,7 @@ def test_supervisor_capacity_plain_output_includes_agent_loop_handoff(tmp_path, 
 
     assert capacity_command.handle_capacity_command(
         args,
-        provider=FakeCapacityProvider(
+        provider=DeterministicCapacityProvider(
             '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
             '"rationale":"low risk review"}'
         ),
@@ -1448,7 +1448,7 @@ def test_supervisor_capacity_plain_output_includes_memory_query_summary(
 
     assert capacity_command.handle_capacity_command(
         args,
-        provider=FakeCapacityProvider(
+        provider=DeterministicCapacityProvider(
             json.dumps(
                 {
                     "capacity_id": "memory.query",
@@ -1484,7 +1484,7 @@ def test_supervisor_capacity_plain_output_explains_missing_inputs(capsys):
 
     assert capacity_command.handle_capacity_command(
         args,
-        provider=FakeCapacityProvider(
+        provider=DeterministicCapacityProvider(
             json.dumps(
                 {
                     "capacity_id": "supervisor.request_context",
@@ -1531,7 +1531,7 @@ def test_supervisor_capacity_plain_output_explains_no_offered_capacities(
     )
     payload = capacity_command.build_supervisor_capacity_plan(
         goal="检查 provider-backed 能力",
-        provider=FakeCapacityProvider(
+        provider=DeterministicCapacityProvider(
             '{"capacity_id":"llm.artifact.review","arguments":{},'
             '"confidence":0.91,"rationale":"provider required"}'
         ),
@@ -1551,7 +1551,7 @@ def test_supervisor_capacity_plain_output_explains_no_offered_capacities(
 
 
 def test_supervisor_capacity_plain_output_explains_not_launchable(tmp_path, capsys):
-    provider = FakeCapacityProvider(
+    provider = DeterministicCapacityProvider(
         '{"capacity_id":"context.search","arguments":{"query":"capacity"},'
         '"confidence":0.77,"rationale":"not allowlisted"}'
     )

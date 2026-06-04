@@ -24,7 +24,7 @@ FORBIDDEN_KEYS = {
 
 
 class RecordingProvider:
-    provider = "fake"
+    provider = "deterministic_test"
     model = "fake-workbench-ask"
 
     def __init__(self, content: str = "先推进作品集任务。") -> None:
@@ -44,7 +44,7 @@ class RecordingProvider:
             content=self.content,
             finish_reason="stop",
             usage={"prompt_tokens": 12, "completion_tokens": 8},
-            raw={"id": "fake"},
+            raw={"id": "deterministic-test"},
         )
 
 
@@ -72,7 +72,7 @@ def test_workbench_ask_flow_answers_from_public_metadata_workbench_context(tmp_p
 
     assert answer.answer == "建议先整理作品集故事线。"
     assert answer.question == "portfolio 下一步做什么？"
-    assert answer.provider == "fake"
+    assert answer.provider == "deterministic_test"
     assert answer.model == "fake-workbench-ask"
     assert answer.workbench.counts == {
         "projects": 1,

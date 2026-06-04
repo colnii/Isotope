@@ -39,7 +39,7 @@ def _product_chat_entry_error_payload(
 ) -> dict[str, Any]:
     return {
         "command": command,
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "status": "failed",
         "error": {
             "code": exc.code,
@@ -125,7 +125,7 @@ def _invalid_product_chat_entry_payload(message: Any) -> dict[str, Any] | None:
     }
     return {
         "command": "llm_product_chat_app_entry",
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "readiness_check": readiness_check,
         "entry": {
             "http_status": 400,
@@ -138,21 +138,21 @@ def _invalid_product_chat_entry_payload(message: Any) -> dict[str, Any] | None:
 
 
 def _invalid_product_chat_entry_mode_payload(args: Any) -> dict[str, Any] | None:
-    if not getattr(args, "fake_entry_pending", False) or getattr(args, "fake_provider", False):
+    if not getattr(args, "deterministic_entry_pending", False) or getattr(args, "deterministic_provider", False):
         return None
-    reason_code = "llm_product_chat_fake_entry_pending_requires_fake_provider"
+    reason_code = "llm_product_chat_deterministic_entry_pending_requires_deterministic_provider"
     readiness_check = {
         "ready": False,
         "gate": "blocked",
         "category": "invalid_request",
         "status": "bad_request",
         "reason_code": reason_code,
-        "summary": "--fake-entry-pending only applies to the fake provider",
-        "next_step": "pass --fake-provider with --fake-entry-pending, or remove --fake-entry-pending",
+        "summary": "--deterministic-entry-pending only applies to the deterministic test provider",
+        "next_step": "pass --deterministic-provider with --deterministic-entry-pending, or remove --deterministic-entry-pending",
     }
     return {
         "command": "llm_product_chat_app_entry",
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "readiness_check": readiness_check,
         "entry": {
             "http_status": 400,
@@ -168,7 +168,7 @@ def _invalid_product_chat_entry_resume_mode_payload(args: Any) -> dict[str, Any]
     if not (
         getattr(args, "message", None)
         or getattr(args, "state_file", None)
-        or getattr(args, "fake_entry_pending", False)
+        or getattr(args, "deterministic_entry_pending", False)
     ):
         return None
     reason_code = "llm_product_chat_resume_state_conflicting_flags"
@@ -183,7 +183,7 @@ def _invalid_product_chat_entry_resume_mode_payload(args: Any) -> dict[str, Any]
     }
     return {
         "command": "llm_product_chat_app_entry_resume",
-        "codex_runner": "fake",
+        "codex_runner": "deterministic_test",
         "readiness_check": readiness_check,
         "entry": {
             "http_status": 400,

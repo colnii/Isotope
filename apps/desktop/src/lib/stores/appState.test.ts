@@ -174,8 +174,8 @@ describe('appState', () => {
           return {
             question,
             answer: '后端 回答',
-            provider: 'fake',
-            model: 'fake',
+            provider: 'deterministic_test',
+            model: 'deterministic_test',
             capacityCalls: [
               {
                 id: 'capacity_memory_query',
@@ -205,8 +205,8 @@ describe('appState', () => {
         id: 'chat_assistant_1',
         role: 'assistant',
         content: '后端 回答',
-        provider: 'fake',
-        model: 'fake',
+        provider: 'deterministic_test',
+        model: 'deterministic_test',
         capacityCalls: [
           {
             id: 'capacity_memory_query',
@@ -245,8 +245,8 @@ describe('appState', () => {
           return {
             question,
             answer: question === '第一句' ? '第一句回复' : '第二句回复',
-            provider: 'fake',
-            model: 'fake'
+            provider: 'deterministic_test',
+            model: 'deterministic_test'
           };
         }
       }

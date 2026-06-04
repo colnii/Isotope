@@ -12,7 +12,7 @@ from isotope.llm.provider import LLMResponse
 
 
 class RecordingConversationProvider:
-    provider = "fake"
+    provider = "deterministic_test"
     model = "fake-conversation"
 
     def __init__(self, responses: list[str]) -> None:
@@ -53,7 +53,7 @@ def test_conversation_loop_accepts_plain_text_as_direct_answer(tmp_path) -> None
         SupervisorConversationEvent(
             event="delta",
             payload={"text": "你好，我在。"},
-            provider="fake",
+            provider="deterministic_test",
             model="fake-conversation",
         )
     ]

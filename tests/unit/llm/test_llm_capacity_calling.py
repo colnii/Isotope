@@ -11,8 +11,8 @@ from isotope.platform.errors import IsotopeError
 
 
 class RecordingProvider:
-    provider = "fake"
-    model = "fake-capacity-caller"
+    provider = "deterministic_test"
+    model = "deterministic-capacity-caller"
 
     def __init__(self, content: str) -> None:
         self.content = content
@@ -84,8 +84,8 @@ def test_select_capacity_call_asks_llm_to_choose_capacity_and_fill_arguments():
         "question": "检查产物摘要是否可用",
     }
     assert selection.missing_inputs == []
-    assert selection.provider == "fake"
-    assert selection.model == "fake-capacity-caller"
+    assert selection.provider == "deterministic_test"
+    assert selection.model == "deterministic-capacity-caller"
     assert selection.usage == {"prompt_tokens": 10, "completion_tokens": 8, "total_tokens": 18}
     assert selection.to_dict()["status"] == "ready_to_call"
 

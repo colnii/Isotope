@@ -14,9 +14,9 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     terminal_tool.add_argument("--json", action="store_true", help="Print JSON output.")
     terminal_tool.add_argument(
-        "--fake-provider",
+        "--deterministic-provider",
         action="store_true",
-        help="Use a deterministic fake provider instead of configured ISOTOPE_LLM_* provider settings.",
+        help="Use a deterministic test provider instead of configured ISOTOPE_LLM_* provider settings.",
     )
     terminal_tool.add_argument(
         "--diagnose",
@@ -35,13 +35,13 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     product_chat = subparsers.add_parser(
         "product-chat",
-        help="Run the product-chat provider smoke with a fake Codex runner.",
+        help="Run the product-chat provider smoke with a deterministic test Codex runner.",
     )
     product_chat.add_argument("--json", action="store_true", help="Print JSON output.")
     product_chat.add_argument(
-        "--fake-provider",
+        "--deterministic-provider",
         action="store_true",
-        help="Use a deterministic fake provider instead of configured ISOTOPE_LLM_* provider settings.",
+        help="Use a deterministic test provider instead of configured ISOTOPE_LLM_* provider settings.",
     )
     product_chat.add_argument(
         "--diagnose",
@@ -61,19 +61,19 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     product_chat.add_argument(
         "--codex-executable",
         default="codex",
-        help="Codex executable name recorded in the fake-runner app config.",
+        help="Codex executable name recorded in the deterministic-test-runner app config.",
     )
     product_chat.add_argument(
         "--timeout-seconds",
         type=int,
         default=17,
-        help="Codex task timeout recorded in the fake-runner app config.",
+        help="Codex task timeout recorded in the deterministic-test-runner app config.",
     )
     product_chat.add_argument(
         "--max-output-bytes",
         type=int,
         default=4096,
-        help="Codex task output cap recorded in the fake-runner app config.",
+        help="Codex task output cap recorded in the deterministic-test-runner app config.",
     )
     product_chat_entry = subparsers.add_parser(
         "product-chat-entry",
@@ -81,14 +81,14 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     product_chat_entry.add_argument("--json", action="store_true", help="Print JSON output.")
     product_chat_entry.add_argument(
-        "--fake-provider",
+        "--deterministic-provider",
         action="store_true",
-        help="Use a deterministic fake provider instead of configured ISOTOPE_LLM_* provider settings.",
+        help="Use a deterministic test provider instead of configured ISOTOPE_LLM_* provider settings.",
     )
     product_chat_entry.add_argument(
-        "--fake-entry-pending",
+        "--deterministic-entry-pending",
         action="store_true",
-        help="With --fake-provider, make the entry turn select codex_task and save a resumable pending state.",
+        help="With --deterministic-provider, make the entry turn select codex_task and save a resumable pending state.",
     )
     product_chat_entry.add_argument(
         "--message",
@@ -116,18 +116,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     product_chat_entry.add_argument(
         "--codex-executable",
         default="codex",
-        help="Codex executable name recorded in the fake-runner app config.",
+        help="Codex executable name recorded in the deterministic-test-runner app config.",
     )
     product_chat_entry.add_argument(
         "--timeout-seconds",
         type=int,
         default=17,
-        help="Codex task timeout recorded in the fake-runner app config.",
+        help="Codex task timeout recorded in the deterministic-test-runner app config.",
     )
     product_chat_entry.add_argument(
         "--max-output-bytes",
         type=int,
         default=4096,
-        help="Codex task output cap recorded in the fake-runner app config.",
+        help="Codex task output cap recorded in the deterministic-test-runner app config.",
     )
     return parser

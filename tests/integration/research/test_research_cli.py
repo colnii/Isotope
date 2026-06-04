@@ -111,7 +111,6 @@ def test_research_cli_lists_provider_registry_json():
     payload = json.loads(result.stdout)
     assert payload["status"] == "ok"
     assert [provider["provider_id"] for provider in payload["providers"]] == [
-        "fake",
         "codex",
         "tavily",
         "searxng",

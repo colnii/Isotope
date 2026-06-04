@@ -22,7 +22,6 @@ def test_research_provider_registry_lists_implemented_and_planned_providers():
     descriptors = list_research_provider_descriptors()
 
     assert [descriptor.provider_id for descriptor in descriptors] == [
-        "fake",
         "codex",
         "tavily",
         "searxng",

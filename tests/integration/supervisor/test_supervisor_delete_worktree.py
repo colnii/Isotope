@@ -22,7 +22,7 @@ NOW = datetime(2026, 5, 20, 12, 0, tzinfo=timezone.utc)
 
 
 def test_llm_delete_worktree_requires_explicit_confirmation():
-    class FakeProvider:
+    class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             return json.dumps(
                 {
@@ -38,7 +38,7 @@ def test_llm_delete_worktree_requires_explicit_confirmation():
         generate_llm_action_decision(
             _empty_report(),
             [],
-            FakeProvider(),
+            DeterministicProvider(),
             delete_worktree_candidates=[
                 {
                     "name": "done-worker",

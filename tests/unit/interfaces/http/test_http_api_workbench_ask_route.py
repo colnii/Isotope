@@ -7,7 +7,7 @@ from isotope.llm.provider import LLMResponse
 
 
 class RecordingAskProvider:
-    provider = "fake"
+    provider = "deterministic_test"
     model = "fake-workbench-ask"
 
     def __init__(self, answer: str = "先整理一个可展示任务。") -> None:
@@ -27,7 +27,7 @@ class RecordingAskProvider:
             content=self.answer,
             finish_reason="stop",
             usage={"prompt_tokens": 21, "completion_tokens": 9},
-            raw={"id": "fake"},
+            raw={"id": "deterministic-test"},
         )
 
 
@@ -77,7 +77,7 @@ def test_http_api_workbench_ask_route_answers_from_public_metadata_context(tmp_p
 
     assert payload["status"] == "ok"
     assert payload["answer"]["answer"] == "建议先把作品集拆成一个可展示任务。"
-    assert payload["answer"]["provider"] == "fake"
+    assert payload["answer"]["provider"] == "deterministic_test"
     assert payload["answer"]["model"] == "fake-workbench-ask"
     assert payload["answer"]["context"]["counts"] == {
         "projects": 1,

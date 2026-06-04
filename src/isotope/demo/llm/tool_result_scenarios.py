@@ -7,7 +7,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .fakes import (
+from .deterministic_providers import (
     _DemoToolCallProvider,
     _demo_final_answer_response,
     _demo_tool_call_response,
@@ -266,8 +266,8 @@ def _run_llm_tool_result_loop_demo(root: Path) -> dict[str, Any]:
         "checkpoint_basis_event_id": checkpoint["basis_event_id"],
         "event_count": len(event_types),
         "event_types": event_types,
-        "real_llm_status": "fake_provider",
-        "provider_status": "fake_tool_call",
+        "real_llm_status": "deterministic_test_provider",
+        "provider_status": "deterministic_tool_call",
         "network_listener_status": "not_used",
         "memory_status": "active",
         "memory_query_status": "unavailable",

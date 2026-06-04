@@ -37,7 +37,7 @@ REQUIRED_TEXT_FIELDS = (
     "second_codex_started_after_approval: true",
     "tool_result_loop_status: two_tool_actions_completed",
     "multi_tool_loop_status: two_step_demo_only",
-    "real_llm_status: fake_provider",
+    "real_llm_status: deterministic_test_provider",
     "network_listener_status: not_used",
     "memory_status: active",
 )
@@ -176,7 +176,7 @@ def test_llm_tool_result_loop_demo_json_exposes_safe_tool_result_status_only():
     assert data["second_codex_started_after_approval"] is True
     assert data["tool_result_loop_status"] == "two_tool_actions_completed"
     assert data["multi_tool_loop_status"] == "two_step_demo_only"
-    assert data["real_llm_status"] == "fake_provider"
+    assert data["real_llm_status"] == "deterministic_test_provider"
     assert data["network_listener_status"] == "not_used"
     assert data["memory_status"] == "active"
     assert "approval.resolved" in data["event_types"]

@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .fakes import (
+from .deterministic_providers import (
     _DemoProductChatProvider,
     _demo_product_chat_blocked_readiness_check,
     _demo_product_chat_ready_readiness_check,
@@ -149,7 +149,7 @@ def _run_llm_product_chat_app_entry_demo(root: Path) -> dict[str, Any]:
         "checkpoint_basis_event_id": checkpoint["basis_event_id"],
         "event_count": len(event_types),
         "event_types": event_types,
-        "real_llm_status": "fake_provider",
+        "real_llm_status": "deterministic_test_provider",
         "network_listener_status": "not_used",
         "memory_status": "active",
         "memory_query_status": "unavailable",

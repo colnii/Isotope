@@ -58,7 +58,7 @@ def _approval_request(text: str = "contract wrapper selected step") -> dict[str,
 
 def _provider_result(parsed_output: dict[str, Any]) -> dict[str, Any]:
     return {
-        "provider_result_id": "fake_provider_result_001",
+        "provider_result_id": "deterministic_provider_result_001",
         "provider_status": "completed",
         "raw_prompt_filtered": True,
         "raw_response_filtered": True,
@@ -90,7 +90,7 @@ def test_real_planner_contract_executes_only_parsed_symbolic_output(tmp_path):
     )
 
     assert result["contract_status"] == "accepted"
-    assert result["provider_result_id"] == "fake_provider_result_001"
+    assert result["provider_result_id"] == "deterministic_provider_result_001"
     assert "raw_prompt_filtered" not in result
     assert "raw_response_filtered" not in result
     assert result["planner_result"]["planner_status"] == "accepted"

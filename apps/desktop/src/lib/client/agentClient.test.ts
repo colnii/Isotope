@@ -185,7 +185,7 @@ describe('agentClient', () => {
         controller.enqueue(encoder.encode('event: delta\ndata: {"text":"Loop"}\n\n'));
         controller.enqueue(encoder.encode('event: delta\ndata: {"text":" 正常"}\n\n'));
         controller.enqueue(
-          encoder.encode('event: done\ndata: {"status":"ok","provider":"fake","model":"fake"}\n\n')
+          encoder.encode('event: done\ndata: {"status":"ok","provider":"deterministic_test","model":"deterministic_test"}\n\n')
         );
         controller.close();
       }
@@ -231,8 +231,8 @@ describe('agentClient', () => {
     expect(answer).toEqual({
       question: 'loop?',
       answer: 'Loop 正常',
-      provider: 'fake',
-      model: 'fake',
+      provider: 'deterministic_test',
+      model: 'deterministic_test',
       capacityCalls: [
         {
           id: 'capacity_memory_query',

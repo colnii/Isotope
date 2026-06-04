@@ -34,8 +34,8 @@ FORBIDDEN_MEMORY_CONTEXT_KEYS = {
 }
 
 
-class FakePlannerProvider:
-    provider = "fake"
+class DeterministicPlannerProvider:
+    provider = "deterministic_test"
     model = "fake-loop-planner"
 
     def __init__(self, content: str) -> None:
@@ -114,10 +114,10 @@ def _assert_no_forbidden_memory_context_keys(value: Any) -> None:
             _assert_no_forbidden_memory_context_keys(nested)
 
 
-def test_provider_planner_tick_runs_fake_provider_through_tick_execution(tmp_path):
+def test_provider_planner_tick_runs_deterministic_provider_through_tick_execution(tmp_path):
     api, run_id = _new_run(tmp_path)
     control = api.get_agent_loop_control(run_id)
-    provider = FakePlannerProvider(_provider_json(control))
+    provider = DeterministicPlannerProvider(_provider_json(control))
 
     result = api.run_agent_loop_provider_planner_tick(
         run_id,
@@ -149,7 +149,7 @@ def test_provider_planner_tick_runs_fake_provider_through_tick_execution(tmp_pat
 
 def test_provider_planner_tick_rejects_bad_json_without_side_effects(tmp_path):
     api, run_id = _new_run(tmp_path)
-    provider = FakePlannerProvider("not-json")
+    provider = DeterministicPlannerProvider("not-json")
     before_events = list(api.get_events(run_id))
 
     with pytest.raises(ValueError, match="planner provider response must contain a JSON object"):
@@ -190,7 +190,7 @@ def test_provider_planner_tick_injects_default_memory_context_without_side_effec
             "quality": "candidate",
         },
     )
-    provider = FakePlannerProvider("not-json")
+    provider = DeterministicPlannerProvider("not-json")
     before_events = list(api.get_events(run_id))
 
     with pytest.raises(ValueError, match="planner provider response must contain a JSON object"):
@@ -263,7 +263,7 @@ def test_provider_planner_default_context_recalls_same_session_promoted_memory(t
         session["session_id"],
         goal="summary-only planner context",
     )
-    provider = FakePlannerProvider("not-json")
+    provider = DeterministicPlannerProvider("not-json")
 
     with pytest.raises(ValueError, match="planner provider response must contain a JSON object"):
         api.run_agent_loop_provider_planner_tick(
@@ -306,7 +306,7 @@ def test_provider_planner_default_context_recalls_same_session_promoted_memory(t
 def test_provider_planner_tick_rejects_missing_decision_without_side_effects(tmp_path):
     api, run_id = _new_run(tmp_path)
     control = api.get_agent_loop_control(run_id)
-    provider = FakePlannerProvider(
+    provider = DeterministicPlannerProvider(
         "{"
         '"planner_run_id":"planner_run_missing_decision",'
         f'"basis":{{"run_id":"{control["run_id"]}","last_event_id":"{control["last_event_id"]}"}}'
@@ -329,7 +329,7 @@ def test_provider_planner_tick_rejects_missing_decision_without_side_effects(tmp
 def test_provider_planner_tick_rejects_illegal_action_without_side_effects(tmp_path):
     api, run_id = _new_run(tmp_path)
     control = api.get_agent_loop_control(run_id)
-    provider = FakePlannerProvider(
+    provider = DeterministicPlannerProvider(
         _provider_json(
             control,
             step="delete_worktree",
