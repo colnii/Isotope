@@ -99,6 +99,12 @@ Review `replay-report.json` for proposed actions, selected actions, sticker
 candidates, blocked turns, and send feedback count. Replay runs as dry-run and
 does not send QQ messages.
 
+Replay files include an `expectations` object. The generated defaults require
+two processed events, at least one proposed action, at least one sticker
+candidate through `min_sticker_candidates`, no send feedback, no sent group
+messages, and `require_all_dry_run`. Treat `passed: false` in
+`replay-report.json` or CLI JSON as a blocker before live dry-run.
+
 ## Run
 
 NapCat must expose a OneBot 11 WebSocket endpoint. The live path is:

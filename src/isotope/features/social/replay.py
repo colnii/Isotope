@@ -16,6 +16,15 @@ DEFAULT_REPLAY_RUNTIME = {
     "allow_sticker_only": True,
 }
 
+DEFAULT_REPLAY_EXPECTATIONS = {
+    "require_processed_events": 2,
+    "min_proposed_actions": 1,
+    "min_sticker_candidates": 1,
+    "max_send_feedback": 0,
+    "max_sent_group_messages": 0,
+    "require_all_dry_run": True,
+}
+
 
 @dataclass(frozen=True)
 class QQReplayTemplateConfig:
@@ -56,7 +65,14 @@ def load_qq_replay(path: Path) -> dict[str, Any]:
     runtime = payload.get("runtime", {})
     if not isinstance(runtime, dict):
         raise ValueError("replay runtime must be a JSON object")
-    return {"events": [dict(event) for event in events], "runtime": dict(runtime)}
+    expectations = payload.get("expectations", {})
+    if not isinstance(expectations, dict):
+        raise ValueError("replay expectations must be a JSON object")
+    return {
+        "events": [dict(event) for event in events],
+        "runtime": dict(runtime),
+        "expectations": dict(expectations),
+    }
 
 
 def runtime_overrides(payload: dict[str, Any]) -> dict[str, Any]:
@@ -86,19 +102,24 @@ def build_replay_report(
     turns: list[dict[str, Any]],
     sent_group_messages: list[dict[str, Any]],
     sent_private_messages: list[dict[str, Any]],
+    expectations: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    summary = _summary(
+        event_count=event_count,
+        turns=turns,
+        sent_group_messages=sent_group_messages,
+        sent_private_messages=sent_private_messages,
+    )
+    expectation_results = evaluate_expectations(expectations or {}, summary, turns=turns)
     return {
         "kind": "qq_replay_report",
         "replay_json": str(replay_path),
         "config_json": str(config_path),
         "state_file": str(state_file),
         "dry_run": dry_run,
-        "summary": _summary(
-            event_count=event_count,
-            turns=turns,
-            sent_group_messages=sent_group_messages,
-            sent_private_messages=sent_private_messages,
-        ),
+        "passed": all(result["ok"] for result in expectation_results),
+        "expectations": expectation_results,
+        "summary": summary,
         "turns": turns,
         "sent_group_messages": sent_group_messages,
         "sent_private_messages": sent_private_messages,
@@ -110,12 +131,55 @@ def write_replay_report(path: Path, report: dict[str, Any]) -> None:
     _write_json(path, report)
 
 
+def evaluate_expectations(
+    expectations: dict[str, Any],
+    summary: dict[str, Any],
+    *,
+    turns: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not isinstance(expectations, dict):
+        raise ValueError("expectations must be a JSON object")
+    results: list[dict[str, Any]] = []
+    for name in (
+        "require_processed_events",
+        "min_proposed_actions",
+        "min_sticker_candidates",
+        "max_send_feedback",
+        "max_sent_group_messages",
+        "require_all_dry_run",
+    ):
+        if name not in expectations:
+            continue
+        expected = expectations[name]
+        actual = _expectation_actual(name, summary=summary, turns=turns)
+        results.append(
+            {
+                "name": name,
+                "ok": _expectation_ok(name, expected=expected, actual=actual),
+                "expected": expected,
+                "actual": actual,
+            }
+        )
+    unknown = sorted(set(expectations) - {item["name"] for item in results})
+    for name in unknown:
+        results.append(
+            {
+                "name": name,
+                "ok": False,
+                "expected": expectations[name],
+                "actual": "unsupported expectation",
+            }
+        )
+    return results
+
+
 def _template_payload(config: QQReplayTemplateConfig) -> dict[str, Any]:
     group_id = int(config.group_id)
     return {
         "schema_version": "isotope.qq_replay.v1",
         "name": "QQ controlled replay",
         "runtime": dict(DEFAULT_REPLAY_RUNTIME),
+        "expectations": dict(DEFAULT_REPLAY_EXPECTATIONS),
         "events": [
             {
                 "message_id": 9001,
@@ -197,6 +261,44 @@ def _is_sticker_candidate(item: object) -> bool:
     return any(isinstance(part, dict) and part.get("kind") == "sticker" for part in parts)
 
 
+def _expectation_actual(
+    name: str,
+    *,
+    summary: dict[str, Any],
+    turns: list[dict[str, Any]],
+) -> object:
+    if name == "require_processed_events":
+        return summary["processed_events"]
+    if name == "min_proposed_actions":
+        return summary["proposed_action_count"]
+    if name == "min_sticker_candidates":
+        return summary["sticker_candidate_count"]
+    if name == "max_send_feedback":
+        return summary["send_feedback_count"]
+    if name == "max_sent_group_messages":
+        return summary["sent_group_message_count"]
+    if name == "require_all_dry_run":
+        return all(_turn_is_dry_run(turn) for turn in turns)
+    return None
+
+
+def _expectation_ok(name: str, *, expected: object, actual: object) -> bool:
+    if name == "require_processed_events":
+        return _int_value(actual, "actual") == _int_value(expected, name)
+    if name in {"min_proposed_actions", "min_sticker_candidates"}:
+        return _int_value(actual, "actual") >= _int_value(expected, name)
+    if name in {"max_send_feedback", "max_sent_group_messages"}:
+        return _int_value(actual, "actual") <= _int_value(expected, name)
+    if name == "require_all_dry_run":
+        return _bool(expected, name) == bool(actual)
+    return False
+
+
+def _turn_is_dry_run(turn: dict[str, Any]) -> bool:
+    decision = turn.get("decision")
+    return isinstance(decision, dict) and decision.get("dry_run") is True
+
+
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
@@ -240,4 +342,10 @@ def _ratio(value: object, field_name: str) -> float:
 def _bool(value: object, field_name: str) -> bool:
     if not isinstance(value, bool):
         raise ValueError(f"{field_name} must be a bool")
+    return value
+
+
+def _int_value(value: object, field_name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{field_name} must be an integer")
     return value

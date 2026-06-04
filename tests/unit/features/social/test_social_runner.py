@@ -795,6 +795,14 @@ def test_social_runner_qq_init_replay_writes_editable_event_file(
         "sticker_scene_tags": ["review"],
         "allow_sticker_only": True,
     }
+    assert replay["expectations"] == {
+        "require_processed_events": 2,
+        "min_proposed_actions": 1,
+        "min_sticker_candidates": 1,
+        "max_send_feedback": 0,
+        "max_sent_group_messages": 0,
+        "require_all_dry_run": True,
+    }
     assert len(replay["events"]) == 2
     assert replay["events"][0]["group_id"] == 99999
     assert replay["events"][0]["message"][0]["type"] == "at"
@@ -892,8 +900,19 @@ def test_social_runner_qq_replay_writes_decision_report(
     assert payload["dry_run"] is True
     assert payload["processed_events"] == 2
     assert payload["output"] == str(report_path)
+    assert payload["passed"] is True
 
     report = _read_json(report_path)
+    assert report["passed"] is True
+    assert [item["name"] for item in report["expectations"]] == [
+        "require_processed_events",
+        "min_proposed_actions",
+        "min_sticker_candidates",
+        "max_send_feedback",
+        "max_sent_group_messages",
+        "require_all_dry_run",
+    ]
+    assert all(item["ok"] for item in report["expectations"])
     assert report["summary"]["event_count"] == 2
     assert report["summary"]["processed_events"] == 2
     assert report["summary"]["proposed_action_count"] >= 1
@@ -903,6 +922,60 @@ def test_social_runner_qq_replay_writes_decision_report(
     assert report["sent_group_messages"] == []
     state = _read_json(beta_dir / "state" / "social-qq-state.json")
     assert [entry["kind"] for entry in state["audit_entries"]] == ["decision", "decision"]
+
+
+def test_social_runner_qq_replay_reports_failed_expectations(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    config = _write_json(tmp_path / "config.json", _config())
+    replay = _write_json(
+        tmp_path / "replay.json",
+        {
+            "events": [_event()],
+            "runtime": {
+                "wake_keywords": ["看看"],
+                "autonomy_score": 1.0,
+                "sticker_emotion": "positive",
+                "sticker_scene_tags": ["review"],
+                "allow_sticker_only": True,
+            },
+            "expectations": {
+                "require_processed_events": 2,
+                "min_sticker_candidates": 99,
+                "max_send_feedback": 0,
+                "require_all_dry_run": True,
+            },
+        },
+    )
+    report_path = tmp_path / "report.json"
+
+    assert main(
+        [
+            "qq",
+            "replay",
+            "--config-json",
+            str(config),
+            "--state-root",
+            str(tmp_path / "state"),
+            "--replay-json",
+            str(replay),
+            "--output",
+            str(report_path),
+            "--json",
+        ]
+    ) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["passed"] is False
+    report = _read_json(report_path)
+    failed = [item for item in report["expectations"] if not item["ok"]]
+    assert [item["name"] for item in failed] == [
+        "require_processed_events",
+        "min_sticker_candidates",
+    ]
+    assert failed[0]["expected"] == 2
+    assert failed[0]["actual"] == 1
 
 
 def test_social_runner_entry_point_is_registered() -> None:

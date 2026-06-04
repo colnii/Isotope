@@ -401,16 +401,19 @@ def _handle_replay(args: argparse.Namespace) -> dict[str, Any]:
         turns=turns,
         sent_group_messages=list(client.sent_group_messages),
         sent_private_messages=list(client.sent_private_messages),
+        expectations=dict(replay_payload.get("expectations", {})),
     )
     write_replay_report(output_path, report)
     return {
         "status": "ok",
         "command": "replay",
+        "passed": bool(report["passed"]),
         "dry_run": True,
         "processed_events": len(turns),
         "event_count": len(events),
         "output": str(output_path),
         "state_file": str(_state_path(state_root)),
+        "expectations": report["expectations"],
         "summary": report["summary"],
     }
 
