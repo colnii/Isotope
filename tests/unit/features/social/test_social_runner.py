@@ -223,6 +223,13 @@ def test_social_runner_qq_dry_run_records_decision_without_sending(
     assert payload["status"] == "ok"
     assert payload["turn"]["decision"]["proposed"][0]["kind"] == "respond"
     assert payload["turn"]["decision"]["selected"] == []
+    assert payload["turn"]["context"]["persona_instructions"]["role_name"] == "群聊工程猫"
+    assert (
+        payload["turn"]["context"]["persona_instructions"]["voice"]["speaking_style"]
+        == "直接、简洁、带一点吐槽"
+    )
+    assert payload["turn"]["context"]["chat_context"]["current_message"]["text"] == "看看这个 PR"
+    assert payload["turn"]["context"]["chat_context"]["current_message"]["sender"]["display_name"] == "小林"
     assert payload["sent_group_messages"] == []
     state = _read_json(tmp_path / "state" / "social-qq-state.json")
     assert [entry["kind"] for entry in state["audit_entries"]] == ["decision"]

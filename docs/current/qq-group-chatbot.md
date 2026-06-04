@@ -132,6 +132,15 @@ NapCat must expose a OneBot 11 WebSocket endpoint. The live path is:
 5. `OneBotAdapter.send_action(...)` sends the selected `SocialReplyAction`.
 6. `SocialOperationsController` records decision, send, and capability reports.
 
+Each dry-run, replay, and live-run turn includes inspectable context. Check
+`turn.context.persona_instructions` to confirm the active role card identity,
+voice, group behavior, sticker preference, tool style, and memory policy. Check
+`turn.context.chat_context` to confirm the readable current group message,
+recent messages, memory previews, and selected lorebook entries. QQ mentions
+remain structured in `current_message.mentions` and `current_message.parts`;
+`current_message.text` is the readable text segment content, not the raw CQ
+string.
+
 Check the WebSocket connection without consuming a group event:
 
 ```bash

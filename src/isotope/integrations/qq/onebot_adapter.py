@@ -254,10 +254,13 @@ def _timestamp(value: object) -> str:
 
 
 def _raw_text(parts: tuple[SocialMessagePart, ...], event: dict[str, Any]) -> str:
+    visible = "".join(part.text for part in parts if part.kind == "text").strip()
+    if visible:
+        return visible
     raw = event.get("raw_message")
     if isinstance(raw, str):
         return raw
-    return "".join(part.text for part in parts if part.kind == "text")
+    return ""
 
 
 def _media_ref(data: dict[str, Any]) -> str:

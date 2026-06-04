@@ -41,15 +41,52 @@ class SocialContextBuilder:
             if self.lorebook is not None
             else ()
         )
+        lorebook_entries = [entry.to_public_dict() for entry in selected]
+        message_payload = message.to_public_dict()
+        recent_payload = [dict(item) for item in recent]
+        memory_payload = [dict(item) for item in memory]
         return {
             "kind": "social_context",
             "group_id": clean_group_id,
-            "message": message.to_public_dict(),
+            "message": message_payload,
             "character_card": group_card.to_dict(),
-            "lorebook_entries": [entry.to_public_dict() for entry in selected],
-            "recent_messages": [dict(item) for item in recent],
-            "memory_previews": [dict(item) for item in memory],
+            "persona_instructions": _persona_instructions(
+                group_card,
+                group_id=clean_group_id,
+                group_override_applied=clean_group_id in self.character_card.group_overrides,
+            ),
+            "chat_context": {
+                "current_message": message_payload,
+                "recent_messages": recent_payload,
+                "memory_previews": memory_payload,
+                "lorebook_entries": lorebook_entries,
+            },
+            "lorebook_entries": lorebook_entries,
+            "recent_messages": recent_payload,
+            "memory_previews": memory_payload,
         }
+
+
+def _persona_instructions(
+    character_card: CharacterCard,
+    *,
+    group_id: str,
+    group_override_applied: bool,
+) -> dict[str, Any]:
+    card = character_card.to_dict()
+    identity = card["identity"]
+    return {
+        "role_name": identity["name"],
+        "aliases": list(identity.get("aliases", [])),
+        "description": identity.get("description", ""),
+        "voice": dict(card["voice"]),
+        "social_behavior": dict(card["social_behavior"]),
+        "stickers": dict(card["stickers"]),
+        "tools": dict(card["tools"]),
+        "memory": dict(card["memory"]),
+        "group_id": group_id,
+        "group_override_applied": group_override_applied,
+    }
 
 
 def _dict_tuple(value: object, field_name: str) -> tuple[dict[str, Any], ...]:

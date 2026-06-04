@@ -40,6 +40,7 @@ def test_onebot_adapter_maps_group_segments_to_social_message_parts() -> None:
     assert message.group_id == "99999"
     assert message.sender.user_id == "10001"
     assert message.mentions == ("bot_qq",)
+    assert message.text == "看看这个"
     assert [part.kind for part in message.parts] == [
         "reply",
         "mention",
