@@ -4,7 +4,7 @@
 
 **Goal:** Make Desktop chat the primary product entrypoint where the model can inspect project state, complete small code changes, and launch Codex-assisted Isotope self-repair without fixed intent routing.
 
-**Architecture:** Keep `stream_desktop_chat_events(...)` and `run_supervisor_conversation_events(...)` as the conversational path. Add capabilities and runtime helpers that the model may choose from the manifest, feed low-sensitive observations back to the model after each action, and render action progress in product language. Do not add a classifier, pipeline, or hard-coded intent-to-route branch.
+**Architecture:** Keep `stream_desktop_chat_events(...)` and `run_supervisor_conversation_events(...)` as the conversational path. Add capabilities and runtime helpers that the model may choose from the manifest, feed structured observations back to the model after each action, and render action progress in product language. Do not add a classifier, pipeline, or hard-coded intent-to-route branch.
 
 **Tech Stack:** Python 3.13, pytest, Svelte 5, Vitest, existing `CapabilityRunner`, Supervisor state projections, managed Codex registry, desktop SSE stream.
 
@@ -12,14 +12,14 @@
 
 ## File Structure
 
-- Modify `src/isotope/llm/prompts/supervisor_conversation_loop.md`: remove fixed intent-routing rules while keeping output schema, low-sensitive constraints, and model agency.
+- Modify `src/isotope/llm/prompts/supervisor_conversation_loop.md`: remove fixed intent-routing rules while keeping output schema, structured observations, and model agency.
 - Modify `tests/unit/llm/test_system_prompt_assets.py`: add a regression that rejects prompt wording that maps user intent to a specific capability.
-- Modify `src/isotope/capabilities/supervisor.py`: add `supervisor.project_status`, a read-only project-state summary capability.
+- Modify `src/isotope/capabilities/supervisor.py`: add `supervisor.project_status`, a project-state summary capability.
 - Modify `src/isotope/capabilities/catalog.py`: register `supervisor.project_status` and `isotope.self_repair`.
 - Modify `src/isotope/capabilities/runner.py`: route `supervisor.project_status` and `isotope.self_repair`.
 - Create `src/isotope/features/supervisor/self_repair.py`: build a Codex self-repair work order and launch a managed Codex worker in an isolated worktree.
 - Create `src/isotope/capabilities/self_repair.py`: validate `isotope.self_repair` inputs and call the Supervisor self-repair helper.
-- Modify `src/isotope/features/supervisor/conversation_loop.py`: keep model-selected capability execution, pass safe defaults, and preserve low-sensitive observation feedback for project status and self-repair.
+- Modify `src/isotope/features/supervisor/conversation_loop.py`: keep model-selected capability execution, pass safe defaults, and preserve structured observation feedback for project status and self-repair.
 - Modify `tests/unit/features/supervisor/test_supervisor_conversation_loop.py`: cover project status, self-repair, no fixed routing, and Codex-assisted observations.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover catalog discovery, validation, project status output, and self-repair launch output.
 - Modify `tests/integration/supervisor/test_supervisor_desktop_chat.py`: cover `/desktop/chat` stream for project status and Codex-assisted self-repair.
@@ -253,7 +253,7 @@ if capability_id == SUPERVISOR_PROJECT_STATUS_CAPABILITY:
     return run_supervisor_project_status(inputs=input_mapping)
 ```
 
-Also call `validate_supervisor_readonly_inputs(...)` for this capability by including it in the Supervisor readonly predicate.
+Also call `validate_supervisor_readonly_inputs(...)` for this capability by including it in the Supervisor project-status predicate.
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
@@ -771,7 +771,7 @@ Run:
 .venv/bin/python -m pytest tests/unit/features/supervisor/test_supervisor_conversation_loop.py::test_conversation_loop_can_use_project_status_without_fixed_route tests/unit/features/supervisor/test_supervisor_conversation_loop.py::test_conversation_loop_can_launch_codex_assisted_self_repair -q
 ```
 
-Expected: first test fails before Task 2 is implemented; second test fails before Task 3 is implemented or before self-repair observations are low-sensitive enough.
+Expected: first test fails before Task 2 is implemented; second test fails before Task 3 is implemented or before self-repair observations are structured enough.
 
 - [ ] **Step 3: Make display inputs and observations useful**
 

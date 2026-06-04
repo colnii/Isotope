@@ -4,7 +4,7 @@
 
 **Goal:** Make new Supervisor-facing views consume `SupervisorStateSnapshot`, `MemoryRecord` records, and artifact summaries instead of reassembling private state.
 
-**Architecture:** Extend the existing low-sensitive snapshot with memory and artifact sections. Keep file access inside established store/retrieval boundaries, and make view helpers accept already projected inputs where they currently require separately assembled lists.
+**Architecture:** Extend the existing projected snapshot with memory and artifact sections. Keep file access inside established store/retrieval boundaries, and make view helpers accept already projected inputs where they currently require separately assembled lists.
 
 **Tech Stack:** Python 3.13, pytest, existing Isotope dataclasses and projection helpers.
 
@@ -19,7 +19,7 @@
 
 - [ ] **Step 1: Write the failing memory/artifact projection test**
 
-Add a test that creates one `MemoryRecord` and one artifact with secret full content, builds `build_supervisor_state_snapshot(...)`, and asserts the snapshot includes only low-sensitive memory/artifact summaries.
+Add a test that creates one `MemoryRecord` and one artifact with secret full content, builds `build_supervisor_state_snapshot(...)`, and asserts the snapshot includes structured memory/artifact summaries.
 
 - [ ] **Step 2: Run the test to verify it fails**
 

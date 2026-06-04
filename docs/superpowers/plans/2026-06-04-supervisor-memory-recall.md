@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make desktop/Supervisor chat able to recall existing low-sensitive memory records from the active `state_root` without requiring the model to know an internal `run_id`.
+**Goal:** Make desktop/Supervisor chat able to recall existing projected memory records from the active `state_root` without requiring the model to know an internal `run_id`.
 
-**Architecture:** Keep `memory.query` as the strict run-audited capability for agent-loop internals. Add a product-facing read-only `memory.recall` capability that reuses `isotope.memory.views.build_memory_query_payload(...)`, accepts `root/query/scope/limit` plus optional filters, and returns only summary / refs / provenance previews. Expose `memory.recall` through the capability catalog and conversation loop so the app can retrieve existing state-root memory while preserving the no-full-content boundary.
+**Architecture:** Keep `memory.query` as the strict run-audited capability for agent-loop internals. Add a product-facing `memory.recall` capability that reuses `isotope.memory.views.build_memory_query_payload(...)`, accepts `root/query/scope/limit` plus optional filters, and returns summary, refs, and provenance previews. Expose `memory.recall` through the capability catalog and conversation loop so the app can retrieve existing state-root memory through the projected memory contract.
 
 **Tech Stack:** Python 3.13, pytest, Isotope capability runner, `FileMemoryStore`, `MemoryRecord`, Supervisor conversation loop.
 
@@ -20,7 +20,7 @@
 - Modify `src/isotope/capabilities/runner.py`
   - Import and dispatch `memory.recall`.
 - Modify `src/isotope/capabilities/catalog.py`
-  - Register `memory.recall` as product-candidate, deterministic, read-only, low-sensitive.
+  - Register `memory.recall` as product-candidate, deterministic, and structured.
 - Modify `src/isotope/features/supervisor/conversation_observations.py`
   - Let conversation observations summarize `memory.recall` results the same way as `memory.query`.
 - Modify `src/isotope/llm/prompts/supervisor_conversation_loop.md`
@@ -750,7 +750,7 @@ Expected: branch pushes successfully.
 
 - Reuse `FileMemoryStore` for local state-root records.
 - Reuse `isotope.memory.views.build_memory_query_payload(...)` because it already searches memory summaries / refs / provenance without returning `content`.
-- Reuse `CapabilityRunner` deterministic read-only dispatch patterns from `memory.query`.
+- Reuse `CapabilityRunner` deterministic dispatch patterns from `memory.query`.
 - Reuse `conversation_observations._memory_query_observation(...)` shape to avoid adding a second observation format.
 - Do not change `LocalMemoryQueryService.query(...)` semantics; its run/session audit boundary is correct for agent-loop internals.
 - Do not add vector search, embeddings, automatic promotion, or full-content expansion in this slice.

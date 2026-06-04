@@ -513,7 +513,7 @@ Spec coverage:
 - Pure decision layer: Task 1.
 - Payload exposure before behavior change: Task 2.
 - Deterministic merge dispatch execution tracking: Task 3.
-- Prompt slimming deferred explicitly as next slice: Task 4.
+- Prompt slimming kept as the next slice: Task 4.
 - Safety boundaries for conflict, CI retry, and cleanup deletion remain unchanged in this slice.
 
 Placeholder scan:

@@ -4,7 +4,7 @@
 
 **Goal:** Build a general LanceDB-first hybrid retrieval layer that combines the existing BM25 scorer with optional dense vector search, then make `memory.query` consume it without changing public output or controlled-expand boundaries.
 
-**Architecture:** Add generic `rag` contracts first, then layer sparse retrieval, dense vector protocols, RRF fusion, and a lazy optional LanceDB adapter. Domain callers adapt their records into low-sensitive retrieval documents; the first caller is memory query.
+**Architecture:** Add generic `rag` contracts first, then layer sparse retrieval, dense vector protocols, RRF fusion, and a lazy optional LanceDB adapter. Domain callers adapt their records into projected retrieval documents; the first caller is memory query.
 
 **Tech Stack:** Python 3.13, pytest, current in-tree BM25 scorer, optional LanceDB adapter via lazy import, deterministic test vector store for core tests.
 

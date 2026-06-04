@@ -4,7 +4,7 @@
 
 **Goal:** Build Isotope's native coding workflow foundations without delegating implementation to Codex CLI.
 
-**Architecture:** Deliver this as a sequence of small, policy-backed capability slices. The first slice registers `coding_task.preview`, a deterministic low-sensitive planning capability that fixes the coding task contract and reports the missing execution substrate before write-capable tools are opened.
+**Architecture:** Deliver this as a sequence of small, policy-backed capability slices. The first slice registers `coding_task.preview`, a deterministic planning capability that fixes the coding task contract and reports the missing execution substrate before write-capable tools are opened.
 
 **Tech Stack:** Python 3.13, pytest, existing `CapabilityCatalog`, `CapabilityRunner`, action/policy/executor contracts, workspace/artifact/resource-ref boundaries.
 
@@ -12,9 +12,9 @@
 
 ## Series Roadmap
 
-This objective spans multiple subsystems, so it must not be implemented as one broad patch. Each phase below should become a separate implementation plan or a clearly bounded task group before code changes.
+This objective spans multiple subsystems, so it must not be implemented as one broad patch. Each phase below should become a separate implementation plan or a clearly scoped task group before code changes.
 
-1. `coding_task.preview`: low-sensitive native coding task contract and launch preview.
+1. `coding_task.preview`: structured native coding task contract and launch preview.
 2. `workspace.isolated_rw`: proposal-only isolated writable workspace contract with path safety.
 3. `workspace.lease_create`: event-candidate lease expression for `isolated_rw` without append or materialization.
 4. `code.read` / `code.search`: controlled file listing, file read summaries, and code search refs.
@@ -24,7 +24,7 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 8. `vcs.status` / `vcs.diff`: optional Git adapter diagnostics and diff summaries.
 9. `workspace.changed_files` / `workspace.release`: summarize materialized workspace changes and clean up isolated workspaces.
 10. `artifact.diff_summary` / `artifact.changed_files`: persist changed-file and diff-summary artifacts with structured `ResourceRef`s.
-11. `coding_task.execute`: bounded agent loop that plans, reads, patches, tests, revises, and reports.
+11. `coding_task.execute`: scoped agent loop that plans, reads, patches, tests, revises, and reports.
 12. Supervisor/Desktop integration: expose native coding capacity in conversation loop and dashboard.
 
 ## Slice 1 File Structure
@@ -32,7 +32,7 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 - Create `src/isotope/capabilities/coding.py`: validation and deterministic preview runner for `coding_task.preview`.
 - Modify `src/isotope/capabilities/catalog.py`: register `coding_task.preview` in the default catalog.
 - Modify `src/isotope/capabilities/runner.py`: route planning and execution through the coding preview runner.
-- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, launch plan, successful preview, and fail-closed input validation.
+- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, launch plan, successful preview, and explicit input validation.
 
 ## Slice 2 File Structure
 
@@ -46,18 +46,18 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 - Modify `src/isotope/capabilities/workspace.py`: add `workspace.lease_create`, which returns a `workspace.lease_created` event candidate and still performs no append, no filesystem write, and no workspace materialization.
 - Modify `src/isotope/capabilities/catalog.py`: register `workspace.lease_create` with required provenance ids and `mode="isolated_rw"`.
 - Modify `src/isotope/capabilities/runner.py`: route lease-create planning and execution through the workspace runner.
-- Modify `src/isotope/platform/state/projector/domain_validation.py`: allow `workspace.lease_created` events to express `isolated_rw` while keeping `workspace.bound` fail-closed to `shared_ro`.
+- Modify `src/isotope/platform/state/projector/domain_validation.py`: allow `workspace.lease_created` events to express `isolated_rw` while keeping `workspace.bound` validated to `shared_ro`.
 - Modify `src/isotope/platform/state/projector/checkpoint_validation.py`: allow checkpoint-assisted rebuilds to preserve created `isolated_rw` leases.
 - Modify `tests/integration/workspace/test_workspace_lease_lifecycle_boundary.py`: cover `isolated_rw` lease projection and checkpoint rebuild.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, successful event candidate, and missing-input launch planning.
 
 ## Slice 4 File Structure
 
-- Create `src/isotope/capabilities/code_access.py`: controlled `code.read` and `code.search` runners with workspace-relative path validation, bounded excerpts, code refs, and no filesystem writes.
-- Modify `src/isotope/capabilities/catalog.py`: register `code.read` and `code.search` in the default catalog with low-sensitive safety boundaries.
+- Create `src/isotope/capabilities/code_access.py`: controlled `code.read` and `code.search` runners with workspace-relative path validation, capped excerpts, code refs, and no filesystem writes.
+- Modify `src/isotope/capabilities/catalog.py`: register `code.read` and `code.search` in the default catalog with structured result boundaries.
 - Modify `src/isotope/capabilities/runner.py`: route planning and execution through the code access runner and mark both capabilities `deterministic_readonly`.
 - Modify `src/isotope/capabilities/coding.py`: remove `code.read` and `code.search` from the native coding preview blocked-capability list.
-- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, bounded read excerpts, bounded search matches, path escape rejection, and missing-input planning.
+- Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, capped read excerpts, capped search matches, path escape rejection, and missing-input planning.
 
 ## Slice 5 File Structure
 
@@ -78,14 +78,14 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 ## Slice 7 File Structure
 
 - Create `src/isotope/capabilities/testing.py`: controlled `test.run` runner that reuses the terminal argv validation, command allowlist, timeout, and output capping boundary.
-- Modify `src/isotope/capabilities/catalog.py`: register `test.run` with `argv_allowlist_only`, `shell_false`, and bounded stdout/stderr safety boundaries.
+- Modify `src/isotope/capabilities/catalog.py`: register `test.run` with `argv_allowlist_only`, `shell_false`, and capped stdout/stderr result boundaries.
 - Modify `src/isotope/capabilities/runner.py`: route test planning and execution through the testing runner and report `deterministic_local`.
 - Modify `src/isotope/capabilities/coding.py`: remove `test.run` from the native coding preview blocked-capability list.
 - Modify `tests/unit/capabilities/test_capability_runner_thin_shell.py`: cover discovery, successful allowlisted command, nonzero exit reporting, non-allowlisted command rejection, and missing-input planning.
 
 ## Slice 8 File Structure
 
-- Create `src/isotope/capabilities/vcs.py`: read-only `vcs.status` and `vcs.diff` runners using fixed git subcommands only.
+- Create `src/isotope/capabilities/vcs.py`: `vcs.status` and `vcs.diff` inspection runners using fixed git subcommands only.
 - Modify `src/isotope/capabilities/catalog.py`: register `vcs.status` and `vcs.diff` with `fixed_git_subcommands_only`, `no_vcs_mutation`, and `diff_summary_only` safety boundaries.
 - Modify `src/isotope/capabilities/runner.py`: route VCS planning and execution through the VCS runner and report `deterministic_readonly`.
 - Modify `src/isotope/capabilities/coding.py`: remove `vcs.status` and `vcs.diff` from the native coding preview blocked-capability list.
@@ -93,7 +93,7 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 
 ## Slice 9 File Structure
 
-- Create `src/isotope/capabilities/workspace_files.py`: read-only `workspace.changed_files` summaries and local-only `workspace.release` cleanup for materialized workspaces.
+- Create `src/isotope/capabilities/workspace_files.py`: `workspace.changed_files` summaries and local workspace cleanup for materialized workspaces.
 - Modify `src/isotope/capabilities/catalog.py`: register `workspace.changed_files` with `diff_summary_only` and `workspace.release` with `deletes_only_materialized_workspace`.
 - Modify `src/isotope/capabilities/runner.py`: route workspace-file planning and execution through the dedicated runner.
 - Modify `src/isotope/capabilities/coding.py`: move native coding preview's blocked list forward to artifact-backed diff summaries and `coding_task.execute`.
@@ -111,7 +111,7 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 
 ## Slice 11 File Structure
 
-- Create `src/isotope/capabilities/coding_execute.py`: bounded deterministic native coding loop that materializes an isolated workspace, applies a patch, runs allowlisted verification, and captures artifacts.
+- Create `src/isotope/capabilities/coding_execute.py`: scoped deterministic native coding loop that materializes an isolated workspace, applies a patch, runs allowlisted verification, and captures artifacts.
 - Modify `src/isotope/capabilities/catalog.py`: register `coding_task.execute` with `no_codex_delegation`, `bounded_step_count`, `isolated_workspace_write_only`, and artifact-store boundaries.
 - Modify `src/isotope/capabilities/runner.py`: route execute planning and execution through the coding execute runner.
 - Modify `src/isotope/capabilities/coding.py`: clear native coding preview's blocked-capability list and point `next_slice` at Supervisor/Desktop integration.
@@ -133,7 +133,7 @@ This objective spans multiple subsystems, so it must not be implemented as one b
 
 - [ ] **Step 1: Write failing discovery test**
 
-Add a test that proves the default catalog exposes `coding_task.preview` as a product candidate and advertises the required low-sensitive contract:
+Add a test that proves the default catalog exposes `coding_task.preview` as a product candidate and advertises the required structured contract:
 
 ```python
 def test_runner_discovers_coding_task_preview_from_default_catalog():
@@ -254,7 +254,7 @@ The runner must:
 
 - require `root`, `cwd`, and non-empty `goal`
 - accept list-of-string `allowed_paths`, `forbidden_paths`, and `verification_commands`
-- return only low-sensitive strings, counts, and capability ids
+- return structured strings, counts, and capability ids
 - not create directories, write artifacts, run tests, call providers, or call Codex
 
 - [ ] **Step 4: Wire `runner.py`**
@@ -271,7 +271,7 @@ PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit
 
 Expected: all tests in the file pass.
 
-## Task 3: Validate Fail-Closed Input Contract
+## Task 3: Validate Explicit Input Contract
 
 **Files:**
 - Modify: `tests/unit/capabilities/test_capability_runner_thin_shell.py`

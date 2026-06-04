@@ -13,7 +13,7 @@
 ## File Structure
 
 - Create `src/isotope/extensions/__init__.py`: package marker and public exports.
-- Create `src/isotope/extensions/skills.py`: read-only Codex skill registry, search, describe, bounded body loading.
+- Create `src/isotope/extensions/skills.py`: Codex skill registry, search, describe, and capped body loading.
 - Create `src/isotope/extensions/mcp.py`: explicit MCP stdio server config, server/tool discovery, tool call wrapper.
 - Create `src/isotope/capabilities/extensions.py`: capability constants, catalog entries, validation, and run adapters.
 - Modify `src/isotope/capabilities/catalog.py`: register extension capability definitions from the new module.

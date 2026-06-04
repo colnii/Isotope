@@ -74,6 +74,19 @@ SUPERPOWERS_SPEC_FILES = [
     "docs/superpowers/specs/2026-06-04-vector-hybrid-retrieval-design.md",
 ]
 
+SUPERPOWERS_PLAN_FILES = [
+    "docs/superpowers/plans/2026-06-03-native-coding-foundations.md",
+    "docs/superpowers/plans/2026-06-03-state-memory-artifact-projections.md",
+    "docs/superpowers/plans/2026-06-04-agent-group-chat-runtime.md",
+    "docs/superpowers/plans/2026-06-04-desktop-chat-golden-path.md",
+    "docs/superpowers/plans/2026-06-04-native-coding-product-maturity.md",
+    "docs/superpowers/plans/2026-06-04-native-coding-reviewed-apply-handoff.md",
+    "docs/superpowers/plans/2026-06-04-skills-mcp-client-bridge.md",
+    "docs/superpowers/plans/2026-06-04-supervisor-memory-recall.md",
+    "docs/superpowers/plans/2026-06-04-supervisor-worker-lifecycle-decision.md",
+    "docs/superpowers/plans/2026-06-04-vector-hybrid-retrieval.md",
+]
+
 FORBIDDEN_PATTERNS = [
     r"\b" + "Unavailable" + "Memory",
     r"\b" + "Unavailable" + "ExternalIngestionService" + r"\b",
@@ -142,6 +155,21 @@ SUPERPOWERS_SPEC_FORBIDDEN_PATTERNS = [
     r"\b" + "preflight" + r"\b",
 ]
 
+SUPERPOWERS_PLAN_PROSE_FORBIDDEN_PATTERNS = SUPERPOWERS_SPEC_FORBIDDEN_PATTERNS
+
+
+def _markdown_prose_lines(text: str) -> list[tuple[int, str]]:
+    prose_lines = []
+    in_fenced_block = False
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        if line.startswith("```"):
+            in_fenced_block = not in_fenced_block
+            continue
+        if in_fenced_block:
+            continue
+        prose_lines.append((line_number, re.sub(r"`[^`]+`", "", line)))
+    return prose_lines
+
 
 def test_model_facing_surfaces_do_not_train_conservative_semantics():
     violations = []
@@ -183,5 +211,17 @@ def test_superpowers_specs_do_not_retrain_conservative_design_language():
         for pattern in SUPERPOWERS_SPEC_FORBIDDEN_PATTERNS:
             if re.search(pattern, text, re.IGNORECASE):
                 violations.append(f"{relative_path}: {pattern}")
+
+    assert violations == []
+
+
+def test_superpowers_plan_prose_does_not_retrain_conservative_design_language():
+    violations = []
+    for relative_path in SUPERPOWERS_PLAN_FILES:
+        text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for line_number, prose_line in _markdown_prose_lines(text):
+            for pattern in SUPERPOWERS_PLAN_PROSE_FORBIDDEN_PATTERNS:
+                if re.search(pattern, prose_line, re.IGNORECASE):
+                    violations.append(f"{relative_path}:{line_number}: {pattern}")
 
     assert violations == []

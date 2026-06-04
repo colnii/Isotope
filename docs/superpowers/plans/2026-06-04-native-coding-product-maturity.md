@@ -6,7 +6,7 @@
 
 **Architecture:** Do not create a separate coding loop. Add `coding_task.run` as a product entrypoint that Supervisor routes into the existing in-process agent loop; hide `cwd`, `root`, `run_id`, `execution_id`, and `workspace_id` from user/model-facing contracts; inject those fields internally when executing capability calls. The model learns the repo through `code.search` and `code.read` observations, not by being asked to fill environment fields.
 
-**Tech Stack:** Python 3.13, pytest, existing `CapabilityCatalog`, `CapabilityRunner`, `InProcessServer`, agent-loop provider planner, Supervisor conversation stream, low-sensitive capacity summaries.
+**Tech Stack:** Python 3.13, pytest, existing `CapabilityCatalog`, `CapabilityRunner`, `InProcessServer`, agent-loop provider planner, Supervisor conversation stream, structured capacity summaries.
 
 ---
 
@@ -1139,7 +1139,7 @@ git add src/isotope/features/supervisor/native_coding_run.py src/isotope/feature
 git commit -m "feat(supervisor): run native coding through agent loop"
 ```
 
-## Task 7: Summarize Results And Support Bounded Revision
+## Task 7: Summarize Results And Support Scoped Revision
 
 **Files:**
 - Modify: `src/isotope/features/supervisor/native_coding_run.py`
@@ -1167,7 +1167,7 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/unit/features/supervisor/test_su
 
 Expected: fail if summary fields are absent.
 
-- [ ] **Step 3: Add low-sensitive summary fields**
+- [ ] **Step 3: Add structured summary fields**
 
 In `src/isotope/features/supervisor/commands/capacity_summary.py`, add:
 
@@ -1184,7 +1184,7 @@ def _agent_loop_native_coding_summary(agent_loop: Mapping[str, Any]) -> dict[str
 
 Then call it from `agent_loop_json_summary(...)` when `agent_loop.get("kind") == "native_coding_agent_loop"`.
 
-- [ ] **Step 4: Write the failing bounded-revision test**
+- [ ] **Step 4: Write the failing scoped-revision test**
 
 Append to `tests/unit/features/supervisor/test_supervisor_conversation_loop.py`:
 
@@ -1327,8 +1327,8 @@ If no behavior docs are changed, say in the final implementation summary: the de
   - System injection instead of model-authored routing: Task 4.
   - Model environment understanding via `code.search` and `code.read`: Tasks 5 and 6.
   - Isolated execution and source non-mutation: Task 6.
-  - Bounded revision after failed verification: Task 7.
-  - Low-sensitive result summaries: Task 7.
+  - Scoped revision after failed verification: Task 7.
+  - Structured result summaries: Task 7.
 - Placeholder scan: no task relies on unspecified implementation text.
 - Type consistency:
   - Capability id is always `coding_task.run`.

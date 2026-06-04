@@ -4,7 +4,7 @@
 
 **Goal:** Let native coding produce a review handle that the existing Supervisor conversation loop can use to apply the verified isolated diff without asking the model or user to fill `cwd`, `root`, `workspace_id`, or digest maps.
 
-**Architecture:** Reuse the existing `coding_task.run`, `coding_task.execute`, `coding_task.apply_reviewed_diff`, `ArtifactStore`, and Supervisor conversation loop. `coding_task.execute` writes a low-sensitive reviewed-apply request artifact; `coding_task.apply_reviewed_diff` can resolve that artifact by `review_handle_id`; Supervisor observations expose only the handle, path counts, and suggested next capability call.
+**Architecture:** Reuse the existing `coding_task.run`, `coding_task.execute`, `coding_task.apply_reviewed_diff`, `ArtifactStore`, and Supervisor conversation loop. `coding_task.execute` writes a structured reviewed-apply request artifact; `coding_task.apply_reviewed_diff` can resolve that artifact by `review_handle_id`; Supervisor observations expose the handle, path counts, and suggested next capability call.
 
 **Tech Stack:** Python 3.13, pytest, existing `CapabilityRunner`, `ArtifactStore`, native coding adapter, Supervisor capacity summaries, model-facing capacity observations.
 
@@ -405,7 +405,7 @@ if capacity_id == "coding_task.run":
             }
 ```
 
-- [ ] **Step 6: Keep display inputs low-sensitive**
+- [ ] **Step 6: Keep display inputs structured**
 
 In `_capacity_display_inputs(...)` in `src/isotope/features/supervisor/conversation_loop.py`, for `coding_task.apply_reviewed_diff`, keep `review_handle_id` but remove `expected_source_digests`, `root`, `cwd`, and `workspace_id`:
 
