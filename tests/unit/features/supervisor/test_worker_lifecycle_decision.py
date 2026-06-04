@@ -73,6 +73,32 @@ def test_lifecycle_decision_records_archive_execution() -> None:
     ]
 
 
+def test_lifecycle_decision_records_worktree_cleanup_execution() -> None:
+    decision = build_worker_lifecycle_decision(
+        cleanup_deleted_worktrees=[
+            {
+                "kind": "delete_worktree",
+                "target_name": "source-worker",
+                "record_id": "managed-source",
+                "deleted_worktree": "/repo/.worktrees/supervisor/source-worker",
+            }
+        ],
+    )
+
+    assert decision["action"] == "cleanup_worktree"
+    assert decision["source"] == "cleanup"
+    assert decision["reason"] == "archived worker worktrees deleted"
+    assert decision["summary"]["cleanup_deleted_worktrees"] == 1
+    assert decision["execution"] == [
+        {
+            "kind": "delete_worktree",
+            "target_name": "source-worker",
+            "record_id": "managed-source",
+            "deleted_worktree": "/repo/.worktrees/supervisor/source-worker",
+        }
+    ]
+
+
 def test_lifecycle_decision_needs_human_for_conflicts() -> None:
     decision = build_worker_lifecycle_decision(
         integration_review=_integration_review(conflict=1, needs_review=1),

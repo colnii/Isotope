@@ -91,6 +91,11 @@ def append_supervise_planning_payload(
             if isinstance(payload.get("cleanup_archived"), list)
             else None
         ),
+        cleanup_deleted_worktrees=(
+            payload.get("cleanup_deleted_worktrees")
+            if isinstance(payload.get("cleanup_deleted_worktrees"), list)
+            else None
+        ),
     )
     payload["worker_lifecycle_decision"] = lifecycle_decision
     if (

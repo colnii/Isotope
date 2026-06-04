@@ -15890,6 +15890,12 @@ def test_codex_supervisor_runner_loop_cleans_worktree_after_merge_worker_archive
             "deleted_worktree": str(worktree),
         }
     ]
+    assert payload["worker_lifecycle_decision"]["action"] == "cleanup_worktree"
+    assert payload["worker_lifecycle_decision"]["source"] == "cleanup"
+    assert (
+        payload["worker_lifecycle_decision"]["execution"]
+        == payload["cleanup_deleted_worktrees"]
+    )
     assert deleted_actions == [
         {
             "kind": "delete_worktree",

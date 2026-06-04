@@ -13,16 +13,29 @@ def build_worker_lifecycle_decision(
     merge_dispatch: Mapping[str, Any] | None = None,
     cleanup_candidates: Sequence[Mapping[str, Any]] | None = None,
     cleanup_archived: Sequence[Mapping[str, Any]] | None = None,
+    cleanup_deleted_worktrees: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     del worker_reviews
     integration_summary = _integration_summary(integration_review)
     cleanup_count = len(cleanup_candidates or [])
     archived_items = [dict(item) for item in cleanup_archived or []]
+    deleted_worktree_items = [
+        dict(item) for item in cleanup_deleted_worktrees or []
+    ]
     summary = {
         **integration_summary,
         "cleanup_candidates": cleanup_count,
         "cleanup_archived": len(archived_items),
+        "cleanup_deleted_worktrees": len(deleted_worktree_items),
     }
+    if deleted_worktree_items:
+        return _decision(
+            action="cleanup_worktree",
+            reason="archived worker worktrees deleted",
+            source="cleanup",
+            summary=summary,
+            execution=deleted_worktree_items,
+        )
     if archived_items:
         return _decision(
             action="archive_integrated",
