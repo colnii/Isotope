@@ -5,6 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from isotope.features.supervisor.lifecycle import (
+    worker_lifecycle_execution_launch_spec,
+    worker_lifecycle_execution_planned_executed,
+)
+
 
 def append_supervise_execution(
     args: Any,
@@ -20,6 +25,7 @@ def append_supervise_execution(
     worker_role_guard: dict[str, Any] | None,
     merge_dispatch: dict[str, Any] | None,
     fanout_plan: dict[str, Any] | None,
+    lifecycle_execution: dict[str, Any] | None = None,
     precomputed_auto_action: dict[str, Any] | None = None,
     precomputed_executed: dict[str, Any] | None = None,
     api: Any | None = None,
@@ -40,6 +46,7 @@ def append_supervise_execution(
             worker_role_guard=worker_role_guard,
             merge_dispatch=merge_dispatch,
             fanout_plan=fanout_plan,
+            lifecycle_execution=lifecycle_execution,
             api=api,
         )
     if args.auto_execute:
@@ -70,6 +77,7 @@ def _append_supervise_llm_execution(
     worker_role_guard: dict[str, Any] | None,
     merge_dispatch: dict[str, Any] | None,
     fanout_plan: dict[str, Any] | None,
+    lifecycle_execution: dict[str, Any] | None,
     api: Any,
 ) -> dict[str, Any] | None:
     if fanout_paused:
@@ -98,6 +106,24 @@ def _append_supervise_llm_execution(
         payload["executed"] = api._recursive_worker_role_guard_executed(
             worker_role_guard
         )
+    elif lifecycle_execution is not None:
+        payload["executed"] = _worker_lifecycle_execution_executed(
+            args,
+            action_report,
+            payload,
+            lifecycle_execution,
+            api=api,
+        )
+        lifecycle_decision = payload.get("worker_lifecycle_decision")
+        if isinstance(lifecycle_decision, dict):
+            lifecycle_decision["execution"] = payload["executed"]
+        api._refresh_current_batch_after_execution(
+            args,
+            payload,
+            executed=payload["executed"],
+            active_goals=active_goals,
+            worker_reviews=worker_reviews,
+        )
     elif merge_dispatch is not None:
         payload["executed"] = _merge_dispatch_executed(
             args,
@@ -120,6 +146,33 @@ def _append_supervise_llm_execution(
         payload["executed"] = api._execute_llm_action(args, action_report, payload)
         api._maybe_replan_after_context_request(args, action_report, payload)
     return payload.get("executed")
+
+
+def _worker_lifecycle_execution_executed(
+    args: Any,
+    action_report: Any,
+    payload: dict[str, Any],
+    lifecycle_execution: dict[str, Any],
+    *,
+    api: Any,
+) -> dict[str, Any]:
+    if lifecycle_execution.get("status") == "worker_already_running":
+        return worker_lifecycle_execution_planned_executed(lifecycle_execution)
+    if not getattr(args, "merge_dispatch_execute", False):
+        return worker_lifecycle_execution_planned_executed(lifecycle_execution)
+    launch_spec = worker_lifecycle_execution_launch_spec(lifecycle_execution)
+    if launch_spec is None:
+        return worker_lifecycle_execution_planned_executed(lifecycle_execution)
+    return api._mark_merge_dispatch_execution(
+        api._execute_failure_guarded_action(
+            args,
+            report=action_report,
+            payload=payload,
+            action=launch_spec,
+            event_type="merge_dispatch_failed",
+            execute=lambda: api._execute_launch_action(args, launch_spec),
+        )
+    )
 
 
 def _merge_dispatch_executed(

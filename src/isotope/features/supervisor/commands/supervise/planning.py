@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from isotope.features.supervisor.lifecycle import build_worker_lifecycle_decision
+from isotope.features.supervisor.lifecycle import (
+    build_worker_lifecycle_decision,
+    build_worker_lifecycle_execution_plan,
+)
 
 
 @dataclass
@@ -15,6 +18,7 @@ class SupervisePlanningPayload:
     worker_role_guard: dict[str, Any] | None
     merge_dispatch: dict[str, Any] | None
     fanout_plan: dict[str, Any] | None
+    lifecycle_execution: dict[str, Any] | None
 
 
 def append_supervise_planning_payload(
@@ -98,6 +102,17 @@ def append_supervise_planning_payload(
         ),
     )
     payload["worker_lifecycle_decision"] = lifecycle_decision
+    lifecycle_execution_plan = build_worker_lifecycle_execution_plan(
+        worker_lifecycle_decision=lifecycle_decision,
+        merge_dispatch=merge_dispatch,
+    )
+    lifecycle_execution = (
+        lifecycle_execution_plan.to_dict()
+        if lifecycle_execution_plan is not None
+        else None
+    )
+    if lifecycle_execution is not None:
+        payload["worker_lifecycle_execution"] = lifecycle_execution
     if (
         fanout_plan is None
         and merge_dispatch is None
@@ -108,10 +123,22 @@ def append_supervise_planning_payload(
         merge_dispatch = api._integration_merge_dispatch_payload(args)
         if merge_dispatch is not None:
             payload["merge_dispatch"] = merge_dispatch
+            lifecycle_execution_plan = build_worker_lifecycle_execution_plan(
+                worker_lifecycle_decision=lifecycle_decision,
+                merge_dispatch=merge_dispatch,
+            )
+            lifecycle_execution = (
+                lifecycle_execution_plan.to_dict()
+                if lifecycle_execution_plan is not None
+                else None
+            )
+            if lifecycle_execution is not None:
+                payload["worker_lifecycle_execution"] = lifecycle_execution
     return SupervisePlanningPayload(
         fanout_status=fanout_status,
         fanout_paused=fanout_paused,
         worker_role_guard=worker_role_guard,
         merge_dispatch=merge_dispatch,
         fanout_plan=fanout_plan,
+        lifecycle_execution=lifecycle_execution,
     )

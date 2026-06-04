@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from isotope.features.supervisor.lifecycle import worker_lifecycle_execution_action
+
 
 def append_supervise_llm_action(
     args: Any,
@@ -17,6 +19,7 @@ def append_supervise_llm_action(
     worker_role_guard: dict[str, Any] | None,
     merge_dispatch: dict[str, Any] | None,
     fanout_plan: dict[str, Any] | None,
+    lifecycle_execution: dict[str, Any] | None = None,
     api: Any | None = None,
 ) -> dict[str, Any] | None:
     if api is None:
@@ -31,6 +34,8 @@ def append_supervise_llm_action(
         action = api._fanout_llm_action(fanout_plan)
     elif worker_role_guard is not None:
         action = api._recursive_worker_role_guard_action(worker_role_guard)
+    elif lifecycle_execution is not None:
+        action = worker_lifecycle_execution_action(lifecycle_execution)
     elif merge_dispatch is not None:
         if merge_dispatch.get("status") == "worker_already_running":
             action = api._merge_dispatch_already_running_action(merge_dispatch)

@@ -72,6 +72,7 @@ def supervise_payload(
     worker_role_guard = planning.worker_role_guard
     merge_dispatch = planning.merge_dispatch
     fanout_plan = planning.fanout_plan
+    lifecycle_execution = planning.lifecycle_execution
     if args.llm_summary:
         payload["llm_summary"] = api._summarize_with_llm(report)
     api._append_supervise_llm_action(
@@ -85,6 +86,7 @@ def supervise_payload(
         worker_role_guard=worker_role_guard,
         merge_dispatch=merge_dispatch,
         fanout_plan=fanout_plan,
+        lifecycle_execution=lifecycle_execution,
     )
     api._append_supervise_execution(
         args,
@@ -99,6 +101,7 @@ def supervise_payload(
         worker_role_guard=worker_role_guard,
         merge_dispatch=merge_dispatch,
         fanout_plan=fanout_plan,
+        lifecycle_execution=lifecycle_execution,
         precomputed_auto_action=precomputed_auto_action,
         precomputed_executed=precomputed_executed,
     )

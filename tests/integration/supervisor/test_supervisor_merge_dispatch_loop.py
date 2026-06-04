@@ -86,6 +86,9 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
     assert payload["worker_lifecycle_decision"]["action"] == "dispatch_merge"
     assert payload["worker_lifecycle_decision"]["source"] == "integration_review"
     assert payload["worker_lifecycle_decision"]["summary"]["ready_to_integrate"] == 1
+    assert payload["worker_lifecycle_execution"]["kind"] == "merge_dispatch"
+    assert payload["worker_lifecycle_execution"]["next_step"] == "launch_merge_worker"
+    assert payload["worker_lifecycle_execution"]["status"] == "ready_to_launch"
     assert payload["llm_action"]["kind"] == "launch_session"
     assert payload["llm_action"]["source"] == "integration_review"
     assert payload["executed"]["kind"] == "launch_session"
