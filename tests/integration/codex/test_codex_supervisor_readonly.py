@@ -6188,7 +6188,9 @@ def test_codex_supervisor_llm_action_messages_include_whitelist_and_commands():
 
     assert messages[0]["role"] == "system"
     assert "LLM planner" in messages[0]["content"]
-    assert "guardrail" in messages[0]["content"]
+    assert "执行协议" in messages[0]["content"]
+    for term in ("guardrail", "护栏", "只能", "不得", "只输出"):
+        assert term not in messages[0]["content"]
     assert (
         '"allowed_kinds": ["monitor", "send_status", "send_continue", '
         '"resume_session", "launch_session", "request_context", "ask_user", '
@@ -6202,6 +6204,27 @@ def test_codex_supervisor_llm_action_messages_include_whitelist_and_commands():
     assert '"managed_terminal_ready": true' in messages[1]["content"]
     assert '"managed_bell": true' in messages[1]["content"]
     assert '"supervisor_status": "done"' in messages[1]["content"]
+
+
+def test_codex_supervisor_llm_action_user_prompt_uses_execution_protocol_language():
+    report = CodexSupervisorReport(
+        generated_at=NOW.isoformat(),
+        sessions=(),
+    )
+
+    messages = build_llm_action_messages(report, [])
+    content = messages[1]["content"]
+
+    assert "执行路径" in content
+    for term in (
+        "不得",
+        "不要",
+        "只允许",
+        "才允许",
+        "不是自动合并授权",
+        "只提供",
+    ):
+        assert term not in content
 
 
 def test_codex_supervisor_llm_action_messages_include_worker_review_context():
@@ -6281,7 +6304,7 @@ def test_codex_supervisor_llm_action_messages_include_worker_review_context():
     ]["record_id"] == "managed-001"
     assert payload["worker_reviews"]["safety"]["auto_merge"] is False
     assert "merge" not in payload["allowed_kinds"]
-    assert "worker_reviews 只提供下一轮决策上下文" in "".join(
+    assert "worker_reviews 提供下一轮决策上下文" in "".join(
         payload["action_rules"]
     )
 
@@ -6459,8 +6482,8 @@ def test_codex_supervisor_llm_action_messages_explain_done_sessions_are_not_resu
     content = messages[1]["content"]
     assert '"resumable_session_ids": []' in content
     assert '"completed_session_ids": ["done-session"]' in content
-    assert "recommendation.target_session_id 只是状态线索" in content
-    assert "resumable_session_ids 为空时不得输出 resume_session" in content
+    assert "recommendation.target_session_id 是状态线索" in content
+    assert "resumable_session_ids；列表为空时选择 request_context" in content
 
 
 def test_codex_supervisor_llm_action_messages_resumable_ids_follow_command_whitelist():
@@ -6574,7 +6597,7 @@ def test_codex_supervisor_llm_action_messages_explain_recent_context_should_not_
     content = messages[1]["content"]
     assert '"context_request_history"' in content
     assert '"Supervisor 当前状态"' in content
-    assert "不要重复同一个 cwd/query 的 request_context" in content
+    assert "context_request_history 记录已查过的 cwd/query 组合" in content
     assert "已有上下文足够时优先选择 launch_session、send_continue、send_status、ask_user 或 monitor" in content
 
 
@@ -6620,7 +6643,7 @@ def test_codex_supervisor_llm_action_messages_mark_active_goal_running_worker():
     assert payload["active_goals"][0]["target_name"] == "goal-a"
     assert payload["active_goals"][0]["worker_status"] == "working"
     assert payload["active_goals"][0]["worker_session_id"] == "managed:managed-001"
-    assert "同名 worker 已在运行时不得再次 launch_session" in "".join(
+    assert "同名 worker 已在运行时，根据 worker_status 选择" in "".join(
         payload["action_rules"]
     )
     assert not any(
@@ -7418,7 +7441,7 @@ def test_codex_supervisor_generate_llm_action_decision_can_launch_named_suggesti
     class DeterministicProvider:
         def summarize(self, messages: list[dict[str, str]]) -> str:
             content = messages[1]["content"]
-            assert "可只输出 target_name" in content
+            assert "可以输出 target_name 和 reason" in content
             return json.dumps(
                 {
                     "kind": "launch_session",
@@ -10182,7 +10205,7 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_request_context(
     docs_dir = workspace / "docs" / "current"
     docs_dir.mkdir(parents=True)
     (docs_dir / "status.md").write_text(
-        "Supervisor 下一步节奏：由 LLM 主导，规则只做护栏。\n",
+        "Supervisor 下一步节奏：由 LLM 主导，规则走执行协议。\n",
         encoding="utf-8",
     )
     _write_session(
@@ -10525,7 +10548,7 @@ def test_codex_supervisor_runner_supervise_respects_max_context_requests(
     docs_dir = workspace / "docs" / "current"
     docs_dir.mkdir(parents=True)
     (docs_dir / "status.md").write_text(
-        "Supervisor 上下文预算：同一轮只能查一次。\n",
+        "Supervisor 上下文预算：同一轮按预算查一次。\n",
         encoding="utf-8",
     )
     _write_session(
