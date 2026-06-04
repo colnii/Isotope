@@ -88,9 +88,20 @@ def test_record_worker_lifecycle_decision_persists_execution_projection(tmp_path
         worker_lifecycle_execution_result={
             "kind": "cleanup_worktree",
             "source": "worker_lifecycle",
-            "skipped": True,
-            "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
-            "count": 1,
+            "deleted": [
+                {
+                    "kind": "delete_worktree",
+                    "target_name": "source-worker",
+                    "command": "private command is not projected",
+                    "deleted_worktree": "/repo/.worktrees/supervisor/source-worker",
+                    "managed": {
+                        "record_id": "managed-source",
+                        "name": "source-worker",
+                        "status": "archived",
+                        "prompt": "private prompt is not projected",
+                    },
+                }
+            ],
         },
     )
 
@@ -113,9 +124,17 @@ def test_record_worker_lifecycle_decision_persists_execution_projection(tmp_path
     assert event["worker_lifecycle_execution_result"] == {
         "kind": "cleanup_worktree",
         "source": "worker_lifecycle",
-        "skipped": True,
-        "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+        "skipped": False,
+        "reason": None,
         "count": 1,
+        "result_actions": [
+            {
+                "kind": "delete_worktree",
+                "target_name": "source-worker",
+                "record_id": "managed-source",
+                "status": "deleted",
+            }
+        ],
     }
     assert read_latest_worker_lifecycle_event(codex_home=tmp_path) == event
 

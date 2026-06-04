@@ -136,13 +136,106 @@ def worker_lifecycle_execution_result_payload(
 ) -> dict[str, Any]:
     if not isinstance(worker_lifecycle_execution_result, dict):
         return {"status": "absent"}
-    return {
+    result_actions = _execution_result_action_payloads(
+        worker_lifecycle_execution_result
+    )
+    count = _lifecycle_scalar(worker_lifecycle_execution_result.get("count"))
+    if count is None and result_actions:
+        count = len(result_actions)
+    payload = {
         "kind": _lifecycle_scalar(worker_lifecycle_execution_result.get("kind")),
         "source": _lifecycle_scalar(worker_lifecycle_execution_result.get("source")),
         "skipped": worker_lifecycle_execution_result.get("skipped") is True,
         "reason": _lifecycle_scalar(worker_lifecycle_execution_result.get("reason")),
-        "count": _lifecycle_scalar(worker_lifecycle_execution_result.get("count")),
+        "count": count,
     }
+    if result_actions:
+        payload["result_actions"] = result_actions
+    return payload
+
+
+def _execution_result_action_payloads(result: dict[str, Any]) -> list[dict[str, Any]]:
+    actions: list[dict[str, Any]] = []
+    actions.extend(
+        _deleted_result_action_payload(item)
+        for item in _mapping_items(result.get("deleted"))
+    )
+    actions.extend(
+        _archived_result_action_payload(item)
+        for item in _mapping_items(result.get("archived"))
+    )
+    managed = result.get("managed")
+    if isinstance(managed, dict):
+        actions.append(
+            _result_action_payload(
+                kind=_lifecycle_scalar(result.get("display_kind"))
+                or _lifecycle_scalar(result.get("kind"))
+                or "launch_session",
+                status="launched",
+                target_name=_lifecycle_scalar(result.get("target_name"))
+                or _lifecycle_scalar(managed.get("name")),
+                record_id=_lifecycle_scalar(managed.get("record_id")),
+                reason=_lifecycle_scalar(result.get("reason")),
+            )
+        )
+    return [action for action in actions if action]
+
+
+def _deleted_result_action_payload(item: dict[str, Any]) -> dict[str, Any]:
+    managed = item.get("managed") if isinstance(item.get("managed"), dict) else {}
+    status = "skipped" if item.get("skipped") is True else "deleted"
+    return _result_action_payload(
+        kind=_lifecycle_scalar(item.get("kind")) or "delete_worktree",
+        status=status,
+        target_name=_lifecycle_scalar(item.get("target_name"))
+        or _lifecycle_scalar(managed.get("name")),
+        record_id=_lifecycle_scalar(item.get("record_id"))
+        or _lifecycle_scalar(managed.get("record_id")),
+        reason=_lifecycle_scalar(item.get("reason")),
+    )
+
+
+def _archived_result_action_payload(item: dict[str, Any]) -> dict[str, Any]:
+    managed = item.get("managed") if isinstance(item.get("managed"), dict) else {}
+    status = "skipped" if item.get("skipped") is True else "archived"
+    return _result_action_payload(
+        kind=_lifecycle_scalar(item.get("kind")) or "managed_worker",
+        status=status,
+        target_name=_lifecycle_scalar(item.get("target_name"))
+        or _lifecycle_scalar(item.get("name"))
+        or _lifecycle_scalar(managed.get("name")),
+        record_id=_lifecycle_scalar(item.get("record_id"))
+        or _lifecycle_scalar(managed.get("record_id")),
+        reason=_lifecycle_scalar(item.get("reason")),
+    )
+
+
+def _result_action_payload(
+    *,
+    kind: str | bool | int | float | None,
+    status: str,
+    target_name: str | bool | int | float | None,
+    record_id: str | bool | int | float | None,
+    reason: str | bool | int | float | None,
+) -> dict[str, Any]:
+    payload = {
+        "kind": kind,
+        "target_name": target_name,
+        "record_id": record_id,
+        "status": status,
+        "reason": reason,
+    }
+    return {
+        key: value
+        for key, value in payload.items()
+        if value is not None and value is not False
+    }
+
+
+def _mapping_items(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [dict(item) for item in value if isinstance(item, dict)]
 
 
 def _append_worker_lifecycle_event(path: Path, event: dict[str, Any]) -> None:

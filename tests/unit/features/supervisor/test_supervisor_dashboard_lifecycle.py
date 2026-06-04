@@ -167,9 +167,16 @@ def test_dashboard_payload_projects_worker_lifecycle_execution_from_snapshot() -
     state_snapshot["worker_lifecycle_execution_result"] = {
         "kind": "cleanup_worktree",
         "source": "worker_lifecycle",
-        "skipped": True,
-        "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+        "skipped": False,
         "count": 1,
+        "result_actions": [
+            {
+                "kind": "delete_worktree",
+                "target_name": "source-worker",
+                "record_id": "managed-source",
+                "status": "deleted",
+            }
+        ],
     }
 
     payload = dashboard_payload(
@@ -184,8 +191,17 @@ def test_dashboard_payload_projects_worker_lifecycle_execution_from_snapshot() -
         "next_step": "cleanup_worktree",
         "source": "worker_lifecycle",
         "action_count": 1,
-        "execution_status": "skipped",
-        "execution_reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+        "execution_status": "executed",
+        "execution_reason": "",
+        "result_summary": "deleted source-worker",
+        "result_actions": [
+            {
+                "kind": "delete_worktree",
+                "target_name": "source-worker",
+                "record_id": "managed-source",
+                "status": "deleted",
+            }
+        ],
         "execute_hint": "--lifecycle-cleanup-execute",
         "execute_command": "isotope-supervisor loop --iterations 1 --lifecycle-cleanup-execute",
     }
@@ -258,9 +274,15 @@ def test_dashboard_plain_prints_worker_lifecycle_execution(capsys) -> None:
             "worker_lifecycle_execution_result": {
                 "kind": "archive_cleanup",
                 "source": "worker_lifecycle",
-                "skipped": True,
-                "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
                 "count": 1,
+                "result_actions": [
+                    {
+                        "kind": "managed_worker",
+                        "target_name": "source-worker",
+                        "record_id": "managed-source",
+                        "status": "archived",
+                    }
+                ],
             },
         },
         api=_StubDashboardApi(),
@@ -269,7 +291,8 @@ def test_dashboard_plain_prints_worker_lifecycle_execution(capsys) -> None:
     print_dashboard_plain(payload, api=_StubDashboardApi())
 
     text = capsys.readouterr().out
-    assert "execution=archive_cleanup status=skipped actions=1" in text
+    assert "execution=archive_cleanup status=executed actions=1" in text
+    assert "result=archived source-worker" in text
     assert "execute_hint=--lifecycle-cleanup-execute" in text
     assert (
         "execute_command=isotope-supervisor loop --iterations 1 "

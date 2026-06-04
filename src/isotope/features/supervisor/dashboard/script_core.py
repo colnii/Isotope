@@ -267,6 +267,7 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
       ];
       if (item.execute_hint) parts.push("hint=" + text(item.execute_hint));
       if (item.execute_command) parts.push("command=" + text(item.execute_command));
+      if (item.result_summary) parts.push("result=" + text(item.result_summary));
       if (item.execution_reason) parts.push("reason=" + text(item.execution_reason));
       return parts.join(" · ");
     }

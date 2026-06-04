@@ -868,6 +868,9 @@ def print_dashboard_worker_lifecycle_execution(execution: Any) -> None:
     command = _dashboard_text(execution.get("execute_command"), "")
     if command:
         print(f"  execute_command={command}")
+    result_summary = _dashboard_text(execution.get("result_summary"), "")
+    if result_summary:
+        print(f"  result={result_summary}")
 
 
 def dashboard_worker_lifecycle_execution_payload(
@@ -883,7 +886,7 @@ def dashboard_worker_lifecycle_execution_payload(
     execution_status = "planned"
     if result is not None:
         execution_status = "skipped" if result.get("skipped") is True else "executed"
-    return {
+    payload = {
         "status": _dashboard_text(plan.get("status"), "planned"),
         "kind": _dashboard_text(plan.get("kind"), "unknown"),
         "next_step": _dashboard_text(plan.get("next_step"), "unknown"),
@@ -893,9 +896,16 @@ def dashboard_worker_lifecycle_execution_payload(
         "execution_reason": (
             _dashboard_text(result.get("reason"), "") if result is not None else ""
         ),
+        "result_summary": _dashboard_lifecycle_result_summary(result),
+        "result_actions": _dashboard_lifecycle_result_actions(result),
         "execute_hint": _dashboard_lifecycle_execution_hint(plan, result),
         "execute_command": _dashboard_lifecycle_execution_command(plan, result),
     }
+    if not payload["result_summary"]:
+        payload.pop("result_summary")
+    if not payload["result_actions"]:
+        payload.pop("result_actions")
+    return payload
 
 
 def _dashboard_lifecycle_execution_action_count(plan: dict[str, Any]) -> int:
@@ -933,6 +943,44 @@ def _dashboard_lifecycle_execution_command(
     if not hint:
         return ""
     return shlex.join(["isotope-supervisor", "loop", "--iterations", "1", hint])
+
+
+def _dashboard_lifecycle_result_actions(
+    result: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    if not isinstance(result, dict) or not isinstance(result.get("result_actions"), list):
+        return []
+    actions: list[dict[str, Any]] = []
+    for item in result["result_actions"]:
+        if not isinstance(item, dict):
+            continue
+        action = {
+            "kind": _dashboard_text(item.get("kind"), ""),
+            "target_name": _dashboard_text(item.get("target_name"), ""),
+            "record_id": _dashboard_text(item.get("record_id"), ""),
+            "status": _dashboard_text(item.get("status"), ""),
+            "reason": _dashboard_text(item.get("reason"), ""),
+        }
+        actions.append({key: value for key, value in action.items() if value})
+    return actions
+
+
+def _dashboard_lifecycle_result_summary(result: dict[str, Any] | None) -> str:
+    actions = _dashboard_lifecycle_result_actions(result)
+    if not actions:
+        return ""
+    parts: list[str] = []
+    for action in actions[:3]:
+        status = action.get("status") or "done"
+        target = action.get("target_name") or action.get("record_id") or action.get("kind")
+        reason = action.get("reason")
+        text = f"{status} {target}".strip()
+        if reason:
+            text = f"{text} ({reason})"
+        parts.append(text)
+    if len(actions) > 3:
+        parts.append(f"+{len(actions) - 3} more")
+    return "; ".join(parts)
 
 
 def _dashboard_worker_lifecycle_timeline_summary(timeline: Any) -> str:
