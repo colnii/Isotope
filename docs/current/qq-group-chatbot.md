@@ -60,6 +60,20 @@ The generated pack contains `config.json`, `state/`, `logs/`, `health.sh`,
 `dry-run.sh`, `send-run.sh`, `pause.sh`, `resume.sh`, `export-log.sh`, and a
 `README.md` with the first-run order.
 
+Generate editable role and sticker files before the first real session:
+
+```bash
+isotope-social qq init-profile --output-dir .isotope/qq-profile \
+  --group <controlled_group_id> --name 群聊工程猫 --json
+isotope-social qq apply-profile --pack-dir .isotope/qq-beta \
+  --profile-dir .isotope/qq-profile --json
+```
+
+The profile pack writes `role-card.json`, `sticker-library.json`, and
+`README.md`. Edit `role-card.json` for identity, voice, group behavior, memory
+policy, and tool style. Edit `sticker-library.json` for sticker IDs, media refs,
+tags, and meanings.
+
 Before connecting it to a real group session, check the pack itself:
 
 ```bash
@@ -107,6 +121,10 @@ isotope-social qq live-run --config-json config.json --state-root .isotope/qq \
 For a generated beta pack, use:
 
 ```bash
+isotope-social qq init-profile --output-dir .isotope/qq-profile \
+  --group <controlled_group_id> --name 群聊工程猫 --json
+isotope-social qq apply-profile --pack-dir .isotope/qq-beta \
+  --profile-dir .isotope/qq-profile --json
 isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
 cd .isotope/qq-beta
 ./health.sh

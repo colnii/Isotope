@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from .beta_pack import SCRIPT_NAMES
+from .character_card import CharacterCard
+from .stickers import StickerLibrary
 
 
 @dataclass(frozen=True)
@@ -53,7 +55,7 @@ def check_qq_beta_pack(config: QQBetaCheckConfig) -> QQBetaCheckResult:
 
     checks = [
         required_check,
-        _check_config_payload(config_payload),
+        _check_config_payload(config_payload, base_dir=pack_dir),
         _check_shell_syntax(pack_dir),
         _check_operator_scripts(pack_dir),
         _check_send_guard(pack_dir),
@@ -87,10 +89,8 @@ def _load_pack_config(path: Path) -> dict[str, Any]:
     return payload
 
 
-def _check_config_payload(payload: dict[str, Any]) -> dict[str, Any]:
+def _check_config_payload(payload: dict[str, Any], *, base_dir: Path) -> dict[str, Any]:
     group_policy = _dict_value(payload, "group_policy")
-    role_card = _dict_value(payload, "role_card")
-    sticker_library = _dict_value(payload, "sticker_library")
     allowed_groups = group_policy.get("allowed_groups")
     operator_user_ids = group_policy.get("operator_user_ids")
     errors: list[str] = []
@@ -100,10 +100,26 @@ def _check_config_payload(payload: dict[str, Any]) -> dict[str, Any]:
         errors.append("group_policy.allowed_groups")
     if not isinstance(operator_user_ids, list) or not operator_user_ids:
         errors.append("group_policy.operator_user_ids")
-    if not isinstance(role_card.get("schema_version"), str):
-        errors.append("role_card.schema_version")
-    if not isinstance(sticker_library.get("entries"), list):
-        errors.append("sticker_library.entries")
+    try:
+        role_card = _asset_payload(
+            payload,
+            inline_key="role_card",
+            path_key="role_card_path",
+            base_dir=base_dir,
+        )
+        CharacterCard.from_dict(role_card)
+    except (FileNotFoundError, ValueError, json.JSONDecodeError) as exc:
+        errors.append(f"role_card:{exc}")
+    try:
+        sticker_library = _asset_payload(
+            payload,
+            inline_key="sticker_library",
+            path_key="sticker_library_path",
+            base_dir=base_dir,
+        )
+        StickerLibrary.from_dict(sticker_library)
+    except (FileNotFoundError, ValueError, json.JSONDecodeError) as exc:
+        errors.append(f"sticker_library:{exc}")
     return {"name": "config_json", "ok": not errors, "errors": errors}
 
 
@@ -184,3 +200,21 @@ def _dict_value(payload: dict[str, Any], key: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"{key} must be a JSON object")
     return value
+
+
+def _asset_payload(
+    payload: dict[str, Any],
+    *,
+    inline_key: str,
+    path_key: str,
+    base_dir: Path,
+) -> dict[str, Any]:
+    if inline_key in payload:
+        return _dict_value(payload, inline_key)
+    path_value = payload.get(path_key)
+    if not isinstance(path_value, str) or not path_value.strip():
+        raise ValueError(f"{inline_key} or {path_key} is required")
+    path = Path(path_value)
+    if not path.is_absolute():
+        path = base_dir / path
+    return _load_pack_config(path)

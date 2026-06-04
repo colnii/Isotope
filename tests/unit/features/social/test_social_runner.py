@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import tomllib
 
-from isotope.features.social import runner
+from isotope.features.social import CharacterCard, StickerLibrary, runner
 from isotope.features.social.runner import main
 from tests.unit.features.social.test_character_card import _card_dict
 
@@ -622,6 +622,144 @@ def test_social_runner_qq_beta_check_exercises_operator_pack(
     state = _read_json(output_dir / "state" / "social-qq-state.json")
     assert state["paused_groups"] == []
     assert _read_json(output_dir / "logs" / "qq-99999.json") == {"entries": []}
+
+
+def test_social_runner_qq_init_profile_writes_editable_role_and_stickers(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    profile_dir = tmp_path / "qq-profile"
+
+    code = main(
+        [
+            "qq",
+            "init-profile",
+            "--output-dir",
+            str(profile_dir),
+            "--group",
+            "99999",
+            "--name",
+            "群聊工程猫",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "init-profile"
+    assert payload["output_dir"] == str(profile_dir)
+    assert payload["role_card_path"] == str(profile_dir / "role-card.json")
+    assert payload["sticker_library_path"] == str(profile_dir / "sticker-library.json")
+    assert payload["readme_path"] == str(profile_dir / "README.md")
+
+    role_payload = _read_json(profile_dir / "role-card.json")
+    role = CharacterCard.from_dict(role_payload)
+    assert role.identity.name == "群聊工程猫"
+    assert role.stickers.enabled is True
+    assert role.stickers.allow_sticker_only_reply is True
+    assert role.group_overrides["99999"]["social_behavior"]["talkativeness"] == 0.4
+
+    stickers = StickerLibrary.from_dict(_read_json(profile_dir / "sticker-library.json"))
+    assert [entry.sticker_id for entry in stickers.entries] == [
+        "ack-ok",
+        "ship-it",
+        "need-context",
+        "calm-down",
+    ]
+    assert stickers.entries[0].allowed_groups == ("99999",)
+    assert "apply-profile" in (profile_dir / "README.md").read_text(encoding="utf-8")
+
+
+def test_social_runner_qq_apply_profile_updates_beta_config_and_beta_check(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    beta_dir = tmp_path / "qq-beta"
+    profile_dir = tmp_path / "qq-profile"
+
+    assert main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(beta_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert main(
+        [
+            "qq",
+            "init-profile",
+            "--output-dir",
+            str(profile_dir),
+            "--group",
+            "99999",
+            "--name",
+            "群聊工程猫",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    code = main(
+        [
+            "qq",
+            "apply-profile",
+            "--pack-dir",
+            str(beta_dir),
+            "--profile-dir",
+            str(profile_dir),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "apply-profile"
+    assert payload["config_path"] == str(beta_dir / "config.json")
+    assert payload["backup_path"] == str(beta_dir / "config.before-profile.json")
+    assert payload["role_card_path"] == str(profile_dir / "role-card.json")
+    assert payload["sticker_library_path"] == str(profile_dir / "sticker-library.json")
+
+    config = _read_json(beta_dir / "config.json")
+    assert config["role_card_path"] == "../qq-profile/role-card.json"
+    assert config["sticker_library_path"] == "../qq-profile/sticker-library.json"
+    assert "role_card" not in config
+    assert "sticker_library" not in config
+    assert (beta_dir / "config.before-profile.json").exists()
+
+    assert main(
+        ["qq", "inspect", "role", "--config-json", str(beta_dir / "config.json"), "--json"]
+    ) == 0
+    role_payload = json.loads(capsys.readouterr().out)
+    assert role_payload["role"]["identity"]["name"] == "群聊工程猫"
+    assert main(
+        [
+            "qq",
+            "inspect",
+            "stickers",
+            "--config-json",
+            str(beta_dir / "config.json"),
+            "--json",
+        ]
+    ) == 0
+    sticker_payload = json.loads(capsys.readouterr().out)
+    assert sticker_payload["stickers"]["entries"][0]["sticker_id"] == "ack-ok"
+
+    assert main(["qq", "beta-check", "--pack-dir", str(beta_dir), "--json"]) == 0
+    check_payload = json.loads(capsys.readouterr().out)
+    assert check_payload["ok"] is True
 
 
 def test_social_runner_entry_point_is_registered() -> None:

@@ -15,6 +15,12 @@ from .character_card import CharacterCard
 from .config import SocialGroupPolicy, SocialOperationsConfig
 from .lorebook import Lorebook, LorebookEntry
 from .operations import SocialOperationsController
+from .profile_pack import (
+    QQProfileApplyConfig,
+    QQProfilePackConfig,
+    apply_qq_profile_pack,
+    create_qq_profile_pack,
+)
 from .runtime import SocialRuntime, SocialRuntimeConfig
 from .stickers import StickerLibrary
 
@@ -92,6 +98,28 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     init_beta.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    init_profile = qq_subparsers.add_parser(
+        "init-profile",
+        help="Create editable QQ role-card and sticker-library files.",
+    )
+    init_profile.add_argument("--output-dir", required=True, help="Profile directory to create.")
+    init_profile.add_argument("--group", required=True, help="Controlled QQ group id.")
+    init_profile.add_argument("--name", required=True, help="Role name for the character card.")
+    init_profile.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite files in an existing profile directory.",
+    )
+    init_profile.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    apply_profile = qq_subparsers.add_parser(
+        "apply-profile",
+        help="Apply editable QQ role-card and sticker-library files to a beta pack.",
+    )
+    apply_profile.add_argument("--pack-dir", required=True, help="Generated beta pack directory.")
+    apply_profile.add_argument("--profile-dir", required=True, help="Profile pack directory.")
+    apply_profile.add_argument("--json", action="store_true", help="Print JSON output.")
+
     beta_check = qq_subparsers.add_parser(
         "beta-check",
         help="Verify a generated QQ beta pack before operator use.",
@@ -166,6 +194,10 @@ def _handle_qq(args: argparse.Namespace) -> dict[str, Any]:
         return _handle_live_run(args)
     if args.command == "init-beta":
         return _handle_init_beta(args)
+    if args.command == "init-profile":
+        return _handle_init_profile(args)
+    if args.command == "apply-profile":
+        return _handle_apply_profile(args)
     if args.command == "beta-check":
         return _handle_beta_check(args)
     if args.command in {"pause", "resume"}:
@@ -260,6 +292,32 @@ def _handle_init_beta(args: argparse.Namespace) -> dict[str, Any]:
     )
     payload = result.to_public_dict()
     payload.update({"status": "ok", "command": "init-beta"})
+    return payload
+
+
+def _handle_init_profile(args: argparse.Namespace) -> dict[str, Any]:
+    result = create_qq_profile_pack(
+        QQProfilePackConfig(
+            output_dir=Path(args.output_dir),
+            group_id=args.group,
+            role_name=args.name,
+            force=bool(args.force),
+        )
+    )
+    payload = result.to_public_dict()
+    payload.update({"status": "ok", "command": "init-profile"})
+    return payload
+
+
+def _handle_apply_profile(args: argparse.Namespace) -> dict[str, Any]:
+    result = apply_qq_profile_pack(
+        QQProfileApplyConfig(
+            pack_dir=Path(args.pack_dir),
+            profile_dir=Path(args.profile_dir),
+        )
+    )
+    payload = result.to_public_dict()
+    payload.update({"status": "ok", "command": "apply-profile"})
     return payload
 
 

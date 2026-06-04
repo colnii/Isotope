@@ -39,6 +39,20 @@ The pack writes `health.sh`, `dry-run.sh`, `send-run.sh`, `pause.sh`,
 `resume.sh`, and `export-log.sh`. Run `send-run.sh` only with
 `ISOTOPE_QQ_ENABLE_SEND=1`.
 
+Generate an editable profile pack and apply it to the beta pack before checking
+or running it:
+
+```bash
+isotope-social qq init-profile --output-dir .isotope/qq-profile \
+  --group <group_id> --name 群聊工程猫 --json
+isotope-social qq apply-profile --pack-dir .isotope/qq-beta \
+  --profile-dir .isotope/qq-profile --json
+```
+
+The profile directory contains `role-card.json` and `sticker-library.json`.
+`apply-profile` updates `.isotope/qq-beta/config.json` to read those files and
+writes `.isotope/qq-beta/config.before-profile.json` as the previous config.
+
 Before the first live session, run the pack check:
 
 ```bash
@@ -64,6 +78,10 @@ ops.health_check(adapter_states=(adapter.connection_state().to_public_dict(),))
 Current CLI surface:
 
 ```bash
+isotope-social qq init-profile --output-dir .isotope/qq-profile \
+  --group <group_id> --name 群聊工程猫 --json
+isotope-social qq apply-profile --pack-dir .isotope/qq-beta \
+  --profile-dir .isotope/qq-profile --json
 isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
 isotope-social qq inspect role --config-json config.json
 isotope-social qq inspect lorebook --config-json config.json
@@ -163,6 +181,8 @@ Run this checklist for each controlled beta day:
 
 - Confirm the bot is in the intended group only.
 - If starting from a fresh directory, generate the beta pack with `qq init-beta`.
+- Generate or update the editable profile with `qq init-profile`.
+- Apply the profile with `qq apply-profile`.
 - Confirm `allowed_groups` and `operator_user_ids`.
 - Run `isotope-social qq beta-check --pack-dir .isotope/qq-beta --json`.
 - Run `./health.sh` before consuming messages.
