@@ -10,7 +10,14 @@ MODEL_FACING_FILES = [
     "src/isotope/agents/loop/context.py",
     "src/isotope/agents/loop/control.py",
     "src/isotope/capabilities/catalog.py",
+    "src/isotope/capabilities/code_access.py",
+    "src/isotope/capabilities/extensions.py",
+    "src/isotope/capabilities/memory.py",
     "src/isotope/capabilities/runner.py",
+    "src/isotope/capabilities/screen.py",
+    "src/isotope/capabilities/supervisor.py",
+    "src/isotope/capabilities/vcs.py",
+    "src/isotope/capabilities/workspace_files.py",
     "src/isotope/demo/agent_loop/matrix_scenarios.py",
     "src/isotope/demo/demo_artifact_review_scenarios.py",
     "src/isotope/demo/demo_planner_helpers.py",
@@ -43,6 +50,11 @@ FORBIDDEN_PATTERNS = [
     r"\bfailed" + "_closed" + r"\b",
     r"\bnot[- ]enabled\b",
     r"\blow[-_ ]sensitive\b",
+    r"\bdeterministic" + "_readonly" + r"\b",
+    r"\bread" + "_only" + r"\b",
+    r"\b" + "readonly" + r"\b",
+    r"\bread" + "-only" + r"\b",
+    r"\b" + "bounded" + r"\b",
 ]
 
 

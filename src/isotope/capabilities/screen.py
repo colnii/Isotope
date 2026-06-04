@@ -16,7 +16,7 @@ SCREEN_REPORT_CAPABILITY = "screen.report"
 SCREEN_CAPABILITIES = {SCREEN_OBSERVE_CAPABILITY, SCREEN_REPORT_CAPABILITY}
 
 
-def is_screen_readonly_capability(capability_id: str) -> bool:
+def is_screen_projection_capability(capability_id: str) -> bool:
     return capability_id == SCREEN_REPORT_CAPABILITY
 
 
@@ -43,7 +43,7 @@ def validate_screen_inputs(
     return dict(inputs or {})
 
 
-def validate_screen_readonly_inputs(
+def validate_screen_projection_inputs(
     *,
     capability_id: str,
     inputs: Mapping[str, Any] | None,
@@ -123,7 +123,7 @@ def run_screen_report(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         "kind": "capability_run_result",
         "capability_id": SCREEN_REPORT_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "screen_report": payload,
     }
 

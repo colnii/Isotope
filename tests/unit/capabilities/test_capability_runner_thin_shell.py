@@ -158,7 +158,7 @@ def test_runner_executes_skills_search_with_explicit_roots(tmp_path):
     assert "body" not in result["skills"][0]
 
 
-def test_runner_executes_skills_describe_with_bounded_body(tmp_path):
+def test_runner_executes_skills_describe_with_scoped_body(tmp_path):
     root = tmp_path / "skills"
     skill_dir = root / "docx"
     skill_dir.mkdir(parents=True)
@@ -277,7 +277,7 @@ def test_runner_discovers_supervisor_project_status_from_default_catalog():
     assert description["input_contract"]["required"] == ["state_root"]
     assert description["input_contract"]["properties"]["state_root"]["type"] == "string"
     assert "project_state" in description["output_contract"]["fields"]
-    assert "read_only_state_projection" in description["safety_boundaries"]
+    assert "public_state_projection" in description["safety_boundaries"]
 
 
 def test_project_status_capability_returns_public_state_projection(tmp_path):
@@ -733,7 +733,7 @@ def test_runner_discovers_supervisor_worker_review_from_default_catalog():
     assert "no_merge_or_cleanup" in description["safety_boundaries"]
 
 
-def test_memory_recall_capability_is_registered_as_readonly_product_candidate():
+def test_memory_recall_capability_is_registered_as_inspection_product_candidate():
     runner = _runner()
 
     assert "memory.recall" in _ids(runner.list_capabilities())
@@ -1676,7 +1676,7 @@ def test_runner_reports_workspace_changed_files_against_source(tmp_path):
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "workspace.changed_files"
     assert result["status"] == "completed"
-    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["runner_kind"] == "deterministic_projection"
     assert changed["status"] == "changed"
     assert changed["workspace_id"] == "workspace_native_coding_slice_9"
     assert changed["changed_file_count"] == 3
@@ -1758,7 +1758,7 @@ def test_workspace_changed_files_plan_stops_when_required_inputs_are_missing():
 
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["root", "workspace_id"]
     assert plan["scenario"] is None
 
@@ -1936,7 +1936,7 @@ def test_runner_reads_code_file_excerpt_without_side_effects(tmp_path):
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "code.read"
     assert result["status"] == "completed"
-    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["runner_kind"] == "deterministic_projection"
     assert code_read["status"] == "readable"
     assert code_read["path"] == "src/app.py"
     assert code_read["line_count"] == 5
@@ -1977,7 +1977,7 @@ def test_runner_searches_code_with_limited_line_excerpts(tmp_path):
 
     code_search = result["code_search"]
     assert result["capability_id"] == "code.search"
-    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["runner_kind"] == "deterministic_projection"
     assert code_search["status"] == "matched"
     assert code_search["query"] == "needle"
     assert code_search["match_count"] == 2
@@ -2045,7 +2045,7 @@ def test_code_read_plan_stops_when_required_inputs_are_missing():
 
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["root", "path"]
     assert plan["scenario"] is None
 
@@ -2299,7 +2299,7 @@ def test_runner_reports_git_status_summary_without_artifact_write(tmp_path):
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "vcs.status"
     assert result["status"] == "completed"
-    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["runner_kind"] == "deterministic_projection"
     assert status["status"] == "dirty"
     assert status["branch"] in {"master", "main"}
     assert status["changed_files"] == [
@@ -2326,7 +2326,7 @@ def test_runner_reports_git_diff_result_and_changed_files(tmp_path):
 
     diff = result["vcs_diff"]
     assert result["capability_id"] == "vcs.diff"
-    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["runner_kind"] == "deterministic_projection"
     assert diff["status"] == "changed"
     assert diff["changed_files"] == ["app.py"]
     assert diff["changed_file_count"] == 1
@@ -2358,7 +2358,7 @@ def test_vcs_status_plan_stops_when_required_inputs_are_missing():
 
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["root"]
     assert plan["scenario"] is None
 
@@ -2490,7 +2490,7 @@ def test_request_context_plan_stops_when_required_inputs_are_missing():
 
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["state_root", "query"]
     assert plan["scenario"] is None
 
@@ -2500,7 +2500,7 @@ def test_worker_review_plan_stops_when_required_inputs_are_missing():
 
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["state_root"]
     assert plan["scenario"] is None
 
@@ -2510,7 +2510,7 @@ def test_integration_review_plan_stops_when_required_inputs_are_missing():
 
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["state_root"]
     assert plan["scenario"] is None
 
@@ -2523,7 +2523,7 @@ def test_memory_query_plan_stops_when_required_inputs_are_missing():
 
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["run_id"]
     assert plan["scenario"] is None
 
@@ -2540,7 +2540,7 @@ def test_memory_promotion_preview_plan_stops_when_required_inputs_are_missing():
 
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["candidate"]
     assert plan["scenario"] is None
 
@@ -2553,7 +2553,7 @@ def test_screen_report_plan_stops_when_required_inputs_are_missing():
 
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["run_id"]
     assert plan["scenario"] is None
 
@@ -2860,7 +2860,7 @@ def test_runner_run_rejects_input_with_wrong_contract_type_before_allowlist(tmp_
     assert not list(Path(tmp_path).rglob("*"))
 
 
-def test_request_context_capability_runs_existing_readonly_context_search(tmp_path):
+def test_request_context_capability_runs_existing_inspection_context_search(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "README.md").write_text(
@@ -2882,7 +2882,7 @@ def test_request_context_capability_runs_existing_readonly_context_search(tmp_pa
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "supervisor.request_context"
     assert result["status"] == "completed"
-    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["runner_kind"] == "deterministic_projection"
     assert result["context_result"]["backend"] == "bm25"
     assert result["context_result"]["query"] == "request_context capability evidence"
     assert isinstance(result["context_result"]["created_at"], str)
@@ -2934,7 +2934,7 @@ def test_worker_review_capability_runs_existing_lightweight_review(tmp_path):
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "supervisor.worker_review"
     assert result["status"] == "completed"
-    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["runner_kind"] == "deterministic_projection"
     review = result["worker_review"]
     assert review["status"] == "ok"
     assert review["summary"]["total"] == 1
@@ -2982,7 +2982,7 @@ def test_worker_review_capability_runs_existing_lightweight_review(tmp_path):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
-def test_integration_review_capability_runs_existing_readonly_review(monkeypatch):
+def test_integration_review_capability_runs_existing_inspection_review(monkeypatch):
     supervisor_module = importlib.import_module("isotope.capabilities.supervisor")
     calls = []
 
@@ -3086,7 +3086,7 @@ def test_integration_review_capability_runs_existing_readonly_review(monkeypatch
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "supervisor.integration_review"
     assert result["status"] == "completed"
-    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["runner_kind"] == "deterministic_projection"
     review = result["integration_review"]
     assert review["status"] == "ok"
     assert review["summary"]["ready_to_integrate"] == 1
@@ -3170,7 +3170,7 @@ def test_memory_query_capability_runs_existing_public_metadata_query(tmp_path):
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "memory.query"
     assert result["status"] == "completed"
-    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["runner_kind"] == "deterministic_projection"
     memory_query = result["memory_query"]
     assert memory_query["status"] == "ok"
     assert memory_query["content_policy"] == "memory_record_refs_expandable"
@@ -3247,7 +3247,7 @@ def test_memory_recall_capability_runs_state_root_preview_query(tmp_path):
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "memory.recall"
     assert result["status"] == "completed"
-    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["runner_kind"] == "deterministic_projection"
     recall = result["memory_recall"]
     assert recall["status"] == "ok"
     assert recall["content_policy"] == "memory_record_refs_expandable"
@@ -3297,7 +3297,7 @@ def test_memory_promotion_preview_capability_returns_public_metadata_proposal():
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "memory.promotion.preview"
     assert result["status"] == "completed"
-    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["runner_kind"] == "deterministic_projection"
     preview = result["memory_promotion_preview"]
     assert preview == {
         "action_type": "write_memory",
@@ -3355,7 +3355,7 @@ def test_screen_report_capability_runs_existing_public_metadata_report(tmp_path)
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "screen.report"
     assert result["status"] == "completed"
-    assert result["runner_kind"] == "deterministic_readonly"
+    assert result["runner_kind"] == "deterministic_projection"
     screen_report = result["screen_report"]
     assert screen_report["status"] == "ok"
     assert screen_report["summary"]["control_status"] == "planned"

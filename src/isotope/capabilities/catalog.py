@@ -521,7 +521,7 @@ class CapabilityCatalog:
                     title="Native Coding Task Run",
                     description=(
                         "Run a native coding task through the existing agent "
-                        "loop, bounded code context capabilities, isolated "
+                        "loop, scoped code context capabilities, isolated "
                         "execution, and artifact evidence."
                     ),
                     maturity="v0.3",
@@ -905,7 +905,7 @@ class CapabilityCatalog:
                         "changed-files",
                         "diff",
                         "native-coding",
-                        "readonly",
+                        "inspection",
                     ),
                     input_contract={
                         "type": "object",
@@ -1016,7 +1016,7 @@ class CapabilityCatalog:
                         "read",
                         "native-coding",
                         "workspace",
-                        "readonly",
+                        "inspection",
                     ),
                     input_contract={
                         "type": "object",
@@ -1078,7 +1078,7 @@ class CapabilityCatalog:
                         "search",
                         "native-coding",
                         "workspace",
-                        "readonly",
+                        "inspection",
                     ),
                     input_contract={
                         "type": "object",
@@ -1272,7 +1272,7 @@ class CapabilityCatalog:
                     title="VCS Status",
                     description=(
                         "Read git branch and porcelain status through fixed "
-                        "read-only subcommands."
+                        "inspection subcommands."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -1281,7 +1281,7 @@ class CapabilityCatalog:
                         "git",
                         "status",
                         "native-coding",
-                        "readonly",
+                        "inspection",
                     ),
                     input_contract={
                         "type": "object",
@@ -1328,7 +1328,7 @@ class CapabilityCatalog:
                     title="VCS Diff",
                     description=(
                         "Read git diff stat and changed-file names through "
-                        "fixed read-only subcommands."
+                        "fixed inspection subcommands."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -1337,7 +1337,7 @@ class CapabilityCatalog:
                         "git",
                         "diff",
                         "native-coding",
-                        "readonly",
+                        "inspection",
                     ),
                     input_contract={
                         "type": "object",
@@ -1991,7 +1991,7 @@ class CapabilityCatalog:
                         "fields": ["status", "project_state"],
                     },
                     safety_boundaries=(
-                        "read_only_state_projection",
+                        "public_state_projection",
                         "desktop_snapshot_projection",
                         "no_raw_transcript_return",
                         "public_result_metadata",
@@ -2078,7 +2078,7 @@ class CapabilityCatalog:
                     title="Supervisor Integration Review",
                     description=(
                         "Run existing integration-review collection in lightweight "
-                        "read-only mode for Supervisor merge readiness decisions."
+                        "inspection mode for Supervisor merge readiness decisions."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -2105,7 +2105,7 @@ class CapabilityCatalog:
                             },
                             "include_unfinished": {
                                 "type": "boolean",
-                                "description": "Include unfinished workers in the read-only review.",
+                                "description": "Include unfinished workers in the inspection review.",
                                 "default": False,
                             },
                             "include_missing_worktrees": {
@@ -2273,7 +2273,7 @@ class CapabilityCatalog:
                     title="Supervisor Worker Review",
                     description=(
                         "Run existing worker-review collection in lightweight "
-                        "read-only mode for Supervisor worker decisions."
+                        "inspection mode for Supervisor worker decisions."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",

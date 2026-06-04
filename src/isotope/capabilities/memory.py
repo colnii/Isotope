@@ -19,7 +19,7 @@ VALID_MEMORY_QUERY_SCOPES = frozenset({"thread", "run", "session"})
 VALID_MEMORY_PROMOTION_SCOPES = frozenset({"thread", "run", "session"})
 
 
-def is_memory_readonly_capability(capability_id: str) -> bool:
+def is_memory_projection_capability(capability_id: str) -> bool:
     return capability_id in {
         MEMORY_QUERY_CAPABILITY,
         MEMORY_RECALL_CAPABILITY,
@@ -27,7 +27,7 @@ def is_memory_readonly_capability(capability_id: str) -> bool:
     }
 
 
-def validate_memory_readonly_inputs(
+def validate_memory_projection_inputs(
     *,
     capability_id: str,
     inputs: Mapping[str, Any] | None,
@@ -84,7 +84,7 @@ def run_memory_query(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         "kind": "capability_run_result",
         "capability_id": MEMORY_QUERY_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "memory_query": payload,
     }
 
@@ -110,7 +110,7 @@ def run_memory_recall(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         "kind": "capability_run_result",
         "capability_id": MEMORY_RECALL_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "memory_recall": payload,
     }
 
@@ -139,7 +139,7 @@ def run_memory_promotion_preview(
         "kind": "capability_run_result",
         "capability_id": MEMORY_PROMOTION_PREVIEW_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "memory_promotion_preview": _memory_promotion_preview(proposal),
     }
 

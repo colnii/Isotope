@@ -119,8 +119,8 @@ def run_coding_task_apply_reviewed_diff(
                 changed_files=changed_files,
                 reason="missing_source_digest",
             )
-        source_path = _bounded_path(source_root, path)
-        workspace_path = _bounded_path(workspace_root, path)
+        source_path = _scoped_path(source_root, path)
+        workspace_path = _scoped_path(workspace_root, path)
         if not workspace_path.exists() or not workspace_path.is_file() or workspace_path.is_symlink():
             return _blocked(
                 input_mapping=input_mapping,
@@ -202,7 +202,7 @@ def reviewed_apply_source_digests(
     result: dict[str, str | None] = {}
     for item in changed_files:
         path = _safe_relative_path(item.get("path"))
-        source_path = _bounded_path(source_root, path)
+        source_path = _scoped_path(source_root, path)
         result[path] = _file_digest(source_path) if source_path.exists() else None
     return result
 
@@ -273,7 +273,7 @@ def _materialized_workspace_path(root: str, workspace_id: str) -> Path:
     return candidate
 
 
-def _bounded_path(root: Path, relative_path: str) -> Path:
+def _scoped_path(root: Path, relative_path: str) -> Path:
     root_resolved = root.resolve(strict=False)
     candidate = (root / relative_path).resolve(strict=False)
     if not candidate.is_relative_to(root_resolved):

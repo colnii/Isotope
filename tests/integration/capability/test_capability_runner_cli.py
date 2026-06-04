@@ -243,7 +243,7 @@ def test_capability_runner_cli_plans_request_context_missing_inputs_as_json():
     assert plan["capability_id"] == "supervisor.request_context"
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["state_root", "query"]
     _assert_public_metadata(payload)
 
@@ -258,7 +258,7 @@ def test_capability_runner_cli_plans_worker_review_missing_inputs_as_json():
     assert plan["capability_id"] == "supervisor.worker_review"
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["state_root"]
     _assert_public_metadata(payload)
 
@@ -273,7 +273,7 @@ def test_capability_runner_cli_plans_integration_review_missing_inputs_as_json()
     assert plan["capability_id"] == "supervisor.integration_review"
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["state_root"]
     _assert_public_metadata(payload)
 
@@ -309,7 +309,7 @@ def test_capability_runner_cli_plans_memory_query_missing_inputs_as_json():
     assert plan["capability_id"] == "memory.query"
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["run_id"]
     _assert_public_metadata(payload)
 
@@ -330,7 +330,7 @@ def test_capability_runner_cli_plans_screen_report_missing_inputs_as_json():
     assert plan["capability_id"] == "screen.report"
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_readonly"
+    assert plan["runner_kind"] == "deterministic_projection"
     assert plan["missing_inputs"] == ["run_id"]
     _assert_public_metadata(payload)
 
@@ -494,7 +494,7 @@ def test_capability_runner_cli_runs_request_context_with_input_json(tmp_path):
     run = payload["run"]
     assert run["capability_id"] == "supervisor.request_context"
     assert run["status"] == "completed"
-    assert run["runner_kind"] == "deterministic_readonly"
+    assert run["runner_kind"] == "deterministic_projection"
     assert run["context_result"]["backend"] == "bm25"
     assert isinstance(run["context_result"]["created_at"], str)
     assert run["context_result"]["created_at"]
@@ -521,7 +521,7 @@ def test_capability_runner_cli_runs_worker_review_with_input_json(tmp_path):
     run = payload["run"]
     assert run["capability_id"] == "supervisor.worker_review"
     assert run["status"] == "completed"
-    assert run["runner_kind"] == "deterministic_readonly"
+    assert run["runner_kind"] == "deterministic_projection"
     assert run["worker_review"]["status"] == "ok"
     assert run["worker_review"]["summary"]["total"] == 0
     assert run["worker_review"]["workers"] == []
@@ -546,7 +546,7 @@ def test_capability_runner_cli_runs_integration_review_with_input_json(tmp_path)
     run = payload["run"]
     assert run["capability_id"] == "supervisor.integration_review"
     assert run["status"] == "completed"
-    assert run["runner_kind"] == "deterministic_readonly"
+    assert run["runner_kind"] == "deterministic_projection"
     review = run["integration_review"]
     assert review["status"] == "ok"
     assert review["summary"]["total"] == 0
@@ -597,7 +597,7 @@ def test_capability_runner_cli_runs_memory_query_with_input_json(tmp_path):
     run = payload["run"]
     assert run["capability_id"] == "memory.query"
     assert run["status"] == "completed"
-    assert run["runner_kind"] == "deterministic_readonly"
+    assert run["runner_kind"] == "deterministic_projection"
     assert run["memory_query"]["content_policy"] == "memory_record_refs_expandable"
     assert run["memory_query"]["results"][0]["record_id"] == "mem_cli"
     assert "raw memory content" not in result.stdout
@@ -637,7 +637,7 @@ def test_capability_runner_cli_runs_memory_promotion_preview_with_input_json():
     run = payload["run"]
     assert run["capability_id"] == "memory.promotion.preview"
     assert run["status"] == "completed"
-    assert run["runner_kind"] == "deterministic_readonly"
+    assert run["runner_kind"] == "deterministic_projection"
     preview = run["memory_promotion_preview"]
     assert preview["action_type"] == "write_memory"
     assert preview["content_policy"] == "memory_record_refs_expandable"
@@ -684,7 +684,7 @@ def test_capability_runner_cli_runs_screen_report_with_input_json(tmp_path):
     run = payload["run"]
     assert run["capability_id"] == "screen.report"
     assert run["status"] == "completed"
-    assert run["runner_kind"] == "deterministic_readonly"
+    assert run["runner_kind"] == "deterministic_projection"
     assert run["screen_report"]["summary"]["control_status"] == "planned"
     assert run["screen_report"]["summary"]["control_actions"][0]["action_types"] == [
         "restore_window"

@@ -1,4 +1,4 @@
-"""Read-only VCS capabilities for native coding."""
+"""Inspection VCS capabilities for native coding."""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def run_vcs_status(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         "kind": "capability_run_result",
         "capability_id": VCS_STATUS_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "vcs_status": {
             "status": "clean" if not changed_files else "dirty",
             "branch": parsed["branch"],
@@ -96,7 +96,7 @@ def run_vcs_diff(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         "kind": "capability_run_result",
         "capability_id": VCS_DIFF_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "vcs_diff": {
             "status": "clean" if not changed_files else "changed",
             "changed_file_count": len(changed_files),

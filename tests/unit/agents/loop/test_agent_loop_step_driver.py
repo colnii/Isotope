@@ -198,7 +198,7 @@ def test_agent_loop_step_driver_passes_inputs_to_capability_runner(tmp_path):
     capability_run = result["action_result"]["capability_run"]
     assert capability_run["capability_id"] == "supervisor.request_context"
     assert capability_run["status"] == "completed"
-    assert capability_run["runner_kind"] == "deterministic_readonly"
+    assert capability_run["runner_kind"] == "deterministic_projection"
     assert capability_run["context_result"]["query"] == "request_context project context"
     assert capability_run["context_result"]["item_count"] >= 1
     assert result["action_result"]["artifact_ref"]["ref_type"] == "artifact"

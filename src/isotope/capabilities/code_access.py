@@ -62,7 +62,7 @@ def run_code_read(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         "kind": "capability_run_result",
         "capability_id": CODE_READ_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "code_read": read_result,
     }
 
@@ -110,7 +110,7 @@ def run_code_search(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         "kind": "capability_run_result",
         "capability_id": CODE_SEARCH_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "code_search": {
             "status": status,
             "query": query,

@@ -65,11 +65,11 @@ from .memory import (
     MEMORY_PROMOTION_PREVIEW_CAPABILITY,
     MEMORY_QUERY_CAPABILITY,
     MEMORY_RECALL_CAPABILITY,
-    is_memory_readonly_capability,
+    is_memory_projection_capability,
     run_memory_promotion_preview,
     run_memory_query,
     run_memory_recall,
-    validate_memory_readonly_inputs,
+    validate_memory_projection_inputs,
 )
 from .research import (
     RESEARCH_PROMOTE_CAPABILITY,
@@ -83,7 +83,7 @@ from .screen import (
     SCREEN_OBSERVE_CAPABILITY,
     SCREEN_REPORT_CAPABILITY,
     is_screen_capability,
-    is_screen_readonly_capability,
+    is_screen_projection_capability,
     run_screen_observe,
     run_screen_report,
     validate_screen_inputs,
@@ -100,14 +100,14 @@ from .supervisor import (
     SUPERVISOR_PROJECT_STATUS_CAPABILITY,
     SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
     SUPERVISOR_WORKER_REVIEW_CAPABILITY,
-    is_supervisor_readonly_capability,
+    is_supervisor_projection_capability,
     normalize_supervisor_state_root_inputs,
     run_supervisor_codex_operation,
     run_supervisor_integration_review,
     run_supervisor_project_status,
     run_supervisor_request_context,
     run_supervisor_worker_review,
-    validate_supervisor_readonly_inputs,
+    validate_supervisor_projection_inputs,
 )
 from .supervisor_goal_plan import (
     SUPERVISOR_GOAL_PLAN_CAPABILITY,
@@ -257,7 +257,7 @@ class CapabilityRunner:
 
         input_mapping = _input_mapping(inputs)
         if (
-            is_supervisor_readonly_capability(capability_id)
+            is_supervisor_projection_capability(capability_id)
             or is_supervisor_goal_plan_capability(capability_id)
         ):
             input_mapping = normalize_supervisor_state_root_inputs(input_mapping)
@@ -265,7 +265,7 @@ class CapabilityRunner:
         scenario = _CAPABILITY_SCENARIOS.get(capability_id)
         required_inputs = _required_inputs(capability)
         missing_inputs = _missing_inputs(required_inputs, input_mapping)
-        validate_memory_readonly_inputs(
+        validate_memory_projection_inputs(
             capability_id=capability_id,
             inputs=input_mapping,
             missing_inputs=missing_inputs,
@@ -280,7 +280,7 @@ class CapabilityRunner:
             inputs=input_mapping,
             missing_inputs=missing_inputs,
         )
-        validate_supervisor_readonly_inputs(
+        validate_supervisor_projection_inputs(
             capability_id=capability_id,
             inputs=input_mapping,
             missing_inputs=missing_inputs,
@@ -372,10 +372,10 @@ class CapabilityRunner:
             blocking_reasons.append("missing_inputs")
         elif (
             scenario is None
-            and not is_memory_readonly_capability(capability_id)
+            and not is_memory_projection_capability(capability_id)
             and not is_research_capability(capability_id)
             and not is_screen_capability(capability_id)
-            and not is_supervisor_readonly_capability(capability_id)
+            and not is_supervisor_projection_capability(capability_id)
             and not is_supervisor_goal_plan_capability(capability_id)
             and not is_coding_capability(capability_id)
             and not is_coding_apply_capability(capability_id)
@@ -431,15 +431,15 @@ class CapabilityRunner:
         capability = self._lookup_capability(capability_id)
         input_mapping = _input_mapping(inputs)
         if (
-            is_supervisor_readonly_capability(capability_id)
+            is_supervisor_projection_capability(capability_id)
             or is_supervisor_goal_plan_capability(capability_id)
         ):
             input_mapping = normalize_supervisor_state_root_inputs(input_mapping)
         if (
-            is_memory_readonly_capability(capability_id)
+            is_memory_projection_capability(capability_id)
             or is_research_capability(capability_id)
             or is_screen_capability(capability_id)
-            or is_supervisor_readonly_capability(capability_id)
+            or is_supervisor_projection_capability(capability_id)
             or is_supervisor_goal_plan_capability(capability_id)
             or is_coding_capability(capability_id)
             or is_coding_apply_capability(capability_id)
@@ -457,7 +457,7 @@ class CapabilityRunner:
         ):
             required_inputs = _required_inputs(capability)
             missing_inputs = _missing_inputs(required_inputs, input_mapping)
-            validate_memory_readonly_inputs(
+            validate_memory_projection_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
@@ -472,7 +472,7 @@ class CapabilityRunner:
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
             )
-            validate_supervisor_readonly_inputs(
+            validate_supervisor_projection_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
@@ -733,16 +733,16 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "provider_required"
     if scenario is not None:
         return "deterministic_demo"
-    if is_memory_readonly_capability(str(capability.get("capability_id", ""))):
-        return "deterministic_readonly"
+    if is_memory_projection_capability(str(capability.get("capability_id", ""))):
+        return "deterministic_projection"
     if is_research_capability(str(capability.get("capability_id", ""))):
         return "deterministic_local"
     if capability.get("capability_id") == SCREEN_OBSERVE_CAPABILITY:
         return "deterministic_local"
-    if is_screen_readonly_capability(str(capability.get("capability_id", ""))):
-        return "deterministic_readonly"
-    if is_supervisor_readonly_capability(str(capability.get("capability_id", ""))):
-        return "deterministic_readonly"
+    if is_screen_projection_capability(str(capability.get("capability_id", ""))):
+        return "deterministic_projection"
+    if is_supervisor_projection_capability(str(capability.get("capability_id", ""))):
+        return "deterministic_projection"
     if is_supervisor_goal_plan_capability(str(capability.get("capability_id", ""))):
         return "supervisor_goal_plan"
     if is_coding_capability(str(capability.get("capability_id", ""))):
@@ -754,19 +754,19 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
     if is_coding_run_capability(str(capability.get("capability_id", ""))):
         return "agent_loop_entrypoint"
     if is_code_access_capability(str(capability.get("capability_id", ""))):
-        return "deterministic_readonly"
+        return "deterministic_projection"
     if is_code_edit_capability(str(capability.get("capability_id", ""))):
         return "deterministic_local"
     if is_test_run_capability(str(capability.get("capability_id", ""))):
         return "deterministic_local"
     if is_vcs_capability(str(capability.get("capability_id", ""))):
-        return "deterministic_readonly"
+        return "deterministic_projection"
     if capability.get("capability_id") == WORKSPACE_MATERIALIZE_CAPABILITY:
         return "deterministic_local"
     if is_workspace_capability(str(capability.get("capability_id", ""))):
         return "deterministic_proposal"
     if capability.get("capability_id") == WORKSPACE_CHANGED_FILES_CAPABILITY:
-        return "deterministic_readonly"
+        return "deterministic_projection"
     if capability.get("capability_id") == WORKSPACE_RELEASE_CAPABILITY:
         return "deterministic_local"
     if is_artifact_output_capability(str(capability.get("capability_id", ""))):

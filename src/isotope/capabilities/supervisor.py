@@ -33,7 +33,7 @@ SUPERVISOR_STATE_ROOT_INPUT = "state_root"
 LEGACY_SUPERVISOR_STATE_ROOT_INPUT = "codex_home"
 
 
-def is_supervisor_readonly_capability(capability_id: str) -> bool:
+def is_supervisor_projection_capability(capability_id: str) -> bool:
     return capability_id in {
         SUPERVISOR_CODEX_OPERATION_CAPABILITY,
         SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY,
@@ -43,7 +43,7 @@ def is_supervisor_readonly_capability(capability_id: str) -> bool:
     }
 
 
-def validate_supervisor_readonly_inputs(
+def validate_supervisor_projection_inputs(
     *,
     capability_id: str,
     inputs: Mapping[str, Any] | None,
@@ -144,7 +144,7 @@ def run_supervisor_request_context(
         "kind": "capability_run_result",
         "capability_id": SUPERVISOR_REQUEST_CONTEXT_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "context_result": context_result,
     }
 
@@ -194,7 +194,7 @@ def run_supervisor_project_status(
         "kind": "capability_run_result",
         "capability_id": SUPERVISOR_PROJECT_STATUS_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "project_state": summary,
     }
 
@@ -223,7 +223,7 @@ def run_supervisor_integration_review(
         "kind": "capability_run_result",
         "capability_id": SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "integration_review": _integration_review_capability_payload(payload),
     }
 
@@ -248,7 +248,7 @@ def run_supervisor_worker_review(
         "kind": "capability_run_result",
         "capability_id": SUPERVISOR_WORKER_REVIEW_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "worker_review": _worker_review_capability_payload(payload),
     }
 

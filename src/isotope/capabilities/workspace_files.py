@@ -81,7 +81,7 @@ def run_workspace_changed_files(*, inputs: Mapping[str, Any] | None) -> dict[str
         "kind": "capability_run_result",
         "capability_id": WORKSPACE_CHANGED_FILES_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_readonly",
+        "runner_kind": "deterministic_projection",
         "changed_files": {
             "status": "clean" if not changed_files else "changed",
             "workspace_id": input_mapping["workspace_id"],

@@ -63,7 +63,7 @@ def extension_capability_definitions(capability_type: type[Any]) -> list[Any]:
                 "fields": ["status", "runner_kind", "skills", "skill_count", "skipped"],
             },
             safety_boundaries=(
-                "read_only_skill_metadata",
+                "public_skill_metadata",
                 "no_skill_body_in_manifest",
                 "no_code_execution",
             ),
@@ -73,7 +73,7 @@ def extension_capability_definitions(capability_type: type[Any]) -> list[Any]:
         capability_type(
             capability_id=SKILLS_DESCRIBE_CAPABILITY,
             title="Skills Describe",
-            description="Load one selected Codex skill guide with bounded content.",
+            description="Load one selected Codex skill guide with scoped content.",
             maturity="v0.2",
             shelf="product_candidate",
             domain_tags=("skills", "extensions", "progressive-disclosure"),
@@ -109,8 +109,8 @@ def extension_capability_definitions(capability_type: type[Any]) -> list[Any]:
                 ],
             },
             safety_boundaries=(
-                "read_only_selected_skill_body",
-                "bounded_body",
+                "public_selected_skill_body",
+                "scoped_body",
                 "no_linked_file_autoload",
                 "no_code_execution",
             ),
@@ -220,7 +220,7 @@ def _mcp_capability_definitions(capability_type: type[Any]) -> list[Any]:
             safety_boundaries=(
                 "configured_servers_only",
                 "allowlisted_tools_only",
-                "bounded_result_projection",
+                "scoped_result_projection",
             ),
             default_enabled=True,
             network_required=False,

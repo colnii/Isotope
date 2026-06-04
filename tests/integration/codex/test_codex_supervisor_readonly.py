@@ -10008,7 +10008,7 @@ def test_execute_context_action_routes_through_request_context_capability(
             "kind": "capability_run_result",
             "capability_id": "supervisor.request_context",
             "status": "completed",
-            "runner_kind": "deterministic_readonly",
+            "runner_kind": "deterministic_projection",
             "context_result": {
                 "result_id": "context-test",
                 "cwd": str(workspace),
