@@ -31,6 +31,7 @@ def run_native_coding_agent_loop(
     ticks: list[dict[str, Any]] = []
 
     for index in range(max_steps):
+        tick_workspace_id = f"{workspace_id}_tick_{index + 1}"
         tick = server.run_agent_loop_provider_planner_tick(
             run["run_id"],
             provider=provider,
@@ -60,7 +61,7 @@ def run_native_coding_agent_loop(
             capability_system_inputs={
                 "root": str(state_root),
                 "cwd": str(cwd),
-                "workspace_id": workspace_id,
+                "workspace_id": tick_workspace_id,
             },
             max_tokens=512,
         )
@@ -74,7 +75,7 @@ def run_native_coding_agent_loop(
     return {
         "kind": "native_coding_agent_loop",
         "status": _coding_status(ticks),
-        "workspace_id": workspace_id,
+        "workspace_id": _coding_workspace_id(ticks) or workspace_id,
         "tick_count": len(ticks),
         "context_call_count": _capability_call_count(ticks, {"code.search", "code.read"}),
         "source_workspace_write": "not_performed",
@@ -98,6 +99,16 @@ def _coding_execution(tick: Mapping[str, Any]) -> Mapping[str, Any] | None:
         return None
     execution = capability_run.get("coding_execution")
     return execution if isinstance(execution, Mapping) else None
+
+
+def _coding_workspace_id(ticks: list[dict[str, Any]]) -> str | None:
+    for tick in reversed(ticks):
+        execution = _coding_execution(tick)
+        if isinstance(execution, Mapping):
+            workspace_id = execution.get("workspace_id")
+            if isinstance(workspace_id, str) and workspace_id:
+                return workspace_id
+    return None
 
 
 def _capability_call_count(ticks: list[dict[str, Any]], capability_ids: set[str]) -> int:

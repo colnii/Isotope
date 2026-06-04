@@ -46,8 +46,10 @@ class NativeCodingSequenceProvider:
         planner_steps: list[tuple[str, dict[str, Any]]],
         *,
         goal: str = "Change src/app.py value to 2.",
+        coding_arguments: dict[str, Any] | None = None,
     ) -> None:
         self.goal = goal
+        self.coding_arguments = coding_arguments or {"goal": goal}
         self.planner_steps = list(planner_steps)
         self.conversation_calls = 0
         self.calls: list[dict[str, Any]] = []
@@ -92,7 +94,7 @@ class NativeCodingSequenceProvider:
                 {
                     "kind": "call_capability",
                     "capacity_id": "coding_task.run",
-                    "arguments": {"goal": self.goal},
+                    "arguments": dict(self.coding_arguments),
                     "rationale": "Use native coding.",
                 }
             )
@@ -686,6 +688,76 @@ def test_conversation_loop_runs_coding_task_run_through_existing_agent_loop(
     assert "value = 1" not in rendered
     assert "value = 2" not in rendered
     assert "argv" not in rendered
+
+
+def test_coding_task_run_allows_bounded_revision_after_failed_verification(
+    tmp_path,
+) -> None:
+    workspace = tmp_path / "repo"
+    (workspace / "src").mkdir(parents=True)
+    (workspace / "src" / "app.py").write_text("value = 1\n", encoding="utf-8")
+    provider = NativeCodingSequenceProvider(
+        [
+            (
+                "coding_task.execute",
+                {
+                    "goal": "Wrong attempt.",
+                    "patch": (
+                        "--- a/src/app.py\n"
+                        "+++ b/src/app.py\n"
+                        "@@ -1 +1 @@\n"
+                        "-value = 1\n"
+                        "+value = 3\n"
+                    ),
+                    "argv": [
+                        "python3",
+                        "-c",
+                        "from pathlib import Path; assert Path('src/app.py').read_text() == 'value = 2\\n'",
+                    ],
+                    "allowed_commands": ["python3"],
+                    "include_paths": ["src"],
+                },
+            ),
+            (
+                "coding_task.execute",
+                {
+                    "goal": "Correct attempt.",
+                    "patch": (
+                        "--- a/src/app.py\n"
+                        "+++ b/src/app.py\n"
+                        "@@ -1 +1 @@\n"
+                        "-value = 1\n"
+                        "+value = 2\n"
+                    ),
+                    "argv": [
+                        "python3",
+                        "-c",
+                        "from pathlib import Path; assert Path('src/app.py').read_text() == 'value = 2\\n'",
+                    ],
+                    "allowed_commands": ["python3"],
+                    "include_paths": ["src"],
+                },
+            ),
+        ],
+        coding_arguments={"goal": "Change value to 2.", "max_steps": 4},
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=workspace,
+            user_message="把 value 改成 2。",
+            provider=provider,
+            max_turns=4,
+        )
+    )
+
+    summary = events[1].payload["result_summary"]
+    assert events[1].payload["status"] == "ok"
+    assert summary["agent_loop_coding_status"] == "verified"
+    assert summary["agent_loop_coding_tick_count"] == 2
+    assert summary["agent_loop_coding_source_workspace_write"] == "not_performed"
+    assert (workspace / "src" / "app.py").read_text(encoding="utf-8") == "value = 1\n"
 
 
 def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(
