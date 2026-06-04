@@ -13,6 +13,8 @@ from isotope.platform.state.multi_worker import (
     build_multi_worker_status_payload,
     render_multi_worker_status_plain,
 )
+from .retrieval import MemoryQueryMatches
+from .retrieval import query_memory_records_hybrid
 
 
 VALID_SCOPES = ("thread", "run", "session")
@@ -98,6 +100,10 @@ def build_memory_query_payload(
             "matched": len(matched.all_matches),
             "hidden_records": max(0, len(matched.all_matches) - len(matched.visible)),
         },
+        "retrieval": {
+            "backend": matched.backend,
+            "dense_status": matched.dense_status,
+        },
         "results": [_memory_query_result(record) for record in matched.visible],
     }
 
@@ -109,32 +115,17 @@ def query_memory_records(
     run_id: str | None = None,
     session_id: str | None = None,
     limit: int = 20,
-) -> "_MemoryQueryMatches":
+) -> MemoryQueryMatches:
     if limit <= 0:
         raise ValueError("limit must be positive")
     clean_query = _required_query(query)
-    terms = _query_terms(clean_query)
-    matches = [
-        record
-        for record in records
-        if _record_matches(
-            record,
-            query=clean_query,
-            terms=terms,
-            run_id=run_id,
-            session_id=session_id,
-        )
-    ]
-    ranked = sorted(
-        matches,
-        key=lambda record: (
-            _record_score(record, query=clean_query, terms=terms),
-            record.created_at,
-            record.memory_id,
-        ),
-        reverse=True,
+    return query_memory_records_hybrid(
+        records,
+        query=clean_query,
+        run_id=run_id,
+        session_id=session_id,
+        limit=limit,
     )
-    return _MemoryQueryMatches(all_matches=ranked, visible=ranked[:limit])
 
 
 def render_memory_status_plain(payload: dict[str, Any]) -> str:
@@ -254,56 +245,10 @@ def _memory_query_result(record: MemoryRecord) -> dict[str, Any]:
     }
 
 
-class _MemoryQueryMatches:
-    def __init__(
-        self,
-        *,
-        all_matches: list[MemoryRecord],
-        visible: list[MemoryRecord],
-    ) -> None:
-        self.all_matches = all_matches
-        self.visible = visible
-
-
 def _required_query(query: str) -> str:
     if not isinstance(query, str) or not query.strip():
         raise ValueError("memory query must be a non-empty string")
     return query.strip()
-
-
-def _query_terms(query: str) -> list[str]:
-    return [term for term in query.casefold().split() if term]
-
-
-def _record_matches(
-    record: MemoryRecord,
-    *,
-    query: str,
-    terms: list[str],
-    run_id: str | None,
-    session_id: str | None,
-) -> bool:
-    if run_id is not None and record.provenance.get("run_id") != run_id:
-        return False
-    if session_id is not None and record.provenance.get("session_id") != session_id:
-        return False
-    haystack = _record_search_text(record)
-    return query.casefold() in haystack or any(term in haystack for term in terms)
-
-
-def _record_score(record: MemoryRecord, *, query: str, terms: list[str]) -> int:
-    haystack = _record_search_text(record)
-    score = 0
-    if query.casefold() in haystack:
-        score += 10
-    score += sum(1 for term in terms if term in haystack)
-    return score
-
-
-def _record_search_text(record: MemoryRecord) -> str:
-    source_text = " ".join(str(value) for ref in record.source_refs for value in ref.values())
-    provenance_text = " ".join(str(value) for value in record.provenance.values())
-    return f"{record.summary} {source_text} {provenance_text}".casefold()
 
 
 __all__ = [

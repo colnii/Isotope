@@ -189,6 +189,27 @@ def test_memory_query_default_shape_excludes_full_content():
         assert "raw_artifact_content" not in item
 
 
+def test_memory_query_reports_retrieval_backend_without_full_content_read():
+    service = memory.LocalMemoryQueryService(memory_store=MemoryRecordStore())
+
+    result = service.query(
+        run_id="run_001",
+        query="controlled expand",
+        grants={"memory": {"query": True}},
+        caller_context={
+            "run_id": "run_001",
+            "caller": "test",
+            "purpose": "backend_metadata",
+        },
+        limit=2,
+    )
+
+    assert result["status"] == "ok"
+    assert result["retrieval"]["backend"] == "bm25"
+    assert result["retrieval"]["dense_status"] == "not_configured"
+    assert "hidden full memory content" not in str(result)
+
+
 def test_valid_controlled_expand_grant_materializes_record_content_with_budget():
     store = MemoryRecordStore()
     service = memory.LocalMemoryQueryService(memory_store=store)

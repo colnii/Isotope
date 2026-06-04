@@ -299,6 +299,10 @@ class LocalMemoryQueryService:
             "status": "ok",
             "capability": "memory_query",
             "content_policy": "memory_record_refs_expandable",
+            "retrieval": {
+                "backend": matches.backend,
+                "dense_status": matches.dense_status,
+            },
             "results": results,
         }
         if controlled_expand:
