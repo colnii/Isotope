@@ -24,6 +24,7 @@ isotope-api = "isotope.apps.api:main"
 isotope-supervisor = "isotope.features.supervisor.runner:main"
 isotope-notification = "isotope.features.notifications.runner:main"
 isotope-screen = "isotope.features.screen.runner:main"
+isotope-social = "isotope.features.social.runner:main"
 
 [project.optional-dependencies]
 test = ["pytest>=8.0"]
