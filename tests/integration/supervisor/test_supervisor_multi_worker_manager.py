@@ -392,7 +392,7 @@ def test_capacity_action_record_flows_into_dashboard_multi_worker_status(
             "post_step_should_continue": True,
             "post_step_stop_reason": None,
         },
-        "planner_output_summary": {
+        "planner_output": {
             "selected_step": "call_capability",
             "capability_id": "artifact.review",
         },

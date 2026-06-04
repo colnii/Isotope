@@ -85,9 +85,9 @@
 - Supervisor `call_capacity` handoff 已接入单 tick driver：capacity action 会
   构造现有 `planner_output`，经 `run_agent_loop_tick(...)` 执行一次
   `call_capability`，结果里保留 `tick_result` 和低敏
-  `planner_output_summary`。
+  `planner_output`。
 - `supervisor-capacity-handoff-trace` demo 已补齐人类可读链路，展示
-  `Supervisor action -> planner_output_summary -> tick_result -> persisted policy`；
+  `Supervisor action -> planner_output -> tick_result -> persisted policy`；
   它使用 fixture provider，不要求真实 LLM 配置。
 - `isotope-supervisor capacity plan` 的 plain 输出已补齐低敏 handoff summary，
   会显示 planner selected step、tick status、tick stop reason 和 artifact ref。

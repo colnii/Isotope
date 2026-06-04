@@ -632,7 +632,7 @@ def _execute_agent_loop_capacity_step(
         "session_id": session["session_id"],
         "run_id": run["run_id"],
         "tick_policy_before": tick_result["before_policy"],
-        "planner_output_summary": {
+        "planner_output": {
             "planner_run_id": planner_run_id,
             "selected_step": "call_capability",
             "capability_id": capability_id,

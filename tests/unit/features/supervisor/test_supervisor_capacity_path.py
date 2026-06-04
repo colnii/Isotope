@@ -302,7 +302,7 @@ def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path)
     assert loop["executed"] is True
     assert loop["tick_policy_before"]["should_continue"] is True
     assert loop["tick_policy_before"]["max_next_tick_kind"] == "planner_step"
-    assert loop["planner_output_summary"] == {
+    assert loop["planner_output"] == {
         "planner_run_id": "supervisor_capacity:artifact.review",
         "selected_step": "call_capability",
         "capability_id": "artifact.review",
@@ -558,7 +558,7 @@ def test_execute_capacity_action_returns_public_metadata_agent_loop_result(
             "post_step_should_continue": True,
             "post_step_stop_reason": None,
         },
-        "planner_output_summary": {
+        "planner_output": {
             "selected_step": "call_capability",
             "capability_id": "artifact.review",
         },

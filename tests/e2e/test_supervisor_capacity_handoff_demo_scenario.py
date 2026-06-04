@@ -32,8 +32,8 @@ REQUIRED_JSON_FIELDS = {
     "capacity_handoff_trace_ok",
     "supervisor_action",
     "capacity_decision",
-    "planner_output_summary",
-    "tick_summary",
+    "planner_output",
+    "tick_result",
     "persisted_run_policy",
     "app_friction",
     "app_friction_count",
@@ -86,7 +86,7 @@ def _assert_no_forbidden_content_keys(value: Any) -> None:
             _assert_no_forbidden_content_keys(nested)
 
 
-def test_supervisor_capacity_handoff_plain_cli_prints_tick_summary():
+def test_supervisor_capacity_handoff_plain_cli_prints_tick_result():
     result = _run_demo("--scenario", SCENARIO)
 
     assert result.returncode == 0, result.stderr
@@ -107,16 +107,16 @@ def test_supervisor_capacity_handoff_json_reports_action_to_tick_chain():
     }
     assert data["capacity_decision"]["next_action"] == "call_capacity"
     assert data["capacity_decision"]["can_execute_agent_loop"] is True
-    assert data["planner_output_summary"] == {
+    assert data["planner_output"] == {
         "planner_run_id": "supervisor_capacity:artifact.review",
         "selected_step": "call_capability",
         "capability_id": "artifact.review",
     }
-    assert data["tick_summary"]["tick_status"] == "executed"
-    assert data["tick_summary"]["planner_status"] == "accepted"
-    assert data["tick_summary"]["selected_step"] == "call_capability"
-    assert data["tick_summary"]["step_status"] == "completed"
-    assert data["tick_summary"]["after_policy"]["must_stop_reason"] == "tick_budget_exhausted"
+    assert data["tick_result"]["tick_status"] == "executed"
+    assert data["tick_result"]["planner_status"] == "accepted"
+    assert data["tick_result"]["selected_step"] == "call_capability"
+    assert data["tick_result"]["step_status"] == "completed"
+    assert data["tick_result"]["after_policy"]["must_stop_reason"] == "tick_budget_exhausted"
     assert data["persisted_run_policy"]["phase"] == "ready"
     assert data["persisted_run_policy"]["must_stop_reason"] is None
     assert data["app_friction"] == []

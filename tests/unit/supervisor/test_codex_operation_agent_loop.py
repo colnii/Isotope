@@ -27,8 +27,8 @@ def test_codex_operation_executes_request_context_via_agent_loop_capacity(tmp_pa
     assert result["kind"] == "call_capacity"
     assert result["capacity_id"] == "supervisor.codex_operation"
     assert result["operation"] == "request_context"
-    assert result["agent_loop"]["planner_output_summary"]["selected_step"] == "call_capability"
-    assert result["agent_loop"]["planner_output_summary"]["capability_id"] == (
+    assert result["agent_loop"]["planner_output"]["selected_step"] == "call_capability"
+    assert result["agent_loop"]["planner_output"]["capability_id"] == (
         "supervisor.codex_operation"
     )
     assert result["agent_loop_result"]["agent_loop_executed"] is True

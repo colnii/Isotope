@@ -270,8 +270,8 @@ def _format_agent_loop_tick_driver_trace(result: dict[str, Any]) -> str:
 def _format_supervisor_capacity_handoff_trace(result: dict[str, Any]) -> str:
     action = result["supervisor_action"]
     decision = result["capacity_decision"]
-    planner = result["planner_output_summary"]
-    tick = result["tick_summary"]
+    planner = result["planner_output"]
+    tick = result["tick_result"]
     persisted = result["persisted_run_policy"]
     steps = [
         f"create session: {result['session_id']}",

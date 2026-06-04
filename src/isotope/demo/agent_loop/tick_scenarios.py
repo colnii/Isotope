@@ -156,7 +156,7 @@ def _run_agent_loop_tick_driver_trace(root: Path) -> dict[str, Any]:
     )
     pause_event_delta = len(api.get_events(run_id)) - len(pause_before_events)
 
-    executed_tick = _executed_tick_summary(executed_result)
+    executed_tick = _executed_tick_result(executed_result)
     stopped_ticks = [
         _stopped_tick_case("budget_exhausted", budget_stopped, budget_event_delta),
         _stopped_tick_case("user_pause", user_pause_stopped, pause_event_delta),
@@ -213,21 +213,21 @@ def _run_supervisor_capacity_handoff_trace(root: Path) -> dict[str, Any]:
         execute_agent_loop=True,
     )
     agent_loop = plan["agent_loop"]
-    tick_result = agent_loop["tick_result"]
-    planner_result = tick_result["planner_result"]
+    raw_tick_result = agent_loop["tick_result"]
+    planner_result = raw_tick_result["planner_result"]
     step_result = planner_result["step_result"]
     action_result = step_result["action_result"]
     persisted_policy = agent_loop["tick_policy_after"]
-    tick_summary = {
-        "tick_status": tick_result["tick_status"],
+    tick_result = {
+        "tick_status": raw_tick_result["tick_status"],
         "planner_status": planner_result["planner_status"],
         "selected_step": planner_result["selected_step"],
         "step_status": step_result["status"],
         "artifact_ref": dict(action_result["artifact_ref"]),
         "artifact_summary": action_result["artifact_summary"],
         "capability_run_status": action_result["capability_run"]["status"],
-        "before_policy": _policy_summary(tick_result["before_policy"]),
-        "after_policy": _policy_summary(tick_result["after_policy"]),
+        "before_policy": _policy_summary(raw_tick_result["before_policy"]),
+        "after_policy": _policy_summary(raw_tick_result["after_policy"]),
     }
     capacity_decision = plan["supervisor_decision"]
     supervisor_action = {
@@ -239,12 +239,12 @@ def _run_supervisor_capacity_handoff_trace(root: Path) -> dict[str, Any]:
         plan["status"] == "ok"
         and capacity_decision["next_action"] == "call_capacity"
         and capacity_decision["can_execute_agent_loop"] is True
-        and agent_loop["planner_output_summary"]["selected_step"] == "call_capability"
-        and tick_summary["tick_status"] == "executed"
-        and tick_summary["planner_status"] == "accepted"
-        and tick_summary["selected_step"] == "call_capability"
-        and tick_summary["step_status"] == "completed"
-        and tick_summary["after_policy"]["must_stop_reason"] == "tick_budget_exhausted"
+        and agent_loop["planner_output"]["selected_step"] == "call_capability"
+        and tick_result["tick_status"] == "executed"
+        and tick_result["planner_status"] == "accepted"
+        and tick_result["selected_step"] == "call_capability"
+        and tick_result["step_status"] == "completed"
+        and tick_result["after_policy"]["must_stop_reason"] == "tick_budget_exhausted"
         and persisted_policy["phase"] == "ready"
         and persisted_policy["must_stop_reason"] is None
         and app_friction == []
@@ -264,8 +264,8 @@ def _run_supervisor_capacity_handoff_trace(root: Path) -> dict[str, Any]:
             "can_execute_agent_loop": capacity_decision["can_execute_agent_loop"],
             "reason": capacity_decision["reason"],
         },
-        "planner_output_summary": dict(agent_loop["planner_output_summary"]),
-        "tick_summary": tick_summary,
+        "planner_output": dict(agent_loop["planner_output"]),
+        "tick_result": tick_result,
         "persisted_run_policy": _policy_summary(persisted_policy),
         "handoff": dict(agent_loop["handoff"]),
         "app_friction": app_friction,
@@ -474,7 +474,7 @@ def _planner_output(
     }
 
 
-def _executed_tick_summary(result: dict[str, Any]) -> dict[str, Any]:
+def _executed_tick_result(result: dict[str, Any]) -> dict[str, Any]:
     planner_result = result["planner_result"]
     step_result = planner_result["step_result"]
     action_result = step_result["action_result"]

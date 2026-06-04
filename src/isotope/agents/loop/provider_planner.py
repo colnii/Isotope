@@ -150,7 +150,7 @@ def build_agent_loop_provider_planner_result(
         "tick_id": tick_id,
         "decision_id": decision_id,
         "parsed_planner_output": parsed_output,
-        "planner_output_summary": {
+        "planner_output": {
             "planner_run_id": parsed_output["planner_run_id"],
             "selected_step": parsed_output["decision"]["step"],
             "agent_id": agent_id,

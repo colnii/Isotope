@@ -84,7 +84,7 @@ def _assert_no_forbidden_content_keys(value: Any) -> None:
             _assert_no_forbidden_content_keys(nested)
 
 
-def test_tick_driver_trace_plain_cli_prints_tick_handoff_summary():
+def test_tick_driver_trace_plain_cli_prints_tick_handoff_result():
     result = _run_demo("--scenario", SCENARIO)
 
     assert result.returncode == 0, result.stderr

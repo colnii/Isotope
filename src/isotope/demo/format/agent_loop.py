@@ -148,8 +148,8 @@ def _format_agent_loop_tick_driver_trace_plain_text(result: dict[str, Any]) -> s
 def _format_supervisor_capacity_handoff_trace_plain_text(result: dict[str, Any]) -> str:
     action = result["supervisor_action"]
     decision = result["capacity_decision"]
-    planner = result["planner_output_summary"]
-    tick = result["tick_summary"]
+    planner = result["planner_output"]
+    tick = result["tick_result"]
     persisted = result["persisted_run_policy"]
     lines = [
         f"scenario: {result['scenario']}",

@@ -24,7 +24,7 @@ def test_capacity_result_extracts_public_metadata_agent_loop_fields():
                 "post_step_should_continue": True,
                 "post_step_stop_reason": None,
             },
-            "planner_output_summary": {
+            "planner_output": {
                 "selected_step": "call_capability",
                 "raw": "PRIVATE_PLANNER_PAYLOAD",
             },

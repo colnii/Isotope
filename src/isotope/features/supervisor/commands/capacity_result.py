@@ -26,7 +26,7 @@ def agent_loop_json_result(payload: Mapping[str, Any]) -> dict[str, Any]:
             "post_step_stop_reason"
         )
 
-    planner_result = agent_loop.get("planner_output_summary")
+    planner_result = agent_loop.get("planner_output")
     if isinstance(planner_result, Mapping):
         result["agent_loop_planner_selected_step"] = planner_result.get(
             "selected_step"
