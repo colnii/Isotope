@@ -206,6 +206,8 @@ def _capability_result_observation(
         return _project_status_observation(capability_run)
     if capacity_id == "isotope.self_repair":
         return _self_repair_observation(capability_run)
+    if capacity_id == "supervisor.goal_plan":
+        return _goal_plan_observation(capability_run)
     return None
 
 
@@ -237,6 +239,52 @@ def _memory_query_observation(capability_run: dict[str, Any]) -> dict[str, Any] 
         "result_count": len(results) if isinstance(results, list) else 0,
         "results": safe_results,
     }
+
+
+def _goal_plan_observation(capability_run: dict[str, Any]) -> dict[str, Any] | None:
+    goal_plan = capability_run.get("goal_plan")
+    if not isinstance(goal_plan, dict):
+        return None
+    candidates = [
+        _safe_goal_candidate(candidate)
+        for candidate in goal_plan.get("candidates", [])
+        if isinstance(candidate, dict)
+    ]
+    candidates = [candidate for candidate in candidates if candidate is not None]
+    written_goals = goal_plan.get("written_goals")
+    return {
+        key: value
+        for key, value in {
+            "status": goal_plan.get("status"),
+            "mode": goal_plan.get("mode"),
+            "planning_trigger": goal_plan.get("planning_trigger"),
+            "plan_summary": goal_plan.get("plan_summary"),
+            "candidate_count": len(candidates),
+            "written_count": (
+                len(written_goals) if isinstance(written_goals, list) else 0
+            ),
+            "candidates": candidates,
+        }.items()
+        if value not in (None, "", [], {})
+    }
+
+
+def _safe_goal_candidate(candidate: dict[str, Any]) -> dict[str, str] | None:
+    goal = candidate.get("goal")
+    if not isinstance(goal, str) or not goal.strip():
+        return None
+    item = {"goal": _clip_text(goal.strip(), limit=240)}
+    for key in ("target_name", "reason", "stage", "scope"):
+        value = candidate.get(key)
+        if isinstance(value, str) and value.strip():
+            item[key] = _clip_text(value.strip(), limit=180)
+    return item
+
+
+def _clip_text(text: str, *, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1] + "..."
 
 
 def _safe_memory_query_result(result: dict[str, Any]) -> dict[str, Any] | None:

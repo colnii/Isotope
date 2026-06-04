@@ -39,6 +39,9 @@ from .conversation_observations import (
 )
 
 
+GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS = 90.0
+
+
 class SupervisorConversationProvider(Protocol):
     provider: str
     model: str
@@ -376,7 +379,7 @@ def _run_capability_decision(
                 capability_id=capacity_id,
                 inputs=inputs,
                 state_root=state_root / "supervisor" / "conversation-loop-runs",
-                timeout_seconds=timeout_seconds,
+                timeout_seconds=_capacity_timeout_seconds(capacity_id, timeout_seconds),
             )
         result_summary = agent_loop_json_summary({"agent_loop": agent_loop})
         extra_details = [
@@ -481,6 +484,17 @@ def _bounded_coding_steps(value: Any) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         return 6
     return min(max(value, 1), 12)
+
+
+def _capacity_timeout_seconds(
+    capacity_id: str,
+    timeout_seconds: float | None,
+) -> float | None:
+    if capacity_id != "supervisor.goal_plan":
+        return timeout_seconds
+    if timeout_seconds is None:
+        return GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS
+    return max(timeout_seconds, GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS)
 
 
 def _capability_inputs_from_decision(

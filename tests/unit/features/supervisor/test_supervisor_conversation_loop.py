@@ -9,7 +9,10 @@ from isotope.features.supervisor.conversation_loop import (
     SupervisorConversationEvent,
     run_supervisor_conversation_events,
 )
-from isotope.features.supervisor.planner.goal_queue import record_supervisor_goal
+from isotope.features.supervisor.planner.goal_queue import (
+    read_active_supervisor_goals,
+    record_supervisor_goal,
+)
 from isotope.features.supervisor.registry import (
     ManagedCodexRecord,
     append_managed_record,
@@ -136,6 +139,40 @@ def _planner_prompt_payload(messages: list[dict[str, str]]) -> dict[str, Any] | 
     return payload
 
 
+class ConversationGoalPlanProvider:
+    def __init__(self, expected_goal: str) -> None:
+        self.expected_goal = expected_goal
+
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        user_payload = json.loads(messages[1]["content"])
+        assert user_payload["user_goal"] == self.expected_goal
+        assert user_payload["planning_trigger"] == "capacity"
+        return json.dumps(
+            {
+                "plan_summary": "chat 已通过 capacity 生成目标规划。",
+                "goals": [
+                    {
+                        "goal": "把 chat 目标规划接入 supervisor.goal_plan capacity。",
+                        "target_name": "chat-goal-plan-capacity",
+                        "reason": "用户在 chat 里要求规划下一步目标。",
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
+def _write_goal_planning_docs(root) -> None:
+    docs = root / "docs" / "current"
+    docs.mkdir(parents=True)
+    (docs / "status.md").write_text("chat 需要复用目标规划能力。\n", encoding="utf-8")
+    (docs / "agent-task-queue.md").write_text("目标规划已是 capacity。\n", encoding="utf-8")
+    (docs / "supervisor-capability-map.md").write_text(
+        "supervisor.goal_plan 可生成目标规划。\n",
+        encoding="utf-8",
+    )
+
+
 def test_conversation_loop_accepts_plain_text_as_direct_answer(tmp_path) -> None:
     provider = RecordingConversationProvider(["你好，我在。"])
 
@@ -214,6 +251,32 @@ def test_conversation_manifest_hides_system_routing_inputs(tmp_path) -> None:
     assert '"root"' not in system_prompt
 
 
+def test_conversation_loop_prompt_routes_goal_planning_to_capacity(tmp_path) -> None:
+    provider = RecordingConversationProvider(["我先直接回答。"])
+
+    list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=tmp_path / "repo",
+            user_message="帮我规划下一步目标",
+            provider=provider,
+        )
+    )
+
+    system_prompt = provider.calls[0]["messages"][0]["content"]
+    assert "目标规划、拆目标、规划任务" in system_prompt
+    assert "supervisor.goal_plan" in system_prompt
+    assert "call_capability" in system_prompt
+    assert "不要重复调用已经有 observation 的同一个 capability" in system_prompt
+
+
+def test_conversation_loop_uses_longer_timeout_for_goal_plan_capacity() -> None:
+    from isotope.features.supervisor import conversation_loop
+
+    assert conversation_loop._capacity_timeout_seconds("artifact.review", 4) == 4
+    assert conversation_loop._capacity_timeout_seconds("supervisor.goal_plan", 4) >= 60
+
+
 def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) -> None:
     provider = RecordingConversationProvider(
         [
@@ -259,6 +322,75 @@ def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) 
     assert len(provider.calls) == 2
     second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
     assert "capacity_observation" in second_prompt
+    assert "raw_response" not in second_prompt
+
+
+def test_conversation_loop_executes_goal_plan_capacity_from_chat(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from isotope.capabilities import supervisor_goal_plan
+
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    _write_goal_planning_docs(workspace)
+    state_root = tmp_path / "state"
+    user_goal = "帮我规划下一步目标"
+    monkeypatch.setattr(
+        supervisor_goal_plan,
+        "resolve_summary_provider_from_env",
+        lambda **_: ConversationGoalPlanProvider(user_goal),
+    )
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "supervisor.goal_plan",
+                    "arguments": {"goal": user_goal},
+                    "rationale": "用户要求目标规划。",
+                },
+                ensure_ascii=False,
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "已通过目标规划 capacity 生成候选目标。",
+                },
+                ensure_ascii=False,
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=state_root,
+            cwd=workspace,
+            user_message=user_goal,
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[0].payload["capacity_id"] == "supervisor.goal_plan"
+    assert events[0].payload["input_summary"] == {
+        "state_root": str(state_root),
+        "cwd": str(workspace),
+        "goal": user_goal,
+    }
+    assert events[1].payload["capacity_id"] == "supervisor.goal_plan"
+    assert events[1].payload["status"] == "ok"
+    assert events[1].payload["result_summary"]["agent_loop_tick_status"] == "executed"
+    assert events[2].payload["text"] == "已通过目标规划 capacity 生成候选目标。"
+    assert read_active_supervisor_goals(codex_home=state_root) == ()
+    second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
+    assert "capacity_observation" in second_prompt
+    assert "chat-goal-plan-capacity" in second_prompt
     assert "raw_response" not in second_prompt
 
 

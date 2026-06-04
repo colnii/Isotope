@@ -169,6 +169,40 @@ class StreamingCapableDecisionProvider(MultiResponseDesktopChatProvider):
         raise AssertionError("desktop chat should route default providers through conversation loop")
 
 
+class DesktopChatGoalPlanProvider:
+    def __init__(self, expected_goal: str) -> None:
+        self.expected_goal = expected_goal
+
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        user_payload = json.loads(messages[1]["content"])
+        assert user_payload["user_goal"] == self.expected_goal
+        assert user_payload["planning_trigger"] == "capacity"
+        return json.dumps(
+            {
+                "plan_summary": "desktop chat 通过 goal_plan capacity 生成目标规划。",
+                "goals": [
+                    {
+                        "goal": "让 desktop chat 调用 supervisor.goal_plan。",
+                        "target_name": "desktop-chat-goal-plan",
+                        "reason": "用户在 chat 中要求目标规划。",
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
+def _write_goal_planning_docs(root) -> None:
+    docs = root / "docs" / "current"
+    docs.mkdir(parents=True)
+    (docs / "status.md").write_text("desktop chat 需要调用目标规划。\n", encoding="utf-8")
+    (docs / "agent-task-queue.md").write_text("supervisor.goal_plan 已接入 capacity。\n", encoding="utf-8")
+    (docs / "supervisor-capability-map.md").write_text(
+        "chat 可以通过 capacity 执行目标规划。\n",
+        encoding="utf-8",
+    )
+
+
 def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
     tmp_path,
 ) -> None:
@@ -426,6 +460,80 @@ def test_desktop_chat_stream_uses_conversation_loop_for_model_capacity_choice(
     ]
     assert events[1].payload["result_summary"]["agent_loop_tick_status"] == "executed"
     assert events[2].payload["text"] == "已经通过 Supervisor agent loop 执行 capability。"
+    assert len(provider.calls) == 2
+
+
+def test_desktop_chat_endpoint_can_call_goal_plan_capacity(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from isotope.capabilities import supervisor_goal_plan
+
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    _write_goal_planning_docs(workspace)
+    question = "帮我规划下一步目标"
+    monkeypatch.chdir(workspace)
+    monkeypatch.setattr(
+        supervisor_goal_plan,
+        "resolve_summary_provider_from_env",
+        lambda **_: DesktopChatGoalPlanProvider(question),
+    )
+    provider = MultiResponseDesktopChatProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "supervisor.goal_plan",
+                    "arguments": {"goal": question},
+                    "rationale": "用户要求目标规划。",
+                },
+                ensure_ascii=False,
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "已通过目标规划 capacity 生成候选目标。",
+                },
+                ensure_ascii=False,
+            ),
+        ]
+    )
+    server = create_dashboard_server(
+        codex_home=tmp_path / "state",
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        desktop_chat_provider=provider,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "POST",
+            "/desktop/chat",
+            body=json.dumps({"question": question}),
+            headers={"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        body = response.read().decode("utf-8")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    events = _parse_sse(body)
+    names = [event["event"] for event in events]
+    assert names[:4] == ["start", "capacity_start", "capacity_result", "delta"]
+    assert events[1]["data"]["capacity_id"] == "supervisor.goal_plan"
+    assert events[2]["data"]["capacity_id"] == "supervisor.goal_plan"
+    assert events[2]["data"]["status"] == "ok"
+    assert events[3]["data"]["text"] == "已通过目标规划 capacity 生成候选目标。"
     assert len(provider.calls) == 2
 
 
