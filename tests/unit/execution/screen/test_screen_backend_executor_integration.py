@@ -263,6 +263,12 @@ def test_windows_backend_script_reports_first_match_metadata_and_guards_execute(
     assert "screen_target_ambiguous" in script
 
 
+def test_windows_backend_script_preserves_single_window_match_as_collection():
+    script = windows_backend._POWERSHELL_SCRIPT
+
+    assert "$matches = @(Select-MatchingWindows $windows $selector)" in script
+
+
 def test_windows_backend_script_downgrades_uncapturable_screenshot_to_metadata_only():
     script = windows_backend._POWERSHELL_SCRIPT
 
