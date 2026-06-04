@@ -261,6 +261,52 @@ def test_isotope_self_repair_launches_codex_worker_in_isolated_worktree(
     assert "让 Desktop chat 可以总结项目态势。" in launched["prompt"]
 
 
+def test_isotope_self_repair_blocks_when_isolated_worktree_is_unavailable(
+    tmp_path, monkeypatch
+):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    launched = False
+
+    def fake_prepare_launch_worktree(*, cwd, target_name, api=None):
+        return {
+            "enabled": False,
+            "source_cwd": str(cwd),
+            "cwd": str(cwd),
+            "reason": "not_git_repo",
+        }
+
+    def fake_launch_managed_codex(**kwargs):
+        nonlocal launched
+        launched = True
+        raise AssertionError("must not launch without an isolated worktree")
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.self_repair.prepare_launch_worktree",
+        fake_prepare_launch_worktree,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.self_repair.launch_managed_codex",
+        fake_launch_managed_codex,
+    )
+
+    result = _runner().run_capability(
+        "isotope.self_repair",
+        inputs={
+            "state_root": str(tmp_path / ".isotope"),
+            "cwd": str(workspace),
+            "user_goal": "修复能力缺口。",
+            "failure_summary": "无法创建隔离 worktree。",
+        },
+    )
+
+    assert result["status"] == "blocked"
+    assert result["self_repair"]["status"] == "blocked"
+    assert result["self_repair"]["reason"] == "worktree_unavailable"
+    assert result["self_repair"]["worktree"]["enabled"] is False
+    assert launched is False
+
+
 def test_runner_discovers_supervisor_worker_review_from_default_catalog():
     runner = _runner()
 

@@ -31,11 +31,15 @@ def launch_isotope_self_repair(
     failure = _non_empty(failure_summary, "failure_summary")
 
     worktree = prepare_launch_worktree(cwd=workspace, target_name=name)
-    if worktree.get("failed"):
+    if worktree.get("enabled") is not True:
         return {
             "kind": "isotope_self_repair",
             "status": "blocked",
-            "reason": "worktree_prepare_failed",
+            "reason": (
+                "worktree_prepare_failed"
+                if worktree.get("failed")
+                else "worktree_unavailable"
+            ),
             "worktree": dict(worktree),
         }
 
