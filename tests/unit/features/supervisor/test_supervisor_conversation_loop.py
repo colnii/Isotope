@@ -862,7 +862,6 @@ def test_conversation_loop_executes_native_coding_capacity_with_safe_observation
     assert "value = 1" not in second_prompt
     assert "value = 2" not in second_prompt
 
-
 def test_conversation_loop_runs_coding_task_run_through_existing_agent_loop(
     tmp_path,
 ) -> None:
@@ -992,7 +991,6 @@ def test_coding_task_run_allows_bounded_revision_after_failed_verification(
     assert summary["agent_loop_coding_source_workspace_write"] == "not_performed"
     assert (workspace / "src" / "app.py").read_text(encoding="utf-8") == "value = 1\n"
 
-
 def test_conversation_loop_applies_reviewed_native_coding_diff(tmp_path) -> None:
     workspace = tmp_path / "repo"
     (workspace / "src").mkdir(parents=True)
@@ -1061,6 +1059,29 @@ def test_conversation_loop_applies_reviewed_native_coding_diff(tmp_path) -> None
     assert str(root) not in rendered
     assert str(workspace) not in rendered
     assert "value = 2" not in rendered
+
+
+def test_conversation_loop_manifest_exposes_extension_entrypoints_without_skill_registry(
+    tmp_path,
+) -> None:
+    provider = RecordingConversationProvider(["你好，我在。"])
+
+    list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=tmp_path / "repo",
+            user_message="我需要处理 Word 文档",
+            provider=provider,
+        )
+    )
+
+    system_prompt = provider.calls[0]["messages"][0]["content"]
+    assert '"capability_id": "skills.search"' in system_prompt
+    assert '"capability_id": "skills.describe"' in system_prompt
+    assert '"capability_id": "mcp.tool.call"' in system_prompt
+    assert "llm2docx" not in system_prompt
+    assert "SKILL.md" not in system_prompt
+    assert "## Checklist" not in system_prompt
 
 
 def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(

@@ -145,6 +145,8 @@ class CapabilityCatalog:
 
     @classmethod
     def default(cls) -> "CapabilityCatalog":
+        from .extensions import extension_capability_definitions
+
         return cls(
             capabilities=[
                 _builtin_capability(
@@ -159,6 +161,7 @@ class CapabilityCatalog:
                     description="Review artifact summaries through ResourceRef and content-policy boundaries.",
                     tags=("artifact", "review"),
                 ),
+                *extension_capability_definitions(Capability),
                 Capability(
                     capability_id="artifact.diff_summary",
                     title="Artifact Diff Summary",

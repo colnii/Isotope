@@ -1,6 +1,7 @@
 import importlib
 import json
 import subprocess
+import sys
 from dataclasses import asdict
 from pathlib import Path
 
@@ -118,6 +119,126 @@ def test_runner_list_uses_capability_catalog_as_source_of_truth():
         "artifact.review",
         "external.snapshot.review",
     ]
+
+
+def test_runner_discovers_extension_entrypoint_capabilities():
+    runner = _runner()
+
+    ids = _ids(runner.list_capabilities())
+
+    assert "skills.search" in ids
+    assert "skills.describe" in ids
+    assert "mcp.servers.list" in ids
+    assert "mcp.tools.search" in ids
+    assert "mcp.tool.call" in ids
+
+
+def test_runner_executes_skills_search_with_explicit_roots(tmp_path):
+    root = tmp_path / "skills"
+    skill_dir = root / "frontend"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "---\n"
+        "name: frontend-design\n"
+        "description: Build production-grade frontend interfaces.\n"
+        "---\n\n"
+        "# frontend-design\n",
+        encoding="utf-8",
+    )
+    runner = _runner()
+
+    result = runner.run_capability(
+        "skills.search",
+        inputs={"roots": [str(root)], "query": "frontend"},
+    )
+
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "extension_skill_registry"
+    assert result["skills"][0]["skill_id"] == "frontend-design"
+    assert "body" not in result["skills"][0]
+
+
+def test_runner_executes_skills_describe_with_bounded_body(tmp_path):
+    root = tmp_path / "skills"
+    skill_dir = root / "docx"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "---\n"
+        "name: llm2docx\n"
+        "description: Fill Word templates.\n"
+        "---\n\n"
+        "# llm2docx\n\n"
+        "Use this skill for docx work.\n",
+        encoding="utf-8",
+    )
+    runner = _runner()
+
+    result = runner.run_capability(
+        "skills.describe",
+        inputs={"roots": [str(root)], "skill_id": "llm2docx", "max_body_chars": 40},
+    )
+
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "extension_skill_registry"
+    assert result["skill"]["skill_id"] == "llm2docx"
+    assert "Use this skill" in result["body"]
+
+
+def test_runner_plans_mcp_capabilities_as_missing_inputs():
+    runner = _runner()
+
+    plan = runner.plan_capability_run("mcp.tool.call", inputs={})
+
+    assert plan["status"] == "missing_inputs"
+    assert plan["missing_inputs"] == ["server_id", "tool_name"]
+    assert plan["can_launch"] is False
+
+
+def test_runner_rejects_mcp_tool_call_without_config(monkeypatch):
+    monkeypatch.delenv("ISOTOPE_MCP_SERVERS_JSON", raising=False)
+    runner = _runner()
+
+    with pytest.raises(ValueError, match="unknown MCP server"):
+        runner.run_capability(
+            "mcp.tool.call",
+            inputs={"server_id": "missing", "tool_name": "echo", "arguments": {}},
+        )
+
+
+def test_runner_executes_mcp_tool_call_from_explicit_env_config(monkeypatch):
+    fixture_server = (
+        Path(__file__).resolve().parents[2] / "fixtures" / "mcp_echo_server.py"
+    )
+    monkeypatch.setenv(
+        "ISOTOPE_MCP_SERVERS_JSON",
+        json.dumps(
+            {
+                "echo": {
+                    "command": sys.executable,
+                    "args": [str(fixture_server)],
+                    "enabled": True,
+                    "allowed_tools": ["echo"],
+                }
+            }
+        ),
+    )
+    runner = _runner()
+
+    result = runner.run_capability(
+        "mcp.tool.call",
+        inputs={
+            "server_id": "echo",
+            "tool_name": "echo",
+            "arguments": {"text": "hello from runner"},
+        },
+    )
+
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "extension_mcp_client"
+    assert result["server_id"] == "echo"
+    assert result["tool_name"] == "echo"
+    assert result["structured_content"] == {"echo": "hello from runner"}
+    assert result["is_error"] is False
 
 
 def test_runner_describe_returns_public_metadata_catalog_metadata():
