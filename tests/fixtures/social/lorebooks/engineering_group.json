@@ -1,0 +1,12 @@
+{
+  "entries": [
+    {
+      "entry_id": "rule_tests",
+      "title": "测试规则",
+      "content": "聊测试时要问清楚验证命令。",
+      "keywords": ["测试"],
+      "priority": 20,
+      "position": "after_recent_context"
+    }
+  ]
+}
