@@ -238,10 +238,14 @@ def _agent_loop_project_status_summary(
     if not isinstance(project_status, Mapping):
         return {}
     counts = project_status.get("counts")
+    self_repair_workers = project_status.get("self_repair_workers")
     return {
         "agent_loop_project_status_status": capability_run.get("status"),
         "agent_loop_project_status_snapshot_id": project_status.get("snapshot_id"),
         "agent_loop_project_status_counts": dict(counts) if isinstance(counts, Mapping) else {},
+        "agent_loop_project_status_self_repair_count": (
+            len(self_repair_workers) if isinstance(self_repair_workers, list) else 0
+        ),
     }
 
 

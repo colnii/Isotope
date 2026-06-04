@@ -166,6 +166,10 @@ def run_supervisor_project_status(
     snapshot = build_desktop_snapshot(
         state_root=input_mapping[SUPERVISOR_STATE_ROOT_INPUT]
     )
+    worker_review = collect_worker_reviews(
+        codex_home=Path(input_mapping[SUPERVISOR_STATE_ROOT_INPUT]),
+        lightweight=True,
+    )
     summary = {
         "snapshot_id": snapshot.get("snapshotId"),
         "generated_at": snapshot.get("generatedAt"),
@@ -176,6 +180,7 @@ def run_supervisor_project_status(
         "approvals": snapshot.get("approvals", [])[:10],
         "activities": snapshot.get("activities", [])[:20],
         "artifacts": snapshot.get("artifacts", [])[:10],
+        "self_repair_workers": _self_repair_workers_payload(worker_review)[:10],
     }
     return {
         "kind": "capability_run_result",
@@ -415,6 +420,17 @@ def _worker_review_capability_payload(payload: Mapping[str, Any]) -> dict[str, A
     }
 
 
+def _self_repair_workers_payload(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
+    workers = payload.get("workers")
+    if not isinstance(workers, list):
+        return []
+    return [
+        _worker_review_item_payload(worker)
+        for worker in workers
+        if isinstance(worker, Mapping) and worker.get("worker_role") == "self_repair"
+    ]
+
+
 def _worker_review_candidates_payload(raw: Any) -> dict[str, list[dict[str, Any]]]:
     if not isinstance(raw, Mapping):
         return {}
@@ -464,6 +480,7 @@ def _worker_review_item_payload(worker: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "record_id": worker.get("record_id"),
         "name": worker.get("name"),
+        "worker_role": worker.get("worker_role"),
         "backend": worker.get("backend"),
         "registry_status": worker.get("registry_status"),
         "cwd": worker.get("cwd"),

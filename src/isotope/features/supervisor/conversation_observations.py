@@ -369,6 +369,10 @@ def _project_status_observation(capability_run: dict[str, Any]) -> dict[str, Any
             "approvals": _safe_mapping_list(summary.get("approvals"), limit=10),
             "activities": _safe_mapping_list(summary.get("activities"), limit=20),
             "artifacts": _safe_mapping_list(summary.get("artifacts"), limit=10),
+            "self_repair_workers": _safe_mapping_list(
+                summary.get("self_repair_workers"),
+                limit=10,
+            ),
         },
     }
 

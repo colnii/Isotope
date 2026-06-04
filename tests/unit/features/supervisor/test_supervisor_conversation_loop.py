@@ -10,6 +10,11 @@ from isotope.features.supervisor.conversation_loop import (
     run_supervisor_conversation_events,
 )
 from isotope.features.supervisor.planner.goal_queue import record_supervisor_goal
+from isotope.features.supervisor.registry import (
+    ManagedCodexRecord,
+    append_managed_record,
+    default_registry_path,
+)
 from isotope.llm.provider import LLMResponse
 
 
@@ -504,6 +509,87 @@ def test_conversation_loop_can_use_project_status_without_fixed_route(
     assert "project_state_summary" in second_prompt
     assert "把 Desktop chat 打成黄金路径" in second_prompt
     assert events[2].payload == {"text": "当前有 Desktop chat 目标正在推进。"}
+
+
+def test_conversation_loop_project_status_observes_self_repair_worker_status(
+    tmp_path,
+) -> None:
+    workspace = tmp_path / "repo"
+    worker_cwd = workspace / ".worktrees" / "supervisor" / "desktop-self-repair"
+    worker_cwd.mkdir(parents=True)
+    log_path = tmp_path / "supervisor" / "logs" / "managed-self-repair.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text(
+        "\n".join(
+            [
+                "SUPERVISOR_STATUS: done",
+                "SUPERVISOR_SUMMARY: 已修复 Desktop chat 项目态势读取。",
+                "SUPERVISOR_NEXT: 等待主线合并。",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    append_managed_record(
+        default_registry_path(tmp_path),
+        ManagedCodexRecord(
+            record_id="managed-self-repair",
+            name="desktop-self-repair",
+            cwd=str(worker_cwd),
+            prompt="Isotope self-repair request must stay private.",
+            command=("codex", "exec", "-C", str(worker_cwd), "prompt"),
+            pid=0,
+            started_at="2026-06-04T00:00:00+00:00",
+            log_path=str(log_path),
+            status="launched",
+            backend="process",
+            worker_role="self_repair",
+        ),
+    )
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "supervisor.project_status",
+                    "arguments": {},
+                    "rationale": "需要读取自修复 worker 状态。",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "自修复 worker 已完成，等待主线合并。",
+                    "rationale": "基于项目态势 observation 回答。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=workspace,
+            user_message="自修复现在怎么样了？",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[1].payload["result_summary"][
+        "agent_loop_project_status_self_repair_count"
+    ] == 1
+    second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
+    observation_message = provider.calls[1]["messages"][1]["content"]
+    assert "self_repair_workers" in second_prompt
+    assert "desktop-self-repair" in second_prompt
+    assert "已修复 Desktop chat 项目态势读取。" in second_prompt
+    assert "Isotope self-repair request" not in observation_message
+    assert events[2].payload == {"text": "自修复 worker 已完成，等待主线合并。"}
 
 
 def test_conversation_loop_can_launch_codex_assisted_self_repair(

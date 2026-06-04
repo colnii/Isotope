@@ -192,6 +192,7 @@ def _worker_review(
     payload = {
         "record_id": record.record_id,
         "name": record.name,
+        "worker_role": record.worker_role,
         "backend": record.backend,
         "pid": record.pid,
         "process_running": process_checker(record.pid)

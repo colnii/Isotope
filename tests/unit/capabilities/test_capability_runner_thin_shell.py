@@ -177,6 +177,60 @@ def test_project_status_capability_returns_low_sensitive_snapshot_summary(tmp_pa
     assert "messages" not in json.dumps(result, ensure_ascii=False).lower()
 
 
+def test_project_status_capability_includes_self_repair_worker_status(tmp_path):
+    workspace = tmp_path / "repo" / ".worktrees" / "supervisor" / "desktop-self-repair"
+    workspace.mkdir(parents=True)
+    log_path = tmp_path / "supervisor" / "logs" / "managed-self-repair.log"
+    log_path.parent.mkdir(parents=True)
+    log_path.write_text(
+        "\n".join(
+            [
+                "SUPERVISOR_STATUS: done",
+                "SUPERVISOR_SUMMARY: 已修复 Desktop chat 项目态势读取。",
+                "SUPERVISOR_NEXT: 等待主线合并。",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    append_managed_record(
+        default_registry_path(tmp_path),
+        ManagedCodexRecord(
+            record_id="managed-self-repair",
+            name="desktop-self-repair",
+            cwd=str(workspace),
+            prompt="Isotope self-repair request must stay private.",
+            command=("codex", "exec", "-C", str(workspace), "prompt"),
+            pid=0,
+            started_at="2026-06-04T00:00:00+00:00",
+            log_path=str(log_path),
+            status="launched",
+            backend="process",
+            worker_role="self_repair",
+        ),
+    )
+
+    result = _runner().run_capability(
+        "supervisor.project_status",
+        inputs={"state_root": str(tmp_path)},
+    )
+
+    workers = result["project_state_summary"]["self_repair_workers"]
+    assert len(workers) == 1
+    worker = workers[0]
+    assert worker["record_id"] == "managed-self-repair"
+    assert worker["name"] == "desktop-self-repair"
+    assert worker["worker_role"] == "self_repair"
+    assert worker["supervisor_protocol"] == {
+        "status": "done",
+        "summary": "已修复 Desktop chat 项目态势读取。",
+        "next": "等待主线合并。",
+    }
+    assert worker["changes"]["status"] == "unknown"
+    rendered = json.dumps(result, ensure_ascii=False)
+    assert "Isotope self-repair request" not in rendered
+    assert "prompt" not in rendered
+
+
 def test_runner_discovers_isotope_self_repair_from_default_catalog():
     runner = _runner()
 
@@ -2445,6 +2499,7 @@ def test_worker_review_capability_runs_existing_lightweight_review(tmp_path):
         {
             "record_id": "managed-001",
             "name": "feature-a",
+            "worker_role": "worker",
             "backend": "tmux",
             "registry_status": "launched",
             "cwd": str(workspace),
