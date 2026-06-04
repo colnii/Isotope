@@ -1,4 +1,4 @@
-"""Low-sensitive capability gap projections for Supervisor surfaces."""
+"""Public capability gap projections for Supervisor surfaces."""
 
 from __future__ import annotations
 

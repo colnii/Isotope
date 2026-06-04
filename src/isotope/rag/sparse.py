@@ -1,4 +1,4 @@
-"""Sparse retrieval over low-sensitive retrieval documents."""
+"""Sparse retrieval over public retrieval documents."""
 
 from __future__ import annotations
 

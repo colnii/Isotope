@@ -280,7 +280,7 @@ def test_runner_discovers_supervisor_project_status_from_default_catalog():
     assert "read_only_state_projection" in description["safety_boundaries"]
 
 
-def test_project_status_capability_returns_low_sensitive_snapshot_summary(tmp_path):
+def test_project_status_capability_returns_public_state_projection(tmp_path):
     runner = _runner()
 
     result = runner.run_capability(

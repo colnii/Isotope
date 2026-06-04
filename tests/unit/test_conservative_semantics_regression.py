@@ -13,7 +13,9 @@ MODEL_FACING_FILES = [
     "src/isotope/capabilities/runner.py",
     "src/isotope/demo/agent_loop/matrix_scenarios.py",
     "src/isotope/demo/demo_planner_helpers.py",
+    "src/isotope/features/supervisor/capability_gaps.py",
     "src/isotope/memory/__init__.py",
+    "src/isotope/rag/sparse.py",
     "src/isotope/rag/ingestion.py",
 ]
 
@@ -32,6 +34,7 @@ FORBIDDEN_PATTERNS = [
     r"\bdisabled capability\b",
     r"\bfailed" + "_closed" + r"\b",
     r"\bnot[- ]enabled\b",
+    r"\blow[-_ ]sensitive\b",
 ]
 
 

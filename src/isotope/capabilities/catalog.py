@@ -1964,8 +1964,8 @@ class CapabilityCatalog:
                     capability_id="supervisor.project_status",
                     title="Supervisor Project Status",
                     description=(
-                        "Read the current low-sensitive Supervisor desktop "
-                        "snapshot summary for project status, blockers, "
+                        "Read the current public Supervisor desktop "
+                        "state projection for project status, blockers, "
                         "approvals, workers, and artifacts."
                     ),
                     maturity="v0.2",

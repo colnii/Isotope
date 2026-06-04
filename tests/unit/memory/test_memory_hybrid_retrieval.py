@@ -26,7 +26,7 @@ def _record(
     )
 
 
-def test_memory_hybrid_retrieval_indexes_low_sensitive_preview_fields_only():
+def test_memory_hybrid_retrieval_indexes_public_metadata_fields():
     records = [
         _record("mem_public", "summary-only planner context"),
         _record("mem_secret", "unrelated", {"secret": "summary-only planner context"}),
