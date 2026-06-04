@@ -37,7 +37,8 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 
 The pack writes `diagnostics.sh`, `first-run.sh`, `health.sh`,
 `startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`, `beta-day-report.sh`,
-`record-failure.sh`, `regression-intake.sh`, `send-run.sh`, `pause.sh`,
+`record-failure.sh`, `failure-to-regression.sh`, `regression-intake.sh`,
+`send-run.sh`, `pause.sh`,
 `resume.sh`, and `export-log.sh`. It also writes `logs/failures.json` and
 creates `regressions/`. Run `send-run.sh` only with
 `ISOTOPE_QQ_ENABLE_SEND=1`.
@@ -264,6 +265,17 @@ For generated packs, the same flow is:
 ./regression-intake.sh
 ```
 
+If the observed issue should immediately become a replay regression draft, use
+the generated wrapper instead:
+
+```bash
+./failure-to-regression.sh "表情包过度热情" "这能发吗"
+```
+
+It runs `record-failure.sh`, runs `regression-intake.sh`, and prints the next
+`qq replay` command(s) for operator review. It does not connect to OneBot and
+does not send messages.
+
 `beta-day-report.json` contains `review_warnings`, audit counts,
 `open_failure_count`, and `next_actions`. Treat `open_failure_count > 0` as
 unfinished product work: fix the behavior, add or update regression tests, then
@@ -304,6 +316,7 @@ isotope-social qq record-failure \
   --observed-input "这能发吗" --json
 cd .isotope/qq-beta
 ./record-failure.sh "表情包过度热情" "这能发吗"
+./failure-to-regression.sh "表情包过度热情" "这能发吗"
 ```
 
 Each failure entry uses this JSON shape:
@@ -370,6 +383,8 @@ Run this checklist for each controlled beta day:
 - Run `qq beta-day-report` or `./beta-day-report.sh`.
 - Inspect `beta-day-report.json`, especially `open_failure_count` and
   `next_actions`.
+- Use `./failure-to-regression.sh` when a new observed failure should become a
+  replay draft immediately.
 - Run `qq regression-intake` or `./regression-intake.sh` when failures are open.
 - Inspect `regression-intake.json` and replay drafts under `regressions/`.
 - Enable sends only after dry-run decisions look correct and the report has no

@@ -953,6 +953,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
         "diagnostics.sh",
         "dry-run.sh",
         "export-log.sh",
+        "failure-to-regression.sh",
         "first-run.sh",
         "health.sh",
         "pause.sh",
@@ -1037,6 +1038,16 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert "--failures-json logs/failures.json" in regression_intake
     assert "--output-dir regressions" in regression_intake
     assert "--index-output logs/regression-intake.json" in regression_intake
+
+    failure_to_regression = (output_dir / "failure-to-regression.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "./record-failure.sh" in failure_to_regression
+    assert "./regression-intake.sh" in failure_to_regression
+    assert "qq replay" in failure_to_regression
+    assert "--replay-json" in failure_to_regression
+    assert "live-run" not in failure_to_regression
+    assert "send-run" not in failure_to_regression
 
     send_run = (output_dir / "send-run.sh").read_text(encoding="utf-8")
     assert "ISOTOPE_QQ_ENABLE_SEND" in send_run
@@ -1183,6 +1194,69 @@ def test_social_runner_qq_record_failure_script_appends_failure(
     assert failures["failures"][0]["date"] == "2026-06-05"
     assert failures["failures"][0]["symptom"] == "表情包过度热情"
     assert failures["failures"][0]["observed_input"] == "这能发吗"
+
+
+def test_social_runner_qq_failure_to_regression_script_records_and_drafts(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    output_dir = tmp_path / "qq-beta"
+    assert main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(output_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    result = subprocess.run(
+        ["./failure-to-regression.sh", "表情包过度热情", "这能发吗"],
+        cwd=output_dir,
+        env={
+            **os.environ,
+            "PATH": "/home/lumber/Github/isotope/.venv/bin:"
+            + os.environ.get("PATH", ""),
+            "PYTHONPATH": str(Path.cwd() / "src")
+            + os.pathsep
+            + os.environ.get("PYTHONPATH", ""),
+            "ISOTOPE_QQ_FAILURE_DATE": "2026-06-05",
+        },
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    combined_output = result.stdout + result.stderr
+    assert "qq replay" in combined_output
+    assert "--replay-json" in combined_output
+    assert "regressions/qq-failure-1.replay.json" in combined_output
+    assert "live-run" not in combined_output
+    assert "send-run" not in combined_output
+
+    failures = _read_json(output_dir / "logs" / "failures.json")
+    assert failures["failures"][0]["group"] == "99999"
+    assert failures["failures"][0]["status"] == "open"
+    assert failures["failures"][0]["date"] == "2026-06-05"
+    assert failures["failures"][0]["symptom"] == "表情包过度热情"
+    assert failures["failures"][0]["observed_input"] == "这能发吗"
+
+    intake = _read_json(output_dir / "logs" / "regression-intake.json")
+    assert intake["draft_count"] == 1
+    assert intake["drafts"][0]["replay_json"] == "regressions/qq-failure-1.replay.json"
+    assert (output_dir / "regressions" / "qq-failure-1.replay.json").is_file()
 
 
 def test_social_runner_qq_first_run_stops_before_missing_replay(

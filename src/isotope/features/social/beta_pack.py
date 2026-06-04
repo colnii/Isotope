@@ -13,6 +13,7 @@ SCRIPT_NAMES = (
     "beta-day-report.sh",
     "diagnostics.sh",
     "first-run.sh",
+    "failure-to-regression.sh",
     "health.sh",
     "startup-check.sh",
     "dry-run.sh",
@@ -126,6 +127,9 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
         return f"{common}\n{command}\n"
     if name == "first-run.sh":
         command = _first_run_command(config)
+        return f"{common}\n{command}\n"
+    if name == "failure-to-regression.sh":
+        command = _failure_to_regression_command()
         return f"{common}\n{command}\n"
     if name == "health.sh":
         command = _live_run_command(config, max_events=0, send=False)
@@ -355,6 +359,40 @@ def _regression_intake_command(config: QQBetaPackConfig) -> str:
     return " ".join(shlex.quote(part) for part in parts)
 
 
+def _failure_to_regression_command() -> str:
+    return (
+        './record-failure.sh "$@"\n'
+        "./regression-intake.sh\n"
+        "python3 - <<'PY'\n"
+        "import json\n"
+        "import shlex\n"
+        "import sys\n"
+        "from pathlib import Path\n"
+        "\n"
+        'index_path = Path("logs/regression-intake.json")\n'
+        "if not index_path.is_file():\n"
+        '    print("Missing logs/regression-intake.json after regression intake.", file=sys.stderr)\n'
+        "    raise SystemExit(2)\n"
+        "payload = json.loads(index_path.read_text(encoding='utf-8'))\n"
+        "drafts = payload.get('drafts', [])\n"
+        "if not drafts:\n"
+        '    print("No open failure replay drafts were generated.", file=sys.stderr)\n'
+        "    raise SystemExit(0)\n"
+        'print("Next replay command(s):")\n'
+        "for draft in drafts:\n"
+        "    if not isinstance(draft, dict):\n"
+        "        continue\n"
+        "    replay_json = str(draft.get('replay_json', '')).strip()\n"
+        "    if not replay_json:\n"
+        "        continue\n"
+        '    command = "isotope-social qq replay --config-json config.json --state-root state "\n'
+        "    command += f\"--replay-json {shlex.quote(replay_json)} \"\n"
+        '    command += "--output logs/replay-report.json --json"\n'
+        "    print(command)\n"
+        "PY\n"
+    )
+
+
 def _record_failure_command(config: QQBetaPackConfig) -> str:
     return (
         'SYMPTOM="${1:-${ISOTOPE_QQ_FAILURE_SYMPTOM:-}}"\n'
@@ -481,9 +519,12 @@ OneBot WebSocket: `{config.websocket_url}`
 5. Run `./dry-run.sh`.
 6. Run `./review-dry-run.sh` and inspect `logs/dry-run-review.json`.
 7. Run `./export-log.sh`.
-8. Record observed issues in `logs/failures.json`.
+8. Record observed issues in `logs/failures.json`, or use
+   `./failure-to-regression.sh` to record and draft a replay regression in one
+   operator step.
 9. Run `./beta-day-report.sh` and inspect `logs/beta-day-report.json`.
-10. Run `./regression-intake.sh` for open failures and inspect `regressions/`.
+10. Run `./regression-intake.sh` for open failures and inspect `regressions/`
+    if you did not already use `./failure-to-regression.sh`.
 11. Only after dry-run behavior is acceptable, run:
 
 ```bash
@@ -496,6 +537,8 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 - Resume with `./resume.sh` only after the issue is understood.
 - Export the audit log with `./export-log.sh`.
 - Record a real beta issue with `./record-failure.sh`.
+- Record a real beta issue and draft replay regressions with
+  `./failure-to-regression.sh`.
 - Write the daily beta report with `./beta-day-report.sh`.
 - Draft replay regressions with `./regression-intake.sh`.
 
@@ -518,6 +561,9 @@ for stable replay output. To use LLM-generated text replies, change it to
 `logs/failures.json`; it does not enable sends.
 `record-failure.sh` appends one structured failure record to
 `logs/failures.json`.
+`failure-to-regression.sh` runs `record-failure.sh`, runs
+`regression-intake.sh`, then prints the next `qq replay` command(s) to review.
+It does not connect to OneBot and does not send messages.
 `regression-intake.sh` writes replay drafts under `regressions/`; it does not
 close failures automatically.
 """

@@ -38,6 +38,7 @@ def test_qq_group_chatbot_runbooks_cover_beta_operations() -> None:
         "beta-day-report",
         "record-failure",
         "record-failure.sh",
+        "failure-to-regression.sh",
         "regression-intake",
         "dry-run-review.json",
         "beta-day-report.json",
