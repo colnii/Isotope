@@ -28,6 +28,9 @@ from isotope.features.supervisor.notifications.context import (
     read_recent_context_results,
     request_project_context,
 )
+from isotope.features.supervisor.state.worker_lifecycle import (
+    record_worker_lifecycle_decision,
+)
 from isotope.features.supervisor.llm_action.llm_summary import (
     PooledSummaryProvider,
     PoolEntry,
@@ -845,6 +848,53 @@ def test_codex_supervisor_runner_dashboard_json_groups_lanes(tmp_path, capsys):
         "label": "主动状态协议",
         "detail": "SUPERVISOR_STATUS: blocked",
     }
+
+
+def test_codex_supervisor_runner_dashboard_json_reads_persisted_worker_lifecycle(
+    tmp_path,
+    capsys,
+):
+    codex_home = tmp_path / ".codex"
+    record_worker_lifecycle_decision(
+        codex_home=codex_home,
+        worker_lifecycle_decision={
+            "stage": "archived",
+            "next_step": "cleanup_worktree",
+            "policy": {
+                "policy_status": "program_resolved",
+                "program_action": "archive_integrated",
+                "remaining_step": "cleanup_worktree",
+                "blocked_reason": None,
+            },
+            "timeline": [
+                {
+                    "stage": "archived",
+                    "action": "archive_integrated",
+                    "source": "cleanup",
+                    "status": "executed",
+                    "executed": True,
+                }
+            ],
+        },
+    )
+
+    exit_code = supervisor_main(
+        [
+            "dashboard",
+            "--codex-home",
+            str(codex_home),
+            "--limit",
+            "10",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["worker_lifecycle"]["stage"] == "archived"
+    assert payload["worker_lifecycle"]["next_step"] == "cleanup_worktree"
+    assert payload["worker_lifecycle"]["policy_status"] == "program_resolved"
+    assert payload["state_snapshot"]["worker_lifecycle"] == payload["worker_lifecycle"]
 
 
 def test_codex_supervisor_runner_dashboard_json_includes_notifications(
@@ -2910,6 +2960,61 @@ def test_codex_supervisor_web_dashboard_payload_builder_keeps_page_fields(tmp_pa
         "automation_candidates": 0,
         "total": 0,
     }
+
+
+def test_codex_supervisor_web_dashboard_payload_reads_persisted_worker_lifecycle(tmp_path):
+    from isotope.features.supervisor.web import build_dashboard_web_payload
+
+    codex_home = tmp_path / ".codex"
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+    record_worker_lifecycle_decision(
+        codex_home=codex_home,
+        worker_lifecycle_decision={
+            "stage": "worktree_cleaned",
+            "next_step": "monitor",
+            "policy": {
+                "policy_status": "program_resolved",
+                "program_action": "cleanup_worktree",
+                "remaining_step": "monitor",
+                "blocked_reason": None,
+            },
+            "timeline": [
+                {
+                    "stage": "worktree_cleaned",
+                    "action": "cleanup_worktree",
+                    "source": "cleanup",
+                    "status": "executed",
+                    "executed": True,
+                }
+            ],
+        },
+    )
+
+    payload = build_dashboard_web_payload(
+        report,
+        codex_home=codex_home,
+        workspace_cwd=Path("/tmp/isotope-workspace"),
+    )
+
+    assert payload["worker_lifecycle"] == {
+        "status": "ok",
+        "stage": "worktree_cleaned",
+        "next_step": "monitor",
+        "policy_status": "program_resolved",
+        "program_action": "cleanup_worktree",
+        "remaining_step": "monitor",
+        "blocked_reason": None,
+        "timeline": [
+            {
+                "stage": "worktree_cleaned",
+                "action": "cleanup_worktree",
+                "source": "cleanup",
+                "status": "executed",
+                "executed": True,
+            }
+        ],
+    }
+    assert payload["state_snapshot"]["worker_lifecycle"] == payload["worker_lifecycle"]
 
 
 def test_codex_supervisor_web_dashboard_payload_builder_keeps_degraded_snapshot_meta(

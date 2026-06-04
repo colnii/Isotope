@@ -115,6 +115,37 @@ def test_dashboard_payload_projects_worker_lifecycle_from_state_snapshot() -> No
     }
 
 
+def test_dashboard_payload_projects_persisted_worker_lifecycle_from_snapshot() -> None:
+    state_snapshot = _state_snapshot_with_lifecycle()
+    state_snapshot["worker_lifecycle"] = {
+        "status": "ok",
+        "stage": "worktree_cleaned",
+        "next_step": "monitor",
+        "policy_status": "program_resolved",
+        "program_action": "cleanup_worktree",
+        "remaining_step": "monitor",
+        "blocked_reason": None,
+        "timeline": [
+            {
+                "stage": "worktree_cleaned",
+                "action": "cleanup_worktree",
+                "source": "cleanup",
+                "status": "executed",
+                "executed": True,
+            }
+        ],
+    }
+    state_snapshot.pop("worker_lifecycle_decision")
+
+    payload = dashboard_payload(
+        _report(),
+        state_snapshot=state_snapshot,
+        api=_StubDashboardApi(),
+    )
+
+    assert payload["worker_lifecycle"] == state_snapshot["worker_lifecycle"]
+
+
 def test_dashboard_plain_prints_worker_lifecycle(capsys) -> None:
     payload = dashboard_payload(
         _report(),
