@@ -14,7 +14,7 @@
   "capacity_decisions": {{ capacity_decisions }},
   "worker_profiles": {
     "coding": "默认代码开发档，适合需要改代码、跑测试、做复杂判断的任务。",
-    "light": "低成本轻任务档，适合只读检查、状态汇报、smoke 或短小验证。"
+    "light": "低成本轻任务档，适合轻量检查、状态汇报、smoke 或短小验证。"
   },
   "delete_worktree_candidates": {{ delete_worktree_candidates }},
   "worker_lifecycle_contract": {{ worker_lifecycle_contract }},

@@ -87,6 +87,30 @@ SUPERPOWERS_PLAN_FILES = [
     "docs/superpowers/plans/2026-06-04-vector-hybrid-retrieval.md",
 ]
 
+LLM_PROMPT_FILES = [
+    "src/isotope/llm/prompts/agent_group_member.md",
+    "src/isotope/llm/prompts/agent_loop_planner.md",
+    "src/isotope/llm/prompts/agent_loop_planner_user.md",
+    "src/isotope/llm/prompts/capacity_calling.md",
+    "src/isotope/llm/prompts/capacity_calling_user.md",
+    "src/isotope/llm/prompts/capacity_calling_user_allow_no_capacity.md",
+    "src/isotope/llm/prompts/desktop_chat.md",
+    "src/isotope/llm/prompts/goal_planning.md",
+    "src/isotope/llm/prompts/goal_planning_repair.md",
+    "src/isotope/llm/prompts/goal_planning_repair_user.md",
+    "src/isotope/llm/prompts/goal_planning_user.md",
+    "src/isotope/llm/prompts/product_chat.md",
+    "src/isotope/llm/prompts/social_reply.md",
+    "src/isotope/llm/prompts/social_reply_user.md",
+    "src/isotope/llm/prompts/supervisor_conversation_loop.md",
+    "src/isotope/llm/prompts/supervisor_llm_action.md",
+    "src/isotope/llm/prompts/supervisor_llm_action_user.md",
+    "src/isotope/llm/prompts/supervisor_llm_summary.md",
+    "src/isotope/llm/prompts/supervisor_llm_summary_user.md",
+    "src/isotope/llm/prompts/workbench_ask.md",
+    "src/isotope/llm/prompts/workbench_ask_user.md",
+]
+
 FORBIDDEN_PATTERNS = [
     r"\b" + "Unavailable" + "Memory",
     r"\b" + "Unavailable" + "ExternalIngestionService" + r"\b",
@@ -157,6 +181,24 @@ SUPERPOWERS_SPEC_FORBIDDEN_PATTERNS = [
 
 SUPERPOWERS_PLAN_PROSE_FORBIDDEN_PATTERNS = SUPERPOWERS_SPEC_FORBIDDEN_PATTERNS
 
+LLM_PROMPT_FORBIDDEN_TERMS = [
+    "低敏",
+    "只读",
+    "预检",
+    "不默认",
+    "默认不开",
+    "fail_closed",
+    "not_enabled",
+    "deferred",
+    "preflight",
+    "low-sensitive",
+    "low_sensitive",
+    "read-only",
+    "readonly",
+    "summary-only",
+    "preview-only",
+]
+
 
 def _markdown_prose_lines(text: str) -> list[tuple[int, str]]:
     prose_lines = []
@@ -223,5 +265,16 @@ def test_superpowers_plan_prose_does_not_retrain_conservative_design_language():
             for pattern in SUPERPOWERS_PLAN_PROSE_FORBIDDEN_PATTERNS:
                 if re.search(pattern, prose_line, re.IGNORECASE):
                     violations.append(f"{relative_path}:{line_number}: {pattern}")
+
+    assert violations == []
+
+
+def test_llm_prompts_do_not_train_conservative_design_language():
+    violations = []
+    for relative_path in LLM_PROMPT_FILES:
+        text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for term in LLM_PROMPT_FORBIDDEN_TERMS:
+            if term in text:
+                violations.append(f"{relative_path}: {term}")
 
     assert violations == []
