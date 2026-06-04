@@ -370,11 +370,7 @@ def _run_capability_decision(
                 state_root=state_root,
             )
         }
-        status = (
-            "ok"
-            if result_summary.get("agent_loop_tick_status") == "executed"
-            else "blocked"
-        )
+        status = _capacity_result_status(result_summary)
     except Exception as exc:  # noqa: BLE001 - stream public capacity failure.
         result_summary = {
             "error_type": type(exc).__name__,
@@ -509,6 +505,13 @@ def _capability_input_names(capacity_id: str) -> set[str]:
 def _capacity_event_id(capacity_id: str) -> str:
     safe = "".join(char if char.isalnum() else "_" for char in capacity_id.lower())
     return f"capacity_{safe.strip('_') or 'unknown'}"
+
+
+def _capacity_result_status(result_summary: dict[str, Any]) -> str:
+    research_status = result_summary.get("agent_loop_research_search_status")
+    if research_status in {"provider_failed", "validation_failed"}:
+        return "blocked"
+    return "ok" if result_summary.get("agent_loop_tick_status") == "executed" else "blocked"
 
 
 def _capability_title(capacity_id: str, *, context: dict[str, Any]) -> str:

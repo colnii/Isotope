@@ -161,6 +161,11 @@ def _agent_loop_research_search_summary(
     source_previews = research_search.get("source_previews")
     if isinstance(source_previews, list):
         summary["agent_loop_research_source_previews"] = source_previews[:5]
+    error = research_search.get("error")
+    if isinstance(error, Mapping):
+        summary["agent_loop_research_error_code"] = error.get("code")
+        summary["agent_loop_research_error_message"] = error.get("message")
+        summary["agent_loop_research_error_retryable"] = error.get("retryable")
     return summary
 
 
