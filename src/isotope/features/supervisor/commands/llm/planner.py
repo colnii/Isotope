@@ -71,6 +71,10 @@ def _generate_llm_action_decision(
         payload.get("delete_worktree_candidates"),
         capacity_decisions=payload.get("capacity_decisions"),
         worker_lifecycle_decision=payload.get("worker_lifecycle_decision"),
+        worker_lifecycle_execution=payload.get("worker_lifecycle_execution"),
+        worker_lifecycle_execution_result=payload.get(
+            "worker_lifecycle_execution_result"
+        ),
     )
 
 

@@ -35,6 +35,7 @@
     "candidate_targets.resume_context_hint 为 large_session_file 时，恢复历史可能消耗大量 tokens；除非确实需要该完整历史，恢复前优先考虑 request_context 或 launch_session。",
     "worker_reviews 只提供下一轮决策上下文；next_decision.merge_suitable 不是自动合并授权，不得输出白名单之外的 merge/rebase/delete 动作。",
     "worker_lifecycle_contract.decision 是程序托管的 worker 生命周期状态；不得重复执行其中 execution 已记录的动作。",
+    "worker_lifecycle_contract.execution.summary 是程序汇总的生命周期队列：archivable/delete_ready/delete_blocked/result_actions；先读它再判断是否需要补上下文、等待或选择白名单动作。",
     "worker_lifecycle_contract.decision.next_step 是程序判断的下一步；launch_merge_worker 走现有 merge dispatch，archive_worker/cleanup_worktree 只有存在匹配白名单候选时才可输出动作，否则 monitor。",
     "delete_worktree 是受控清理动作；只允许用于 delete_worktree_candidates 中已经完成、已归档、已集成的 worker；输出前必须设置 confirm_delete_worktree=true。",
     "capacity_decisions 来自 capacity plan 的 supervisor_decision 读模型；next_action 为 call_capacity 时说明能力计划已 ready，request_input 表示需要先补输入，blocked 表示当前能力不可启动。",

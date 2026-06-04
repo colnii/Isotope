@@ -6,6 +6,7 @@ from typing import Any
 
 from isotope.llm.prompts import load_system_prompt, render_json_prompt_template
 
+from ..lifecycle import worker_lifecycle_execution_summary
 from ..flow import CodexSupervisorReport
 
 LLM_ACTION_ALLOWED_KINDS = (
@@ -31,6 +32,8 @@ def build_llm_action_messages(
     delete_worktree_candidates: list[dict[str, Any]] | None = None,
     capacity_decisions: list[dict[str, Any]] | None = None,
     worker_lifecycle_decision: dict[str, Any] | None = None,
+    worker_lifecycle_execution: dict[str, Any] | None = None,
+    worker_lifecycle_execution_result: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     """Build the prompt for guarded LLM planning."""
     from . import llm_summary as _summary
@@ -112,7 +115,11 @@ def build_llm_action_messages(
                     "capacity_decisions": capacity_decisions or [],
                     "delete_worktree_candidates": delete_worktree_candidates or [],
                     "worker_lifecycle_contract": _worker_lifecycle_contract(
-                        worker_lifecycle_decision
+                        worker_lifecycle_decision,
+                        worker_lifecycle_execution=worker_lifecycle_execution,
+                        worker_lifecycle_execution_result=(
+                            worker_lifecycle_execution_result
+                        ),
                     ),
                     "generated_at": report.generated_at,
                     "recommendation": report.recommendation.to_dict(),
@@ -125,14 +132,18 @@ def build_llm_action_messages(
 
 def _worker_lifecycle_contract(
     decision: dict[str, Any] | None,
+    *,
+    worker_lifecycle_execution: dict[str, Any] | None = None,
+    worker_lifecycle_execution_result: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
+    contract = {
         "kind": "worker_lifecycle_contract",
         "decision": decision,
         "rules": [
             "Treat worker_lifecycle_decision as program-owned lifecycle state.",
             "Do not repeat actions already present in execution.",
             "Do not repeat timeline entries where executed is true.",
+            "Use execution.summary before choosing archive, delete, or blocker follow-up.",
             "If policy_status is program_resolved, prefer monitor unless remaining_step names an allowed guarded action.",
             "If policy_status is human_required, use ask_user or request_context only when the decision gate allows it.",
             "If policy_status is model_required, choose from the normal allowed action whitelist.",
@@ -141,3 +152,68 @@ def _worker_lifecycle_contract(
             "Use LLM actions only for gaps, human decisions, or explicitly allowed follow-up actions.",
         ],
     }
+    execution = _worker_lifecycle_execution_contract(
+        worker_lifecycle_execution,
+        worker_lifecycle_execution_result=worker_lifecycle_execution_result,
+    )
+    if execution is not None:
+        contract["execution"] = execution
+    return contract
+
+
+def _worker_lifecycle_execution_contract(
+    execution: dict[str, Any] | None,
+    *,
+    worker_lifecycle_execution_result: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if not isinstance(execution, dict):
+        return None
+    payload = {
+        "kind": _contract_scalar(execution.get("kind")),
+        "source": _contract_scalar(execution.get("source")),
+        "next_step": _contract_scalar(execution.get("next_step")),
+        "status": _contract_scalar(execution.get("status")),
+        "summary": worker_lifecycle_execution_summary(
+            execution,
+            worker_lifecycle_execution_result,
+        ),
+    }
+    result = _worker_lifecycle_execution_result_contract(
+        worker_lifecycle_execution_result
+    )
+    if result is not None:
+        payload["result"] = result
+    return payload
+
+
+def _worker_lifecycle_execution_result_contract(
+    result: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if not isinstance(result, dict):
+        return None
+    return {
+        "kind": _contract_scalar(result.get("kind")),
+        "source": _contract_scalar(result.get("source")),
+        "skipped": result.get("skipped") is True,
+        "reason": _contract_scalar(result.get("reason")),
+        "count": _contract_int(result.get("count")),
+    }
+
+
+def _contract_scalar(value: Any) -> str | int | float | bool | None:
+    if isinstance(value, str):
+        compact = " ".join(value.split())
+        if len(compact) <= 160:
+            return compact
+        return compact[:159] + "\u2026"
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int | float):
+        return value
+    return None
+
+
+def _contract_int(value: Any) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return None

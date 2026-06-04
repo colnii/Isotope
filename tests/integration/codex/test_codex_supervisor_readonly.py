@@ -7101,11 +7101,37 @@ def test_codex_supervisor_runner_decide_action_passes_worker_lifecycle_decision(
         "source": "cleanup",
         "execution": [{"kind": "merge_worker", "record_id": "managed-merge"}],
     }
+    lifecycle_execution = {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "next_step": "cleanup_worktree",
+        "status": "ready_to_delete",
+        "delete_worktree_actions": [
+            {
+                "kind": "delete_worktree",
+                "target_name": "source-worker",
+                "record_id": "managed-source",
+            }
+        ],
+    }
+    lifecycle_execution_result = {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "skipped": True,
+        "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+        "count": 1,
+    }
     captured: dict[str, object] = {}
 
     def stub_generate(*args: object, **kwargs: object) -> dict[str, object]:
         captured["worker_lifecycle_decision"] = kwargs.get(
             "worker_lifecycle_decision"
+        )
+        captured["worker_lifecycle_execution"] = kwargs.get(
+            "worker_lifecycle_execution"
+        )
+        captured["worker_lifecycle_execution_result"] = kwargs.get(
+            "worker_lifecycle_execution_result"
         )
         return {
             "kind": "monitor",
@@ -7138,11 +7164,15 @@ def test_codex_supervisor_runner_decide_action_passes_worker_lifecycle_decision(
                 }
             ],
             "worker_lifecycle_decision": lifecycle_decision,
+            "worker_lifecycle_execution": lifecycle_execution,
+            "worker_lifecycle_execution_result": lifecycle_execution_result,
         },
     )
 
     assert result["kind"] == "monitor"
     assert captured["worker_lifecycle_decision"] == lifecycle_decision
+    assert captured["worker_lifecycle_execution"] == lifecycle_execution
+    assert captured["worker_lifecycle_execution_result"] == lifecycle_execution_result
 
 
 def test_codex_supervisor_loop_payload_produces_capacity_decisions_for_llm(

@@ -42,6 +42,30 @@ class WorkerLifecycleExecutionPlan:
         return payload
 
 
+def worker_lifecycle_execution_summary(
+    plan: Mapping[str, Any] | None,
+    result: Mapping[str, Any] | None = None,
+) -> dict[str, int]:
+    if not isinstance(plan, Mapping):
+        return {
+            "archivable": 0,
+            "delete_ready": 0,
+            "delete_blocked": 0,
+            "result_actions": 0,
+        }
+    cleanup_candidates = plan.get("cleanup_candidates")
+    delete_actions = plan.get("delete_worktree_actions")
+    delete_blockers = plan.get("delete_worktree_blockers")
+    return {
+        "archivable": (
+            len(cleanup_candidates) if isinstance(cleanup_candidates, list) else 0
+        ),
+        "delete_ready": len(delete_actions) if isinstance(delete_actions, list) else 0,
+        "delete_blocked": len(delete_blockers) if isinstance(delete_blockers, list) else 0,
+        "result_actions": _execution_result_action_count(result),
+    }
+
+
 def build_worker_lifecycle_execution_plan(
     *,
     worker_lifecycle_decision: Mapping[str, Any] | None,
@@ -296,3 +320,17 @@ def _mapping_list(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         return []
     return [dict(item) for item in value if isinstance(item, Mapping)]
+
+
+def _execution_result_action_count(result: Mapping[str, Any] | None) -> int:
+    if not isinstance(result, Mapping):
+        return 0
+    result_actions = result.get("result_actions")
+    if isinstance(result_actions, list):
+        return len([item for item in result_actions if isinstance(item, Mapping)])
+    count = 0
+    count += len(_mapping_list(result.get("deleted")))
+    count += len(_mapping_list(result.get("archived")))
+    if isinstance(result.get("managed"), Mapping):
+        count += 1
+    return count

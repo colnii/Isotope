@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow
+from isotope.features.supervisor.lifecycle import worker_lifecycle_execution_summary
 from isotope.features.supervisor.state.current_batch import build_current_batch_view
 from isotope.features.supervisor.state.snapshot_display import (
     STATE_SNAPSHOT_SOURCE_LABEL,
@@ -914,10 +915,7 @@ def dashboard_worker_lifecycle_execution_payload(
         "execution_reason": (
             _dashboard_text(result.get("reason"), "") if result is not None else ""
         ),
-        "summary": _dashboard_lifecycle_execution_summary(
-            plan,
-            result_actions=result_actions,
-        ),
+        "summary": worker_lifecycle_execution_summary(plan, result),
         "result_summary": _dashboard_lifecycle_result_summary(result),
         "result_actions": result_actions,
         "delete_evidence": delete_evidence,
@@ -938,24 +936,6 @@ def dashboard_worker_lifecycle_execution_payload(
     if not payload["execute_command"]:
         payload.pop("execute_command")
     return payload
-
-
-def _dashboard_lifecycle_execution_summary(
-    plan: dict[str, Any],
-    *,
-    result_actions: list[dict[str, Any]],
-) -> dict[str, int]:
-    cleanup_candidates = plan.get("cleanup_candidates")
-    delete_actions = plan.get("delete_worktree_actions")
-    delete_blockers = plan.get("delete_worktree_blockers")
-    return {
-        "archivable": (
-            len(cleanup_candidates) if isinstance(cleanup_candidates, list) else 0
-        ),
-        "delete_ready": len(delete_actions) if isinstance(delete_actions, list) else 0,
-        "delete_blocked": len(delete_blockers) if isinstance(delete_blockers, list) else 0,
-        "result_actions": len(result_actions),
-    }
 
 
 def _dashboard_lifecycle_execution_action_count(plan: dict[str, Any]) -> int:

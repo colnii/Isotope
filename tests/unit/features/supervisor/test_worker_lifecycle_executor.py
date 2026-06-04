@@ -6,6 +6,7 @@ from isotope.features.supervisor.lifecycle.executor import (
     build_worker_lifecycle_execution_plan,
     worker_lifecycle_execution_action,
     worker_lifecycle_execution_planned_executed,
+    worker_lifecycle_execution_summary,
 )
 from isotope.features.supervisor.commands.supervise.action import (
     append_supervise_llm_action,
@@ -51,6 +52,34 @@ def test_lifecycle_execution_plan_launches_merge_worker_from_program_next_step()
         "target_name": "supervisor-merge-dispatch",
         "source": "integration_review",
     }
+
+
+def test_lifecycle_execution_summary_counts_queue_and_result_actions() -> None:
+    assert worker_lifecycle_execution_summary(None) == {
+        "archivable": 0,
+        "delete_ready": 0,
+        "delete_blocked": 0,
+        "result_actions": 0,
+    }
+    plan = {
+        "cleanup_candidates": [{"name": "archivable-worker"}],
+        "delete_worktree_actions": [{"target_name": "delete-ready-worker"}],
+        "delete_worktree_blockers": [{"target_name": "dirty-worker"}],
+    }
+
+    assert worker_lifecycle_execution_summary(
+        plan,
+        {"deleted": [{"target_name": "delete-ready-worker"}]},
+    ) == {
+        "archivable": 1,
+        "delete_ready": 1,
+        "delete_blocked": 1,
+        "result_actions": 1,
+    }
+    assert worker_lifecycle_execution_summary(
+        plan,
+        {"result_actions": [{"target_name": "projected-worker"}]},
+    )["result_actions"] == 1
 
 
 def test_lifecycle_execution_plan_monitors_existing_merge_worker() -> None:
