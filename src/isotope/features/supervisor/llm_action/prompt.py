@@ -132,6 +132,7 @@ def _worker_lifecycle_contract(
         "rules": [
             "Treat worker_lifecycle_decision as program-owned lifecycle state.",
             "Do not repeat actions already present in execution.",
+            "Do not repeat timeline entries where executed is true.",
             "If next_step is launch_merge_worker, prefer the existing merge dispatch path.",
             "If next_step is archive_worker or cleanup_worktree, prefer monitor unless a matching guarded cleanup candidate is present.",
             "Use LLM actions only for gaps, human decisions, or explicitly allowed follow-up actions.",

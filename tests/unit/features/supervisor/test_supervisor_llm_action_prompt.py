@@ -44,6 +44,14 @@ def test_llm_action_prompt_builder_exposes_worker_lifecycle_contract():
         "next_step": "cleanup_worktree",
         "source": "cleanup",
         "execution": [{"kind": "merge_worker", "record_id": "managed-merge"}],
+        "timeline": [
+            {
+                "stage": "archived",
+                "action": "archive_integrated",
+                "status": "executed",
+                "executed": True,
+            }
+        ],
     }
 
     messages = build_llm_action_messages(
@@ -59,6 +67,7 @@ def test_llm_action_prompt_builder_exposes_worker_lifecycle_contract():
     assert contract["rules"] == [
         "Treat worker_lifecycle_decision as program-owned lifecycle state.",
         "Do not repeat actions already present in execution.",
+        "Do not repeat timeline entries where executed is true.",
         "If next_step is launch_merge_worker, prefer the existing merge dispatch path.",
         "If next_step is archive_worker or cleanup_worktree, prefer monitor unless a matching guarded cleanup candidate is present.",
         "Use LLM actions only for gaps, human decisions, or explicitly allowed follow-up actions.",

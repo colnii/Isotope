@@ -79,6 +79,14 @@ def test_lifecycle_decision_records_archive_execution() -> None:
 
 def test_lifecycle_decision_records_worktree_cleanup_execution() -> None:
     decision = build_worker_lifecycle_decision(
+        integration_review=_integration_review(already_integrated=1),
+        cleanup_archived=[
+            {
+                "kind": "merge_worker",
+                "record_id": "managed-merge",
+                "managed": {"status": "archived"},
+            }
+        ],
         cleanup_deleted_worktrees=[
             {
                 "kind": "delete_worktree",
@@ -102,6 +110,44 @@ def test_lifecycle_decision_records_worktree_cleanup_execution() -> None:
             "record_id": "managed-source",
             "deleted_worktree": "/repo/.worktrees/supervisor/source-worker",
         }
+    ]
+    assert decision["timeline"] == [
+        {
+            "stage": "integrated",
+            "action": "archive_integrated",
+            "source": "integration_review",
+            "status": "observed",
+            "executed": False,
+        },
+        {
+            "stage": "archived",
+            "action": "archive_integrated",
+            "source": "cleanup",
+            "status": "executed",
+            "executed": True,
+            "execution": [
+                {
+                    "kind": "merge_worker",
+                    "record_id": "managed-merge",
+                    "managed": {"status": "archived"},
+                }
+            ],
+        },
+        {
+            "stage": "worktree_cleaned",
+            "action": "cleanup_worktree",
+            "source": "cleanup",
+            "status": "executed",
+            "executed": True,
+            "execution": [
+                {
+                    "kind": "delete_worktree",
+                    "target_name": "source-worker",
+                    "record_id": "managed-source",
+                    "deleted_worktree": "/repo/.worktrees/supervisor/source-worker",
+                }
+            ],
+        },
     ]
 
 
