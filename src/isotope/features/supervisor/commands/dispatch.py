@@ -7,6 +7,9 @@ from typing import Any
 
 from .cleanup import handle_cleanup_command as _handle_cleanup_command
 from .dashboard import handle_dashboard_command as _handle_dashboard_command
+from .handlers.agent_group import (
+    handle_agent_group_command as _handle_agent_group_command,
+)
 from .handlers.capacity import handle_capacity_command as _handle_capacity_command
 from .handlers.context import handle_context_command as _handle_context_command
 from .handlers.decision import handle_decision_command as _handle_decision_command
@@ -151,6 +154,7 @@ def handle_screen_command(args: argparse.Namespace, *, api) -> int:
 
 
 COMMAND_HANDLERS = {
+    "agent-group": _handle_agent_group_command,
     "dashboard": _handle_dashboard_command,
     "integration-review": _handle_integration_review_command,
     "merge-work-order": _handle_merge_work_order_command,
