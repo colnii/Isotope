@@ -203,6 +203,39 @@ async function readDesktopChatStream(
   let provider: string | undefined;
   let model: string | undefined;
   const capacityCalls = new Map<string, DesktopCapacityCall>();
+  const result = (): DesktopChatAnswer => {
+    const calls = [...capacityCalls.values()];
+    return { question, answer, provider, model, ...(calls.length ? { capacityCalls: calls } : {}) };
+  };
+  const handleEvent = (event: { name: string; data: Record<string, unknown> }): boolean => {
+    if (event.name === 'delta') {
+      const text = typeof event.data.text === 'string' ? event.data.text : '';
+      if (text) {
+        answer += text;
+        handlers.onDelta?.(text);
+      }
+    } else if (event.name === 'capacity_start') {
+      const call = normalizeCapacityCall(event.data);
+      capacityCalls.set(call.id, call);
+      handlers.onCapacityStart?.(call);
+    } else if (event.name === 'capacity_update') {
+      const call = mergeCapacityCall(capacityCalls.get(capacityCallId(event.data)), event.data);
+      capacityCalls.set(call.id, call);
+      handlers.onCapacityUpdate?.(call);
+    } else if (event.name === 'capacity_result') {
+      const call = mergeCapacityCall(capacityCalls.get(capacityCallId(event.data)), event.data);
+      capacityCalls.set(call.id, call);
+      handlers.onCapacityResult?.(call);
+    } else if (event.name === 'done') {
+      provider = typeof event.data.provider === 'string' ? event.data.provider : undefined;
+      model = typeof event.data.model === 'string' ? event.data.model : undefined;
+      return true;
+    } else if (event.name === 'error') {
+      markRunningCapacityCallsError(capacityCalls, event.data, handlers);
+      throw new Error(typeof event.data.message === 'string' ? event.data.message : '桌面对话失败');
+    }
+    return false;
+  };
 
   while (true) {
     const { value, done } = await reader.read();
@@ -212,30 +245,9 @@ async function readDesktopChatStream(
       buffer = blocks.pop() ?? '';
       for (const block of blocks) {
         const event = parseDesktopChatEvent(block);
-        if (event.name === 'delta') {
-          const text = typeof event.data.text === 'string' ? event.data.text : '';
-          if (text) {
-            answer += text;
-            handlers.onDelta?.(text);
-          }
-        } else if (event.name === 'capacity_start') {
-          const call = normalizeCapacityCall(event.data);
-          capacityCalls.set(call.id, call);
-          handlers.onCapacityStart?.(call);
-        } else if (event.name === 'capacity_update') {
-          const call = mergeCapacityCall(capacityCalls.get(capacityCallId(event.data)), event.data);
-          capacityCalls.set(call.id, call);
-          handlers.onCapacityUpdate?.(call);
-        } else if (event.name === 'capacity_result') {
-          const call = mergeCapacityCall(capacityCalls.get(capacityCallId(event.data)), event.data);
-          capacityCalls.set(call.id, call);
-          handlers.onCapacityResult?.(call);
-        } else if (event.name === 'done') {
-          provider = typeof event.data.provider === 'string' ? event.data.provider : undefined;
-          model = typeof event.data.model === 'string' ? event.data.model : undefined;
-        } else if (event.name === 'error') {
-          markRunningCapacityCallsError(capacityCalls, event.data, handlers);
-          throw new Error(typeof event.data.message === 'string' ? event.data.message : '桌面对话失败');
+        if (handleEvent(event)) {
+          await reader.cancel().catch(() => undefined);
+          return result();
         }
       }
     }
@@ -244,19 +256,13 @@ async function readDesktopChatStream(
 
   if (buffer.trim()) {
     const event = parseDesktopChatEvent(buffer);
-    if (event.name === 'delta') {
-      const text = typeof event.data.text === 'string' ? event.data.text : '';
-      answer += text;
-      handlers.onDelta?.(text);
-    } else if (event.name === 'capacity_result') {
-      const call = mergeCapacityCall(capacityCalls.get(capacityCallId(event.data)), event.data);
-      capacityCalls.set(call.id, call);
-      handlers.onCapacityResult?.(call);
+    if (handleEvent(event)) {
+      await reader.cancel().catch(() => undefined);
+      return result();
     }
   }
 
-  const calls = [...capacityCalls.values()];
-  return { question, answer, provider, model, ...(calls.length ? { capacityCalls: calls } : {}) };
+  return result();
 }
 
 function markRunningCapacityCallsError(

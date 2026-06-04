@@ -253,6 +253,55 @@ describe('agentClient', () => {
     });
   });
 
+  test('resolves desktop chat when done arrives before the stream closes', async () => {
+    let cancelled = false;
+    const encoder = new TextEncoder();
+    const read = vi
+      .fn()
+      .mockResolvedValueOnce({
+        value: encoder.encode('event: start\ndata: {"status":"ok"}\n\n'),
+        done: false
+      })
+      .mockResolvedValueOnce({
+        value: encoder.encode('event: delta\ndata: {"text":"已完成"}\n\n'),
+        done: false
+      })
+      .mockResolvedValueOnce({
+        value: encoder.encode('event: done\ndata: {"status":"ok","provider":"fixture","model":"fixture-model"}\n\n'),
+        done: false
+      })
+      .mockReturnValue(new Promise(() => {}));
+    const body = {
+      getReader() {
+        return {
+          read,
+          cancel: () => {
+            cancelled = true;
+            return Promise.resolve();
+          }
+        };
+      }
+    } as unknown as ReadableStream<Uint8Array>;
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, body }) as Response));
+
+    const answerPromise = createAgentClient('http://127.0.0.1:8765').askDesktopQuestion('loop?');
+    const answer = await Promise.race([
+      answerPromise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('desktop chat did not resolve after done event')), 200)
+      )
+    ]);
+
+    expect(answer).toEqual({
+      question: 'loop?',
+      answer: '已完成',
+      provider: 'fixture',
+      model: 'fixture-model'
+    });
+    expect(read).toHaveBeenCalledTimes(3);
+    expect(cancelled).toBe(true);
+  });
+
   test('marks running capacity calls as error when the stream reports an error', async () => {
     const stream = new ReadableStream({
       start(controller) {
