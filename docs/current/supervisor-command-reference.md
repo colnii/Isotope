@@ -47,11 +47,11 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 
 | 命令族 | 当前职责 | 详细来源 |
 | --- | --- | --- |
-| `start-here` / `guide` / `discover` | 打印可复制的上手、接管和观察命令；不启动任务、不发送指令。 | [quick start](./codex-supervisor-guide.md)、[capability details](./supervisor-capability-details.md) |
+| `start-here` / `guide` / `discover` | 打印可复制的上手、接管和观察命令。 | [quick start](./codex-supervisor-guide.md)、[capability details](./supervisor-capability-details.md) |
 | `up` / `loop` / `daemon` / `check` | 日常监督入口，负责后台 loop、watchdog、状态摘要和活跃目标读取。 | [operations runbook](./supervisor-operations-runbook.md) |
 | `goal` / `decision` / `state` | 持久目标队列、用户拍板账本和统一结构化 state projection（状态投影）。 | [capability inventory](./supervisor-capability-inventory.md)、[architecture migration table](./supervisor-architecture-migration-table.md) |
 | `agent-group` | 创建、发送、tick 和查看 Supervisor 内部 Agent group chat。 | [terminology](./terminology.md) |
-| `worktree-audit` | 查看本地 worktree/branch 主题词，提示可能重复开发的候选；不删除、不合并、不修改文件。 | 本文 |
+| `worktree-audit` | 查看本地 worktree/branch 主题词，提示可能重复开发的候选；删除、合并和文件修改由后续显式命令处理。 | 本文 |
 | `dashboard` / `web` / `events` | 本机 dashboard、web 页面、bell 事件和受控按钮入口。 | [quick start](./codex-supervisor-guide.md)、[operations runbook](./supervisor-operations-runbook.md) |
 | `advise` / `supervise` / `llm-action` | LLM planner（模型规划器）建议、白名单动作选择和显式执行。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `launch` / `resume` / `adopt` / `send` / `archive` | 托管 Codex worker、tmux lane 和状态协议交互。 | [operations runbook](./supervisor-operations-runbook.md) |
@@ -95,7 +95,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 `worktree-audit` 读取 `git worktree list --porcelain` 和每个 worktree 的
 `git status --porcelain=v1`，按 branch/path 里的非泛化主题词提示可能重复开发的
 worktree，也会报告多个 dirty worktree 是否修改了同一个文件。它是 human review
-（人工复查）入口，不会自动删除 worktree 或合并分支。`launch_session`
+（人工复查）入口；删除 worktree 和合并分支走后续显式命令。`launch_session`
 执行路径会复用同一套主题匹配；发现同主题 worktree 时会跳过新启动并返回
 需要确认的候选。
 
@@ -143,31 +143,32 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   合并方向或收敛任务，不让多个进程各自实现一套。
 - 普通 worker 把结果留在本地分支等待集成；merge worker 按 `merge-work-order`
   工单推送验证分支。
-- runner 不直接重写历史、不 force push、不删除未确认集成的 worktree。
+- runner 通过受控 cleanup / merge 流程处理历史、push 和 worktree 删除。
 - `delete_worktree` 只有在 done、archived、already_integrated 且路径安全时才允许。
 - `web` 默认只监听本机地址；`/managed/send` 只接受受控动作。
 - `decision answer` 只写拍板答案账本，下一轮 LLM planner 再读取答案继续判断。
-- `capacity plan --execute-agent-loop` 只允许已标记可执行的 `call_capacity`
-  通过单 tick driver 跑一次 `call_capability`，不打开自动多轮循环；JSON 输出会带
+- `capacity plan --execute-agent-loop` 让已标记可执行的 `call_capacity`
+  通过单 tick driver 跑一次 `call_capability`；多轮推进交给 finite-step runner
+  和 tick policy；JSON 输出会带
   `agent_loop_summary` 结构化字段，供 dashboard / web 复用。
 - `supervisor.goal_plan` capability 默认只预览目标规划；只有输入里显式
   `write=true` 才会写入 Supervisor goal queue。
-- `memory --query` 只返回 summary / refs / provenance preview；plain 输出会标出
-  `content_policy`、匹配数量、source refs 和 provenance，不返回 raw content。
+- `memory --query` 返回 summary / refs / provenance preview；plain 输出会标出
+  `content_policy`、匹配数量、source refs 和 provenance，raw content 走 expand grant。
 - `isotope-capability run memory.query --input-json ...` 复用同一条
   `LocalMemoryQueryService` 结构化 recall 路径，要求 `root/query/run_id` 和
   caller audit；`controlled_expand` 有 expand grant 和正预算时会物化 matched
-  `MemoryRecord.content` 的 budgeted `materialized_text`，但不读取 source
-  artifact full content。
-- `write_memory` 是 runtime action，不是 Supervisor 直写命令；默认 action
+  `MemoryRecord.content` 的 budgeted `materialized_text`；source artifact full
+  content 走 artifact inspect / expansion 路径。
+- `write_memory` 是 runtime action，Supervisor 通过 action proposal 调用它；默认 action
   registry 已启用它，但 policy 要求显式 approval。批准后只追加结构化
-  `memory.record_created` event，query/read model 仍不返回 raw content。
-- `research` 是 artifact/provenance-backed search substrate（基于产物和来源证据的搜索底座），不是 memory 直写入口。
+  `memory.record_created` event，query/read model 返回 summary / refs / provenance。
+- `research` 是 artifact/provenance-backed search substrate（基于产物和来源证据的搜索底座），memory 写入走 promotion/action 路径。
 - `research` search 成功时保存 `research.raw_transcript` 与 `research.report`；
   source 会带 `source_kind` / `source_authority` 结构化分类字段；
   provider 失败时只保存 `research.provider_trace`，并写入结构化 diagnostics
   （event counts、error messages、是否出现 agent_message、timeout seconds、
-  retry attempts），不生成成功 report。
+  retry attempts），成功 report 只由 successful search 写入。
 - `research list` 只列 `research.*` artifact，按最近修改时间倒序；plain 输出给
   可复制的 `run_id` / `artifact_id`，用于后续 `research inspect`。
 - `isotope-research inspect --root ... --run-id ... --artifact-id ...` 可读取
@@ -177,8 +178,8 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   --thread-id ...` 从 `research.report` artifact metadata 与结构化 report quality
   gate 生成 `write_memory` proposal；quality gate 会统计 high-authority 和
   unknown sources，但当前不因 unknown source 单独拒绝；Supervisor 侧
-  `research promote` 复用同一 helper。该入口只生成提案，不写 memory、不读取
-  `research.raw_transcript` 正文。
+  `research promote` 复用同一 helper。该入口生成提案，memory 写入走 approval，
+  raw transcript 正文走 inspect。
 - `research providers` 列出 provider registry；当前 `codex` 可运行，
   `tavily` 也可运行但默认 preflight；只有显式 `--tavily-enable-network` 才会请求
   Tavily `/search`。Tavily key 可来自 `--tavily-api-key`、`TAVILY_API_KEY`，或

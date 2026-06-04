@@ -17,7 +17,7 @@ Web dashboard，把这些分散的 AI 编程过程组织成可观察、可恢复
 - **多 worker 托管**：可启动后台 Codex worker 或接管 tmux 会话，并跟踪 worker 的状态协议和日志输出。
 - **目标队列**：支持把长期目标写入队列，由后台 daemon 动态消费、推进、归档或等待用户拍板。
 - **集成审查**：查看已完成 worker 的分支、提交、diff、合并风险和后续验证建议。
-- **Web research substrate**：通过 `isotope-research` 或 Supervisor 代理入口执行 search / list / inspect，结果先落为 `research.*` artifact 和 provenance 证据，不直接写入长期 memory。
+- **Web research substrate**：通过 `isotope-research` 或 Supervisor 代理入口执行 search / list / inspect，结果先落为 `research.*` artifact 和 provenance 证据，长期 memory 写入走 promotion/action 路径。
 - **Webhook 通知**：`loop`、`supervise`、`daemon start`、`integration-review` 和 `decision answer` 可用 `--webhook-url` 发送结构化事件，`--webhook-secret` 会添加 HMAC 签名。
 - **Web dashboard**：本地页面展示和新增目标、查看 worker 详情、处理等待拍板，并可控制后台循环。
 

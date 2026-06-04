@@ -100,6 +100,25 @@ CURRENT_ENTRY_FORBIDDEN_PATTERNS = [
     "不应",
 ]
 
+CURRENT_ENTRY_NEGATIVE_ACTION_PATTERNS = [
+    "不删除",
+    "不合并",
+    "不返回",
+    "不读取",
+    "不写",
+    "不直接",
+    "不生成",
+    "不会",
+    "不打开",
+    "不启动",
+    "不修改",
+    "不阻止",
+    "不落",
+    "不自动",
+    "不清理",
+    "暂不",
+]
+
 
 def test_model_facing_surfaces_do_not_train_conservative_semantics():
     violations = []
@@ -117,6 +136,17 @@ def test_current_entry_docs_do_not_train_guardrail_first_chinese_language():
     for relative_path in CURRENT_ENTRY_FILES:
         text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
         for pattern in CURRENT_ENTRY_FORBIDDEN_PATTERNS:
+            if pattern in text:
+                violations.append(f"{relative_path}: {pattern}")
+
+    assert violations == []
+
+
+def test_current_entry_docs_use_positive_execution_path_language():
+    violations = []
+    for relative_path in CURRENT_ENTRY_FILES:
+        text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for pattern in CURRENT_ENTRY_NEGATIVE_ACTION_PATTERNS:
             if pattern in text:
                 violations.append(f"{relative_path}: {pattern}")
 

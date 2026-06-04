@@ -53,12 +53,13 @@ Research 测试入口：
 
 - 自动动作必须走白名单、cooldown（冷却）和 workspace（工作区）边界。
 - merge worker 按工单推送验证分支；普通 worker 把结果留在本地分支等待集成。
-- runner 不直接重写历史、不 force push、不删除未确认集成的 worktree。
+- runner 通过受控 cleanup / merge 流程处理历史、push 和 worktree 删除。
 - `delete_worktree` 只有在 done、archived、already_integrated 且路径安全时才允许。
 - 新增 Supervisor 能力前先查 [Supervisor 命令参考](./supervisor-command-reference.md)
   和 [术语索引](./terminology.md)。
-- `research` 只代理 artifact/provenance-backed Research flow；search 成功写
-  `research.report`，失败写 `research.provider_trace`，不直接写 durable memory。
+- `research` 代理 artifact/provenance-backed Research flow；search 成功写
+  `research.report`，失败写 `research.provider_trace`，durable memory 写入走
+  promotion/action 路径。
 
 ## 相关文档
 
