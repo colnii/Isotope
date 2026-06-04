@@ -484,7 +484,10 @@ class CapabilityRunner:
                 missing_inputs=missing_inputs,
             )
             if is_coding_run_capability(capability_id):
-                input_mapping = validate_coding_run_inputs(input_mapping)
+                input_mapping = validate_coding_run_inputs(
+                    input_mapping,
+                    missing_inputs=missing_inputs,
+                )
             validate_code_access_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,

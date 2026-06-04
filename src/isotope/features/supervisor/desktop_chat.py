@@ -14,6 +14,7 @@ from typing import Any, Protocol
 from isotope.capabilities.runner import CapabilityRunner
 from isotope.features.supervisor.commands.handlers.capacity import (
     build_supervisor_capacity_plan,
+    _capacity_manifests_from_runner,
 )
 from isotope.llm.capacity_calling import CapacityCallingProvider
 from isotope.llm.prompts import render_json_prompt_template
@@ -426,6 +427,8 @@ def _build_capacity_plan_with_timeout(
 ) -> dict[str, Any]:
     if timeout_seconds <= 0:
         raise TimeoutError("capacity selection timed out")
+    capacity_runner = runner or CapabilityRunner()
+    offered_capacities = _capacity_manifests_from_runner(capacity_runner)
     executor = ThreadPoolExecutor(max_workers=1)
     future = executor.submit(
         build_supervisor_capacity_plan,
@@ -433,7 +436,8 @@ def _build_capacity_plan_with_timeout(
         provider=provider,
         state_root=root / "supervisor" / "capacity-loop-runs",
         execute_agent_loop=True,
-        runner=runner,
+        runner=capacity_runner,
+        offered_capacities=offered_capacities,
         input_defaults={
             "state_root": str(root),
             "root": str(root),

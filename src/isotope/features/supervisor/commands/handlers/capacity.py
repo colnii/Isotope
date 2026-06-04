@@ -136,11 +136,16 @@ def build_supervisor_capacity_plan(
     runner: CapabilityRunner | None = None,
     input_defaults: Mapping[str, Any] | None = None,
     allow_no_capacity: bool = False,
+    offered_capacities: list[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Plan one Supervisor capacity call, optionally proving the agent-loop path."""
     capacity_runner = runner or CapabilityRunner()
-    offered_capacities = _capacity_manifests_from_runner(capacity_runner)
-    if not offered_capacities:
+    active_offered_capacities = (
+        offered_capacities
+        if offered_capacities is not None
+        else _capacity_manifests_from_runner(capacity_runner)
+    )
+    if not active_offered_capacities:
         return _no_offered_capacities_plan(
             goal=goal,
             execute_agent_loop=execute_agent_loop,
@@ -148,12 +153,12 @@ def build_supervisor_capacity_plan(
     selection = select_capacity_call(
         provider,
         goal=goal,
-        capacities=offered_capacities,
+        capacities=active_offered_capacities,
         allow_no_capacity=allow_no_capacity,
     )
     selection_payload = _selection_with_input_defaults(
         selection.to_dict(),
-        offered_capacities=offered_capacities,
+        offered_capacities=active_offered_capacities,
         input_defaults=input_defaults,
     )
     if selection_payload["status"] == "no_capacity":
