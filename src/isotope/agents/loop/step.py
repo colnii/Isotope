@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from .loop_engine import LoopEngine, LoopStepContext
+from ...platform.ids import new_id
+from ...platform.schemas.input_contract import contract_properties
 from ...platform.schemas.refs import ResourceRef
 
 
@@ -88,8 +90,14 @@ def _call_capability_step(api: Any, run_id: str, request: dict[str, Any]) -> dic
     from ...capabilities.runner import CapabilityRunner
 
     capability_id = _required_string(request, "capability_id")
-    inputs = _optional_dict(request, "inputs")
-    capability_run = CapabilityRunner().run_capability(
+    runner = CapabilityRunner()
+    inputs = _capability_inputs_for_agent_loop(
+        runner=runner,
+        capability_id=capability_id,
+        run_id=run_id,
+        request=request,
+    )
+    capability_run = runner.run_capability(
         capability_id,
         root_path=_capability_run_root(api, run_id, capability_id),
         inputs=inputs,
@@ -114,6 +122,24 @@ def _call_capability_step(api: Any, run_id: str, request: dict[str, Any]) -> dic
         "decision_id": artifact_result["decision_id"],
         "execution_id": artifact_result["execution_id"],
     }
+
+
+def _capability_inputs_for_agent_loop(
+    *,
+    runner: Any,
+    capability_id: str,
+    run_id: str,
+    request: dict[str, Any],
+) -> dict[str, Any]:
+    inputs = _optional_dict(request, "inputs") or {}
+    capability = runner.describe_capability(capability_id)
+    properties = contract_properties(capability.get("input_contract", {}))
+    system_inputs: dict[str, str] = {}
+    if "run_id" in properties:
+        system_inputs["run_id"] = run_id
+    if "execution_id" in properties:
+        system_inputs["execution_id"] = new_id("exec")
+    return {**inputs, **system_inputs}
 
 
 def _capability_run_root(api: Any, run_id: str, capability_id: str) -> Path:

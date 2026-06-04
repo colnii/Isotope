@@ -591,6 +591,8 @@ def _unsafe_detail_key(key: str) -> bool:
             "secret",
             "token",
             "raw",
+            "patch",
+            "argv",
             "messages",
             "prompt",
             "transcript",
