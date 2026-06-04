@@ -98,6 +98,26 @@ ISOTOPE_QQ_TEST_GROUP=<controlled_group_id> \
 PYTHONPATH=src .venv/bin/python -m pytest tests/integration/qq/test_fake_onebot_flow.py -q
 ```
 
+The default real smoke mode is `health`. It connects to the WebSocket endpoint
+with `live-run --max-events 0`, writes a temporary config and state file, and
+does not consume group messages.
+
+To consume at most one real group event without sending, use dry-run mode:
+
+```bash
+ISOTOPE_QQ_REAL_SMOKE=1 \
+ISOTOPE_QQ_REAL_SMOKE_MODE=dry-run \
+ISOTOPE_QQ_ONEBOT_URL=ws://127.0.0.1:3001 \
+ISOTOPE_QQ_TEST_GROUP=<controlled_group_id> \
+ISOTOPE_QQ_BOT_USER_ID=<bot_qq> \
+PYTHONPATH=src .venv/bin/python -m pytest \
+  tests/integration/qq/test_fake_onebot_flow.py::test_real_qq_smoke_is_explicitly_opt_in -q
+```
+
+If NapCat requires a token, set `ISOTOPE_QQ_ACCESS_TOKEN`. Automated real smoke
+never passes `--send`; send-enabled beta is the manual `live-run --send` command
+above.
+
 Do not run real smoke in a public or high-traffic group.
 
 ## Role-Card Tuning

@@ -160,3 +160,18 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/integration/qq/test_fake_onebot_
 ```
 
 If `ISOTOPE_QQ_REAL_SMOKE` is not `1`, real QQ smoke must stay skipped.
+The default mode is health-only and uses `live-run --max-events 0`.
+
+Use dry-run mode to consume at most one real event without sending:
+
+```bash
+ISOTOPE_QQ_REAL_SMOKE=1 \
+ISOTOPE_QQ_REAL_SMOKE_MODE=dry-run \
+ISOTOPE_QQ_ONEBOT_URL=ws://127.0.0.1:3001 \
+ISOTOPE_QQ_TEST_GROUP=<controlled_group_id> \
+PYTHONPATH=src .venv/bin/python -m pytest \
+  tests/integration/qq/test_fake_onebot_flow.py::test_real_qq_smoke_is_explicitly_opt_in -q
+```
+
+Automated real smoke must not send messages. Use the manual `live-run --send`
+command only after reviewing dry-run decisions.
