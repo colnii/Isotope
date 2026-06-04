@@ -1834,6 +1834,74 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="isotope.self_repair",
+                    title="Isotope Self Repair",
+                    description=(
+                        "Launch a Codex-assisted Supervisor worker in an "
+                        "isolated worktree to repair an Isotope capability gap. "
+                        "Isotope orchestrates context, isolation, and result "
+                        "projection; Codex performs non-trivial code changes."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "isotope",
+                        "self-repair",
+                        "desktop-chat",
+                        "codex-assisted",
+                        "capability-gap",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": [
+                            "state_root",
+                            "cwd",
+                            "user_goal",
+                            "failure_summary",
+                        ],
+                        "properties": {
+                            "state_root": {
+                                "type": "string",
+                                "description": "Supervisor state root directory.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Isotope repository workspace to repair.",
+                            },
+                            "user_goal": {
+                                "type": "string",
+                                "description": "Original user goal that exposed the gap.",
+                            },
+                            "failure_summary": {
+                                "type": "string",
+                                "description": "Current Isotope capability gap or failure.",
+                            },
+                            "suggested_fix_summary": {
+                                "type": "string",
+                                "description": "Optional repair direction for Codex.",
+                            },
+                            "target_name": {
+                                "type": "string",
+                                "description": "Optional managed worker name.",
+                                "default": "desktop-self-repair",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": ["status", "runner_kind", "self_repair"],
+                    },
+                    safety_boundaries=(
+                        "codex_worker_required_for_non_trivial_changes",
+                        "isolated_worktree_required",
+                        "no_auto_merge",
+                        "no_dependency_skill_or_mcp_install_without_approval",
+                        "public_result_metadata",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="supervisor.integration_review",
                     title="Supervisor Integration Review",
                     description=(

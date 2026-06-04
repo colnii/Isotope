@@ -1,0 +1,125 @@
+"""Codex-assisted self-repair launcher for Isotope capability gaps."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from .commands.llm.execution import prepare_launch_worktree
+from .planner.work_order import build_launch_work_order_prompt
+from .registry import launch_managed_codex
+
+
+SELF_REPAIR_WORKER_ROLE = "self_repair"
+DEFAULT_SELF_REPAIR_NAME = "desktop-self-repair"
+
+
+def launch_isotope_self_repair(
+    *,
+    state_root: Path | str,
+    cwd: Path | str,
+    user_goal: str,
+    failure_summary: str,
+    suggested_fix_summary: str = "",
+    target_name: str = DEFAULT_SELF_REPAIR_NAME,
+) -> dict[str, Any]:
+    workspace = Path(cwd).expanduser()
+    if not workspace.is_dir():
+        raise ValueError(f"cwd must be an existing directory: {workspace}")
+    name = _non_empty(target_name, "target_name")
+    goal = _non_empty(user_goal, "user_goal")
+    failure = _non_empty(failure_summary, "failure_summary")
+
+    worktree = prepare_launch_worktree(cwd=workspace, target_name=name)
+    if worktree.get("failed"):
+        return {
+            "kind": "isotope_self_repair",
+            "status": "blocked",
+            "reason": "worktree_prepare_failed",
+            "worktree": dict(worktree),
+        }
+
+    worker_cwd = Path(str(worktree["cwd"])).expanduser()
+    prompt = self_repair_work_order_prompt(
+        target_name=name,
+        cwd=worker_cwd,
+        user_goal=goal,
+        failure_summary=failure,
+        suggested_fix_summary=suggested_fix_summary,
+    )
+    record = launch_managed_codex(
+        codex_home=Path(state_root).expanduser(),
+        cwd=worker_cwd,
+        name=name,
+        prompt=prompt,
+        worker_role=SELF_REPAIR_WORKER_ROLE,
+    )
+    return {
+        "kind": "isotope_self_repair",
+        "status": "launched",
+        "worktree": dict(worktree),
+        "managed": _managed_record_payload(record),
+    }
+
+
+def self_repair_work_order_prompt(
+    *,
+    target_name: str,
+    cwd: Path | str,
+    user_goal: str,
+    failure_summary: str,
+    suggested_fix_summary: str = "",
+) -> str:
+    fix_hint = suggested_fix_summary.strip() or "由你根据代码和验证结果判断。"
+    goal = "\n".join(
+        [
+            "Isotope self-repair request.",
+            f"用户原始目标：{user_goal.strip()}",
+            f"当前 Isotope 能力缺口：{failure_summary.strip()}",
+            f"建议修复方向：{fix_hint}",
+            (
+                "边界：你在隔离 worktree 中修复 Isotope 自身；"
+                "非平凡代码改动由 Codex 完成，Isotope 只负责任务编排。"
+            ),
+            (
+                "限制：不要合入 main；不要安装新依赖、skill 或 MCP；"
+                "不要改长期配置，除非用户明确批准。"
+            ),
+            (
+                "要求：先读现有实现和测试，复用已有 contract；"
+                "做最小可验证改动，运行相关测试，产生 Conventional Commits 提交。"
+            ),
+        ]
+    )
+    return build_launch_work_order_prompt(
+        target_name=target_name,
+        cwd=str(cwd),
+        goal=goal,
+        allow_remote_push=False,
+    )
+
+
+def _managed_record_payload(record: Any) -> dict[str, Any]:
+    return {
+        "name": getattr(record, "name", None),
+        "record_id": getattr(record, "record_id", None),
+        "pid": getattr(record, "pid", None),
+        "backend": getattr(record, "backend", None),
+        "worker_role": getattr(record, "worker_role", None),
+        "cwd": getattr(record, "cwd", None),
+        "log_path": getattr(record, "log_path", None),
+    }
+
+
+def _non_empty(value: str, name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{name} must be a non-empty string")
+    return value.strip()
+
+
+__all__ = [
+    "DEFAULT_SELF_REPAIR_NAME",
+    "SELF_REPAIR_WORKER_ROLE",
+    "launch_isotope_self_repair",
+    "self_repair_work_order_prompt",
+]

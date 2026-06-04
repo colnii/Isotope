@@ -75,6 +75,12 @@ from .screen import (
     run_screen_report,
     validate_screen_inputs,
 )
+from .self_repair import (
+    ISOTOPE_SELF_REPAIR_CAPABILITY,
+    is_self_repair_capability,
+    run_isotope_self_repair,
+    validate_self_repair_inputs,
+)
 from .supervisor import (
     SUPERVISOR_CODEX_OPERATION_CAPABILITY,
     SUPERVISOR_INTEGRATION_REVIEW_CAPABILITY,
@@ -318,6 +324,11 @@ class CapabilityRunner:
             inputs=input_mapping,
             missing_inputs=missing_inputs,
         )
+        validate_self_repair_inputs(
+            capability_id=capability_id,
+            inputs=input_mapping,
+            missing_inputs=missing_inputs,
+        )
         _validate_inputs_against_contract(capability, inputs=input_mapping)
         runner_kind = _runner_kind(capability, scenario=scenario)
         blocking_reasons: list[str] = []
@@ -353,6 +364,7 @@ class CapabilityRunner:
             and not is_workspace_capability(capability_id)
             and not is_workspace_file_capability(capability_id)
             and not is_artifact_output_capability(capability_id)
+            and not is_self_repair_capability(capability_id)
         ):
             launch_status = "not_allowlisted"
             blocking_reasons.append("not_allowlisted")
@@ -414,6 +426,7 @@ class CapabilityRunner:
             or is_workspace_capability(capability_id)
             or is_workspace_file_capability(capability_id)
             or is_artifact_output_capability(capability_id)
+            or is_self_repair_capability(capability_id)
         ):
             required_inputs = _required_inputs(capability)
             missing_inputs = _missing_inputs(required_inputs, input_mapping)
@@ -489,6 +502,11 @@ class CapabilityRunner:
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
             )
+            validate_self_repair_inputs(
+                capability_id=capability_id,
+                inputs=input_mapping,
+                missing_inputs=missing_inputs,
+            )
         _validate_inputs_against_contract(capability, inputs=input_mapping)
         shelf = capability["shelf"]
         if shelf in {"diagnostic", "experimental"}:
@@ -554,6 +572,8 @@ class CapabilityRunner:
             return run_artifact_changed_files(inputs=input_mapping)
         if capability_id == ARTIFACT_DIFF_SUMMARY_CAPABILITY:
             return run_artifact_diff_summary(inputs=input_mapping)
+        if capability_id == ISOTOPE_SELF_REPAIR_CAPABILITY:
+            return run_isotope_self_repair(inputs=input_mapping)
 
         try:
             scenario = _CAPABILITY_SCENARIOS[capability_id]
@@ -703,6 +723,8 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "deterministic_local"
     if is_artifact_output_capability(str(capability.get("capability_id", ""))):
         return "deterministic_local"
+    if is_self_repair_capability(str(capability.get("capability_id", ""))):
+        return "codex_assisted"
     return "queued"
 
 

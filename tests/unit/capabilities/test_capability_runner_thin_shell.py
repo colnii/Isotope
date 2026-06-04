@@ -177,6 +177,90 @@ def test_project_status_capability_returns_low_sensitive_snapshot_summary(tmp_pa
     assert "messages" not in json.dumps(result, ensure_ascii=False).lower()
 
 
+def test_runner_discovers_isotope_self_repair_from_default_catalog():
+    runner = _runner()
+
+    assert "isotope.self_repair" in _ids(runner.list_capabilities())
+    description = runner.describe_capability("isotope.self_repair")
+
+    assert description["input_contract"]["required"] == [
+        "state_root",
+        "cwd",
+        "user_goal",
+        "failure_summary",
+    ]
+    assert "codex_worker_required_for_non_trivial_changes" in description["safety_boundaries"]
+    assert "no_auto_merge" in description["safety_boundaries"]
+
+
+def test_isotope_self_repair_launches_codex_worker_in_isolated_worktree(
+    tmp_path, monkeypatch
+):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    state_root = tmp_path / ".isotope"
+    launched = {}
+
+    def fake_prepare_launch_worktree(*, cwd, target_name, api=None):
+        repair_root = (
+            tmp_path / "repo" / ".worktrees" / "supervisor" / "desktop-self-repair"
+        )
+        repair_root.mkdir(parents=True)
+        return {
+            "enabled": True,
+            "source_cwd": str(cwd),
+            "cwd": str(repair_root),
+            "worktree_root": str(repair_root),
+            "branch": "codex/desktop-self-repair",
+        }
+
+    class FakeRecord:
+        name = "desktop-self-repair"
+        record_id = "managed-self-repair"
+        pid = 12345
+        backend = "process"
+        worker_role = "self_repair"
+        cwd = str(
+            tmp_path / "repo" / ".worktrees" / "supervisor" / "desktop-self-repair"
+        )
+        log_path = str(tmp_path / "self-repair.log")
+
+    def fake_launch_managed_codex(**kwargs):
+        launched.update(kwargs)
+        return FakeRecord()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.self_repair.prepare_launch_worktree",
+        fake_prepare_launch_worktree,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.self_repair.launch_managed_codex",
+        fake_launch_managed_codex,
+    )
+
+    result = _runner().run_capability(
+        "isotope.self_repair",
+        inputs={
+            "state_root": str(state_root),
+            "cwd": str(workspace),
+            "user_goal": "让 Desktop chat 可以总结项目态势。",
+            "failure_summary": "缺少低敏项目状态 capability。",
+            "suggested_fix_summary": "新增 supervisor.project_status。",
+        },
+    )
+
+    assert result["capability_id"] == "isotope.self_repair"
+    assert result["status"] == "launched"
+    assert result["self_repair"]["managed"]["name"] == "desktop-self-repair"
+    assert result["self_repair"]["managed"]["worker_role"] == "self_repair"
+    assert result["self_repair"]["worktree"]["enabled"] is True
+    assert launched["codex_home"] == state_root
+    assert launched["cwd"].name == "desktop-self-repair"
+    assert launched["worker_role"] == "self_repair"
+    assert "不要合入 main" in launched["prompt"]
+    assert "让 Desktop chat 可以总结项目态势。" in launched["prompt"]
+
+
 def test_runner_discovers_supervisor_worker_review_from_default_catalog():
     runner = _runner()
 
