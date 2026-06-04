@@ -185,6 +185,11 @@ def _capability_result_detail_label(capacity_id: str) -> str:
         "code.read": "Code read result",
         "code.apply_patch": "Patch result",
         "artifact.diff_summary": "Artifact summary",
+        "skills.search": "Skills search result",
+        "skills.describe": "Skill description",
+        "mcp.servers.list": "MCP servers",
+        "mcp.tools.search": "MCP tools",
+        "mcp.tool.call": "MCP tool result",
     }
     return labels.get(capacity_id, "Capability result")
 
@@ -221,6 +226,16 @@ def _capability_result_observation(
         return _self_repair_observation(capability_run)
     if capacity_id == "supervisor.goal_plan":
         return _goal_plan_observation(capability_run)
+    if capacity_id == "skills.search":
+        return _skills_search_observation(capability_run)
+    if capacity_id == "skills.describe":
+        return _skill_description_observation(capability_run)
+    if capacity_id == "mcp.servers.list":
+        return _mcp_servers_observation(capability_run)
+    if capacity_id == "mcp.tools.search":
+        return _mcp_tools_observation(capability_run)
+    if capacity_id == "mcp.tool.call":
+        return _mcp_tool_call_observation(capability_run)
     return None
 
 
@@ -328,6 +343,153 @@ def _safe_memory_query_result(result: dict[str, Any]) -> dict[str, Any] | None:
     if isinstance(quality, str):
         safe_result["quality"] = quality
     return safe_result
+
+
+def _skills_search_observation(
+    capability_run: dict[str, Any],
+) -> dict[str, Any] | None:
+    if capability_run.get("kind") != "skill_search_result":
+        return None
+    return {
+        "kind": "skill_search_result",
+        "status": _string_value(capability_run.get("status")),
+        "runner_kind": _string_value(capability_run.get("runner_kind")),
+        "query": _string_value(capability_run.get("query")),
+        "skill_count": _int_value(capability_run.get("skill_count")),
+        "skills": [
+            safe_skill
+            for skill in _dict_list_value(capability_run.get("skills"))
+            if (safe_skill := _safe_skill_metadata(skill)) is not None
+        ],
+        "skipped": _safe_mapping_list(capability_run.get("skipped"), limit=20),
+    }
+
+
+def _skill_description_observation(
+    capability_run: dict[str, Any],
+) -> dict[str, Any] | None:
+    if capability_run.get("kind") != "skill_description":
+        return None
+    skill = capability_run.get("skill")
+    safe_skill = _safe_skill_metadata(skill) if isinstance(skill, dict) else None
+    return {
+        "kind": "skill_description",
+        "status": _string_value(capability_run.get("status")),
+        "runner_kind": _string_value(capability_run.get("runner_kind")),
+        "skill": safe_skill or {},
+        "body": _string_value(capability_run.get("body")),
+        "body_truncated": bool(capability_run.get("body_truncated")),
+        "linked_paths": _string_list_value(capability_run.get("linked_paths")),
+    }
+
+
+def _safe_skill_metadata(skill: dict[str, Any]) -> dict[str, Any] | None:
+    skill_id = skill.get("skill_id")
+    name = skill.get("name")
+    description = skill.get("description")
+    if not isinstance(skill_id, str) or not isinstance(name, str):
+        return None
+    if not isinstance(description, str):
+        return None
+    return {
+        key: value
+        for key, value in {
+            "skill_id": skill_id,
+            "name": name,
+            "description": description,
+            "relative_path": _string_value(skill.get("relative_path")),
+            "readiness": _string_value(skill.get("readiness")),
+        }.items()
+        if value not in (None, "", [], {})
+    }
+
+
+def _mcp_servers_observation(
+    capability_run: dict[str, Any],
+) -> dict[str, Any] | None:
+    if capability_run.get("kind") != "mcp_server_list":
+        return None
+    return {
+        "kind": "mcp_server_list",
+        "status": _string_value(capability_run.get("status")),
+        "runner_kind": _string_value(capability_run.get("runner_kind")),
+        "servers": [
+            safe_server
+            for server in _dict_list_value(capability_run.get("servers"))
+            if (safe_server := _safe_mcp_server(server)) is not None
+        ],
+    }
+
+
+def _safe_mcp_server(server: dict[str, Any]) -> dict[str, Any] | None:
+    server_id = server.get("server_id")
+    if not isinstance(server_id, str):
+        return None
+    return {
+        "server_id": server_id,
+        "transport": _string_value(server.get("transport")),
+        "command_summary": _string_value(server.get("command_summary")),
+        "enabled": bool(server.get("enabled")),
+        "readiness": _string_value(server.get("readiness")),
+        "allowed_operations": _string_list_value(server.get("allowed_operations")),
+    }
+
+
+def _mcp_tools_observation(
+    capability_run: dict[str, Any],
+) -> dict[str, Any] | None:
+    if capability_run.get("kind") != "mcp_tool_search_result":
+        return None
+    return {
+        "kind": "mcp_tool_search_result",
+        "status": _string_value(capability_run.get("status")),
+        "runner_kind": _string_value(capability_run.get("runner_kind")),
+        "server_id": _string_value(capability_run.get("server_id")),
+        "query": _string_value(capability_run.get("query")),
+        "tools": [
+            safe_tool
+            for tool in _dict_list_value(capability_run.get("tools"))
+            if (safe_tool := _safe_mcp_tool(tool)) is not None
+        ],
+    }
+
+
+def _safe_mcp_tool(tool: dict[str, Any]) -> dict[str, Any] | None:
+    tool_name = tool.get("tool_name")
+    if not isinstance(tool_name, str):
+        return None
+    return {
+        "server_id": _string_value(tool.get("server_id")),
+        "tool_name": tool_name,
+        "title": _string_value(tool.get("title")),
+        "description": _string_value(tool.get("description")),
+        "input_schema": _safe_mapping(tool.get("input_schema")),
+        "readiness": _string_value(tool.get("readiness")),
+    }
+
+
+def _mcp_tool_call_observation(
+    capability_run: dict[str, Any],
+) -> dict[str, Any] | None:
+    if capability_run.get("kind") != "mcp_tool_call_result":
+        return None
+    return {
+        "kind": "mcp_tool_call_result",
+        "status": _string_value(capability_run.get("status")),
+        "runner_kind": _string_value(capability_run.get("runner_kind")),
+        "server_id": _string_value(capability_run.get("server_id")),
+        "tool_name": _string_value(capability_run.get("tool_name")),
+        "structured_content": _safe_mapping(capability_run.get("structured_content")),
+        "content_summary": [
+            _clip_text(item, limit=2000)
+            for item in _string_list_value(capability_run.get("content_summary"))
+        ],
+        "is_error": bool(capability_run.get("is_error")),
+        "error_summary": _clip_text(
+            _string_value(capability_run.get("error_summary")),
+            limit=2000,
+        ),
+    }
 
 
 def _code_search_observation(capability_run: dict[str, Any]) -> dict[str, Any] | None:

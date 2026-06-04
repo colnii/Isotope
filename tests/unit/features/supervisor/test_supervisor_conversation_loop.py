@@ -1398,6 +1398,140 @@ def test_conversation_loop_manifest_exposes_extension_entrypoints_without_skill_
     assert "## Checklist" not in system_prompt
 
 
+def test_conversation_loop_feeds_skill_search_metadata_to_next_turn(tmp_path) -> None:
+    skill_root = tmp_path / "skills"
+    _write_test_skill(
+        skill_root,
+        "llm2docx",
+        description="Use for Word report automation.",
+        body="## Checklist\n- Inspect the Word document before editing.\n",
+    )
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "skills.search",
+                    "arguments": {
+                        "query": "docx",
+                        "roots": [str(skill_root)],
+                        "limit": 5,
+                    },
+                    "rationale": "Find a relevant local skill.",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "已找到可用 skill。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="处理 Word 文档。",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[1].payload["capacity_id"] == "skills.search"
+    second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
+    assert "capacity_observation" in second_prompt
+    assert "skill_search_result" in second_prompt
+    assert "llm2docx" in second_prompt
+    assert "Use for Word report automation." in second_prompt
+    assert "## Checklist" not in second_prompt
+    assert "Inspect the Word document before editing." not in second_prompt
+
+
+def test_conversation_loop_feeds_described_skill_body_to_next_turn(tmp_path) -> None:
+    skill_root = tmp_path / "skills"
+    _write_test_skill(
+        skill_root,
+        "llm2docx",
+        description="Use for Word report automation.",
+        body="## Checklist\n- Inspect the Word document before editing.\n",
+    )
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "skills.describe",
+                    "arguments": {
+                        "skill_id": "llm2docx",
+                        "roots": [str(skill_root)],
+                        "max_body_chars": 2000,
+                    },
+                    "rationale": "Load the selected skill guide.",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "已加载 skill 指南。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="处理 Word 文档。",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[1].payload["capacity_id"] == "skills.describe"
+    second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
+    assert "capacity_observation" in second_prompt
+    assert "skill_description" in second_prompt
+    assert "llm2docx" in second_prompt
+    assert "## Checklist" in second_prompt
+    assert "Inspect the Word document before editing." in second_prompt
+
+
+def _write_test_skill(
+    root,
+    name: str,
+    *,
+    description: str,
+    body: str,
+) -> None:
+    skill_dir = root / name
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "\n".join(
+            [
+                "---",
+                f"name: {name}",
+                f"description: {description}",
+                "---",
+                body,
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(
     tmp_path,
     monkeypatch,
