@@ -762,6 +762,149 @@ def test_social_runner_qq_apply_profile_updates_beta_config_and_beta_check(
     assert check_payload["ok"] is True
 
 
+def test_social_runner_qq_init_replay_writes_editable_event_file(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    replay_path = tmp_path / "replay.json"
+
+    code = main(
+        [
+            "qq",
+            "init-replay",
+            "--output",
+            str(replay_path),
+            "--group",
+            "99999",
+            "--bot-user-id",
+            "bot_qq",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "init-replay"
+    assert payload["output"] == str(replay_path)
+    replay = _read_json(replay_path)
+    assert replay["runtime"] == {
+        "wake_keywords": ["看看", "帮我", "bot"],
+        "autonomy_score": 1.0,
+        "sticker_emotion": "positive",
+        "sticker_scene_tags": ["review"],
+        "allow_sticker_only": True,
+    }
+    assert len(replay["events"]) == 2
+    assert replay["events"][0]["group_id"] == 99999
+    assert replay["events"][0]["message"][0]["type"] == "at"
+    assert replay["events"][1]["raw_message"] == "这个结果可以发了吗？"
+
+
+def test_social_runner_qq_replay_writes_decision_report(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    beta_dir = tmp_path / "qq-beta"
+    profile_dir = tmp_path / "qq-profile"
+    replay_path = beta_dir / "replay.json"
+    report_path = beta_dir / "logs" / "replay-report.json"
+
+    assert main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(beta_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert main(
+        [
+            "qq",
+            "init-profile",
+            "--output-dir",
+            str(profile_dir),
+            "--group",
+            "99999",
+            "--name",
+            "群聊工程猫",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert main(
+        [
+            "qq",
+            "apply-profile",
+            "--pack-dir",
+            str(beta_dir),
+            "--profile-dir",
+            str(profile_dir),
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert main(
+        [
+            "qq",
+            "init-replay",
+            "--output",
+            str(replay_path),
+            "--group",
+            "99999",
+            "--bot-user-id",
+            "bot_qq",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    code = main(
+        [
+            "qq",
+            "replay",
+            "--config-json",
+            str(beta_dir / "config.json"),
+            "--state-root",
+            str(beta_dir / "state"),
+            "--replay-json",
+            str(replay_path),
+            "--output",
+            str(report_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "replay"
+    assert payload["dry_run"] is True
+    assert payload["processed_events"] == 2
+    assert payload["output"] == str(report_path)
+
+    report = _read_json(report_path)
+    assert report["summary"]["event_count"] == 2
+    assert report["summary"]["processed_events"] == 2
+    assert report["summary"]["proposed_action_count"] >= 1
+    assert report["summary"]["sticker_candidate_count"] >= 1
+    assert report["summary"]["send_feedback_count"] == 0
+    assert report["turns"][0]["decision"]["dry_run"] is True
+    assert report["sent_group_messages"] == []
+    state = _read_json(beta_dir / "state" / "social-qq-state.json")
+    assert [entry["kind"] for entry in state["audit_entries"]] == ["decision", "decision"]
+
+
 def test_social_runner_entry_point_is_registered() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
 

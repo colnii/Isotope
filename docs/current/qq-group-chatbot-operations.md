@@ -64,6 +64,21 @@ path. It verifies the pack files, script syntax, pause/resume/export-log
 commands, and the `send-run.sh` guard that refuses to send without
 `ISOTOPE_QQ_ENABLE_SEND=1`.
 
+Run a replay before connecting to the real group:
+
+```bash
+isotope-social qq init-replay --output .isotope/qq-beta/replay.json \
+  --group <group_id> --bot-user-id <bot_qq> --json
+isotope-social qq replay --config-json .isotope/qq-beta/config.json \
+  --state-root .isotope/qq-beta/state \
+  --replay-json .isotope/qq-beta/replay.json \
+  --output .isotope/qq-beta/logs/replay-report.json --json
+```
+
+Open `replay-report.json` and check whether the role sounds like the intended
+group member, whether sticker candidates match the scene, and whether the bot
+stays silent when it should. Replay is dry-run and must not send QQ messages.
+
 ## Inspect
 
 Inspect before enabling real sends:
@@ -83,6 +98,12 @@ isotope-social qq init-profile --output-dir .isotope/qq-profile \
 isotope-social qq apply-profile --pack-dir .isotope/qq-beta \
   --profile-dir .isotope/qq-profile --json
 isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
+isotope-social qq init-replay --output .isotope/qq-beta/replay.json \
+  --group <group_id> --bot-user-id <bot_qq> --json
+isotope-social qq replay --config-json .isotope/qq-beta/config.json \
+  --state-root .isotope/qq-beta/state \
+  --replay-json .isotope/qq-beta/replay.json \
+  --output .isotope/qq-beta/logs/replay-report.json --json
 isotope-social qq inspect role --config-json config.json
 isotope-social qq inspect lorebook --config-json config.json
 isotope-social qq inspect stickers --config-json config.json
@@ -185,6 +206,7 @@ Run this checklist for each controlled beta day:
 - Apply the profile with `qq apply-profile`.
 - Confirm `allowed_groups` and `operator_user_ids`.
 - Run `isotope-social qq beta-check --pack-dir .isotope/qq-beta --json`.
+- Run `qq init-replay` and `qq replay`, then review `replay-report.json`.
 - Run `./health.sh` before consuming messages.
 - Start in dry-run and review at least five representative messages.
 - Enable sends only after dry-run decisions look correct.

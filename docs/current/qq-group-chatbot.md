@@ -84,6 +84,21 @@ The check validates required files, parses `config.json`, runs shell syntax
 checks, exercises `pause.sh`, `resume.sh`, and `export-log.sh`, and confirms
 `send-run.sh` still refuses to run unless `ISOTOPE_QQ_ENABLE_SEND=1` is set.
 
+Create and run a replay before connecting NapCat:
+
+```bash
+isotope-social qq init-replay --output .isotope/qq-beta/replay.json \
+  --group <controlled_group_id> --bot-user-id <bot_qq> --json
+isotope-social qq replay --config-json .isotope/qq-beta/config.json \
+  --state-root .isotope/qq-beta/state \
+  --replay-json .isotope/qq-beta/replay.json \
+  --output .isotope/qq-beta/logs/replay-report.json --json
+```
+
+Review `replay-report.json` for proposed actions, selected actions, sticker
+candidates, blocked turns, and send feedback count. Replay runs as dry-run and
+does not send QQ messages.
+
 ## Run
 
 NapCat must expose a OneBot 11 WebSocket endpoint. The live path is:
@@ -126,6 +141,12 @@ isotope-social qq init-profile --output-dir .isotope/qq-profile \
 isotope-social qq apply-profile --pack-dir .isotope/qq-beta \
   --profile-dir .isotope/qq-profile --json
 isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
+isotope-social qq init-replay --output .isotope/qq-beta/replay.json \
+  --group <controlled_group_id> --bot-user-id <bot_qq> --json
+isotope-social qq replay --config-json .isotope/qq-beta/config.json \
+  --state-root .isotope/qq-beta/state \
+  --replay-json .isotope/qq-beta/replay.json \
+  --output .isotope/qq-beta/logs/replay-report.json --json
 cd .isotope/qq-beta
 ./health.sh
 ./dry-run.sh

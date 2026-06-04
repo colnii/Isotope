@@ -21,6 +21,14 @@ from .profile_pack import (
     apply_qq_profile_pack,
     create_qq_profile_pack,
 )
+from .replay import (
+    QQReplayTemplateConfig,
+    build_replay_report,
+    create_qq_replay_template,
+    load_qq_replay,
+    runtime_overrides,
+    write_replay_report,
+)
 from .runtime import SocialRuntime, SocialRuntimeConfig
 from .stickers import StickerLibrary
 
@@ -120,6 +128,24 @@ def _build_parser() -> argparse.ArgumentParser:
     apply_profile.add_argument("--profile-dir", required=True, help="Profile pack directory.")
     apply_profile.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    init_replay = qq_subparsers.add_parser(
+        "init-replay",
+        help="Create an editable QQ replay event file.",
+    )
+    init_replay.add_argument("--output", required=True, help="Replay JSON file to write.")
+    init_replay.add_argument("--group", required=True, help="Controlled QQ group id.")
+    init_replay.add_argument("--bot-user-id", required=True, help="Bot QQ user id.")
+    init_replay.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    replay = qq_subparsers.add_parser(
+        "replay",
+        help="Replay captured QQ events through the configured social runtime.",
+    )
+    _add_config_state_args(replay)
+    replay.add_argument("--replay-json", required=True, help="Replay JSON file.")
+    replay.add_argument("--output", required=True, help="Replay report JSON file.")
+    replay.add_argument("--json", action="store_true", help="Print JSON output.")
+
     beta_check = qq_subparsers.add_parser(
         "beta-check",
         help="Verify a generated QQ beta pack before operator use.",
@@ -198,6 +224,10 @@ def _handle_qq(args: argparse.Namespace) -> dict[str, Any]:
         return _handle_init_profile(args)
     if args.command == "apply-profile":
         return _handle_apply_profile(args)
+    if args.command == "init-replay":
+        return _handle_init_replay(args)
+    if args.command == "replay":
+        return _handle_replay(args)
     if args.command == "beta-check":
         return _handle_beta_check(args)
     if args.command in {"pause", "resume"}:
@@ -319,6 +349,70 @@ def _handle_apply_profile(args: argparse.Namespace) -> dict[str, Any]:
     payload = result.to_public_dict()
     payload.update({"status": "ok", "command": "apply-profile"})
     return payload
+
+
+def _handle_init_replay(args: argparse.Namespace) -> dict[str, Any]:
+    result = create_qq_replay_template(
+        QQReplayTemplateConfig(
+            output=Path(args.output),
+            group_id=args.group,
+            bot_user_id=args.bot_user_id,
+        )
+    )
+    payload = result.to_public_dict()
+    payload.update({"status": "ok", "command": "init-replay"})
+    return payload
+
+
+def _handle_replay(args: argparse.Namespace) -> dict[str, Any]:
+    config_path = Path(args.config_json)
+    state_root = Path(args.state_root)
+    replay_path = Path(args.replay_json)
+    output_path = Path(args.output)
+    config = _load_config(config_path)
+    state = _load_state(state_root)
+    operations = _operations_from_config(config, state=state)
+    replay_payload = load_qq_replay(replay_path)
+    overrides = runtime_overrides(replay_payload)
+    client = FakeOneBotClient()
+    events = replay_payload["events"]
+    for event in events:
+        client.queue_event(event)
+    runtime = _runtime_from_adapter(
+        config=config,
+        operations=operations,
+        adapter=OneBotAdapter(client=client),
+    )
+    turns: list[dict[str, Any]] = []
+    for _ in events:
+        turn = runtime.process_next(dry_run=True, **overrides)
+        if turn is None:
+            break
+        turns.append(turn.to_public_dict())
+        _save_state(state_root, operations)
+    if not turns:
+        _save_state(state_root, operations)
+    report = build_replay_report(
+        replay_path=replay_path,
+        config_path=config_path,
+        state_file=_state_path(state_root),
+        dry_run=True,
+        event_count=len(events),
+        turns=turns,
+        sent_group_messages=list(client.sent_group_messages),
+        sent_private_messages=list(client.sent_private_messages),
+    )
+    write_replay_report(output_path, report)
+    return {
+        "status": "ok",
+        "command": "replay",
+        "dry_run": True,
+        "processed_events": len(turns),
+        "event_count": len(events),
+        "output": str(output_path),
+        "state_file": str(_state_path(state_root)),
+        "summary": report["summary"],
+    }
 
 
 def _handle_beta_check(args: argparse.Namespace) -> dict[str, Any]:
