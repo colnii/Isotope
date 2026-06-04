@@ -41,6 +41,12 @@ from .replies import (
     SocialSendPolicy,
     SocialTarget,
 )
+from .reply_provider import (
+    DeterministicSocialReplyProvider,
+    LLMSocialReplyProvider,
+    SocialReplyDraft,
+    SocialReplyProvider,
+)
 from .runtime import SocialRuntime, SocialRuntimeConfig, SocialRuntimeTurn
 from .operations import SocialOperationsController, SocialPolicyDecision
 from .send_feedback import (
@@ -92,6 +98,9 @@ __all__ = [
     "SocialOperationsController",
     "SocialPolicyDecision",
     "SocialReplyAction",
+    "SocialReplyDraft",
+    "SocialReplyProvider",
+    "LLMSocialReplyProvider",
     "SocialReplyRef",
     "SocialRuntime",
     "SocialRuntimeConfig",
@@ -107,5 +116,6 @@ __all__ = [
     "StickerSelectionRequest",
     "StickerSelectionResult",
     "ToolPolicy",
+    "DeterministicSocialReplyProvider",
     "load_character_card",
 ]

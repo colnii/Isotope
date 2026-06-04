@@ -10,6 +10,7 @@ from .candidates import SocialActionCandidate
 from .character_card import CharacterCard
 from .decision import SocialDecisionRequest, SocialDecisionTurn
 from .messages import SocialMessagePart
+from .reply_provider import DeterministicSocialReplyProvider, SocialReplyProvider
 from .replies import SocialReplyAction
 from .stickers import StickerSelectionRequest
 
@@ -17,6 +18,7 @@ from .stickers import StickerSelectionRequest
 @dataclass(frozen=True)
 class SocialDecisionLoop:
     arbiter: SocialArbiter = SocialArbiter()
+    reply_provider: SocialReplyProvider = DeterministicSocialReplyProvider()
 
     def decide(self, request: SocialDecisionRequest) -> SocialDecisionTurn:
         if not isinstance(request, SocialDecisionRequest):
@@ -42,7 +44,12 @@ class SocialDecisionLoop:
                 dry_run=request.dry_run,
             )
 
-        proposed = _reply_candidates(request, character_card, wake_reasons[0])
+        proposed = _reply_candidates(
+            request,
+            character_card,
+            wake_reasons[0],
+            reply_provider=self.reply_provider,
+        )
         if request.dry_run:
             return SocialDecisionTurn(
                 proposed=proposed,
@@ -101,10 +108,13 @@ def _reply_candidates(
     request: SocialDecisionRequest,
     character_card: CharacterCard,
     reason: str,
+    reply_provider: SocialReplyProvider | None = None,
 ) -> tuple[SocialActionCandidate, ...]:
     sticker_candidate = _sticker_candidate(request, character_card, reason)
     if sticker_candidate is not None:
         return (sticker_candidate,)
+    provider = reply_provider or DeterministicSocialReplyProvider()
+    draft = provider.generate_reply(request, wake_reason=reason)
     return (
         SocialActionCandidate(
             candidate_id="reply_text",
@@ -118,10 +128,11 @@ def _reply_candidates(
                 parts=(
                     SocialMessagePart(
                         kind="text",
-                        text="我看到了，先按上下文处理。",
+                        text=draft.text,
                     ),
                 ),
             ),
+            metadata={"reply_provider": dict(draft.metadata)},
         ),
     )
 

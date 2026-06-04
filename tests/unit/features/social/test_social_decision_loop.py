@@ -8,6 +8,7 @@ from isotope.features.social import (
     SocialDecisionRequest,
     SocialMessage,
     SocialMessagePart,
+    SocialReplyDraft,
     SocialSendFeedback,
     SocialSender,
     SocialTarget,
@@ -15,6 +16,30 @@ from isotope.features.social import (
     StickerLibraryEntry,
 )
 from tests.unit.features.social.test_character_card import _card_dict
+
+
+class RecordingReplyProvider:
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self.requests: list[SocialDecisionRequest] = []
+        self.wake_reasons: list[str] = []
+
+    def generate_reply(
+        self,
+        request: SocialDecisionRequest,
+        *,
+        wake_reason: str,
+    ) -> SocialReplyDraft:
+        self.requests.append(request)
+        self.wake_reasons.append(wake_reason)
+        return SocialReplyDraft(
+            text=self.text,
+            metadata={
+                "provider": "recording",
+                "saw_role": request.context["persona_instructions"]["role_name"],
+                "saw_message": request.context["chat_context"]["current_message"]["text"],
+            },
+        )
 
 
 def _card() -> CharacterCard:
@@ -90,6 +115,27 @@ def test_decision_loop_wakes_on_bot_mention() -> None:
     assert turn.selected[0].reason == "mention:bot_qq"
     assert turn.selected[0].reply_action is not None
     assert turn.selected[0].reply_action.parts[0].text == "我看到了，先按上下文处理。"
+
+
+def test_decision_loop_uses_reply_provider_with_persona_and_chat_context() -> None:
+    provider = RecordingReplyProvider("小林，我按工程猫的风格看完上下文了。")
+    request = SocialDecisionRequest(
+        context=_context(_message(text="@bot 看看这个", mentions=("bot_qq",))),
+        target=_target(),
+        bot_user_id="bot_qq",
+    )
+
+    turn = SocialDecisionLoop(reply_provider=provider).decide(request)
+
+    assert provider.requests == [request]
+    assert provider.wake_reasons == ["mention:bot_qq"]
+    assert turn.selected[0].reply_action is not None
+    assert turn.selected[0].reply_action.parts[0].text == "小林，我按工程猫的风格看完上下文了。"
+    assert turn.selected[0].metadata["reply_provider"] == {
+        "provider": "recording",
+        "saw_role": "群聊工程猫",
+        "saw_message": "@bot 看看这个",
+    }
 
 
 def test_decision_loop_wakes_on_keyword() -> None:

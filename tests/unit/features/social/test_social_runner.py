@@ -6,6 +6,7 @@ import subprocess
 import tomllib
 
 from isotope.features.social import CharacterCard, StickerLibrary, qq_runtime_commands
+from isotope.llm.provider import LLMProviderResolution
 from isotope.features.social.runner import main
 from tests.unit.features.social.test_character_card import _card_dict
 
@@ -197,6 +198,23 @@ class FakeLiveOneBotClient:
         self.connected = False
 
 
+class FakeQQReplyChatProvider:
+    provider = "unit-chat"
+    model = "unit-model"
+
+    def generate(self, messages, *, max_tokens=512):
+        return type(
+            "Response",
+            (),
+            {
+                "provider": self.provider,
+                "model": self.model,
+                "content": json.dumps({"text": "小林，我按群聊上下文看完了。"}),
+                "usage": {"total_tokens": 9},
+            },
+        )()
+
+
 def test_social_runner_qq_dry_run_records_decision_without_sending(
     tmp_path: Path,
     capsys,
@@ -233,6 +251,50 @@ def test_social_runner_qq_dry_run_records_decision_without_sending(
     assert payload["sent_group_messages"] == []
     state = _read_json(tmp_path / "state" / "social-qq-state.json")
     assert [entry["kind"] for entry in state["audit_entries"]] == ["decision"]
+
+
+def test_social_runner_qq_dry_run_can_use_llm_reply_provider(
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    config_payload = _config()
+    config_payload["runtime"] = {"reply_provider": "llm"}
+    config = _write_json(tmp_path / "config.json", config_payload)
+    event = _write_json(tmp_path / "event.json", _event())
+
+    monkeypatch.setattr(
+        qq_runtime_commands,
+        "resolve_llm_chat_provider",
+        lambda: LLMProviderResolution(
+            status="configured",
+            reason_code="llm_provider_configured",
+            provider_name="unit-chat",
+            provider=FakeQQReplyChatProvider(),
+        ),
+        raising=False,
+    )
+
+    code = main(
+        [
+            "qq",
+            "dry-run",
+            "--config-json",
+            str(config),
+            "--event-json",
+            str(event),
+            "--state-root",
+            str(tmp_path / "state"),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    candidate = payload["turn"]["decision"]["proposed"][0]
+    assert candidate["reply_action"]["parts"][0]["text"] == "小林，我按群聊上下文看完了。"
+    assert candidate["metadata"]["reply_provider"]["provider"] == "unit-chat"
+    assert candidate["metadata"]["reply_provider"]["model"] == "unit-model"
 
 
 def test_social_runner_qq_run_send_records_feedback(tmp_path: Path, capsys) -> None:

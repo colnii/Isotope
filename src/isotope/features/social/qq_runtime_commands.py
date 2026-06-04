@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ...integrations.qq import FakeOneBotClient, OneBotAdapter, OneBotWebSocketClient
+from ...llm.provider import resolve_llm_chat_provider
 from .operations import SocialOperationsController
 from .qq_state_config import (
     bool_value,
@@ -32,6 +33,8 @@ from .replay import (
     write_replay_report,
 )
 from .runtime import SocialRuntime, SocialRuntimeConfig
+from .loop import SocialDecisionLoop
+from .reply_provider import LLMSocialReplyProvider
 
 
 def handle_run(args: argparse.Namespace) -> dict[str, Any]:
@@ -168,6 +171,7 @@ def runtime_from_adapter(
         config=runtime_config_from_config(config),
         lorebook=optional_lorebook_from_config(config),
         sticker_library=optional_stickers_from_config(config),
+        decision_loop=decision_loop_from_config(config),
     )
 
 
@@ -187,4 +191,22 @@ def runtime_config_from_config(config: dict[str, Any]) -> SocialRuntimeConfig:
             runtime.get("allow_sticker_only", False),
             "runtime.allow_sticker_only",
         ),
+    )
+
+
+def decision_loop_from_config(config: dict[str, Any]) -> SocialDecisionLoop:
+    runtime = dict_field(config, "runtime", default={})
+    provider_name = string_value(
+        runtime.get("reply_provider", "deterministic"),
+        "runtime.reply_provider",
+    )
+    if provider_name == "deterministic":
+        return SocialDecisionLoop()
+    if provider_name != "llm":
+        raise ValueError("runtime.reply_provider must be deterministic or llm")
+    resolution = resolve_llm_chat_provider()
+    if resolution.status != "configured" or resolution.provider is None:
+        raise ValueError(f"LLM reply provider is not configured: {resolution.reason_code}")
+    return SocialDecisionLoop(
+        reply_provider=LLMSocialReplyProvider(chat_provider=resolution.provider)
     )

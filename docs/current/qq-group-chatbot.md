@@ -141,6 +141,23 @@ remain structured in `current_message.mentions` and `current_message.parts`;
 `current_message.text` is the readable text segment content, not the raw CQ
 string.
 
+Text replies are generated through a reply provider. The default provider is
+deterministic and keeps replay output stable. To use the configured LLM chat
+provider for text replies, add this to `config.json`:
+
+```json
+{
+  "runtime": {
+    "reply_provider": "llm"
+  }
+}
+```
+
+The LLM path uses `turn.context.persona_instructions` and
+`turn.context.chat_context`, and requires the model to return JSON with a
+non-empty `text` field. If the configured LLM provider is missing or invalid,
+the command stops with an explicit configuration error.
+
 Check the WebSocket connection without consuming a group event:
 
 ```bash
