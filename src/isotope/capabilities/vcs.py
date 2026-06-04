@@ -104,7 +104,7 @@ def run_vcs_diff(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
             "stat_excerpt": stat_excerpt,
             "stat_truncated": len(stat) > len(stat_excerpt),
             "artifact_write": "not_performed",
-            "content_policy": "diff_summary_only",
+            "content_policy": "diff_result_projection",
             "command_policy": "fixed_git_subcommands_only",
         },
     }

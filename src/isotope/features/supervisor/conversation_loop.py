@@ -147,13 +147,13 @@ def run_supervisor_conversation_events(
                     payload_capacity_id = event.payload.get("capacity_id")
                     if isinstance(payload_capacity_id, str):
                         if event.payload.get("status") == "error":
-                            result_summary = event.payload.get(
+                            result_text = event.payload.get(
                                 "result",
-                                event.payload.get("result_summary"),
+                                event.payload.get("result_text"),
                             )
                             failed_capabilities[payload_capacity_id] = (
-                                dict(result_summary)
-                                if isinstance(result_summary, dict)
+                                dict(result_text)
+                                if isinstance(result_text, dict)
                                 else {}
                             )
                         else:
@@ -540,9 +540,9 @@ def _capacity_timeout_seconds(
 
 def _repeated_failed_capacity_answer(
     capacity_id: str,
-    result_summary: dict[str, Any],
+    result_text: dict[str, Any],
 ) -> str:
-    message = result_summary.get("message")
+    message = result_text.get("message")
     if not isinstance(message, str) or not message.strip():
         message = "能力执行失败"
     return f"{capacity_id} 执行失败：{message.strip()}"

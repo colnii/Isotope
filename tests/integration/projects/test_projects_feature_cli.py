@@ -241,7 +241,7 @@ def test_project_cli_detail_uses_refreshed_linked_summaries(tmp_path):
     )
     task_index_path = tmp_path / "tasks" / "index.json"
     task_index = json.loads(task_index_path.read_text(encoding="utf-8"))
-    task_index["tasks"][0]["result_summary"] = "stale task index summary"
+    task_index["tasks"][0]["result_text"] = "stale task index summary"
     task_index_path.write_text(json.dumps(task_index), encoding="utf-8")
     file_index_path = tmp_path / "files" / "index.json"
     file_index = json.loads(file_index_path.read_text(encoding="utf-8"))
@@ -262,7 +262,7 @@ def test_project_cli_detail_uses_refreshed_linked_summaries(tmp_path):
     payload_text = json.dumps(payload, ensure_ascii=False, sort_keys=True)
     assert "stale task index summary" not in payload_text
     assert "stale file index summary" not in payload_text
-    assert task.result_summary in payload_text
+    assert task.result_text in payload_text
     assert file_summary.summary in payload_text
     _assert_public_metadata(payload)
 
@@ -400,11 +400,11 @@ def test_project_cli_workspace_add_uses_refreshed_linked_summaries(tmp_path):
     )
     created_workspace = json.loads(created.stdout)["workspace"]
     project_id = created_workspace["project_detail"]["project"]["project_id"]
-    original_task_summary = created_workspace["project_detail"]["tasks"][0]["result_summary"]
+    original_task_summary = created_workspace["project_detail"]["tasks"][0]["result_text"]
     original_file_summary = created_workspace["project_detail"]["files"][0]["summary"]
     task_index_path = tmp_path / "tasks" / "index.json"
     task_index = json.loads(task_index_path.read_text(encoding="utf-8"))
-    task_index["tasks"][0]["result_summary"] = "stale task index summary"
+    task_index["tasks"][0]["result_text"] = "stale task index summary"
     task_index_path.write_text(json.dumps(task_index), encoding="utf-8")
     file_index_path = tmp_path / "files" / "index.json"
     file_index = json.loads(file_index_path.read_text(encoding="utf-8"))

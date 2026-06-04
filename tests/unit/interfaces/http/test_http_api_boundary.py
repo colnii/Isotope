@@ -496,7 +496,7 @@ def test_http_api_search_route_reads_public_metadata_summaries(tmp_path):
                 "result_type": "task",
                 "result_id": task["task_id"],
                 "title": "build portfolio story",
-                "summary": task["result_summary"],
+                "summary": task["result_text"],
                 "item": task,
             },
             {
@@ -621,7 +621,7 @@ def test_http_api_workbench_route_returns_home_view(tmp_path):
                     "result_type": "task",
                     "result_id": task["task_id"],
                     "title": "build portfolio story",
-                    "summary": task["result_summary"],
+                    "summary": task["result_text"],
                     "item": task,
                 }
             ],

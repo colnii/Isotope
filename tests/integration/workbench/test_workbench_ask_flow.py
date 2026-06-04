@@ -129,7 +129,7 @@ def test_workbench_ask_flow_uses_refreshed_task_and_file_summaries(tmp_path):
     )
     task_index_path = tmp_path / "tasks" / "index.json"
     task_index = json.loads(task_index_path.read_text(encoding="utf-8"))
-    task_index["tasks"][0]["result_summary"] = "stale task index summary"
+    task_index["tasks"][0]["result_text"] = "stale task index summary"
     task_index_path.write_text(json.dumps(task_index), encoding="utf-8")
     file_index_path = tmp_path / "files" / "index.json"
     file_index = json.loads(file_index_path.read_text(encoding="utf-8"))
@@ -146,7 +146,7 @@ def test_workbench_ask_flow_uses_refreshed_task_and_file_summaries(tmp_path):
     prompt_context = json.dumps(prompt_payload, ensure_ascii=False, sort_keys=True)
     assert "stale task index summary" not in prompt_context
     assert "stale file index summary" not in prompt_context
-    assert task.result_summary in prompt_context
+    assert task.result_text in prompt_context
     assert "canonical file summary" in prompt_context
     assert "PRIVATE_FILE_CONTENT_SHOULD_NOT_LEAK" not in prompt_context
     assert "PRIVATE_TASK_NOTE_SHOULD_NOT_LEAK" not in prompt_context

@@ -48,15 +48,15 @@ class ToolInvocation:
 
 @dataclass(frozen=True)
 class ToolResult:
-    """Controlled successful tool output summary."""
+    """Controlled successful tool output text plus public artifacts."""
 
-    result_summary: str
+    result_text: str
     artifact_refs: list[dict[str, Any]] = field(default_factory=list)
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
     provenance: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        _non_empty_string("result_summary", self.result_summary)
+        _non_empty_string("result_text", self.result_text)
         _validate_provenance(self.provenance)
         if not isinstance(self.artifact_refs, list):
             raise ValueError("artifact_refs must be a list")

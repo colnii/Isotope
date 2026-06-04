@@ -83,7 +83,7 @@ def test_search_cli_returns_matching_summaries_as_json(tmp_path):
                 "result_type": "task",
                 "result_id": task.task_id,
                 "title": "build portfolio story",
-                "summary": task.result_summary,
+                "summary": task.result_text,
                 "item": task.to_dict(),
             },
             {

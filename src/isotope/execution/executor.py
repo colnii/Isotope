@@ -276,7 +276,7 @@ class Executor:
                 tool_result = handler(invocation)
                 if not isinstance(tool_result, ToolResult):
                     raise TypeError("tool handler must return ToolResult")
-                metadata: dict[str, Any] = {"result_summary": tool_result.result_summary}
+                metadata: dict[str, Any] = {"result_text": tool_result.result_text}
                 if tool_result.diagnostics:
                     metadata["diagnostics"] = [dict(diagnostic) for diagnostic in tool_result.diagnostics]
                 self._append_action_completed(

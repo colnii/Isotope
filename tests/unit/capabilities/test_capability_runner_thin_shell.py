@@ -1118,10 +1118,10 @@ def test_runner_executes_native_coding_task_in_isolated_workspace(tmp_path):
     assert execution["patch_result"]["status"] == "applied"
     assert execution["verification"]["status"] == "passed"
     assert execution["artifact_refs"]["changed_files"]["ref_type"] == "artifact"
-    assert execution["artifact_refs"]["diff_summary"]["ref_type"] == "artifact"
+    assert execution["artifact_refs"]["diff_result"]["ref_type"] == "artifact"
     assert sorted(artifact.artifact_type for artifact in artifacts) == [
         "native_coding.changed_files",
-        "native_coding.diff_summary",
+        "native_coding.diff_result",
         "native_coding.reviewed_apply_request",
     ]
     reviewed_apply = execution["reviewed_apply"]
@@ -1645,7 +1645,7 @@ def test_runner_discovers_workspace_changed_files_and_release_from_default_catal
         "workspace_id",
     ]
     assert release_description["input_contract"]["required"] == ["root", "workspace_id"]
-    assert "diff_summary_only" in changed_description["safety_boundaries"]
+    assert "diff_result_projection" in changed_description["safety_boundaries"]
     assert "deletes_only_materialized_workspace" in release_description["safety_boundaries"]
 
 
@@ -1686,7 +1686,7 @@ def test_runner_reports_workspace_changed_files_against_source(tmp_path):
         {"path": "src/new.py", "status": "added"},
     ]
     assert changed["artifact_write"] == "not_performed"
-    assert changed["content_policy"] == "diff_summary_only"
+    assert changed["content_policy"] == "diff_result_projection"
 
 
 def test_workspace_changed_files_rejects_missing_materialized_workspace(tmp_path):
@@ -1763,15 +1763,15 @@ def test_workspace_changed_files_plan_stops_when_required_inputs_are_missing():
     assert plan["scenario"] is None
 
 
-def test_runner_discovers_artifact_diff_summary_and_changed_files_from_default_catalog():
+def test_runner_discovers_artifact_diff_result_and_changed_files_from_default_catalog():
     runner = _runner()
 
-    assert "artifact.diff_summary" in _ids(runner.list_capabilities())
+    assert "artifact.diff_result" in _ids(runner.list_capabilities())
     assert "artifact.changed_files" in _ids(
         runner.search_capabilities(query="artifact changed files")["capabilities"]
     )
 
-    diff_description = runner.describe_capability("artifact.diff_summary")
+    diff_description = runner.describe_capability("artifact.diff_result")
     changed_description = runner.describe_capability("artifact.changed_files")
     required = ["root", "cwd", "workspace_id", "run_id", "execution_id"]
     assert diff_description["input_contract"]["required"] == required
@@ -1825,7 +1825,7 @@ def test_runner_writes_changed_files_artifact_from_materialized_workspace(tmp_pa
     assert "secret" not in json.dumps(content)
 
 
-def test_runner_writes_diff_summary_artifact_without_raw_file_content(tmp_path):
+def test_runner_writes_diff_result_artifact_without_raw_file_content(tmp_path):
     source = tmp_path / "repo"
     (source / "src").mkdir(parents=True)
     (source / "src" / "app.py").write_text("old raw content\n", encoding="utf-8")
@@ -1835,13 +1835,13 @@ def test_runner_writes_diff_summary_artifact_without_raw_file_content(tmp_path):
     (workspace_root / "src" / "app.py").write_text("new raw content\n", encoding="utf-8")
 
     result = _runner().run_capability(
-        "artifact.diff_summary",
+        "artifact.diff_result",
         inputs={
             "root": str(root),
             "cwd": str(source),
             "workspace_id": "workspace_native_coding_slice_10",
             "run_id": "run_native_coding",
-            "execution_id": "execution_diff_summary",
+            "execution_id": "execution_diff_result",
             "include_paths": ["src"],
         },
     )
@@ -1850,10 +1850,10 @@ def test_runner_writes_diff_summary_artifact_without_raw_file_content(tmp_path):
     metadata = ArtifactStore(root).get_metadata(artifact["artifact_id"])
     content_text = ArtifactStore(root).get_content(artifact["artifact_id"])
     content = json.loads(content_text)
-    assert artifact["artifact_type"] == "native_coding.diff_summary"
+    assert artifact["artifact_type"] == "native_coding.diff_result"
     assert metadata["summary"] == "1 changed file in workspace_native_coding_slice_10"
-    assert content["summary_lines"] == ["modified src/app.py"]
-    assert content["content_policy"] == "diff_summary_only"
+    assert content["result_lines"] == ["modified src/app.py"]
+    assert content["content_policy"] == "diff_result_projection"
     assert "old raw content" not in content_text
     assert "new raw content" not in content_text
 
@@ -2278,7 +2278,7 @@ def test_runner_discovers_vcs_status_and_diff_from_default_catalog():
     assert status_description["input_contract"]["required"] == ["root", "cwd"]
     assert diff_description["input_contract"]["required"] == ["root", "cwd"]
     assert "fixed_git_subcommands_only" in status_description["safety_boundaries"]
-    assert "diff_summary_only" in diff_description["safety_boundaries"]
+    assert "diff_result_projection" in diff_description["safety_boundaries"]
 
 
 def test_runner_reports_git_status_summary_without_artifact_write(tmp_path):
@@ -2311,7 +2311,7 @@ def test_runner_reports_git_status_summary_without_artifact_write(tmp_path):
     assert not list(root.rglob("*"))
 
 
-def test_runner_reports_git_diff_summary_and_changed_files(tmp_path):
+def test_runner_reports_git_diff_result_and_changed_files(tmp_path):
     repo = _git_repo(tmp_path)
     (repo / "app.py").write_text("print('new')\n", encoding="utf-8")
     root = tmp_path / "state"

@@ -41,7 +41,7 @@ def test_task_flow_creates_user_facing_task_summary(tmp_path):
     assert updated.turn_count == 2
     assert updated.run_ids != created.run_ids
     assert updated.latest_run_id == updated.run_ids[-1]
-    assert updated.result_summary
+    assert updated.result_text
     assert updated.result_ref["ref_type"] == "artifact"
     assert fetched == updated
     _assert_no_forbidden_content_keys(updated.to_dict())
@@ -68,12 +68,12 @@ def test_task_flow_lists_and_reloads_task_summaries(tmp_path):
 def test_task_flow_refreshes_reloaded_result_from_artifact_record(tmp_path):
     flow = TaskFlow.in_process(tmp_path)
     created = flow.create_task(goal="collect useful notes", first_message="first note")
-    assert created.result_summary is not None
+    assert created.result_text is not None
     assert created.result_ref is not None
 
     index_path = tmp_path / "tasks" / "index.json"
     payload = json.loads(index_path.read_text(encoding="utf-8"))
-    payload["tasks"][0]["result_summary"] = "stale local result"
+    payload["tasks"][0]["result_text"] = "stale local result"
     payload["tasks"][0]["result_ref"]["extra"] = "stale local field"
     index_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
 
@@ -82,7 +82,7 @@ def test_task_flow_refreshes_reloaded_result_from_artifact_record(tmp_path):
     refreshed = reloaded.get_task(created.task_id)
 
     assert listed == [refreshed]
-    assert refreshed.result_summary == created.result_summary
+    assert refreshed.result_text == created.result_text
     assert refreshed.result_ref == created.result_ref
     assert reloaded.list_tasks() == [refreshed]
     _assert_no_forbidden_content_keys(refreshed.to_dict())

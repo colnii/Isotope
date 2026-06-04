@@ -66,7 +66,7 @@ def test_capability_runner_cli_lists_capabilities_as_json():
     assert set(capability_ids).issuperset({
         "approval.tool.runner",
         "artifact.changed_files",
-        "artifact.diff_summary",
+        "artifact.diff_result",
         "artifact.review",
         "code.read",
         "code.search",

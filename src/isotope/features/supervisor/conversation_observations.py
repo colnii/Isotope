@@ -184,7 +184,7 @@ def _capability_result_detail_label(capacity_id: str) -> str:
         "code.search": "Code search result",
         "code.read": "Code read result",
         "code.apply_patch": "Patch result",
-        "artifact.diff_summary": "Artifact result",
+        "artifact.diff_result": "Artifact result",
         "skills.search": "Skills search result",
         "skills.describe": "Skill description",
         "mcp.servers.list": "MCP servers",
@@ -218,7 +218,7 @@ def _capability_result_observation(
         return _code_read_observation(capability_run)
     if capacity_id == "code.apply_patch":
         return _patch_result_observation(capability_run)
-    if capacity_id == "artifact.diff_summary":
+    if capacity_id == "artifact.diff_result":
         return _artifact_result_observation(capability_run)
     if capacity_id == "supervisor.project_status":
         return _project_status_observation(capability_run)

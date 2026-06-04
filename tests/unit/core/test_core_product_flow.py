@@ -77,7 +77,7 @@ def test_product_core_tracks_task_goal_status_and_result(tmp_path):
 
     assert task.task_id.startswith("task_")
     assert initial.status == "created"
-    assert initial.result_summary is None
+    assert initial.result_text is None
     assert initial.conversation.goal == "collect useful notes"
     assert initial.conversation.turns == ()
 
@@ -88,7 +88,7 @@ def test_product_core_tracks_task_goal_status_and_result(tmp_path):
     assert first.status == "completed"
     assert second.status == "completed"
     assert state.status == "completed"
-    assert state.result_summary == state.conversation.latest_response.artifact_summary
+    assert state.result_text == state.conversation.latest_response.artifact_summary
     assert state.result_ref == state.conversation.latest_response.artifact_ref
     assert [turn.text for turn in state.conversation.turns] == ["first note", "second note"]
     assert state.conversation.run_ids == tuple(turn.response.run_id for turn in state.conversation.turns)

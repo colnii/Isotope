@@ -11,10 +11,10 @@ from ..platform.schemas.input_contract import missing_required_input_keys
 from ..workspace.artifacts import ArtifactStore
 
 
-ARTIFACT_DIFF_SUMMARY_CAPABILITY = "artifact.diff_summary"
+ARTIFACT_DIFF_RESULT_CAPABILITY = "artifact.diff_result"
 ARTIFACT_CHANGED_FILES_CAPABILITY = "artifact.changed_files"
 ARTIFACT_OUTPUT_CAPABILITIES = frozenset(
-    {ARTIFACT_DIFF_SUMMARY_CAPABILITY, ARTIFACT_CHANGED_FILES_CAPABILITY}
+    {ARTIFACT_DIFF_RESULT_CAPABILITY, ARTIFACT_CHANGED_FILES_CAPABILITY}
 )
 
 
@@ -49,10 +49,10 @@ def run_artifact_changed_files(*, inputs: Mapping[str, Any] | None) -> dict[str,
     )
 
 
-def run_artifact_diff_summary(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
+def run_artifact_diff_result(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
     return _run_artifact_result_artifact(
-        capability_id=ARTIFACT_DIFF_SUMMARY_CAPABILITY,
-        artifact_type="native_coding.diff_summary",
+        capability_id=ARTIFACT_DIFF_RESULT_CAPABILITY,
+        artifact_type="native_coding.diff_result",
         inputs=inputs,
     )
 
@@ -101,7 +101,7 @@ def _run_artifact_result_artifact(
             "ref": artifact.ref.to_dict(),
             "artifact_write": "performed",
             "event_append": "not_performed",
-            "content_policy": "diff_summary_only",
+            "content_policy": "diff_result_projection",
         },
     }
 
@@ -119,11 +119,11 @@ def _artifact_content(
         "changed_file_count": changed_payload["changed_file_count"],
         "changed_files": changed_files,
         "include_paths": list(changed_payload["include_paths"]),
-        "content_policy": "diff_summary_only",
+        "content_policy": "diff_result_projection",
         "event_append": "not_performed",
     }
-    if artifact_type == "native_coding.diff_summary":
-        content["summary_lines"] = [
+    if artifact_type == "native_coding.diff_result":
+        content["result_lines"] = [
             f"{item['status']} {item['path']}" for item in changed_files
         ]
     return content
@@ -142,10 +142,10 @@ def _missing_inputs(
 
 __all__ = [
     "ARTIFACT_CHANGED_FILES_CAPABILITY",
-    "ARTIFACT_DIFF_SUMMARY_CAPABILITY",
+    "ARTIFACT_DIFF_RESULT_CAPABILITY",
     "ARTIFACT_OUTPUT_CAPABILITIES",
     "is_artifact_output_capability",
     "run_artifact_changed_files",
-    "run_artifact_diff_summary",
+    "run_artifact_diff_result",
     "validate_artifact_output_inputs",
 ]

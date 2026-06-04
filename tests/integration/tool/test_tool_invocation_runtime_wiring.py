@@ -98,7 +98,7 @@ def test_executor_passes_tool_invocation_to_explicit_in_process_handler(tmp_path
     def handler(invocation: ToolInvocation) -> ToolResult:
         calls.append(invocation)
         return ToolResult(
-            result_summary="probe handled",
+            result_text="probe handled",
             diagnostics=[{"kind": "probe", "text": invocation.input_payload["text"]}],
             provenance=invocation.provenance,
         )
@@ -128,7 +128,7 @@ def test_ungranted_tool_handler_is_not_invoked(tmp_path):
 
     def handler(invocation: ToolInvocation) -> ToolResult:
         calls.append(invocation)
-        return ToolResult(result_summary="must not run", provenance=invocation.provenance)
+        return ToolResult(result_text="must not run", provenance=invocation.provenance)
 
     proposal = _proposal()
     decision = _decision(proposal, granted_tools=[])
@@ -156,7 +156,7 @@ def test_in_process_server_forwards_tool_handlers_to_executor(tmp_path):
     def handler(invocation: ToolInvocation) -> ToolResult:
         calls.append(invocation)
         return ToolResult(
-            result_summary="probe handled through facade",
+            result_text="probe handled through facade",
             diagnostics=[{"kind": "probe", "text": invocation.input_payload["text"]}],
             provenance=invocation.provenance,
         )
@@ -196,7 +196,7 @@ def test_in_process_server_non_artifact_tool_does_not_return_stale_artifact_ref(
     def handler(invocation: ToolInvocation) -> ToolResult:
         calls.append(invocation)
         return ToolResult(
-            result_summary="diagnostic only",
+            result_text="diagnostic only",
             artifact_refs=[],
             provenance=invocation.provenance,
         )
@@ -236,7 +236,7 @@ def test_in_process_server_denied_tool_does_not_call_handler(tmp_path):
 
     def handler(invocation: ToolInvocation) -> ToolResult:
         calls.append(invocation)
-        return ToolResult(result_summary="must not run", provenance=invocation.provenance)
+        return ToolResult(result_text="must not run", provenance=invocation.provenance)
 
     api = server.InProcessServer(
         tmp_path,

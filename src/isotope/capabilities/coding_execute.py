@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Mapping
 
-from .artifact_outputs import run_artifact_changed_files, run_artifact_diff_summary
+from .artifact_outputs import run_artifact_changed_files, run_artifact_diff_result
 from .coding_apply import reviewed_apply_source_digests
 from .code_edit import run_code_apply_patch
 from .testing import run_test_run
@@ -124,7 +124,7 @@ def run_coding_task_execute(*, inputs: Mapping[str, Any] | None) -> dict[str, An
     changed_files_artifact = run_artifact_changed_files(
         inputs=_artifact_inputs(input_mapping)
     )["artifact"]
-    diff_summary_artifact = run_artifact_diff_summary(
+    diff_result_artifact = run_artifact_diff_result(
         inputs=_artifact_inputs(input_mapping)
     )["artifact"]
     changed_files = list(patch_result["changed_files"])
@@ -174,7 +174,7 @@ def run_coding_task_execute(*, inputs: Mapping[str, Any] | None) -> dict[str, An
             "verification": _verification_summary(verification_result),
             "artifact_refs": {
                 "changed_files": changed_files_artifact["ref"],
-                "diff_summary": diff_summary_artifact["ref"],
+                "diff_result": diff_result_artifact["ref"],
             },
             "reviewed_apply": {
                 "workspace_id": input_mapping["workspace_id"],

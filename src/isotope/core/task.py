@@ -26,7 +26,7 @@ class CoreTaskState:
         return self.conversation.goal
 
     @property
-    def result_summary(self) -> str | None:
+    def result_text(self) -> str | None:
         if self.conversation.latest_response is None:
             return None
         return self.conversation.latest_response.artifact_summary
@@ -43,6 +43,6 @@ class CoreTaskState:
             "goal": self.goal,
             "status": self.status,
             "conversation": self.conversation.to_dict(),
-            "result_summary": self.result_summary,
+            "result_text": self.result_text,
             "result_ref": self.result_ref,
         }

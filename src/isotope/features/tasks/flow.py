@@ -20,7 +20,7 @@ class TaskSummary:
     turn_count: int
     run_ids: tuple[str, ...]
     latest_run_id: str | None
-    result_summary: str | None
+    result_text: str | None
     result_ref: dict[str, Any] | None
 
     def to_dict(self) -> dict[str, Any]:
@@ -31,19 +31,19 @@ class TaskSummary:
             "turn_count": self.turn_count,
             "run_ids": list(self.run_ids),
             "latest_run_id": self.latest_run_id,
-            "result_summary": self.result_summary,
+            "result_text": self.result_text,
             "result_ref": dict(self.result_ref) if self.result_ref is not None else None,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TaskSummary":
         latest_run_id = data.get("latest_run_id")
-        result_summary = data.get("result_summary")
+        result_text = data.get("result_text")
         result_ref = data.get("result_ref")
         if latest_run_id is not None and not isinstance(latest_run_id, str):
             raise ValueError("task summary requires latest_run_id")
-        if result_summary is not None and not isinstance(result_summary, str):
-            raise ValueError("task summary requires result_summary")
+        if result_text is not None and not isinstance(result_text, str):
+            raise ValueError("task summary requires result_text")
         if result_ref is not None and not isinstance(result_ref, dict):
             raise ValueError("task summary requires result_ref")
         return cls(
@@ -53,7 +53,7 @@ class TaskSummary:
             turn_count=_required_int(data, "turn_count"),
             run_ids=tuple(_required_string_list(data, "run_ids")),
             latest_run_id=latest_run_id,
-            result_summary=result_summary,
+            result_text=result_text,
             result_ref=dict(result_ref) if result_ref is not None else None,
         )
 
@@ -111,7 +111,7 @@ class TaskFlow:
             turn_count=summary.turn_count,
             run_ids=summary.run_ids,
             latest_run_id=summary.latest_run_id,
-            result_summary=_required_string(record, "summary"),
+            result_text=_required_string(record, "summary"),
             result_ref=dict(_required_dict(record, "ref")),
         )
         if refreshed != summary:
@@ -128,7 +128,7 @@ class TaskFlow:
             turn_count=len(state.conversation.turns),
             run_ids=run_ids,
             latest_run_id=run_ids[-1] if run_ids else None,
-            result_summary=state.result_summary,
+            result_text=state.result_text,
             result_ref=state.result_ref,
         )
 

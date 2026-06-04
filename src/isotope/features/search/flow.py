@@ -109,7 +109,7 @@ class SearchFlow:
             result_type="task",
             result_id=task.task_id,
             title=task.goal,
-            summary=task.result_summary,
+            summary=task.result_text,
             item=task.to_dict(),
         )
 

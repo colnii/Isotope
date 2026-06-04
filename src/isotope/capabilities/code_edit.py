@@ -96,7 +96,7 @@ def run_code_apply_patch(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
             "file_count": len(changed_files),
             "hunk_count": sum(len(patch_file.hunks) for patch_file in patch_files),
             "write_policy": "workspace_relative_patch_only",
-            "content_policy": "diff_summary_only",
+            "content_policy": "diff_result_projection",
         },
     }
 

@@ -127,7 +127,7 @@ def test_default_builtins_expose_active_product_candidate_set():
     assert set(capability_ids).issuperset({
         "approval.tool.runner",
         "artifact.changed_files",
-        "artifact.diff_summary",
+        "artifact.diff_result",
         "artifact.review",
         "code.apply_patch",
         "code.read",

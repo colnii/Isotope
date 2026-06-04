@@ -84,7 +84,7 @@ def test_tool_result_and_error_models_define_canonical_public_shape():
     module = _load_tool_protocol_module()
 
     result = module.ToolResult(
-        result_summary="artifact written",
+        result_text="artifact written",
         artifact_refs=[
             ResourceRef(
                 ref_type="artifact",
@@ -111,7 +111,7 @@ def test_tool_result_and_error_models_define_canonical_public_shape():
         },
     )
 
-    assert result.result_summary == "artifact written"
+    assert result.result_text == "artifact written"
     assert result.artifact_refs[0]["artifact_id"] == "artifact_001"
     assert result.provenance["decision_id"] == "dec_001"
     assert error.error_reason_code == "tool_execution_failed"
@@ -127,7 +127,7 @@ def test_successful_tool_result_uses_canonical_artifact_ref_events(tmp_path):
             "action": "call_tool",
             "tool": "write_artifact_tool",
             "text": "hello",
-            "summary": "tool result summary",
+            "summary": "tool result text",
         },
     )
 

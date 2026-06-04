@@ -159,7 +159,7 @@ def run_coding_task_apply_reviewed_diff(
             "changed_files": changed_files,
             "applied_files": applied_files,
             "source_workspace_write": "performed" if applied_files else "not_performed",
-            "content_policy": "diff_summary_only",
+            "content_policy": "diff_result_projection",
             "event_append": "not_performed",
         },
     }
@@ -226,7 +226,7 @@ def _blocked(
             "applied_files": [],
             "blocked_reason": reason,
             "source_workspace_write": "not_performed",
-            "content_policy": "diff_summary_only",
+            "content_policy": "diff_result_projection",
             "event_append": "not_performed",
         },
     }

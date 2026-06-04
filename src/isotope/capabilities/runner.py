@@ -11,10 +11,10 @@ from typing import Any, Mapping
 
 from .artifact_outputs import (
     ARTIFACT_CHANGED_FILES_CAPABILITY,
-    ARTIFACT_DIFF_SUMMARY_CAPABILITY,
+    ARTIFACT_DIFF_RESULT_CAPABILITY,
     is_artifact_output_capability,
     run_artifact_changed_files,
-    run_artifact_diff_summary,
+    run_artifact_diff_result,
     validate_artifact_output_inputs,
 )
 from .catalog import CapabilityCatalog
@@ -614,8 +614,8 @@ class CapabilityRunner:
             return run_workspace_release(inputs=input_mapping)
         if capability_id == ARTIFACT_CHANGED_FILES_CAPABILITY:
             return run_artifact_changed_files(inputs=input_mapping)
-        if capability_id == ARTIFACT_DIFF_SUMMARY_CAPABILITY:
-            return run_artifact_diff_summary(inputs=input_mapping)
+        if capability_id == ARTIFACT_DIFF_RESULT_CAPABILITY:
+            return run_artifact_diff_result(inputs=input_mapping)
         if capability_id == ISOTOPE_SELF_REPAIR_CAPABILITY:
             return run_isotope_self_repair(inputs=input_mapping)
         if is_extension_capability(capability_id):

@@ -163,10 +163,10 @@ class CapabilityCatalog:
                 ),
                 *extension_capability_definitions(Capability),
                 Capability(
-                    capability_id="artifact.diff_summary",
-                    title="Artifact Diff Summary",
+                    capability_id="artifact.diff_result",
+                    title="Artifact Diff Result",
                     description=(
-                        "Capture a materialized workspace diff summary as a "
+                        "Capture a materialized workspace diff result as a "
                         "structured artifact without exposing raw file content."
                     ),
                     maturity="v0.2",
@@ -230,7 +230,7 @@ class CapabilityCatalog:
                     },
                     safety_boundaries=(
                         "writes_only_artifact_store",
-                        "diff_summary_only",
+                        "diff_result_projection",
                         "structured_resource_ref",
                         "no_raw_file_content",
                         "no_event_append",
@@ -306,7 +306,7 @@ class CapabilityCatalog:
                     },
                     safety_boundaries=(
                         "writes_only_artifact_store",
-                        "diff_summary_only",
+                        "diff_result_projection",
                         "structured_resource_ref",
                         "no_raw_file_content",
                         "no_event_append",
@@ -943,7 +943,7 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "diff_summary_only",
+                        "diff_result_projection",
                         "relative_paths_only",
                         "no_filesystem_write",
                         "no_artifact_write",
@@ -1188,7 +1188,7 @@ class CapabilityCatalog:
                         "workspace_relative_patch_only",
                         "context_mismatch_fails_without_write",
                         "no_command_execution",
-                        "diff_summary_only",
+                        "diff_result_projection",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -1373,7 +1373,7 @@ class CapabilityCatalog:
                     safety_boundaries=(
                         "fixed_git_subcommands_only",
                         "read_snapshot_git_diff",
-                        "diff_summary_only",
+                        "diff_result_projection",
                         "no_vcs_mutation",
                         "no_artifact_write",
                     ),

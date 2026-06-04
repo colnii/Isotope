@@ -72,7 +72,7 @@ def test_search_capabilities_finds_matching_catalog_entries():
     ids = [entry["capability_id"] for entry in result["capabilities"]]
     assert "artifact.review" in ids
     assert "artifact.changed_files" in ids
-    assert "artifact.diff_summary" in ids
+    assert "artifact.diff_result" in ids
 
 
 def test_search_capabilities_returns_public_result_metadata():

@@ -383,7 +383,7 @@ class RunProjectorHandlersMixin:
         worker = state.workers.setdefault(worker_id, {"worker_id": worker_id})
         result_refs = worker.setdefault("result_refs", [])
         result_refs.append(dict(payload["artifact_ref"]))
-        worker["result_summary"] = payload["summary"]
+        worker["result_text"] = payload["summary"]
         worker["last_event_id"] = event.event_id
 
     def _apply_workspace_bound(self, state: RunState, payload: dict[str, Any], event: CanonicalEvent) -> None:

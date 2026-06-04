@@ -89,7 +89,7 @@ def run_workspace_changed_files(*, inputs: Mapping[str, Any] | None) -> dict[str
             "changed_files": changed_files,
             "include_paths": list(include_paths),
             "artifact_write": "not_performed",
-            "content_policy": "diff_summary_only",
+            "content_policy": "diff_result_projection",
         },
     }
 

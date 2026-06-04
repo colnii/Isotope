@@ -48,7 +48,7 @@ class CodingProductChainProvider:
                 },
             ),
             _decision(
-                "artifact.diff_summary",
+                "artifact.diff_result",
                 {
                     "workspace_id": "desktop_code_workspace",
                     "run_id": "run_desktop_code",
@@ -59,7 +59,7 @@ class CodingProductChainProvider:
             json.dumps(
                 {
                     "kind": "direct_answer",
-                    "answer": "已修改 src/app.py，并生成 diff summary artifact。",
+                    "answer": "已修改 src/app.py，并生成 diff result artifact。",
                     "rationale": "The coding observations and artifact summary are available.",
                 }
             ),
@@ -131,7 +131,7 @@ def test_desktop_chat_can_drive_search_read_patch_and_diff_artifact(
         "code.search",
         "code.read",
         "code.apply_patch",
-        "artifact.diff_summary",
+        "artifact.diff_result",
     ]
     assert [result["status"] for result in capacity_results] == ["ok", "ok", "ok", "ok"]
     code_search_detail = _detail_content(capacity_results[0], "Code search result")
@@ -146,7 +146,7 @@ def test_desktop_chat_can_drive_search_read_patch_and_diff_artifact(
     assert patch_detail["changed_files"] == ["src/app.py"]
     assert patch_detail["file_count"] == 1
     diff_detail = _detail_content(capacity_results[3], "Artifact result")
-    assert diff_detail["artifact_type"] == "native_coding.diff_summary"
+    assert diff_detail["artifact_type"] == "native_coding.diff_result"
     assert diff_detail["summary"] == "1 changed file in desktop_code_workspace"
     assert (workspace / "src" / "app.py").read_text(encoding="utf-8") == (
         "def answer():\n"
@@ -186,8 +186,8 @@ def test_desktop_chat_can_drive_search_read_patch_and_diff_artifact(
 
     assert diff_artifact_response.status_code == 200
     diff_artifact = json.loads(diff_artifact_response.json()["content"])
-    assert diff_artifact["artifact_type"] == "native_coding.diff_summary"
-    assert diff_artifact["summary_lines"] == ["modified src/app.py"]
+    assert diff_artifact["artifact_type"] == "native_coding.diff_result"
+    assert diff_artifact["result_lines"] == ["modified src/app.py"]
     assert diff_artifact["changed_files"] == [
         {"path": "src/app.py", "status": "modified"}
     ]
