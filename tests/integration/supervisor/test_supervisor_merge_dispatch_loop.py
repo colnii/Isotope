@@ -90,6 +90,11 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
     assert payload["llm_action"]["source"] == "integration_review"
     assert payload["executed"]["kind"] == "launch_session"
     assert payload["executed"]["managed"]["name"] == DEFAULT_TARGET_NAME
+    assert payload["worker_lifecycle_decision"]["execution"]["kind"] == "launch_session"
+    assert (
+        payload["worker_lifecycle_decision"]["execution"]["display_kind"]
+        == "merge_dispatch"
+    )
     assert len(captured) == 1
     assert any(
         "source: supervisor integration-review payload" in item for item in captured[0]

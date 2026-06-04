@@ -106,6 +106,9 @@ def _append_supervise_llm_execution(
             merge_dispatch,
             api=api,
         )
+        lifecycle_decision = payload.get("worker_lifecycle_decision")
+        if isinstance(lifecycle_decision, dict):
+            lifecycle_decision["execution"] = payload["executed"]
         api._refresh_current_batch_after_execution(
             args,
             payload,
