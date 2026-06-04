@@ -54,6 +54,16 @@ MODEL_FACING_FILES = [
     "src/isotope/workspace/__init__.py",
 ]
 
+CURRENT_ENTRY_FILES = [
+    "README.md",
+    "docs/current/README.md",
+    "docs/current/agent-task-queue.md",
+    "docs/current/codex-supervisor-guide.md",
+    "docs/current/docs-map.md",
+    "docs/current/supervisor-command-reference.md",
+    "docs/current/terminology.md",
+]
+
 FORBIDDEN_PATTERNS = [
     r"\b" + "Unavailable" + "Memory",
     r"\b" + "Unavailable" + "ExternalIngestionService" + r"\b",
@@ -80,6 +90,16 @@ FORBIDDEN_PATTERNS = [
     r"\b" + "bounded" + r"\b",
 ]
 
+CURRENT_ENTRY_FORBIDDEN_PATTERNS = [
+    "低敏",
+    "只读",
+    "预检",
+    "不默认",
+    "默认不开",
+    "不能",
+    "不应",
+]
+
 
 def test_model_facing_surfaces_do_not_train_conservative_semantics():
     violations = []
@@ -87,6 +107,17 @@ def test_model_facing_surfaces_do_not_train_conservative_semantics():
         text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
         for pattern in FORBIDDEN_PATTERNS:
             if re.search(pattern, text, re.IGNORECASE):
+                violations.append(f"{relative_path}: {pattern}")
+
+    assert violations == []
+
+
+def test_current_entry_docs_do_not_train_guardrail_first_chinese_language():
+    violations = []
+    for relative_path in CURRENT_ENTRY_FILES:
+        text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for pattern in CURRENT_ENTRY_FORBIDDEN_PATTERNS:
+            if pattern in text:
                 violations.append(f"{relative_path}: {pattern}")
 
     assert violations == []

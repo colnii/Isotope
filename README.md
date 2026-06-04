@@ -16,9 +16,9 @@ Web dashboard，把这些分散的 AI 编程过程组织成可观察、可恢复
 - **LLM-driven supervision**：让模型在受控动作集合中选择 `monitor`、`request_context`、`launch_session`、`ask_user` 等下一步动作。
 - **多 worker 托管**：可启动后台 Codex worker 或接管 tmux 会话，并跟踪 worker 的状态协议和日志输出。
 - **目标队列**：支持把长期目标写入队列，由后台 daemon 动态消费、推进、归档或等待用户拍板。
-- **集成审查**：对已完成 worker 做只读检查，汇总分支、提交、diff、合并风险和后续验证建议。
+- **集成审查**：查看已完成 worker 的分支、提交、diff、合并风险和后续验证建议。
 - **Web research substrate**：通过 `isotope-research` 或 Supervisor 代理入口执行 search / list / inspect，结果先落为 `research.*` artifact 和 provenance 证据，不直接写入长期 memory。
-- **Webhook 通知**：`loop`、`supervise`、`daemon start`、`integration-review` 和 `decision answer` 可用 `--webhook-url` 发送低敏结构化事件，`--webhook-secret` 会添加 HMAC 签名。
+- **Webhook 通知**：`loop`、`supervise`、`daemon start`、`integration-review` 和 `decision answer` 可用 `--webhook-url` 发送结构化事件，`--webhook-secret` 会添加 HMAC 签名。
 - **Web dashboard**：本地页面展示和新增目标、查看 worker 详情、处理等待拍板，并可控制后台循环。
 
 ## 使用场景
@@ -26,7 +26,7 @@ Web dashboard，把这些分散的 AI 编程过程组织成可观察、可恢复
 - 同时开多个 AI 编程窗口时，快速判断哪些任务还在跑、哪些需要人处理。
 - 把“继续推进当前项目”拆成多个受控 worker，并在完成后回收 diff、测试和提交。
 - 在长期任务中记录用户拍板，避免模型反复询问或重复启动同名 worker。
-- 用低敏摘要和结构化事件保留可审查证据，而不是只依赖聊天窗口记忆。
+- 用摘要和结构化事件保留可审查证据，而不是只依赖聊天窗口记忆。
 
 ## 快速开始
 

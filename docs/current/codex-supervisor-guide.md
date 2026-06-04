@@ -52,7 +52,7 @@ Research 测试入口：
 ## 当前边界
 
 - 自动动作必须走白名单、cooldown（冷却）和 workspace（工作区）边界。
-- merge worker 可以按工单推送验证分支；普通 worker 不应主动 push。
+- merge worker 按工单推送验证分支；普通 worker 把结果留在本地分支等待集成。
 - runner 不直接重写历史、不 force push、不删除未确认集成的 worktree。
 - `delete_worktree` 只有在 done、archived、already_integrated 且路径安全时才允许。
 - 新增 Supervisor 能力前先查 [Supervisor 命令参考](./supervisor-command-reference.md)

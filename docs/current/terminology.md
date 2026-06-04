@@ -15,25 +15,25 @@
 | `CoreConversationState` | 对话状态，包含 run 列表、回合列表和最新响应 | 应用核心 | `src/isotope/core/response.py` |
 | `CoreTask` | 产品级任务，记录目标并关联一个 conversation | 应用核心 | `src/isotope/core/task.py` |
 | `CoreTaskState` | 任务状态，包含目标、状态、对话和结果摘要 | 应用核心 | `src/isotope/core/task.py` |
-| `CoreTurnResponse` | 产品级回合响应，只暴露低敏状态、产物引用和摘要 | 应用核心 | `src/isotope/core/response.py` |
+| `CoreTurnResponse` | 产品级回合响应，只暴露结构化状态、产物引用和摘要 | 应用核心 | `src/isotope/core/response.py` |
 | `TaskFlow` | 任务功能入口，把 core task 包成用户可用的任务摘要流程 | 产品功能 | `src/isotope/features/tasks/flow.py` |
 | `TaskSummary` | 任务摘要，面向用户展示状态、回合数量和结果引用 | 产品功能 | `src/isotope/features/tasks/flow.py` |
 | `isotope-task` | 任务命令行入口，可运行、读取和列出任务摘要 | 应用入口 | `src/isotope/features/tasks/runner.py`, `apps/cli/isotope_task.py` |
 | `POST /tasks` | 任务 API 入口，创建并运行一条任务 | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `GET /tasks` | 任务 API 入口，列出任务摘要 | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `GET /tasks/{task_id}` | 任务 API 入口，读取任务摘要 | 接口 | `src/isotope/interfaces/http/__init__.py` |
-| `task index` | 任务摘要索引，持久化低敏任务摘要，供重启后查询 | 产品功能/任务 | `src/isotope/features/tasks/flow.py` |
+| `task index` | 任务摘要索引，持久化结构化任务摘要，供重启后查询 | 产品功能/任务 | `src/isotope/features/tasks/flow.py` |
 | `FileFlow` | 文件功能入口，把文本保存成有摘要和引用的文件记录 | 产品功能 | `src/isotope/features/files/flow.py` |
 | `FileSummary` | 文件摘要，面向用户展示文件名、摘要、产物引用和 run id | 产品功能 | `src/isotope/features/files/flow.py` |
 | `isotope-file` | 文件命令行入口，可创建、读取和列出文件摘要 | 应用入口 | `src/isotope/features/files/runner.py`, `apps/cli/isotope_file.py` |
 | `POST /files` | 文件 API 入口，创建一个文件摘要 | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `GET /files` | 文件 API 入口，列出文件摘要 | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `GET /files/{file_id}` | 文件 API 入口，读取单个文件摘要 | 接口 | `src/isotope/interfaces/http/__init__.py` |
-| `file index` | 文件摘要索引，持久化低敏文件摘要，供重启后查询 | 产品功能/工作区资源 | `src/isotope/features/files/flow.py` |
+| `file index` | 文件摘要索引，持久化结构化文件摘要，供重启后查询 | 产品功能/工作区资源 | `src/isotope/features/files/flow.py` |
 | `artifact-backed file summary` | 由 artifact 存储承载正文、外层只暴露摘要和引用的文件摘要 | 产品功能/工作区资源 | `src/isotope/features/files/flow.py`, `src/isotope/workspace/artifacts.py` |
 | `ProjectFlow` | 项目功能入口，把任务和文件关联成用户可感知项目摘要 | 产品功能 | `src/isotope/features/projects/flow.py` |
 | `ProjectSummary` | 项目摘要，面向用户展示项目名、摘要、task id 和 file id | 产品功能 | `src/isotope/features/projects/flow.py` |
-| `ProjectDetail` | 项目组合摘要，展开关联 task/file 的低敏摘要信息 | 产品功能 | `src/isotope/features/projects/flow.py` |
+| `ProjectDetail` | 项目组合摘要，展开关联 task/file 的结构化摘要信息 | 产品功能 | `src/isotope/features/projects/flow.py` |
 | `ProjectWorkspaceFlow` | 项目工作区组合流，可创建或复用 project，追加 task/file 并返回项目详情和工作台视图 | 产品功能 | `src/isotope/features/projects/workspace.py` |
 | `ProjectWorkspace` | 项目工作区组合结果，包含 `project_detail` 和 `workbench` 两个视图 | 产品功能 | `src/isotope/features/projects/workspace.py` |
 | `isotope-project` | 项目命令行入口，可创建、读取、列出、关联、查看组合摘要、创建 workspace 和追加 workspace 内容 | 应用入口 | `src/isotope/features/projects/runner.py`, `apps/cli/isotope_project.py` |
@@ -42,45 +42,45 @@
 | `POST /projects/{project_id}/workspace` | 项目工作区 API 入口，给已有项目追加任务和文件并返回两个视图 | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `GET /projects` | 项目 API 入口，列出项目摘要 | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `GET /projects/{project_id}` | 项目 API 入口，读取单个项目摘要 | 接口 | `src/isotope/interfaces/http/__init__.py` |
-| `GET /projects/{project_id}/detail` | 项目 API 入口，读取项目及关联 task/file 低敏摘要 | 接口 | `src/isotope/interfaces/http/__init__.py` |
+| `GET /projects/{project_id}/detail` | 项目 API 入口，读取项目及关联 task/file 结构化摘要 | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `POST /projects/{project_id}/tasks` | 项目 API 入口，把 task id 关联到项目摘要 | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `POST /projects/{project_id}/files` | 项目 API 入口，把 file id 关联到项目摘要 | 接口 | `src/isotope/interfaces/http/__init__.py` |
-| `project index` | 项目摘要索引，持久化低敏项目摘要，供重启后查询 | 产品功能/项目 | `src/isotope/features/projects/flow.py` |
-| `SearchFlow` | 搜索功能入口，统一搜索 project/task/file 的低敏摘要，可过滤类型和数量 | 产品功能 | `src/isotope/features/search/flow.py` |
-| `SearchResult` | 搜索结果，包含类型、id、标题、摘要和低敏 item | 产品功能 | `src/isotope/features/search/flow.py` |
-| `isotope-search` | 搜索命令行入口，可搜索低敏摘要并使用 `--type` / `--limit` 控制结果 | 应用入口 | `src/isotope/features/search/runner.py`, `apps/cli/isotope_search.py` |
-| `POST /search` | 搜索 API 入口，按 query 返回低敏摘要结果，支持 `types` 和 `limit` | 接口 | `src/isotope/interfaces/http/__init__.py` |
-| `ResearchFlow` | Research 功能入口，把 delegated web research 结果保存成低敏 report/raw transcript artifacts；provider 失败时只保存 provider trace，不生成 report | 产品功能/外部研究 | `src/isotope/features/research/flow.py` |
+| `project index` | 项目摘要索引，持久化结构化项目摘要，供重启后查询 | 产品功能/项目 | `src/isotope/features/projects/flow.py` |
+| `SearchFlow` | 搜索功能入口，统一搜索 project/task/file 的结构化摘要，可过滤类型和数量 | 产品功能 | `src/isotope/features/search/flow.py` |
+| `SearchResult` | 搜索结果，包含类型、id、标题、摘要和结构化 item | 产品功能 | `src/isotope/features/search/flow.py` |
+| `isotope-search` | 搜索命令行入口，可搜索结构化摘要并使用 `--type` / `--limit` 控制结果 | 应用入口 | `src/isotope/features/search/runner.py`, `apps/cli/isotope_search.py` |
+| `POST /search` | 搜索 API 入口，按 query 返回结构化摘要结果，支持 `types` 和 `limit` | 接口 | `src/isotope/interfaces/http/__init__.py` |
+| `ResearchFlow` | Research 功能入口，把 delegated web research 结果保存成结构化 report/raw transcript artifacts；provider 失败时只保存 provider trace，不生成 report | 产品功能/外部研究 | `src/isotope/features/research/flow.py` |
 | `ResearchReport` | Research 报告模型，记录 query、provider、sources、findings 和 evidence status | 产品功能/外部研究 | `src/isotope/features/research/models.py` |
-| `ResearchProvider` | Research provider contract，封装 Codex delegated backend 或 network-gated Tavily provider；provider registry 已列出 codex/tavily/searxng/browser，Tavily 缺配置或未显式打开网络会写 `research.provider_trace`，真实响应会归一化为 source-backed report，未实现 provider fail closed；Codex backend 会提取 JSONL agent message，error-only JSONL 会归类为 provider failure，并带低敏 diagnostics，不写成功 report | 产品功能/外部研究 | `src/isotope/features/research/providers.py` |
-| `isotope-research` | Research 命令行入口，可运行 delegated research、列出 provider registry、返回 artifact refs 与低敏 artifact metadata，并 inspect 单个 research artifact 内容 | 应用入口 | `src/isotope/features/research/runner.py` |
-| `research.search` | capability runner 里的 Research 搜索能力，复用 `ResearchFlow`；模型只提供 query，runtime 注入 root，并由内部 provider policy 选择 provider / gate / network 策略；输出只返回 status、provider、source_count 和 artifact metadata 等低敏摘要 | 产品能力/外部研究 | `src/isotope/capabilities/research.py`, `src/isotope/features/research/flow.py` |
+| `ResearchProvider` | Research provider contract，封装 Codex delegated backend 或 network-gated Tavily provider；provider registry 已列出 codex/tavily/searxng/browser，Tavily 缺配置或未显式打开网络会写 `research.provider_trace`，真实响应会归一化为 source-backed report，未实现 provider fail closed；Codex backend 会提取 JSONL agent message，error-only JSONL 会归类为 provider failure，并带结构化 diagnostics，不写成功 report | 产品功能/外部研究 | `src/isotope/features/research/providers.py` |
+| `isotope-research` | Research 命令行入口，可运行 delegated research、列出 provider registry、返回 artifact refs 与结构化 artifact metadata，并 inspect 单个 research artifact 内容 | 应用入口 | `src/isotope/features/research/runner.py` |
+| `research.search` | capability runner 里的 Research 搜索能力，复用 `ResearchFlow`；模型只提供 query，runtime 注入 root，并由内部 provider policy 选择 provider / gate / network 策略；输出只返回 status、provider、source_count 和 artifact metadata 等结构化摘要 | 产品能力/外部研究 | `src/isotope/capabilities/research.py`, `src/isotope/features/research/flow.py` |
 | `research.promote` | capability runner 里的 Research 记忆提案能力，复用 existing research promote payload builder 和 `memory.promotion` 边界，只从 `research.report` metadata 生成 proposal summary，不写 memory | 产品能力/外部研究/记忆 | `src/isotope/capabilities/research.py`, `src/isotope/features/research/runner.py`, `src/isotope/memory/promotion.py` |
-| `screen_observe` | Screen 观察 tool，通过 policy-gated backend 捕获窗口 metadata/screenshot；多窗口匹配时按确定性 first-match 选择并返回 matched_count / selected_window_id / selection_reason 低敏 metadata；窗口最小化或截图不可用时降级为 metadata_only 并返回 diagnostic artifact | 工具/本机控制 | `src/isotope/execution/screen/backend_adapter.py`, `src/isotope/execution/screen/windows_backend.py` |
+| `screen_observe` | Screen 观察 tool，通过 policy-gated backend 捕获窗口 metadata/screenshot；多窗口匹配时按确定性 first-match 选择并返回 matched_count / selected_window_id / selection_reason 结构化 metadata；窗口最小化或截图不可用时降级为 metadata_only 并返回 diagnostic artifact | 工具/本机控制 | `src/isotope/execution/screen/backend_adapter.py`, `src/isotope/execution/screen/windows_backend.py` |
 | `screen_control` | Screen 控制 tool，默认 dry-run 生成控制计划；execute 需要显式批准或策略放行，且多窗口匹配时默认拒绝 first-match 真实输入；`restore_window` 也是受同一 approval gate 保护的控制动作 | 工具/本机控制 | `src/isotope/execution/screen/backend_adapter.py`, `src/isotope/policy/__init__.py` |
 | `screen.observe` | capability runner 里的 Screen 观察能力，复用 `screen_observe` tool、policy、Windows backend 和 screen artifact report；agent loop 可通过通用 `call_capability` 调用，桌面端继续消费通用 `capacity_start` / `capacity_result` 事件；截图内容不进事件 payload，但会作为私有 model observation 的 image_url 内容块进入下一轮模型调用 | 产品能力/本机控制 | `src/isotope/capabilities/screen.py`, `src/isotope/features/supervisor/conversation_loop.py` |
-| `isotope-screen` | Screen 手动 smoke 命令行入口，用于本机窗口 observe/control 验收；`control-click` 可生成 click dry-run plan，`control-restore` 可生成恢复窗口 dry-run plan 或在显式批准后执行，`real-smoke-plan` 输出真实 backend 验证命令，`inspect/report` 可读取 screen artifact 或生成低敏 observe/control plan 摘要，`--allow-app` / `--allow-title-contains` 可注入命令级 target allowlist，`--allowlist-file` 可读取可复用 JSON target allowlist，`--allowlist-profile` 可从 profile 目录解析命名 allowlist，`allowlist validate` 可按 path 或 profile 离线检查 allowlist 格式并只输出低敏计数，`allowlist list --profile-dir` 可只读列出 profile 名和低敏计数，`allowlist template` 可打印可编辑 JSON 骨架；不属于默认 CI | 应用入口/本机控制 | `src/isotope/features/screen/runner.py`, `src/isotope/features/screen/artifacts.py` |
-| `isotope-supervisor screen` | Supervisor 侧 screen artifact proxy，`report/inspect` 复用 `isotope-screen` 的低敏 artifact report/inspect 边界 | 应用入口/本机控制 | `src/isotope/features/supervisor/commands/dispatch.py`, `src/isotope/features/supervisor/commands/parser/__init__.py` |
+| `isotope-screen` | Screen 手动 smoke 命令行入口，用于本机窗口 observe/control 验收；`control-click` 可生成 click dry-run plan，`control-restore` 可生成恢复窗口 dry-run plan 或在显式批准后执行，`real-smoke-plan` 输出真实 backend 验证命令，`inspect/report` 可读取 screen artifact 或生成结构化 observe/control plan 摘要，`--allow-app` / `--allow-title-contains` 可注入命令级 target allowlist，`--allowlist-file` 可读取可复用 JSON target allowlist，`--allowlist-profile` 可从 profile 目录解析命名 allowlist，`allowlist validate` 可按 path 或 profile 离线检查 allowlist 格式并输出结构化计数，`allowlist list --profile-dir` 可列出 profile 名和结构化计数，`allowlist template` 可打印可编辑 JSON 骨架；不属于默认 CI | 应用入口/本机控制 | `src/isotope/features/screen/runner.py`, `src/isotope/features/screen/artifacts.py` |
+| `isotope-supervisor screen` | Supervisor 侧 screen artifact proxy，`report/inspect` 复用 `isotope-screen` 的结构化 artifact report/inspect 边界 | 应用入口/本机控制 | `src/isotope/features/supervisor/commands/dispatch.py`, `src/isotope/features/supervisor/commands/parser/__init__.py` |
 | `WorkbenchFlow` | 工作台功能入口，聚合 project/task/file 摘要和可选搜索结果 | 产品功能 | `src/isotope/features/workbench/flow.py` |
 | `WorkbenchView` | 工作台视图，包含摘要列表、搜索结果、空状态、最近更新时间和 counts 数量 | 产品功能 | `src/isotope/features/workbench/flow.py` |
 | `empty_state` | 空状态，工作台没有内容时给用户的下一步提示 | 产品功能 | `src/isotope/features/workbench/flow.py` |
 | `updated_at` | 最近更新时间，当前来自项目、任务和文件摘要索引的最新修改时间 | 产品功能 | `src/isotope/features/workbench/flow.py` |
-| `isotope-workbench` | 工作台命令行入口，可读取产品首页低敏汇总 | 应用入口 | `src/isotope/features/workbench/runner.py`, `apps/cli/isotope_workbench.py` |
-| `GET /workbench` | 工作台 API 入口，读取无搜索条件的低敏汇总 | 接口 | `src/isotope/interfaces/http/__init__.py` |
+| `isotope-workbench` | 工作台命令行入口，可读取产品首页结构化汇总 | 应用入口 | `src/isotope/features/workbench/runner.py`, `apps/cli/isotope_workbench.py` |
+| `GET /workbench` | 工作台 API 入口，读取无搜索条件的结构化汇总 | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `POST /workbench` | 工作台 API 入口，可带 query/types/limit 读取汇总和搜索结果 | 接口 | `src/isotope/interfaces/http/__init__.py` |
 | `POST /workbench/ask` | 工作台问答 API 入口，用注入的 LLM provider 回答工作台问题 | 接口/模型 | `src/isotope/interfaces/http/__init__.py`, `src/isotope/features/ask/flow.py` |
 | `workbench demo` | 工作台 demo 场景，展示创建摘要、搜索和工作台汇总流程 | 应用验证 | `src/isotope/demo/__init__.py`, `tests/e2e/test_workbench_demo_scenario.py` |
 | `demo formatter` | demo plain text 输出格式化层；按 core、agent loop 和 LLM 场景拆分，避免 `demo/format/format.py` 继续承载所有格式化职责 | 应用验证/输出格式 | `src/isotope/demo/format/format.py`, `src/isotope/demo/format/core.py`, `src/isotope/demo/format/agent_loop.py`, `src/isotope/demo/format/llm.py` |
-| `Workbench Ask` | 工作台问答，用低敏工作台摘要回答一个自然语言问题 | 产品功能/模型 | `src/isotope/features/ask/flow.py` |
+| `Workbench Ask` | 工作台问答，用结构化工作台摘要回答一个自然语言问题 | 产品功能/模型 | `src/isotope/features/ask/flow.py` |
 | `WorkbenchAskFlow` | 工作台问答功能入口，组装摘要上下文、调用 LLM provider 并返回答案 | 产品功能/模型 | `src/isotope/features/ask/flow.py` |
 | `isotope-ask` | 工作台问答命令行入口，可用 mock 或 OpenAI-compatible provider 回答问题 | 应用入口 | `src/isotope/features/ask/runner.py`, `apps/cli/isotope_ask.py` |
 | `workbench-ask demo` | 工作台问答 demo 场景，展示项目摘要进入问答上下文并产出中文答案 | 应用验证 | `src/isotope/demo/__init__.py`, `tests/e2e/test_workbench_ask_demo_scenario.py` |
-| `NotificationFlow` | 通知功能入口，维护本地低敏通知摘要索引 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
-| `NotificationSummary` | 通知摘要，面向用户展示类型、标题、未读状态、时间和低敏来源引用 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
+| `NotificationFlow` | 通知功能入口，维护本地结构化通知摘要索引 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
+| `NotificationSummary` | 通知摘要，面向用户展示类型、标题、未读状态、时间和结构化来源引用 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
 | `isotope-notification` | 通知命令行入口，可创建、列表、筛选和标记已读通知 | 应用入口 | `src/isotope/features/notifications/runner.py` |
-| `source_ref` | 低敏来源引用，用 JSON 对象说明通知来自哪个 worker、decision 或其他事件 | 产品功能/通知/状态账本 | `src/isotope/features/notifications/flow.py` |
-| `notification index` | 通知摘要索引，持久化低敏通知摘要，写入时用临时文件替换 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
-| `Supervisor notification bridge` | Supervisor 通知桥，把 goal 状态、decision request/answer 和通过 integration-review 的 done worker 派生成低敏通知或 webhook；通知失败不影响原账本 | 产品功能/通知/状态账本 | `src/isotope/features/supervisor/notifications.py` |
+| `source_ref` | 结构化来源引用，用 JSON 对象说明通知来自哪个 worker、decision 或其他事件 | 产品功能/通知/状态账本 | `src/isotope/features/notifications/flow.py` |
+| `notification index` | 通知摘要索引，持久化结构化通知摘要，写入时用临时文件替换 | 产品功能/通知 | `src/isotope/features/notifications/flow.py` |
+| `Supervisor notification bridge` | Supervisor 通知桥，把 goal 状态、decision request/answer 和通过 integration-review 的 done worker 派生成结构化通知或 webhook；通知失败不影响原账本 | 产品功能/通知/状态账本 | `src/isotope/features/supervisor/notifications.py` |
 | `Codex Supervisor` | Codex 监督器，Isotope 后续核心管理层，让 LLM 参与判断和调度，工程规则提供护栏 | 产品功能 | `src/isotope/features/supervisor/flow.py` |
 | `agent group chat` | Supervisor 内部多 Agent 群聊运行时；成员是 Isotope 内部 LLM agent，不是外部 Codex worker；消息复用 worker event channel，回合选择复用 conversation arbiter | 产品功能/智能体/对话 | `src/isotope/features/supervisor/agent_group/` |
 | `isotope-supervisor` | Codex Supervisor 命令行入口，支持扫描、dashboard 汇总、本机 web 页面、建议面板、supervise 小闭环、定时汇报、变化触发、托管启动、恢复历史会话、接管 tmux 和发送指令 | 应用入口 | `src/isotope/features/supervisor/runner.py`, `apps/cli/isotope_supervisor.py` |
@@ -101,7 +101,7 @@
 | `dashboard web` | Supervisor 本机页面，读取 `/dashboard.json` 并渲染三组窗口 | 产品功能/视图 | `src/isotope/features/supervisor/web.py` |
 | `display_title` | Supervisor 截断后的展示标题，优先托管名、Codex 标题、首条用户消息、agent 名和短 session id | 产品功能/视图 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py` |
 | `managed_display_title` | dashboard 合并托管 lane 和真实 session 后保留的托管名 | 产品功能/视图 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
-| `managed_terminal_excerpt` | 托管 tmux pane 的只读尾部文本摘要，用于辅助关联真实 Codex session，并在 web 托管卡片中展示最近输出 | 产品功能/视图/外部集成 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
+| `managed_terminal_excerpt` | 托管 tmux pane 的尾部文本摘录，用于辅助关联真实 Codex session，并在 web 托管卡片中展示最近输出 | 产品功能/视图/外部集成 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `managed_terminal_ready` | 托管 tmux pane 尾部已出现 Codex 输入提示符，表示窗口可接收下一条指令 | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/flow.py`, `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
 | `linked_session_id` | dashboard 合并托管 lane 时关联到的真实 Codex session id | 产品功能/视图 | `src/isotope/features/supervisor/runner.py` |
 | `linked_match` | dashboard 合并托管 lane 时的绑定依据，包含匹配分数、命中来源和中文解释 | 产品功能/视图/状态判断 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/web.py` |
@@ -163,9 +163,9 @@
 | `--goal-low-water` | 低水位补任务阈值；活跃目标少于该数量时，`loop` 可让 LLM 读当前文档补充目标队列，默认 0 关闭 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py`, `src/isotope/features/supervisor/goal_planner.py` |
 | `--goal-replenish-limit` | 低水位补任务的单轮写入上限，避免一次补太多 active goals | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py` |
 | `goal_replenishment` | `loop --json` 输出字段，记录本轮是否由低水位触发 LLM 补任务、补了多少、失败原因是什么 | 产品功能/输出字段 | `src/isotope/features/supervisor/runner.py` |
-| `worker_lifecycle_execution` | `loop --json` / dashboard 输出字段，记录程序从 `worker_lifecycle_decision.next_step` 归一出的固定流程执行计划；`cleanup_worktree` 计划会带低敏 `delete_evidence` 说明归档、done、集成、干净等可删证明；dashboard 会给需要显式确认的计划展示 one-shot `execute_command` 复制入口，并通过 `/worker-lifecycle/execute` 校验当前计划后执行固定 loop 命令；执行完成后用低敏 `result_actions` / `result_summary` 展示动作结果，并在响应里带刷新后的 dashboard payload | 产品功能/输出字段/控制策略 | `src/isotope/features/supervisor/lifecycle/executor.py`, `src/isotope/features/supervisor/supervise/payload.py`, `src/isotope/features/supervisor/dashboard/_presentation.py`, `src/isotope/features/supervisor/web/routes/worker_lifecycle.py` |
+| `worker_lifecycle_execution` | `loop --json` / dashboard 输出字段，记录程序从 `worker_lifecycle_decision.next_step` 归一出的固定流程执行计划；`cleanup_worktree` 计划会带结构化 `delete_evidence` 说明归档、done、集成、干净等可删证明；dashboard 会给需要显式确认的计划展示 one-shot `execute_command` 复制入口，并通过 `/worker-lifecycle/execute` 校验当前计划后执行固定 loop 命令；执行完成后用结构化 `result_actions` / `result_summary` 展示动作结果，并在响应里带刷新后的 dashboard payload | 产品功能/输出字段/控制策略 | `src/isotope/features/supervisor/lifecycle/executor.py`, `src/isotope/features/supervisor/supervise/payload.py`, `src/isotope/features/supervisor/dashboard/_presentation.py`, `src/isotope/features/supervisor/web/routes/worker_lifecycle.py` |
 | `--lifecycle-archive-execute` | `loop/up/daemon start` 参数，执行 `worker_lifecycle_execution` 里的 `archive_cleanup` 计划，只归档 completed managed worker，不删除 worktree | 产品功能/控制策略 | `src/isotope/features/supervisor/commands/parser/loop.py`, `src/isotope/features/supervisor/commands/parser/daemon.py`, `src/isotope/features/supervisor/daemon.py`, `src/isotope/features/supervisor/commands/supervise/execution.py` |
-| `--lifecycle-cleanup-execute` | `loop` 参数，显式执行 `worker_lifecycle_execution` 里的完整 cleanup 计划，包含 `archive_cleanup` 和 `cleanup_worktree`；默认不开，避免无意删除 worktree | 产品功能/控制策略 | `src/isotope/features/supervisor/commands/parser/loop.py`, `src/isotope/features/supervisor/commands/supervise/execution.py` |
+| `--lifecycle-cleanup-execute` | `loop` 参数，显式执行 `worker_lifecycle_execution` 里的完整 cleanup 计划，包含 `archive_cleanup` 和 `cleanup_worktree`；cleanup worktree 走显式执行入口 | 产品功能/控制策略 | `src/isotope/features/supervisor/commands/parser/loop.py`, `src/isotope/features/supervisor/commands/supervise/execution.py` |
 | `goal queue` | 目标队列，保存用户交给 Supervisor 的长期目标，供 daemon/loop 动态消费 | 产品功能/控制策略 | `src/isotope/features/supervisor/goal_queue.py`, `src/isotope/features/supervisor/runner.py` |
 | `goals.jsonl` | Supervisor 目标队列事件文件，保存目标添加、状态回写和归档事件 | 产品功能/状态账本 | `src/isotope/features/supervisor/goal_queue.py` |
 | `goal add/list/archive` | Supervisor 目标队列命令，用于添加、查看和归档活跃目标 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |
@@ -175,17 +175,17 @@
 | `loop` | Supervisor 日常常驻入口，默认由 LLM planner 驱动受控动作 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |
 | `--codex-model` | `launch/resume` 参数，传给后台 Codex worker 的 `-m/--model`，用于控制 worker 模型 | 产品功能/控制通道/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `--codex-config` | `launch/resume` 参数，传给后台 Codex worker 的 `-c key=value`，可重复使用 | 产品功能/控制通道/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
-| `--worker-profile` | worker 工作档位，`coding` 保持代码任务默认 `gpt-5.5 high`，`light` 给只读检查、状态汇报和 smoke 降低推理成本 | 产品功能/控制策略/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/llm_summary.py` |
+| `--worker-profile` | worker 工作档位，`coding` 保持代码任务默认 `gpt-5.5 high`，`light` 给状态检查、状态汇报和 smoke 降低推理成本 | 产品功能/控制策略/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/llm_summary.py` |
 | `--worker-codex-model` | `supervise/loop/daemon start` 参数，控制 LLM 自动启动或恢复的 Codex worker 模型 | 产品功能/控制策略/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py` |
 | `--worker-codex-config` | `supervise/loop/daemon start` 参数，给 LLM 自动启动或恢复的 Codex worker 传 `-c key=value` 配置 | 产品功能/控制策略/成本控制 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py` |
-| `--webhook-url` | Supervisor 外部通知端点，触发 goal 状态、decision request/answer 或通过 integration-review 的 done worker 时发送低敏 HTTP POST；失败只记录 warning | 产品功能/通知/状态账本 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/notifications.py` |
+| `--webhook-url` | Supervisor 外部通知端点，触发 goal 状态、decision request/answer 或通过 integration-review 的 done worker 时发送结构化 HTTP POST；失败只记录 warning | 产品功能/通知/状态账本 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/notifications.py` |
 | `--webhook-secret` | Supervisor webhook 共享密钥；配置后用请求 body 生成 `X-Isotope-Signature: sha256=...` HMAC 签名，不写入 payload | 产品功能/通知/安全 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/notifications.py` |
 | `--rule-execute` | `loop` 的备用参数，切回旧规则自动策略 | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py` |
 | `monitor` | 白名单动作，表示当前没有需要发送的托管指令，只继续观察 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `resume_session` | LLM planner 可选动作，恢复一个普通 Codex 历史会话并发送受控 prompt | 产品功能/模型/控制通道 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `launch_session` | LLM planner 可选动作，由 LLM 生成 prompt 并启动一个新的 Codex 托管会话；git 仓库任务默认进入独立 worktree | 产品功能/模型/控制通道 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/runner.py` |
 | `work order` | 托管任务单，描述一次 Codex 托管执行的目标、工作区、允许范围、预算、完成条件和停等用户条件 | 产品功能/控制策略 | `src/isotope/features/supervisor/llm_summary.py`, `src/isotope/features/supervisor/registry.py` |
-| `integration-review` | 集成审查命令，只读扫描 managed worker 的 branch、worker HEAD、base ref 包含关系、pytest gate、worktree 干净状态、merge conflict 风险和候选 lint/test 结果；只分组和给理由，不执行 merge、push 或删除 | 产品功能/状态判断/集成审查 | `src/isotope/features/supervisor/integration_review.py`, `src/isotope/features/supervisor/runner.py` |
+| `integration-review` | 集成审查命令，扫描 managed worker 的 branch、worker HEAD、base ref 包含关系、pytest gate、worktree 干净状态、merge conflict 风险和候选 lint/test 结果；只分组和给理由，不执行 merge、push 或删除 | 产品功能/状态判断/集成审查 | `src/isotope/features/supervisor/integration_review.py`, `src/isotope/features/supervisor/runner.py` |
 | `ready_to_integrate` | `integration-review` 输出的就绪分组，表示 worker 已完成、pytest gate 通过、分支干净、base ref 尚未包含该提交、未检测到 merge conflict，并且 lint/test 已通过；这是 merge dispatch 的候选输入，不等于 runner 直接合并授权 | 产品功能/状态判断/集成审查 | `src/isotope/features/supervisor/integration_review.py`, `src/isotope/features/supervisor/replan.py`, `src/isotope/features/supervisor/merge_dispatch.py` |
 | `merge-work-order` | 合并工单生成入口，把 `ready_to_integrate` 候选渲染成专门给 merge worker 的任务单，写明 diff review、cherry-pick、组合测试、push/CI watch 和停止规则 | 产品功能/控制策略/集成审查 | `src/isotope/features/supervisor/merge_work_order.py`, `src/isotope/features/supervisor/runner.py` |
 | `merge dispatch` | 合并派发层，在 `loop` 中读取 `integration-review` 的 `ready_to_integrate` 候选，生成 `merge-work-order`，再复用 `launch_session` 路径启动专门 merge worker；runner 本身不直接 cherry-pick、delete branch 或改写历史 | 产品功能/控制策略/控制通道 | `src/isotope/features/supervisor/merge_dispatch.py`, `src/isotope/features/supervisor/runner.py` |
@@ -213,7 +213,7 @@
 | `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/agents/loop/control.py` |
 | `tick driver` | 单 tick 驱动器，先看 tick policy，允许时执行一个 planner-selected step，再返回执行后的 policy | 智能体 | `src/isotope/agents/loop/tick.py` |
 | `finite-step goal runner` | 有限步目标 runner，在单 tick driver 外做有限循环，每轮复用 tick policy、planner adapter 和 step driver，并由 tick policy 统一控制终止条件 | 智能体 | `src/isotope/agents/loop/runner.py` |
-| `provider planner tick` | provider 驱动的单 tick 规划入口，用注入的 LLM provider 生成 JSON planner decision，再走现有 planner contract 和 step driver；当前测试只用 deterministic test provider，不打开真实网络；prompt 默认带 `default_context.memory` 低敏记忆 preview | 智能体/模型 | `src/isotope/agents/loop/provider_planner.py`, `src/isotope/agents/loop/context.py` |
+| `provider planner tick` | provider 驱动的单 tick 规划入口，用注入的 LLM provider 生成 JSON planner decision，再走现有 planner contract 和 step driver；当前测试只用 deterministic test provider，不打开真实网络；prompt 默认带 `default_context.memory` 结构化记忆 preview | 智能体/模型 | `src/isotope/agents/loop/provider_planner.py`, `src/isotope/agents/loop/context.py` |
 | `AgentConversationMessage` | agent 候选发言 contract，表达哪个 agent 想回应、插话、内部记录或沉默 | 智能体/对话 | `src/isotope/agents/loop/conversation.py` |
 | `conversation arbiter` | 对话仲裁器，在同一回合内按 interrupt、priority、state_lock 和可见消息上限筛选 agent 候选发言，避免抢话和状态锁冲突 | 智能体/对话 | `src/isotope/agents/loop/conversation.py` |
 | `executor` | 执行器，执行已批准的动作或工具调用 | 执行 | `src/isotope/execution/executor.py` |
@@ -248,12 +248,12 @@
 | `KernelError` | 旧结构化错误名，仅作为兼容别名保留 | 兼容入口 | `src/isotope/platform/errors.py` |
 | `policy` | 权限策略，决定动作是否允许、暂停或拒绝 | 安全/权限 | `src/isotope/policy/` |
 | `approval` | 人工确认，敏感动作执行前的暂停和恢复机制 | 权限/产品 | `src/isotope/runtime/in_process/` |
-| `capability` | 能力，产品可发现、可运行的功能单元；catalog/runner 会拒绝 malformed inputs，manifest 返回低敏副本，nested contract 不共享原始定义对象 | 产品能力 | `src/isotope/capabilities/catalog.py`, `src/isotope/capabilities/runner.py` |
+| `capability` | 能力，产品可发现、可运行的功能单元；catalog/runner 会拒绝 malformed inputs，manifest 返回结构化副本，nested contract 不共享原始定义对象 | 产品能力 | `src/isotope/capabilities/catalog.py`, `src/isotope/capabilities/runner.py` |
 | `capability runner` | 能力运行器，用命令行方式搜索能力、生成计划或启动能力 | 产品能力 | `src/isotope/capabilities/runner.py`, `isotope-capability` |
 | `Codex task` | Codex 任务，把外部 Codex 执行封装成可路由能力；`task.py` 保留 facade，request 和 adapter contract 已拆到专门模块 | 工具/任务 | `src/isotope/integrations/codex/task.py`, `src/isotope/integrations/codex/task_request.py`, `src/isotope/integrations/codex/task_contract.py`, `src/isotope/integrations/codex/cli.py` |
 | `workspace` | 工作区，任务运行时读写资源的边界 | 产品/资源 | `src/isotope/workspace/` |
-| `memory` | 记忆，用于保存、查询和只读投影长期上下文；当前本地 query 只返回 summary / refs / provenance，不返回 full content | 智能体 | `src/isotope/memory/`, `src/isotope/memory/views.py` |
-| `memory.query` | capability runner 里的只读 memory recall 能力，复用 `LocalMemoryQueryService` 和 caller audit，只返回 summary / refs / provenance | 产品能力/智能体 | `src/isotope/capabilities/memory.py`, `src/isotope/memory/__init__.py` |
+| `memory` | 记忆，用于保存、查询和投影长期上下文；当前本地 query 只返回 summary / refs / provenance，不返回 full content | 智能体 | `src/isotope/memory/`, `src/isotope/memory/views.py` |
+| `memory.query` | capability runner 里的 memory recall 能力，复用 `LocalMemoryQueryService` 和 caller audit，只返回 summary / refs / provenance | 产品能力/智能体 | `src/isotope/capabilities/memory.py`, `src/isotope/memory/__init__.py` |
 | `RAG` | 检索增强生成，先检索资料再让模型回答 | 应用能力 | `src/isotope/rag/` |
 | `workflow` | 工作流，多个步骤组成的任务流程 | 应用能力 | 待新目录设计 |
 | `feature` | 业务功能，如聊天、搜索、工作区、权限 | 产品能力 | 待新目录设计 |

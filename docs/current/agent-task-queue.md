@@ -22,8 +22,8 @@
   [supervisor-command-reference](./supervisor-command-reference.md)。
 - 旧 v0.1 implementation / coding plans 已移到
   [archived plans](../archive/plans/)。归档原因：它们是早期最小闭环和编码拆解，
-  已被后续实现、目录重组和 Supervisor 产品路径替代，不应继续放在
-  `architecture/` 里当当前边界读。
+  已被后续实现、目录重组和 Supervisor 产品路径替代；当前边界以
+  `docs/current/` 入口为准。
 - `docs/archive/` 根目录旧文档已经补充归档原因和保留边界：
   [docs inventory pre reorg](../archive/docs-inventory-pre-reorg.md) 是迁移记录，
   [kernel one pager](../archive/kernel-one-pager.md) 和
@@ -67,7 +67,7 @@
   现在会默认注入 `default_context.memory`，复用 agent-loop memory query 的
   summary / refs / provenance / quality preview；这只是 runtime 构造上下文，
   不写 event、不读取 full content。`default_context.memory` 现在通过通用
-  hybrid retrieval helper 查询低敏 `MemoryRecord` preview 字段；未配置
+  hybrid retrieval helper 查询结构化 `MemoryRecord` preview 字段；未配置
   LanceDB 或 dense 查询失败时继续走 BM25。`controlled_expand` 仍然是唯一
   读取 `MemoryRecord.content` 的授权路径。当前实现用当前 run goal 查询当前
   run memory 和同一 session 内显式晋升的 session memory；其他对话、跨
@@ -83,41 +83,41 @@
   停止时不产生 side effect。
 - Supervisor `call_capacity` handoff 已接入单 tick driver：capacity action 会
   构造现有 `planner_output`，经 `run_agent_loop_tick(...)` 执行一次
-  `call_capability`，结果里保留 `tick_result` 和低敏
+  `call_capability`，结果里保留 `tick_result` 和结构化
   `planner_output`。
 - `supervisor-capacity-handoff-trace` demo 已补齐人类可读链路，展示
   `Supervisor action -> planner_output -> tick_result -> persisted policy`；
   它使用 fixture provider，不要求真实 LLM 配置。
-- `isotope-supervisor capacity plan` 的 plain 输出已补齐低敏 handoff summary，
+- `isotope-supervisor capacity plan` 的 plain 输出已补齐结构化 handoff summary，
   会显示 planner selected step、tick status、tick stop reason 和 artifact ref。
 - `isotope-supervisor capacity plan` 的 JSON payload 已补齐
-  `agent_loop_summary` helper，复用 plain 输出同一组低敏字段；测试覆盖
+  `agent_loop_summary` helper，复用 plain 输出同一组结构化字段；测试覆盖
   JSON summary 和 no raw payload 边界。
 - Dashboard / web 的 multi-worker read model 已消费 capacity memory record 里的
-  `agent_loop_summary`，展示最近能力调用的 tick / step / artifact 低敏摘要，
+  `agent_loop_summary`，展示最近能力调用的 tick / step / artifact 结构化摘要，
   不读取原始 `tick_result` / `step_result`。
 - `call_capacity` 执行动作的返回 payload 已带同源 `agent_loop_summary`，
   并写入只含 summary 的 capacity memory record，不落 raw `tick_result`。
 - `supervisor-capacity-dashboard-smoke` demo 已补齐执行到 dashboard 的
   fixture smoke：执行 `call_capacity`、读取 capacity memory record、刷新
-  multi-worker read model，并确认三段使用同一组低敏 `agent_loop_summary`。
+  multi-worker read model，并确认三段使用同一组结构化 `agent_loop_summary`。
 - Dashboard plain view（终端可读视图）已展示 multi-worker capacity summary：
   总能力调用数、worker、capacity id、tick / step / artifact 摘要都复用
-  capacity memory record 的低敏 `agent_loop_summary`。
+  capacity memory record 的结构化 `agent_loop_summary`。
 - Multi-worker payload 已补 `supervised_execution` 聚合视图：按 worker 聚合
   最近 capacity run，复用同一份 `agent_loop_summary`，给后续受监督执行视图
   一个稳定读取入口。
 - `worker-manager` plain 输出已展开 `supervised_execution` 的最近 capacity
-  run：worker、capacity id、tick、step、artifact 和低敏 summary 可直接在
+  run：worker、capacity id、tick、step、artifact 和结构化 summary 可直接在
   CLI 里检查。
 - Dashboard plain view 已直接读取 `multi_worker.supervised_execution`，展示
   capacity worker 数、agent-loop capacity 调用数和最近 run 摘要；旧 worker
   summary 只作为缺少聚合视图时的 fallback。
 - Web 运行焦点区已直接读取 `multi_worker.supervised_execution`，展示最近
   supervised capacity run 的 worker、capacity id、tick、step 和 artifact
-  低敏摘要。
+  结构化摘要。
 - `supervisor.worker_review` 已进入 capability runner：`isotope-capability`
-  可 search/plan/run，运行时复用既有 lightweight `worker-review`，只返回低敏
+  可 search/plan/run，运行时复用既有 lightweight `worker-review`，只返回结构化
   决策摘要，不自动合并、不清理 worktree 或分支。
 - `supervisor.goal_plan` 已进入 capability runner / capacity path：
   `isotope-capability` 可 search/plan/run；dashboard 的“规划目标”入口也走同一个
@@ -140,7 +140,7 @@
   proposal payload content。
 - `supervisor.integration_review` 已进入同一 capability runner：默认复用既有
   `integration-review`，关闭 test gate 和候选 validation，只返回
-  ready/already/needs/conflict 等低敏分组摘要，不 merge、不 push、不 archive、
+  ready/already/needs/conflict 等结构化分组摘要，不 merge、不 push、不 archive、
   不 cleanup。
 - `memory.query` 已进入 capability runner：`isotope-capability` 可
   search/plan/run，运行时复用 `LocalMemoryQueryService` 和 `FileMemoryStore`，
@@ -157,19 +157,19 @@
   `write_memory` `ActionProposal`；raw text / raw content 会 fail closed，且
   helper 本身不写 store、不 append event、不定义完整 promotion policy。
 - `memory.promotion.preview` 已进入 capability runner：`isotope-capability` 可
-  search/plan/run，运行时复用 `memory.promotion` proposal boundary，只返回低敏
+  search/plan/run，运行时复用 `memory.promotion` proposal boundary，只返回结构化
   proposal preview，不写 memory、不 append event。
 - approval-gated durable memory write 第一片已打开：默认 runtime 能编译
   `write_memory` action，但必须显式 approval；批准后写入 `FileMemoryStore`
-  并追加低敏 `memory.record_created` canonical event。
+  并追加结构化 `memory.record_created` canonical event。
 - Agent loop run -> session promotion 已补第一片：`promote_run_memory` 只能把
   当前 run 内已有的 structured run memory 晋升为同一 session 的 session memory，
   并复用 `write_memory` action / policy / execution / event 链；`record_turn_memory`
-  默认不能直接写 session memory。自动长上下文整理、跨 session/global promotion
-  和 source artifact full-content expand 仍不包含。
-- Supervisor `worktree-audit` 已补第一片：开工前可只读读取
+  负责 run 级记录，session memory 写入走 promotion 路径。自动长上下文整理、
+  跨 session/global promotion 和 source artifact full-content expand 仍在后续任务。
+- Supervisor `worktree-audit` 已补第一片：开工前可读取
   `git worktree list --porcelain`，按 branch/path 主题词提示可能重复开发的
-  worktree 候选；现在还会只读读取每个 worktree 的 `git status --porcelain=v1`，
+  worktree 候选；现在还会读取每个 worktree 的 `git status --porcelain=v1`，
   报告多个 dirty worktree 是否修改了同一个文件。它不删除、不合并、不阻止任务，
   只给人类做协调判断。
 
@@ -222,7 +222,7 @@
   `root` default，但 `query/run_id` 仍必须来自目标或模型参数，避免把 recall
   变成每轮自动步骤。通过 agent loop 执行后，`agent_loop_summary` 和 plain
   输出会显示 `agent_loop_memory_query_status`、`result_count` 和
-  `content_policy` 这类低敏 recall 元数据，但不会嵌入 query results、source
+  `content_policy` 这类结构化 recall 元数据，但不会嵌入 query results、source
   refs、provenance 或 raw content。
 - `research.search` 已接入同一 capability runner；capacity path 会给它补
   `root` default，模型只需要提供 `query`；provider / gate / network 策略
@@ -277,7 +277,7 @@
   `research.provider_trace`。
 - Tavily provider 的真实 API execution 小片已完成：必须显式
   `--tavily-enable-network`，并把 Tavily `/search` 响应归一化为 source-backed
-  `research.raw_transcript` / `research.report`，source 会带低敏
+  `research.raw_transcript` / `research.report`，source 会带结构化
   `source_kind` / `source_authority` 分类字段。
 - Tavily live smoke 已跑通：真实 `tavily` provider 返回 `research.raw_transcript`
   / `research.report`，usage 记录在 provenance，artifact 未泄露 key。
@@ -288,16 +288,16 @@
   sources，低质量 report 返回 review-required reasons，不读取
   raw transcript、不写 memory。
 - Memory promotion preview capability 已完成：`memory.promotion.preview` 可作为
-  其他系统接入 promotion boundary 的统一只读入口，避免直接散落 import helper。
+  其他系统接入 promotion boundary 的统一入口，避免直接散落 import helper。
 - Durable memory write 第一片已完成：approved `write_memory` action 会持久化
-  structured `MemoryRecord`，并让 projector 通过 `memory.record_created` 低敏事件
+  structured `MemoryRecord`，并让 projector 通过 `memory.record_created` 结构化事件
   读取 summary / refs / provenance。
 - Codex delegated provider 保持可信 fallback，Tavily 作为普通 API provider 候选，
   SearXNG 保持可选 self-hosted / fallback，browser/crawler 只做最低层 fetch
   fallback。
 - durable memory promotion policy 仍需继续收口：当前只能从 structured
   source-backed artifact / observation 生成 proposal 或 approved `write_memory`
-  action，不能从 raw web text 直写。
+  action；raw web text 先进入 artifact / observation，再进入 proposal 或 action。
 
 验收：
 

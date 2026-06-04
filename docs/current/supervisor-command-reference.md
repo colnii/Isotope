@@ -49,20 +49,20 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 | --- | --- | --- |
 | `start-here` / `guide` / `discover` | 打印可复制的上手、接管和观察命令；不启动任务、不发送指令。 | [quick start](./codex-supervisor-guide.md)、[capability details](./supervisor-capability-details.md) |
 | `up` / `loop` / `daemon` / `check` | 日常监督入口，负责后台 loop、watchdog、状态摘要和活跃目标读取。 | [operations runbook](./supervisor-operations-runbook.md) |
-| `goal` / `decision` / `state` | 持久目标队列、用户拍板账本和统一低敏 state projection（状态投影）。 | [capability inventory](./supervisor-capability-inventory.md)、[architecture migration table](./supervisor-architecture-migration-table.md) |
+| `goal` / `decision` / `state` | 持久目标队列、用户拍板账本和统一结构化 state projection（状态投影）。 | [capability inventory](./supervisor-capability-inventory.md)、[architecture migration table](./supervisor-architecture-migration-table.md) |
 | `agent-group` | 创建、发送、tick 和查看 Supervisor 内部 Agent group chat。 | [terminology](./terminology.md) |
-| `worktree-audit` | 只读检查本地 worktree/branch 主题词，提示可能重复开发的候选；不删除、不合并、不修改文件。 | 本文 |
+| `worktree-audit` | 查看本地 worktree/branch 主题词，提示可能重复开发的候选；不删除、不合并、不修改文件。 | 本文 |
 | `dashboard` / `web` / `events` | 本机 dashboard、web 页面、bell 事件和受控按钮入口。 | [quick start](./codex-supervisor-guide.md)、[operations runbook](./supervisor-operations-runbook.md) |
 | `advise` / `supervise` / `llm-action` | LLM planner（模型规划器）建议、白名单动作选择和显式执行。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `launch` / `resume` / `adopt` / `send` / `archive` | 托管 Codex worker、tmux lane 和状态协议交互。 | [operations runbook](./supervisor-operations-runbook.md) |
-| `worker-review` / `integration-review` / `replan` | 只读审查 worker、测试结果、合入候选和下一步建议。 | [capability details](./supervisor-capability-details.md) |
+| `worker-review` / `integration-review` / `replan` | 审查 worker、测试结果、合入候选和下一步建议。 | [capability details](./supervisor-capability-details.md) |
 | `merge-work-order` / `merge-dispatch` / `promotion` | 生成 merge worker 工单、派发合并、CI watch 和 promotion gate。 | [architecture migration table](./supervisor-architecture-migration-table.md) |
 | `cleanup` | 只在 done、archived、already_integrated 且路径安全时删除 worktree。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `capacity` | 生成 capacity decision；显式执行时通过 tick driver 运行一次 `call_capability`。 | [capability inventory](./supervisor-capability-inventory.md)、[agent-loop tick driver boundary](../architecture/agent-loop-tick-driver-boundary-v0.2.md) |
-| `isotope-capability` | 搜索、预检或运行低敏 capability；`supervisor.goal_plan` 复用目标规划，`supervisor.worker_review` / `supervisor.integration_review` 复用既有只读审查路径，`memory.query` / `screen.observe` / `screen.report` 复用既有低敏查询、观察和报告边界。 | [capability inventory](./supervisor-capability-inventory.md) |
+| `isotope-capability` | 搜索、检查或运行 capability；`supervisor.goal_plan` 复用目标规划，`supervisor.worker_review` / `supervisor.integration_review` 复用既有审查路径，`memory.query` / `screen.observe` / `screen.report` 复用既有结构化查询、观察和报告边界。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `memory` / `worker-event` / `worker-manager` | 查询本地 memory preview、worker event、multi-worker read model 和 supervised capacity run 摘要。 | [terminology](./terminology.md)、[capability inventory](./supervisor-capability-inventory.md) |
 | `research` | 代理 shared Research flow，支持 search / list / inspect；成功写 `research.report`，provider 失败只写 `research.provider_trace`。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
-| `isotope-screen inspect/report` / `screen` | 读取 screen artifact 或生成 run 级低敏 observe/control plan 摘要；Supervisor `screen report/inspect` 复用同一 screen artifact report 边界。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
+| `isotope-screen inspect/report` / `screen` | 读取 screen artifact 或生成 run 级结构化 observe/control plan 摘要；Supervisor `screen report/inspect` 复用同一 screen artifact report 边界。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
 
 ## 常用闭环
 
@@ -92,11 +92,11 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 .venv/bin/isotope-supervisor worktree-audit --repo-root . --json
 ```
 
-`worktree-audit` 只读取 `git worktree list --porcelain` 和每个 worktree 的
+`worktree-audit` 读取 `git worktree list --porcelain` 和每个 worktree 的
 `git status --porcelain=v1`，按 branch/path 里的非泛化主题词提示可能重复开发的
 worktree，也会报告多个 dirty worktree 是否修改了同一个文件。它是 human review
 （人工复查）入口，不会自动删除 worktree 或合并分支。`launch_session`
-执行路径会复用同一套只读主题匹配；发现同主题 worktree 时会跳过新启动并返回
+执行路径会复用同一套主题匹配；发现同主题 worktree 时会跳过新启动并返回
 需要确认的候选。
 
 ### Research artifact 闭环
@@ -141,30 +141,31 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   boundary（工作区边界）。
 - 开工前如果存在多个活跃 worktree，先跑 `worktree-audit`；发现候选重复时先人工
   合并方向或收敛任务，不让多个进程各自实现一套。
-- 普通 worker 不应主动 push；merge worker 只能按 `merge-work-order` 工单推送验证分支。
+- 普通 worker 把结果留在本地分支等待集成；merge worker 按 `merge-work-order`
+  工单推送验证分支。
 - runner 不直接重写历史、不 force push、不删除未确认集成的 worktree。
 - `delete_worktree` 只有在 done、archived、already_integrated 且路径安全时才允许。
 - `web` 默认只监听本机地址；`/managed/send` 只接受受控动作。
 - `decision answer` 只写拍板答案账本，下一轮 LLM planner 再读取答案继续判断。
 - `capacity plan --execute-agent-loop` 只允许已标记可执行的 `call_capacity`
   通过单 tick driver 跑一次 `call_capability`，不打开自动多轮循环；JSON 输出会带
-  `agent_loop_summary` 低敏字段，供 dashboard / web 复用。
+  `agent_loop_summary` 结构化字段，供 dashboard / web 复用。
 - `supervisor.goal_plan` capability 默认只预览目标规划；只有输入里显式
   `write=true` 才会写入 Supervisor goal queue。
 - `memory --query` 只返回 summary / refs / provenance preview；plain 输出会标出
   `content_policy`、匹配数量、source refs 和 provenance，不返回 raw content。
 - `isotope-capability run memory.query --input-json ...` 复用同一条
-  `LocalMemoryQueryService` 低敏 recall 路径，要求 `root/query/run_id` 和
+  `LocalMemoryQueryService` 结构化 recall 路径，要求 `root/query/run_id` 和
   caller audit；`controlled_expand` 有 expand grant 和正预算时会物化 matched
   `MemoryRecord.content` 的 budgeted `materialized_text`，但不读取 source
   artifact full content。
 - `write_memory` 是 runtime action，不是 Supervisor 直写命令；默认 action
-  registry 已启用它，但 policy 要求显式 approval。批准后只追加低敏
+  registry 已启用它，但 policy 要求显式 approval。批准后只追加结构化
   `memory.record_created` event，query/read model 仍不返回 raw content。
 - `research` 是 artifact/provenance-backed search substrate（基于产物和来源证据的搜索底座），不是 memory 直写入口。
 - `research` search 成功时保存 `research.raw_transcript` 与 `research.report`；
-  source 会带 `source_kind` / `source_authority` 低敏分类字段；
-  provider 失败时只保存 `research.provider_trace`，并写入低敏 diagnostics
+  source 会带 `source_kind` / `source_authority` 结构化分类字段；
+  provider 失败时只保存 `research.provider_trace`，并写入结构化 diagnostics
   （event counts、error messages、是否出现 agent_message、timeout seconds、
   retry attempts），不生成成功 report。
 - `research list` 只列 `research.*` artifact，按最近修改时间倒序；plain 输出给
