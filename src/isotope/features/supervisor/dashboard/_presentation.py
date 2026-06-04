@@ -16,7 +16,13 @@ from isotope.features.supervisor.state.snapshot_display import (
 from isotope.platform.state.multi_worker import (
     build_multi_worker_status_payload,
 )
-from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
+from isotope.features.supervisor.state.projection import (
+    build_supervisor_state_snapshot,
+    worker_lifecycle_projection_payload,
+)
+
+
+dashboard_worker_lifecycle_payload = worker_lifecycle_projection_payload
 
 
 def _default_api() -> Any:
@@ -52,6 +58,7 @@ def dashboard_payload(
     notifications: list[dict[str, Any]] | None = None,
     multi_worker: dict[str, Any] | None = None,
     state_snapshot: dict[str, Any] | None = None,
+    worker_lifecycle_decision: dict[str, Any] | None = None,
     api: Any | None = None,
 ) -> dict[str, Any]:
     if api is None:
@@ -97,6 +104,10 @@ def dashboard_payload(
         "decision_requests": decision_requests or [],
         "notifications": notification_items,
         "notification_counts": notification_counts,
+        "worker_lifecycle": worker_lifecycle_projection_payload(
+            worker_lifecycle_decision=worker_lifecycle_decision,
+            state_snapshot=snapshot,
+        ),
         "state_snapshot_meta": dashboard_state_snapshot_meta(snapshot),
         "state_snapshot": snapshot,
     }
@@ -793,6 +804,7 @@ def print_dashboard_plain(payload: dict[str, Any], *, api: Any | None = None) ->
         print(f"- {item['question']} context={context_status} target={target}")
     print_dashboard_dependency_batch(payload)
     print_dashboard_capacity_summaries(payload)
+    print_dashboard_worker_lifecycle(payload.get("worker_lifecycle"))
     for group_key, label in api.DASHBOARD_GROUP_LABELS.items():
         items = payload["groups"][group_key]
         print(f"{label}：{len(items)}")
@@ -805,6 +817,42 @@ def print_dashboard_plain(payload: dict[str, Any], *, api: Any | None = None) ->
             if item["status_evidence"]:
                 evidence = item["status_evidence"]
                 print(f"  依据：{evidence['label']} - {evidence['detail']}")
+
+
+def print_dashboard_worker_lifecycle(worker_lifecycle: Any) -> None:
+    if not isinstance(worker_lifecycle, dict) or worker_lifecycle.get("status") != "ok":
+        return
+    print(
+        "Worker 生命周期："
+        f"stage={_dashboard_text(worker_lifecycle.get('stage'), 'unknown')} "
+        f"next_step={_dashboard_text(worker_lifecycle.get('next_step'), 'unknown')} "
+        f"policy={_dashboard_text(worker_lifecycle.get('policy_status'), 'unknown')}"
+    )
+    remaining_step = _dashboard_text(worker_lifecycle.get("remaining_step"), "")
+    blocked_reason = _dashboard_text(worker_lifecycle.get("blocked_reason"), "")
+    if remaining_step:
+        print(f"  remaining_step={remaining_step}")
+    if blocked_reason:
+        print(f"  blocked_reason={blocked_reason}")
+    timeline = _dashboard_worker_lifecycle_timeline_summary(
+        worker_lifecycle.get("timeline")
+    )
+    if timeline:
+        print(f"  timeline: {timeline}")
+
+
+def _dashboard_worker_lifecycle_timeline_summary(timeline: Any) -> str:
+    if not isinstance(timeline, list):
+        return ""
+    items: list[str] = []
+    for item in timeline:
+        if not isinstance(item, dict):
+            continue
+        stage = _dashboard_text(item.get("stage"), "unknown")
+        action = _dashboard_text(item.get("action"), "unknown")
+        status = _dashboard_text(item.get("status"), "unknown")
+        items.append(f"{stage}/{action} {status}")
+    return "; ".join(items)
 
 
 def print_dashboard_capacity_summaries(payload: dict[str, Any]) -> None:

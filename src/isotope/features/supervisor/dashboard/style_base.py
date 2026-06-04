@@ -63,6 +63,60 @@ DASHBOARD_STYLE_BASE = r'''    :root {
       color: #7a271a;
       padding: 8px;
     }
+    .worker-lifecycle-card {
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--working);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+    .worker-lifecycle-card[data-state="absent"] {
+      border-left-color: var(--line);
+    }
+    .worker-lifecycle-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      color: var(--text);
+      font-weight: 800;
+    }
+    .worker-lifecycle-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .worker-lifecycle-grid > div {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 8px;
+    }
+    .worker-lifecycle-label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .worker-lifecycle-value {
+      display: block;
+      margin-top: 3px;
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+    .worker-lifecycle-detail,
+    .worker-lifecycle-timeline {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
     .operator-focus {
       margin-bottom: 18px;
       border: 1px solid var(--line);

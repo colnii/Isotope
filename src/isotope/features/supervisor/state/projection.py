@@ -90,6 +90,85 @@ def build_supervisor_state_snapshot(
     ).to_dict()
 
 
+def worker_lifecycle_projection_payload(
+    *,
+    worker_lifecycle_decision: dict[str, Any] | None = None,
+    state_snapshot: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    decision = _worker_lifecycle_decision(
+        worker_lifecycle_decision,
+        state_snapshot=state_snapshot,
+    )
+    if not isinstance(decision, dict):
+        return {"status": "absent"}
+    if decision.get("status") == "ok" and "policy_status" in decision:
+        return _copy_worker_lifecycle_projection(decision)
+    policy = decision.get("policy") if isinstance(decision.get("policy"), dict) else {}
+    return {
+        "status": "ok",
+        "stage": _lifecycle_scalar(decision.get("stage")),
+        "next_step": _lifecycle_scalar(decision.get("next_step")),
+        "policy_status": _lifecycle_scalar(policy.get("policy_status")),
+        "program_action": _lifecycle_scalar(policy.get("program_action")),
+        "remaining_step": _lifecycle_scalar(policy.get("remaining_step")),
+        "blocked_reason": _lifecycle_scalar(policy.get("blocked_reason")),
+        "timeline": _worker_lifecycle_timeline_payload(decision.get("timeline")),
+    }
+
+
+def _worker_lifecycle_decision(
+    worker_lifecycle_decision: dict[str, Any] | None,
+    *,
+    state_snapshot: dict[str, Any] | None,
+) -> Any:
+    if isinstance(worker_lifecycle_decision, dict):
+        return worker_lifecycle_decision
+    if not isinstance(state_snapshot, dict):
+        return None
+    decision = state_snapshot.get("worker_lifecycle_decision")
+    if isinstance(decision, dict):
+        return decision
+    return state_snapshot.get("worker_lifecycle")
+
+
+def _copy_worker_lifecycle_projection(decision: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "stage": _lifecycle_scalar(decision.get("stage")),
+        "next_step": _lifecycle_scalar(decision.get("next_step")),
+        "policy_status": _lifecycle_scalar(decision.get("policy_status")),
+        "program_action": _lifecycle_scalar(decision.get("program_action")),
+        "remaining_step": _lifecycle_scalar(decision.get("remaining_step")),
+        "blocked_reason": _lifecycle_scalar(decision.get("blocked_reason")),
+        "timeline": _worker_lifecycle_timeline_payload(decision.get("timeline")),
+    }
+
+
+def _worker_lifecycle_timeline_payload(timeline: Any) -> list[dict[str, Any]]:
+    if not isinstance(timeline, list):
+        return []
+    items: list[dict[str, Any]] = []
+    for item in timeline:
+        if not isinstance(item, dict):
+            continue
+        items.append(
+            {
+                "stage": _lifecycle_scalar(item.get("stage")),
+                "action": _lifecycle_scalar(item.get("action")),
+                "source": _lifecycle_scalar(item.get("source")),
+                "status": _lifecycle_scalar(item.get("status")),
+                "executed": item.get("executed") is True,
+            }
+        )
+    return items
+
+
+def _lifecycle_scalar(value: Any) -> str | bool | int | float | None:
+    if isinstance(value, (str, bool, int, float)):
+        return value
+    return None
+
+
 def _active_goal_payloads(codex_home: Path, *, limit: int) -> list[dict[str, Any]]:
     statuses = read_latest_supervisor_goal_statuses(codex_home=codex_home)
     return [

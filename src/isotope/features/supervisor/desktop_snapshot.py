@@ -6,7 +6,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from isotope.features.supervisor.state.projection import build_supervisor_state_snapshot
+from isotope.features.supervisor.state.projection import (
+    build_supervisor_state_snapshot,
+    worker_lifecycle_projection_payload,
+)
 from isotope.platform.ids import new_id
 from isotope.platform.state.event_store import FileEventStore
 from isotope.platform.state.projector import RunProjector
@@ -58,6 +61,9 @@ def build_desktop_snapshot(*, state_root: Path | str) -> dict[str, Any]:
     }
     if active_goal is not None:
         snapshot["activeGoal"] = active_goal
+    worker_lifecycle = worker_lifecycle_projection_payload(state_snapshot=supervisor)
+    if worker_lifecycle.get("status") == "ok":
+        snapshot["workerLifecycle"] = worker_lifecycle
     return snapshot
 
 

@@ -30,6 +30,7 @@ from isotope.features.supervisor.dashboard._presentation import (
     dashboard_state_snapshot_from_items,
     dashboard_state_snapshot_meta,
     dashboard_status_source,
+    dashboard_worker_lifecycle_payload,
     dependency_batch_items,
     dependency_blocked_text,
     dependency_item_name,
@@ -47,6 +48,7 @@ from isotope.features.supervisor.dashboard._presentation import (
     notification_dicts,
     print_dashboard_dependency_batch,
     print_dashboard_plain,
+    print_dashboard_worker_lifecycle,
     text_contains,
     text_contains_positive,
 )
@@ -75,6 +77,7 @@ __all__ = [
     "dashboard_state_snapshot_from_items",
     "dashboard_state_snapshot_meta",
     "dashboard_status_source",
+    "dashboard_worker_lifecycle_payload",
     "dependency_batch_items",
     "dependency_blocked_text",
     "dependency_item_name",
@@ -92,6 +95,7 @@ __all__ = [
     "notification_dicts",
     "print_dashboard_dependency_batch",
     "print_dashboard_plain",
+    "print_dashboard_worker_lifecycle",
     "text_contains",
     "text_contains_positive",
 ]

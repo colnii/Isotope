@@ -19,6 +19,28 @@ DASHBOARD_BODY = r'''  <header>
       </div>
       <div class="llm-action" id="llm-action-result">未请求模型建议</div>
     </div>
+    <div class="worker-lifecycle-card" id="worker-lifecycle-card">
+      <div class="worker-lifecycle-head">
+        <span>Worker 生命周期</span>
+        <span class="badge" id="worker-lifecycle-policy">unknown</span>
+      </div>
+      <div class="worker-lifecycle-grid">
+        <div>
+          <span class="worker-lifecycle-label">stage</span>
+          <strong class="worker-lifecycle-value" id="worker-lifecycle-stage">unknown</strong>
+        </div>
+        <div>
+          <span class="worker-lifecycle-label">next_step</span>
+          <strong class="worker-lifecycle-value" id="worker-lifecycle-next-step">unknown</strong>
+        </div>
+        <div>
+          <span class="worker-lifecycle-label">remaining_step</span>
+          <strong class="worker-lifecycle-value" id="worker-lifecycle-remaining-step">unknown</strong>
+        </div>
+      </div>
+      <div class="worker-lifecycle-detail" id="worker-lifecycle-blocked-reason">暂无阻塞</div>
+      <div class="worker-lifecycle-timeline" id="worker-lifecycle-timeline">暂无 timeline</div>
+    </div>
     <div class="operator-focus" id="operator-focus">
       <div class="operator-focus-head">
         <span>运行焦点</span>

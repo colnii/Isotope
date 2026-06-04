@@ -5,6 +5,7 @@ import json
 import threading
 
 import isotope.runtime.in_process as runtime
+import isotope.features.supervisor.desktop_snapshot as desktop_snapshot
 from isotope.features.supervisor.desktop_snapshot import (
     _public_metadata_preview,
     build_desktop_snapshot,
@@ -61,6 +62,61 @@ def test_desktop_snapshot_empty_root_uses_contract_shape(tmp_path):
     assert snapshot["approvals"] == []
     assert snapshot["artifacts"] == []
     assert snapshot["runningToolCalls"] == []
+
+
+def test_desktop_snapshot_exposes_worker_lifecycle_projection(tmp_path, monkeypatch):
+    def fake_supervisor_snapshot(*, codex_home):
+        return {
+            "summary": {},
+            "active_goals": [],
+            "active_decisions": [],
+            "worker_lifecycle_decision": {
+                "stage": "archived",
+                "next_step": "cleanup_worktree",
+                "policy": {
+                    "policy_status": "program_resolved",
+                    "program_action": "archive_integrated",
+                    "remaining_step": "cleanup_worktree",
+                    "blocked_reason": None,
+                },
+                "timeline": [
+                    {
+                        "stage": "archived",
+                        "action": "archive_integrated",
+                        "source": "cleanup",
+                        "status": "executed",
+                        "executed": True,
+                    }
+                ],
+            },
+        }
+
+    monkeypatch.setattr(
+        desktop_snapshot,
+        "build_supervisor_state_snapshot",
+        fake_supervisor_snapshot,
+    )
+
+    snapshot = build_desktop_snapshot(state_root=tmp_path)
+
+    assert snapshot["workerLifecycle"] == {
+        "status": "ok",
+        "stage": "archived",
+        "next_step": "cleanup_worktree",
+        "policy_status": "program_resolved",
+        "program_action": "archive_integrated",
+        "remaining_step": "cleanup_worktree",
+        "blocked_reason": None,
+        "timeline": [
+            {
+                "stage": "archived",
+                "action": "archive_integrated",
+                "source": "cleanup",
+                "status": "executed",
+                "executed": True,
+            }
+        ],
+    }
 
 
 def test_desktop_snapshot_maps_active_goal_to_activity(tmp_path):

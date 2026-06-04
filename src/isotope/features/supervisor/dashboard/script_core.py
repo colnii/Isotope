@@ -195,6 +195,44 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
       );
     }
 
+    function renderWorkerLifecycle(workerLifecycle) {
+      const item = workerLifecycle && typeof workerLifecycle === "object"
+        ? workerLifecycle
+        : { status: "absent" };
+      const card = document.getElementById("worker-lifecycle-card");
+      const status = item.status || "absent";
+      card.dataset.state = status;
+      document.getElementById("worker-lifecycle-policy").textContent = status === "ok"
+        ? text(item.policy_status)
+        : "暂无";
+      document.getElementById("worker-lifecycle-stage").textContent = status === "ok"
+        ? text(item.stage)
+        : "暂无";
+      document.getElementById("worker-lifecycle-next-step").textContent = status === "ok"
+        ? text(item.next_step)
+        : "暂无";
+      document.getElementById("worker-lifecycle-remaining-step").textContent = status === "ok"
+        ? text(item.remaining_step)
+        : "暂无";
+      document.getElementById("worker-lifecycle-blocked-reason").textContent = status === "ok" && item.blocked_reason
+        ? "blocked_reason：" + text(item.blocked_reason)
+        : "暂无阻塞";
+      document.getElementById("worker-lifecycle-timeline").textContent = status === "ok"
+        ? workerLifecycleTimelineText(item.timeline)
+        : "暂无 timeline";
+    }
+
+    function workerLifecycleTimelineText(timeline) {
+      const items = Array.isArray(timeline) ? timeline : [];
+      if (!items.length) return "暂无 timeline";
+      return "timeline: " + items.map((item) => {
+        const stage = text(item.stage);
+        const action = text(item.action);
+        const status = text(item.status);
+        return stage + "/" + action + " " + status;
+      }).join("；");
+    }
+
     function renderOperatorFocus(payload) {
       const current = payload.current || {};
       const grouped = payload.groups || {};
