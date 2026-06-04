@@ -203,6 +203,12 @@ def test_dashboard_payload_projects_worker_lifecycle_execution_from_snapshot() -
         "action_count": 1,
         "execution_status": "executed",
         "execution_reason": "",
+        "summary": {
+            "archivable": 0,
+            "delete_ready": 1,
+            "delete_blocked": 0,
+            "result_actions": 1,
+        },
         "result_summary": "deleted source-worker",
         "result_actions": [
             {
@@ -293,6 +299,12 @@ def test_dashboard_payload_projects_worker_lifecycle_delete_blockers() -> None:
     )
 
     assert payload["worker_lifecycle_execution"]["action_count"] == 0
+    assert payload["worker_lifecycle_execution"]["summary"] == {
+        "archivable": 0,
+        "delete_ready": 0,
+        "delete_blocked": 1,
+        "result_actions": 0,
+    }
     assert payload["worker_lifecycle_execution"]["delete_blockers"] == [
         {
             "target_name": "dirty-worker",
@@ -343,6 +355,7 @@ def test_dashboard_plain_prints_worker_lifecycle_delete_evidence(capsys) -> None
     )
 
     text = capsys.readouterr().out
+    assert "summary: archivable=0 delete_ready=1 delete_blocked=0 result_actions=0" in text
     assert (
         "delete_evidence=source-worker archived=true protocol=done "
         "worktree=true group=already_integrated integrated=true clean=true"
@@ -379,6 +392,7 @@ def test_dashboard_plain_prints_worker_lifecycle_delete_blockers(capsys) -> None
     )
 
     text = capsys.readouterr().out
+    assert "summary: archivable=0 delete_ready=0 delete_blocked=1 result_actions=0" in text
     assert (
         "delete_blockers=dirty-worker reason=worker worktree is dirty "
         "archived=true protocol=done worktree=true clean=false"
@@ -439,6 +453,7 @@ def test_dashboard_plain_prints_worker_lifecycle_execution(capsys) -> None:
 
     text = capsys.readouterr().out
     assert "execution=archive_cleanup status=executed actions=1" in text
+    assert "summary: archivable=1 delete_ready=0 delete_blocked=0 result_actions=1" in text
     assert "result=archived source-worker" in text
     assert "execute_hint=--lifecycle-archive-execute" in text
     assert (

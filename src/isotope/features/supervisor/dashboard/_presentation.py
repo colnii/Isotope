@@ -871,6 +871,11 @@ def print_dashboard_worker_lifecycle_execution(execution: Any) -> None:
     result_summary = _dashboard_text(execution.get("result_summary"), "")
     if result_summary:
         print(f"  result={result_summary}")
+    summary = _dashboard_lifecycle_summary_text(
+        _dashboard_lifecycle_summary_from_execution(execution)
+    )
+    if summary:
+        print(f"  summary: {summary}")
     evidence = _dashboard_lifecycle_delete_evidence_summary(
         execution.get("delete_evidence")
     )
@@ -896,6 +901,9 @@ def dashboard_worker_lifecycle_execution_payload(
     execution_status = "planned"
     if result is not None:
         execution_status = "skipped" if result.get("skipped") is True else "executed"
+    result_actions = _dashboard_lifecycle_result_actions(result)
+    delete_evidence = _dashboard_lifecycle_delete_evidence(plan)
+    delete_blockers = _dashboard_lifecycle_delete_blockers(plan)
     payload = {
         "status": _dashboard_text(plan.get("status"), "planned"),
         "kind": _dashboard_text(plan.get("kind"), "unknown"),
@@ -906,10 +914,14 @@ def dashboard_worker_lifecycle_execution_payload(
         "execution_reason": (
             _dashboard_text(result.get("reason"), "") if result is not None else ""
         ),
+        "summary": _dashboard_lifecycle_execution_summary(
+            plan,
+            result_actions=result_actions,
+        ),
         "result_summary": _dashboard_lifecycle_result_summary(result),
-        "result_actions": _dashboard_lifecycle_result_actions(result),
-        "delete_evidence": _dashboard_lifecycle_delete_evidence(plan),
-        "delete_blockers": _dashboard_lifecycle_delete_blockers(plan),
+        "result_actions": result_actions,
+        "delete_evidence": delete_evidence,
+        "delete_blockers": delete_blockers,
         "execute_hint": _dashboard_lifecycle_execution_hint(plan, result),
         "execute_command": _dashboard_lifecycle_execution_command(plan, result),
     }
@@ -926,6 +938,24 @@ def dashboard_worker_lifecycle_execution_payload(
     if not payload["execute_command"]:
         payload.pop("execute_command")
     return payload
+
+
+def _dashboard_lifecycle_execution_summary(
+    plan: dict[str, Any],
+    *,
+    result_actions: list[dict[str, Any]],
+) -> dict[str, int]:
+    cleanup_candidates = plan.get("cleanup_candidates")
+    delete_actions = plan.get("delete_worktree_actions")
+    delete_blockers = plan.get("delete_worktree_blockers")
+    return {
+        "archivable": (
+            len(cleanup_candidates) if isinstance(cleanup_candidates, list) else 0
+        ),
+        "delete_ready": len(delete_actions) if isinstance(delete_actions, list) else 0,
+        "delete_blocked": len(delete_blockers) if isinstance(delete_blockers, list) else 0,
+        "result_actions": len(result_actions),
+    }
 
 
 def _dashboard_lifecycle_execution_action_count(plan: dict[str, Any]) -> int:
@@ -1195,6 +1225,43 @@ def _dashboard_lifecycle_delete_evidence_summary(value: Any) -> str:
     return "; ".join(summaries)
 
 
+def _dashboard_lifecycle_summary_from_execution(
+    execution: dict[str, Any],
+) -> dict[str, int]:
+    summary = execution.get("summary")
+    if isinstance(summary, dict):
+        return {
+            "archivable": _dashboard_int(summary.get("archivable")),
+            "delete_ready": _dashboard_int(summary.get("delete_ready")),
+            "delete_blocked": _dashboard_int(summary.get("delete_blocked")),
+            "result_actions": _dashboard_int(summary.get("result_actions")),
+        }
+    delete_evidence = execution.get("delete_evidence")
+    delete_blockers = execution.get("delete_blockers")
+    result_actions = execution.get("result_actions")
+    return {
+        "archivable": (
+            _dashboard_int(execution.get("action_count"))
+            if execution.get("kind") == "archive_cleanup"
+            else 0
+        ),
+        "delete_ready": len(delete_evidence) if isinstance(delete_evidence, list) else 0,
+        "delete_blocked": len(delete_blockers) if isinstance(delete_blockers, list) else 0,
+        "result_actions": len(result_actions) if isinstance(result_actions, list) else 0,
+    }
+
+
+def _dashboard_lifecycle_summary_text(summary: dict[str, int]) -> str:
+    if not any(summary.values()):
+        return ""
+    return (
+        f"archivable={summary['archivable']} "
+        f"delete_ready={summary['delete_ready']} "
+        f"delete_blocked={summary['delete_blocked']} "
+        f"result_actions={summary['result_actions']}"
+    )
+
+
 def _dashboard_lifecycle_delete_blocker_summary(value: Any) -> str:
     if not isinstance(value, list):
         return ""
@@ -1221,6 +1288,12 @@ def _dashboard_bool_text(value: Any) -> str:
     if value is False:
         return "false"
     return "unknown"
+
+
+def _dashboard_int(value: Any) -> int:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return 0
 
 
 def _dashboard_text(value: Any, fallback: str) -> str:

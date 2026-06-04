@@ -925,6 +925,12 @@ def test_codex_supervisor_runner_dashboard_json_reads_persisted_worker_lifecycle
         "action_count": 1,
         "execution_status": "skipped",
         "execution_reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+        "summary": {
+            "archivable": 0,
+            "delete_ready": 1,
+            "delete_blocked": 0,
+            "result_actions": 0,
+        },
         "execute_hint": "--lifecycle-cleanup-execute",
         "execute_command": "isotope-supervisor loop --iterations 1 --lifecycle-cleanup-execute",
     }
@@ -3131,6 +3137,12 @@ def test_codex_supervisor_web_executes_current_worker_lifecycle_plan(tmp_path):
     assert payload["dashboard"]["worker_lifecycle_execution"]["result_summary"] == (
         "deleted source-worker"
     )
+    assert payload["dashboard"]["worker_lifecycle_execution"]["summary"] == {
+        "archivable": 0,
+        "delete_ready": 1,
+        "delete_blocked": 0,
+        "result_actions": 1,
+    }
     assert calls == [
         [
             "isotope-supervisor",

@@ -269,11 +269,21 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
       if (item.execute_command) parts.push("command=" + text(item.execute_command));
       if (item.result_summary) parts.push("result=" + text(item.result_summary));
       if (item.execution_reason) parts.push("reason=" + text(item.execution_reason));
+      const summary = workerLifecycleExecutionSummaryText(item.summary);
+      if (summary) parts.push("summary=" + summary);
       const evidence = workerLifecycleDeleteEvidenceText(item.delete_evidence);
       if (evidence) parts.push("evidence=" + evidence);
       const blockers = workerLifecycleDeleteBlockerText(item.delete_blockers);
       if (blockers) parts.push("blockers=" + blockers);
       return parts.join(" · ");
+    }
+
+    function workerLifecycleExecutionSummaryText(value) {
+      if (!value || typeof value !== "object") return "";
+      return "archivable=" + text(value.archivable || 0)
+        + " delete_ready=" + text(value.delete_ready || 0)
+        + " delete_blocked=" + text(value.delete_blocked || 0)
+        + " result_actions=" + text(value.result_actions || 0);
     }
 
     function workerLifecycleDeleteEvidenceText(value) {
