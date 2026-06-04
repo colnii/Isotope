@@ -32,6 +32,7 @@ Keep the runtime config equivalent to this shape:
 {
   "platform": "qq",
   "adapter": "onebot",
+  "websocket_url": "ws://127.0.0.1:3001",
   "group_policy": {
     "allowed_groups": ["<controlled_group_id>"],
     "blocked_groups": [],
@@ -79,6 +80,17 @@ The profile pack writes `role-card.json`, `sticker-library.json`, and
 `README.md`. Edit `role-card.json` for identity, voice, group behavior, memory
 policy, and tool style. Edit `sticker-library.json` for sticker IDs, media refs,
 tags, and meanings.
+
+Run a no-network diagnostics summary whenever the pack changes:
+
+```bash
+isotope-social qq beta-diagnostics --pack-dir .isotope/qq-beta --json
+```
+
+The diagnostics output reports `allowed_groups`, `operator_user_ids`,
+`bot_user_id`, `websocket_url`, `runtime.reply_provider`, LLM provider status
+when LLM replies are selected, profile/sticker/replay state, and ordered
+`next_steps`. It returns `status: needs_action` until the beta pack is ready.
 
 Before connecting it to a real group session, check the pack itself:
 
@@ -237,6 +249,7 @@ isotope-social qq init-profile --output-dir .isotope/qq-profile \
   --group <controlled_group_id> --name 群聊工程猫 --json
 isotope-social qq apply-profile --pack-dir .isotope/qq-beta \
   --profile-dir .isotope/qq-profile --json
+isotope-social qq beta-diagnostics --pack-dir .isotope/qq-beta --json
 isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
 isotope-social qq init-replay --output .isotope/qq-beta/replay.json \
   --group <controlled_group_id> --bot-user-id <bot_qq> --json

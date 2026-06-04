@@ -12,6 +12,7 @@ from .beta_day_report import (
     build_qq_beta_day_report,
     write_qq_beta_day_report,
 )
+from .beta_diagnostics import QQBetaDiagnosticsConfig, build_qq_beta_diagnostics
 from .beta_pack import QQBetaPackConfig, create_qq_beta_pack
 from .dry_run_review import (
     QQDryRunReviewConfig,
@@ -48,6 +49,16 @@ def handle_beta_check(args: argparse.Namespace) -> dict[str, Any]:
     result = check_qq_beta_pack(QQBetaCheckConfig(pack_dir=Path(args.pack_dir)))
     payload = result.to_public_dict()
     payload.update({"status": "ok", "command": "beta-check"})
+    return payload
+
+
+def handle_beta_diagnostics(args: argparse.Namespace) -> dict[str, Any]:
+    payload = build_qq_beta_diagnostics(
+        QQBetaDiagnosticsConfig(pack_dir=Path(args.pack_dir))
+    )
+    payload["command"] = "beta-diagnostics"
+    if payload["status"] != "ready":
+        payload["_exit_code"] = 2
     return payload
 
 

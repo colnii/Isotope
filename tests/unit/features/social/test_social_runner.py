@@ -8,6 +8,7 @@ import tomllib
 from isotope.features.social import (
     CharacterCard,
     StickerLibrary,
+    beta_diagnostics,
     qq_runtime_commands,
     startup_gate,
 )
@@ -902,6 +903,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
 
     config = _read_json(output_dir / "config.json")
     assert config["bot_user_id"] == "bot_qq"
+    assert config["websocket_url"] == "ws://127.0.0.1:3001"
     assert config["group_policy"]["allowed_groups"] == ["99999"]
     assert config["group_policy"]["operator_user_ids"] == ["op"]
     assert config["dry_run"] is True
@@ -911,6 +913,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert (output_dir / "regressions").is_dir()
     readme = (output_dir / "README.md").read_text(encoding="utf-8")
     assert "First run order" in readme
+    assert "beta-diagnostics" in readme
     assert 'runtime.reply_provider = "llm"' in readme
 
     health = (output_dir / "health.sh").read_text(encoding="utf-8")
@@ -1258,6 +1261,118 @@ def test_social_runner_qq_startup_check_passes_after_profile_and_replay(
         "replay_report",
     ]
     assert all(check["ok"] for check in payload["checks"])
+
+
+def test_social_runner_qq_beta_diagnostics_reports_ready_pack(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    beta_dir, _report_path = _prepare_profiled_replay_pack(tmp_path, capsys)
+
+    code = main(["qq", "beta-diagnostics", "--pack-dir", str(beta_dir), "--json"])
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ready"
+    assert payload["command"] == "beta-diagnostics"
+    assert payload["pack_dir"] == str(beta_dir)
+    assert payload["summary"]["allowed_groups"] == ["99999"]
+    assert payload["summary"]["operator_user_ids"] == ["op"]
+    assert payload["summary"]["bot_user_id"] == "bot_qq"
+    assert payload["summary"]["websocket_url"] == "ws://127.0.0.1:3001"
+    assert payload["summary"]["reply_provider"] == "deterministic"
+    assert payload["summary"]["llm"] == {
+        "required": False,
+        "configured": None,
+        "provider_name": None,
+        "reason_code": "deterministic_reply_provider",
+    }
+    assert payload["summary"]["profile"]["applied"] is True
+    assert payload["summary"]["profile"]["role_name"] == "群聊工程猫"
+    assert payload["summary"]["stickers"]["entry_count"] > 0
+    assert payload["summary"]["replay_report"]["exists"] is True
+    assert payload["next_steps"][0]["command"] == "./health.sh"
+
+
+def test_social_runner_qq_beta_diagnostics_guides_missing_profile(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    beta_dir = tmp_path / "qq-beta"
+    assert main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(beta_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    code = main(["qq", "beta-diagnostics", "--pack-dir", str(beta_dir), "--json"])
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "needs_action"
+    assert payload["command"] == "beta-diagnostics"
+    assert payload["summary"]["profile"]["applied"] is False
+    commands = [step["command"] for step in payload["next_steps"]]
+    assert "isotope-social qq init-profile" in commands[0]
+    assert "isotope-social qq apply-profile" in commands[1]
+    assert commands[-1] == "isotope-social qq beta-diagnostics --pack-dir . --json"
+
+
+def test_social_runner_qq_beta_diagnostics_reports_missing_llm_provider(
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    beta_dir, _report_path = _prepare_profiled_replay_pack(tmp_path, capsys)
+    config_path = beta_dir / "config.json"
+    config = _read_json(config_path)
+    config["runtime"]["reply_provider"] = "llm"
+    _write_json(config_path, config)
+    monkeypatch.setattr(
+        beta_diagnostics,
+        "resolve_llm_chat_provider",
+        lambda: LLMProviderResolution(
+            status="missing_configuration",
+            reason_code="llm_provider_not_configured",
+            provider_name="auto",
+        ),
+    )
+    monkeypatch.setattr(
+        startup_gate,
+        "resolve_llm_chat_provider",
+        lambda: LLMProviderResolution(
+            status="missing_configuration",
+            reason_code="llm_provider_not_configured",
+            provider_name="auto",
+        ),
+    )
+
+    code = main(["qq", "beta-diagnostics", "--pack-dir", str(beta_dir), "--json"])
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "needs_action"
+    assert payload["summary"]["reply_provider"] == "llm"
+    assert payload["summary"]["llm"] == {
+        "required": True,
+        "configured": False,
+        "provider_name": "auto",
+        "reason_code": "llm_provider_not_configured",
+    }
+    assert payload["next_steps"][0]["name"] == "fix_llm_reply_provider"
 
 
 def test_social_runner_qq_startup_check_blocks_llm_reply_without_provider(

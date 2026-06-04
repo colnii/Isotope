@@ -55,6 +55,16 @@ The profile directory contains `role-card.json` and `sticker-library.json`.
 `apply-profile` updates `.isotope/qq-beta/config.json` to read those files and
 writes `.isotope/qq-beta/config.before-profile.json` as the previous config.
 
+After any profile or config edit, run diagnostics before touching OneBot:
+
+```bash
+isotope-social qq beta-diagnostics --pack-dir .isotope/qq-beta --json
+```
+
+Diagnostics does not connect to QQ. It summarizes the configured group,
+operator, bot user, OneBot URL, `reply_provider`, profile/sticker/replay state,
+LLM provider status when needed, and ordered `next_steps` for the operator.
+
 Before the first live session, run the pack check:
 
 ```bash
@@ -319,6 +329,7 @@ Run this checklist for each controlled beta day:
 - Generate or update the editable profile with `qq init-profile`.
 - Apply the profile with `qq apply-profile`.
 - Confirm `allowed_groups` and `operator_user_ids`.
+- Run `qq beta-diagnostics` and follow `next_steps`.
 - Run `isotope-social qq beta-check --pack-dir .isotope/qq-beta --json`.
 - Run `qq init-replay` and `qq replay`, then review `replay-report.json`.
 - Run `qq startup-check` and require `ready: true`.

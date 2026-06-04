@@ -121,6 +121,17 @@ def register_qq_commands(subparsers: argparse._SubParsersAction) -> None:
     beta_check.add_argument("--pack-dir", required=True, help="Generated beta pack directory.")
     beta_check.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    beta_diagnostics = qq_subparsers.add_parser(
+        "beta-diagnostics",
+        help="Show the operator checklist for a generated QQ beta pack.",
+    )
+    beta_diagnostics.add_argument(
+        "--pack-dir",
+        required=True,
+        help="Generated beta pack directory.",
+    )
+    beta_diagnostics.add_argument("--json", action="store_true", help="Print JSON output.")
+
     startup_check = qq_subparsers.add_parser(
         "startup-check",
         help="Verify QQ beta startup readiness before generated live scripts run.",

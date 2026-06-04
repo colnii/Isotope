@@ -289,6 +289,7 @@ def _quote_command_part(part: str) -> str:
 def _config_payload(config: QQBetaPackConfig) -> dict[str, Any]:
     return {
         "bot_user_id": config.bot_user_id,
+        "websocket_url": config.websocket_url,
         "dry_run": True,
         "group_policy": {
             "allowed_groups": [config.group_id],
@@ -360,16 +361,17 @@ OneBot WebSocket: `{config.websocket_url}`
 
 ## First run order
 
-1. Apply an editable profile pack and run replay.
-2. Run `./startup-check.sh`.
-3. Run `./health.sh`.
-4. Run `./dry-run.sh`.
-5. Run `./review-dry-run.sh` and inspect `logs/dry-run-review.json`.
-6. Run `./export-log.sh`.
-7. Record observed issues in `logs/failures.json`.
-8. Run `./beta-day-report.sh` and inspect `logs/beta-day-report.json`.
-9. Run `./regression-intake.sh` for open failures and inspect `regressions/`.
-10. Only after dry-run behavior is acceptable, run:
+1. Apply an editable profile pack.
+2. Run `isotope-social qq beta-diagnostics --pack-dir . --json`.
+3. Create and run replay, then run `./startup-check.sh`.
+4. Run `./health.sh`.
+5. Run `./dry-run.sh`.
+6. Run `./review-dry-run.sh` and inspect `logs/dry-run-review.json`.
+7. Run `./export-log.sh`.
+8. Record observed issues in `logs/failures.json`.
+9. Run `./beta-day-report.sh` and inspect `logs/beta-day-report.json`.
+10. Run `./regression-intake.sh` for open failures and inspect `regressions/`.
+11. Only after dry-run behavior is acceptable, run:
 
 ```bash
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
@@ -386,6 +388,9 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 Automated scripts start in dry-run. `send-run.sh` refuses to send unless
 `ISOTOPE_QQ_ENABLE_SEND=1` is set for that command. `dry-run.sh` and
 `send-run.sh` both run `startup-check.sh` before connecting to OneBot.
+`beta-diagnostics` does not connect to OneBot; it reads this pack and reports
+the configured group, operator, bot, OneBot URL, reply provider, replay report,
+and next steps.
 The generated `config.json` defaults to `runtime.reply_provider = "deterministic"`
 for stable replay output. To use LLM-generated text replies, change it to
 `runtime.reply_provider = "llm"` and configure the shared Isotope LLM provider;

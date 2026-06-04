@@ -8,6 +8,7 @@ from typing import Any
 
 from .qq_beta_commands import (
     handle_beta_check,
+    handle_beta_diagnostics,
     handle_beta_day_report,
     handle_init_beta,
     handle_regression_intake,
@@ -35,6 +36,7 @@ def qq_handlers() -> dict[str, Callable[[argparse.Namespace], dict[str, Any]]]:
         "init_replay": handle_init_replay,
         "replay": handle_replay,
         "beta_check": handle_beta_check,
+        "beta_diagnostics": handle_beta_diagnostics,
         "startup_check": handle_startup_check,
         "review_dry_run": handle_review_dry_run,
         "beta_day_report": handle_beta_day_report,
