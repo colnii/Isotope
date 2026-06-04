@@ -570,6 +570,16 @@ def _capacity_display_inputs(capacity_id: str, inputs: dict[str, Any]) -> dict[s
             if key not in {"root", "cwd", "run_id", "execution_id", "workspace_id"}
         }
     display = dict(inputs)
+    if capacity_id == "coding_task.apply_reviewed_diff":
+        display.pop("root", None)
+        display.pop("cwd", None)
+        display.pop("workspace_id", None)
+        source_digests = display.get("expected_source_digests")
+        if isinstance(source_digests, dict):
+            display["expected_source_digests"] = {
+                "path_count": len(source_digests),
+            }
+        return display
     if capacity_id in {"supervisor.project_status", "isotope.self_repair"}:
         display.pop("state_root", None)
         return display

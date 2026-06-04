@@ -54,6 +54,7 @@ def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         summary.update(_agent_loop_research_promotion_summary(capability_run))
         summary.update(_agent_loop_project_status_summary(capability_run))
         summary.update(_agent_loop_self_repair_summary(capability_run))
+        summary.update(_agent_loop_reviewed_apply_summary(capability_run))
     return summary
 
 
@@ -198,6 +199,32 @@ def _agent_loop_research_promotion_summary(
         "agent_loop_research_promotion_memory_write": promotion.get("memory_write"),
         "agent_loop_research_promotion_quality_gate_status": promotion.get(
             "quality_gate_status"
+        ),
+    }
+
+
+def _agent_loop_reviewed_apply_summary(
+    capability_run: Mapping[str, Any],
+) -> dict[str, Any]:
+    if capability_run.get("capability_id") != "coding_task.apply_reviewed_diff":
+        return {}
+    reviewed_apply = capability_run.get("reviewed_apply")
+    if not isinstance(reviewed_apply, Mapping):
+        return {}
+    applied_files = reviewed_apply.get("applied_files")
+    changed_files = reviewed_apply.get("changed_files")
+    return {
+        "agent_loop_reviewed_apply_status": reviewed_apply.get("status"),
+        "agent_loop_reviewed_apply_workspace_id": reviewed_apply.get("workspace_id"),
+        "agent_loop_reviewed_apply_applied_files": (
+            list(applied_files) if isinstance(applied_files, list) else []
+        ),
+        "agent_loop_reviewed_apply_changed_file_count": (
+            len(changed_files) if isinstance(changed_files, list) else 0
+        ),
+        "agent_loop_reviewed_apply_blocked_reason": reviewed_apply.get("blocked_reason"),
+        "agent_loop_reviewed_apply_source_workspace_write": reviewed_apply.get(
+            "source_workspace_write"
         ),
     }
 

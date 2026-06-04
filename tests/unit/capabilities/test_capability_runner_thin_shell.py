@@ -599,6 +599,26 @@ def test_runner_discovers_coding_task_run_from_default_catalog():
     assert "does_not_replace_coding_task_execute" in description["safety_boundaries"]
 
 
+def test_runner_discovers_coding_task_apply_reviewed_diff_from_default_catalog():
+    runner = _runner()
+
+    assert "coding_task.apply_reviewed_diff" in _ids(runner.list_capabilities())
+    description = runner.describe_capability("coding_task.apply_reviewed_diff")
+
+    assert description["input_contract"]["required"] == [
+        "root",
+        "cwd",
+        "workspace_id",
+        "expected_source_digests",
+    ]
+    properties = description["input_contract"]["properties"]
+    assert properties["root"]["x-system-input"] is True
+    assert properties["cwd"]["x-system-input"] is True
+    assert properties["workspace_id"]["x-system-input"] is True
+    assert "source_workspace_write_requires_explicit_apply" in description["safety_boundaries"]
+    assert "source_digest_conflict_guard" in description["safety_boundaries"]
+
+
 def test_runner_rejects_direct_coding_task_run_execution(tmp_path):
     with pytest.raises(
         ValueError,
@@ -668,9 +688,143 @@ def test_runner_executes_native_coding_task_in_isolated_workspace(tmp_path):
         "native_coding.changed_files",
         "native_coding.diff_summary",
     ]
+    reviewed_apply = execution["reviewed_apply"]
+    assert reviewed_apply["workspace_id"] == "workspace_native_coding_execute"
+    assert reviewed_apply["expected_source_digests"]["src/app.py"]
     assert (source / "src" / "app.py").read_text(encoding="utf-8") == "value = 1\n"
     assert workspace_file.read_text(encoding="utf-8") == "value = 2\n"
     assert "patch" not in execution
+
+
+def test_runner_applies_reviewed_native_coding_workspace_to_source(tmp_path):
+    source = tmp_path / "repo"
+    (source / "src").mkdir(parents=True)
+    (source / "src" / "app.py").write_text("value = 1\n", encoding="utf-8")
+    root = tmp_path / "state"
+    execute_result = _runner().run_capability(
+        "coding_task.execute",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "workspace_id": "workspace_native_apply",
+            "goal": "Change value to 2.",
+            "patch": (
+                "--- a/src/app.py\n"
+                "+++ b/src/app.py\n"
+                "@@ -1 +1 @@\n"
+                "-value = 1\n"
+                "+value = 2\n"
+            ),
+            "argv": [
+                "python3",
+                "-c",
+                "from pathlib import Path; assert Path('src/app.py').read_text() == 'value = 2\\n'",
+            ],
+            "allowed_commands": ["python3"],
+            "run_id": "run_native_apply",
+            "execution_id": "execution_native_apply",
+            "include_paths": ["src"],
+        },
+    )
+
+    reviewed_apply = execute_result["coding_execution"]["reviewed_apply"]
+    result = _runner().run_capability(
+        "coding_task.apply_reviewed_diff",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "workspace_id": reviewed_apply["workspace_id"],
+            "expected_source_digests": reviewed_apply["expected_source_digests"],
+            "include_paths": ["src"],
+        },
+    )
+
+    applied = result["reviewed_apply"]
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "coding_task.apply_reviewed_diff"
+    assert result["status"] == "completed"
+    assert applied["status"] == "applied"
+    assert applied["source_workspace_write"] == "performed"
+    assert applied["applied_files"] == ["src/app.py"]
+    assert (source / "src" / "app.py").read_text(encoding="utf-8") == "value = 2\n"
+    assert "value = 2" not in json.dumps(applied, ensure_ascii=False)
+
+
+def test_reviewed_native_coding_apply_blocks_source_conflict_without_write(tmp_path):
+    source = tmp_path / "repo"
+    (source / "src").mkdir(parents=True)
+    (source / "src" / "app.py").write_text("value = 1\n", encoding="utf-8")
+    root = tmp_path / "state"
+    execute_result = _runner().run_capability(
+        "coding_task.execute",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "workspace_id": "workspace_native_apply_conflict",
+            "goal": "Change value to 2.",
+            "patch": (
+                "--- a/src/app.py\n"
+                "+++ b/src/app.py\n"
+                "@@ -1 +1 @@\n"
+                "-value = 1\n"
+                "+value = 2\n"
+            ),
+            "argv": [
+                "python3",
+                "-c",
+                "from pathlib import Path; assert Path('src/app.py').read_text() == 'value = 2\\n'",
+            ],
+            "allowed_commands": ["python3"],
+            "run_id": "run_native_apply_conflict",
+            "execution_id": "execution_native_apply_conflict",
+            "include_paths": ["src"],
+        },
+    )
+    (source / "src" / "app.py").write_text("value = 9\n", encoding="utf-8")
+
+    result = _runner().run_capability(
+        "coding_task.apply_reviewed_diff",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "workspace_id": "workspace_native_apply_conflict",
+            "expected_source_digests": execute_result["coding_execution"]["reviewed_apply"][
+                "expected_source_digests"
+            ],
+            "include_paths": ["src"],
+        },
+    )
+
+    applied = result["reviewed_apply"]
+    assert applied["status"] == "blocked"
+    assert applied["blocked_reason"] == "source_conflict"
+    assert applied["source_workspace_write"] == "not_performed"
+    assert (source / "src" / "app.py").read_text(encoding="utf-8") == "value = 9\n"
+
+
+def test_reviewed_native_coding_apply_blocks_deletions_without_write(tmp_path):
+    source = tmp_path / "repo"
+    (source / "src").mkdir(parents=True)
+    (source / "src" / "delete.py").write_text("delete me\n", encoding="utf-8")
+    root = tmp_path / "state"
+    workspace_root = root / "workspaces" / "workspace_native_apply_delete" / "src"
+    workspace_root.mkdir(parents=True)
+
+    result = _runner().run_capability(
+        "coding_task.apply_reviewed_diff",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "workspace_id": "workspace_native_apply_delete",
+            "expected_source_digests": {"src/delete.py": "present"},
+            "include_paths": ["src"],
+        },
+    )
+
+    applied = result["reviewed_apply"]
+    assert applied["status"] == "blocked"
+    assert applied["blocked_reason"] == "deletion_not_supported"
+    assert (source / "src" / "delete.py").is_file()
 
 
 def test_coding_task_execute_plan_stops_when_required_inputs_are_missing():

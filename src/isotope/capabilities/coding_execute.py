@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from .artifact_outputs import run_artifact_changed_files, run_artifact_diff_summary
+from .coding_apply import reviewed_apply_source_digests
 from .code_edit import run_code_apply_patch
 from .testing import run_test_run
 from .tools.terminal import default_terminal_capabilities, validate_argv
@@ -124,6 +125,7 @@ def run_coding_task_execute(*, inputs: Mapping[str, Any] | None) -> dict[str, An
     diff_summary_artifact = run_artifact_diff_summary(
         inputs=_artifact_inputs(input_mapping)
     )["artifact"]
+    changed_files = list(patch_result["changed_files"])
 
     return {
         "kind": "capability_run_result",
@@ -147,6 +149,18 @@ def run_coding_task_execute(*, inputs: Mapping[str, Any] | None) -> dict[str, An
             "artifact_refs": {
                 "changed_files": changed_files_artifact["ref"],
                 "diff_summary": diff_summary_artifact["ref"],
+            },
+            "reviewed_apply": {
+                "workspace_id": input_mapping["workspace_id"],
+                "changed_files": changed_files,
+                "expected_source_digests": reviewed_apply_source_digests(
+                    cwd=input_mapping["cwd"],
+                    changed_files=[
+                        {"path": path, "status": "modified"} for path in changed_files
+                    ],
+                ),
+                "source_workspace_write": "requires_explicit_apply",
+                "content_policy": "digest_and_path_only",
             },
             "event_append": "not_performed",
         },

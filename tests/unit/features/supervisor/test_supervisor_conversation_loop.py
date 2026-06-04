@@ -4,6 +4,7 @@ import json
 import time
 from typing import Any
 
+from isotope.capabilities.runner import CapabilityRunner
 from isotope.features.supervisor.conversation_loop import (
     SupervisorConversationEvent,
     run_supervisor_conversation_events,
@@ -904,6 +905,76 @@ def test_coding_task_run_allows_bounded_revision_after_failed_verification(
     assert summary["agent_loop_coding_tick_count"] == 2
     assert summary["agent_loop_coding_source_workspace_write"] == "not_performed"
     assert (workspace / "src" / "app.py").read_text(encoding="utf-8") == "value = 1\n"
+
+
+def test_conversation_loop_applies_reviewed_native_coding_diff(tmp_path) -> None:
+    workspace = tmp_path / "repo"
+    (workspace / "src").mkdir(parents=True)
+    (workspace / "src" / "app.py").write_text("value = 1\n", encoding="utf-8")
+    root = tmp_path / "state"
+    execute_result = CapabilityRunner().run_capability(
+        "coding_task.execute",
+        inputs={
+            "root": str(root),
+            "cwd": str(workspace),
+            "workspace_id": "workspace_conversation_apply",
+            "goal": "Change value to 2.",
+            "patch": (
+                "--- a/src/app.py\n"
+                "+++ b/src/app.py\n"
+                "@@ -1 +1 @@\n"
+                "-value = 1\n"
+                "+value = 2\n"
+            ),
+            "argv": [
+                "python3",
+                "-c",
+                "from pathlib import Path; assert Path('src/app.py').read_text() == 'value = 2\\n'",
+            ],
+            "allowed_commands": ["python3"],
+            "run_id": "run_conversation_apply",
+            "execution_id": "execution_conversation_apply",
+            "include_paths": ["src"],
+        },
+    )
+    reviewed_apply = execute_result["coding_execution"]["reviewed_apply"]
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "coding_task.apply_reviewed_diff",
+                    "arguments": {
+                        "workspace_id": reviewed_apply["workspace_id"],
+                        "expected_source_digests": reviewed_apply["expected_source_digests"],
+                        "include_paths": ["src"],
+                    },
+                }
+            ),
+            json.dumps({"kind": "direct_answer", "answer": "已应用。"}),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=root,
+            cwd=workspace,
+            user_message="应用刚才审阅通过的改动。",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert events[1].payload["status"] == "ok"
+    summary = events[1].payload["result_summary"]
+    assert summary["agent_loop_reviewed_apply_status"] == "applied"
+    assert summary["agent_loop_reviewed_apply_source_workspace_write"] == "performed"
+    assert summary["agent_loop_reviewed_apply_applied_files"] == ["src/app.py"]
+    assert (workspace / "src" / "app.py").read_text(encoding="utf-8") == "value = 2\n"
+    rendered = json.dumps([event.payload for event in events], ensure_ascii=False)
+    assert str(root) not in rendered
+    assert str(workspace) not in rendered
+    assert "value = 2" not in rendered
 
 
 def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(

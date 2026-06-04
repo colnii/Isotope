@@ -587,6 +587,77 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="coding_task.apply_reviewed_diff",
+                    title="Apply Reviewed Native Coding Diff",
+                    description=(
+                        "Apply reviewed native-coding workspace changes back "
+                        "to the source workspace after source digest checks."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "native",
+                        "coding",
+                        "apply",
+                        "workspace",
+                        "review",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": [
+                            "root",
+                            "cwd",
+                            "workspace_id",
+                            "expected_source_digests",
+                        ],
+                        "properties": {
+                            "root": {"type": "string", "x-system-input": True},
+                            "cwd": {"type": "string", "x-system-input": True},
+                            "workspace_id": {
+                                "type": "string",
+                                "x-system-input": True,
+                            },
+                            "expected_source_digests": {
+                                "type": "object",
+                                "description": (
+                                    "Map of workspace-relative paths to source "
+                                    "sha256 digests captured during review."
+                                ),
+                            },
+                            "expected_changed_files": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                            },
+                            "include_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "default": ["."],
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "workspace_id",
+                            "changed_files",
+                            "applied_files",
+                            "blocked_reason",
+                            "source_workspace_write",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "source_workspace_write_requires_explicit_apply",
+                        "source_digest_conflict_guard",
+                        "workspace_escape_rejected",
+                        "relative_paths_only",
+                        "deletion_not_supported",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="workspace.isolated_rw",
                     title="Isolated Writable Workspace",
                     description=(
