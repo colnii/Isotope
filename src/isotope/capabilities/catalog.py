@@ -511,6 +511,79 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="coding_task.run",
+                    title="Native Coding Task Run",
+                    description=(
+                        "Run a native coding task through the existing agent "
+                        "loop, bounded code context capabilities, isolated "
+                        "execution, and artifact evidence."
+                    ),
+                    maturity="v0.3",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "native",
+                        "coding",
+                        "agent-loop",
+                        "workspace",
+                        "artifact",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["goal"],
+                        "properties": {
+                            "goal": {
+                                "type": "string",
+                                "description": "Natural-language coding goal.",
+                            },
+                            "include_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "default": ["."],
+                            },
+                            "forbidden_paths": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "default": [],
+                            },
+                            "verification_intent": {"type": "string"},
+                            "max_steps": {"type": "integer", "default": 6},
+                            "timeout_seconds": {"type": "integer", "default": 120},
+                            "root": {"type": "string", "x-system-input": True},
+                            "cwd": {"type": "string", "x-system-input": True},
+                            "run_id": {"type": "string", "x-system-input": True},
+                            "execution_id": {
+                                "type": "string",
+                                "x-system-input": True,
+                            },
+                            "workspace_id": {
+                                "type": "string",
+                                "x-system-input": True,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "workspace_id",
+                            "changed_files",
+                            "verification",
+                            "artifact_refs",
+                            "next_action",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "uses_existing_agent_loop",
+                        "agent_loop_orchestrated",
+                        "isolated_workspace_write_only",
+                        "source_workspace_write_requires_explicit_apply",
+                        "does_not_replace_coding_task_execute",
+                        "low_sensitive_summary_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="workspace.isolated_rw",
                     title="Isolated Writable Workspace",
                     description=(

@@ -423,6 +423,33 @@ def test_runner_discovers_coding_task_execute_from_default_catalog():
     assert "limited_step_count" in description["safety_boundaries"]
 
 
+def test_runner_discovers_coding_task_run_from_default_catalog():
+    runner = _runner()
+
+    assert "coding_task.run" in _ids(runner.list_capabilities())
+    description = runner.describe_capability("coding_task.run")
+
+    assert description["input_contract"]["required"] == ["goal"]
+    properties = description["input_contract"]["properties"]
+    assert properties["goal"]["type"] == "string"
+    for name in ("root", "cwd", "run_id", "execution_id", "workspace_id"):
+        assert properties[name]["x-system-input"] is True
+    assert "uses_existing_agent_loop" in description["safety_boundaries"]
+    assert "does_not_replace_coding_task_execute" in description["safety_boundaries"]
+
+
+def test_runner_rejects_direct_coding_task_run_execution(tmp_path):
+    with pytest.raises(
+        ValueError,
+        match="coding_task.run must be routed through Supervisor agent loop",
+    ):
+        _runner().run_capability(
+            "coding_task.run",
+            root_path=tmp_path,
+            inputs={"goal": "Change src/app.py value to 2."},
+        )
+
+
 def test_runner_executes_native_coding_task_in_isolated_workspace(tmp_path):
     source = tmp_path / "repo"
     (source / "src").mkdir(parents=True)
