@@ -932,6 +932,10 @@ def test_codex_supervisor_runner_dashboard_json_reads_persisted_worker_lifecycle
             "result_actions": 0,
         },
         "recommended_next_step": "delete_ready",
+        "decision_source": "worker_lifecycle_execution",
+        "routing_reason": (
+            "program-owned lifecycle execution recommended delete_ready"
+        ),
         "execute_hint": "--lifecycle-cleanup-execute",
         "execute_command": "isotope-supervisor loop --iterations 1 --lifecycle-cleanup-execute",
     }

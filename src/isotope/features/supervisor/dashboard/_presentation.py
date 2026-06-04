@@ -9,6 +9,7 @@ from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow
 from isotope.features.supervisor.lifecycle import (
+    worker_lifecycle_execution_action,
     worker_lifecycle_execution_recommended_next_step,
     worker_lifecycle_execution_summary,
 )
@@ -888,6 +889,12 @@ def print_dashboard_worker_lifecycle_execution(execution: Any) -> None:
     )
     if recommended:
         print(f"  recommended_next_step={recommended}")
+    decision_source = _dashboard_text(execution.get("decision_source"), "")
+    if decision_source:
+        print(f"  decision_source={decision_source}")
+    routing_reason = _dashboard_text(execution.get("routing_reason"), "")
+    if routing_reason:
+        print(f"  routing_reason={routing_reason}")
     evidence = _dashboard_lifecycle_delete_evidence_summary(
         execution.get("delete_evidence")
     )
@@ -938,6 +945,7 @@ def dashboard_worker_lifecycle_execution_payload(
         "execute_hint": _dashboard_lifecycle_execution_hint(plan, result),
         "execute_command": _dashboard_lifecycle_execution_command(plan, result),
     }
+    payload.update(_dashboard_lifecycle_route_payload(plan))
     if not payload["result_summary"]:
         payload.pop("result_summary")
     if not payload["result_actions"]:
@@ -951,6 +959,18 @@ def dashboard_worker_lifecycle_execution_payload(
     if not payload["execute_command"]:
         payload.pop("execute_command")
     return payload
+
+
+def _dashboard_lifecycle_route_payload(plan: dict[str, Any]) -> dict[str, str]:
+    action = worker_lifecycle_execution_action(plan)
+    route: dict[str, str] = {}
+    decision_source = action.get("decision_source")
+    if isinstance(decision_source, str) and decision_source:
+        route["decision_source"] = decision_source
+    routing_reason = action.get("routing_reason")
+    if isinstance(routing_reason, str) and routing_reason:
+        route["routing_reason"] = routing_reason
+    return route
 
 
 def _dashboard_lifecycle_execution_action_count(plan: dict[str, Any]) -> int:

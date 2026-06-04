@@ -211,6 +211,10 @@ def test_dashboard_payload_projects_worker_lifecycle_execution_from_snapshot() -
         },
         "recommended_next_step": "monitor",
         "result_summary": "deleted source-worker",
+        "decision_source": "worker_lifecycle_execution",
+        "routing_reason": (
+            "program-owned lifecycle execution recommended delete_ready"
+        ),
         "result_actions": [
             {
                 "kind": "delete_worktree",
@@ -342,6 +346,10 @@ def test_dashboard_plain_prints_worker_lifecycle_delete_evidence(capsys) -> None
                 "kind": "cleanup_worktree",
                 "action_count": 1,
                 "execution_status": "planned",
+                "decision_source": "worker_lifecycle_execution",
+                "routing_reason": (
+                    "program-owned lifecycle execution recommended delete_ready"
+                ),
                 "delete_evidence": [
                     {
                         "target_name": "source-worker",
@@ -362,6 +370,11 @@ def test_dashboard_plain_prints_worker_lifecycle_delete_evidence(capsys) -> None
     text = capsys.readouterr().out
     assert "summary: archivable=0 delete_ready=1 delete_blocked=0 result_actions=0" in text
     assert "recommended_next_step=delete_ready" in text
+    assert "decision_source=worker_lifecycle_execution" in text
+    assert (
+        "routing_reason=program-owned lifecycle execution recommended delete_ready"
+        in text
+    )
     assert (
         "delete_evidence=source-worker archived=true protocol=done "
         "worktree=true group=already_integrated integrated=true clean=true"

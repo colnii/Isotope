@@ -53,3 +53,29 @@ def test_supervise_plain_prints_worker_lifecycle_summary(capsys):
     assert "stage=archived next_step=cleanup_worktree policy=program_resolved" in text
     assert "remaining_step=cleanup_worktree" in text
     assert "timeline: integrated/archive_integrated observed; archived/archive_integrated executed" in text
+
+
+def test_supervise_plain_prints_lifecycle_action_route(capsys):
+    payload = {
+        "automation": {"ready": True, "reason": "ready"},
+        "recommendation": {"label": "继续监控", "action": "monitor"},
+        "llm_action": {
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "decision_source": "worker_lifecycle_execution",
+            "routing_reason": (
+                "program-owned lifecycle execution recommended delete_ready"
+            ),
+            "recommended_next_step": "delete_ready",
+        },
+    }
+
+    print_supervise_plain(payload, report=object(), api=_StubApi())
+
+    text = capsys.readouterr().out
+    assert "cleanup_worktree / recommended_next_step=delete_ready" in text
+    assert "LLM 动作来源：worker_lifecycle_execution" in text
+    assert (
+        "LLM 路由：program-owned lifecycle execution recommended delete_ready"
+        in text
+    )
