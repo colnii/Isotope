@@ -156,6 +156,23 @@ def _worker_lifecycle_execution_executed(
     *,
     api: Any,
 ) -> dict[str, Any]:
+    kind = lifecycle_execution.get("kind")
+    if kind == "archive_cleanup":
+        if not getattr(args, "lifecycle_cleanup_execute", False):
+            return worker_lifecycle_execution_planned_executed(lifecycle_execution)
+        return _worker_lifecycle_archive_cleanup_executed(
+            args,
+            lifecycle_execution,
+            api=api,
+        )
+    if kind == "cleanup_worktree":
+        if not getattr(args, "lifecycle_cleanup_execute", False):
+            return worker_lifecycle_execution_planned_executed(lifecycle_execution)
+        return _worker_lifecycle_cleanup_worktree_executed(
+            args,
+            lifecycle_execution,
+            api=api,
+        )
     if lifecycle_execution.get("status") == "worker_already_running":
         return worker_lifecycle_execution_planned_executed(lifecycle_execution)
     if not getattr(args, "merge_dispatch_execute", False):
@@ -173,6 +190,52 @@ def _worker_lifecycle_execution_executed(
             execute=lambda: api._execute_launch_action(args, launch_spec),
         )
     )
+
+
+def _worker_lifecycle_archive_cleanup_executed(
+    args: Any,
+    lifecycle_execution: dict[str, Any],
+    *,
+    api: Any,
+) -> dict[str, Any]:
+    candidates = _lifecycle_execution_items(
+        lifecycle_execution.get("cleanup_candidates")
+    )
+    archived = [
+        api._archive_cleanup_candidate(Path(args.codex_home), candidate)
+        for candidate in candidates
+    ]
+    return {
+        "kind": "archive_cleanup",
+        "source": "worker_lifecycle",
+        "archived": archived,
+    }
+
+
+def _worker_lifecycle_cleanup_worktree_executed(
+    args: Any,
+    lifecycle_execution: dict[str, Any],
+    *,
+    api: Any,
+) -> dict[str, Any]:
+    actions = _lifecycle_execution_items(
+        lifecycle_execution.get("delete_worktree_actions")
+    )
+    deleted = [
+        api._execute_delete_worktree_action(args, action)
+        for action in actions
+    ]
+    return {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "deleted": deleted,
+    }
+
+
+def _lifecycle_execution_items(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [dict(item) for item in value if isinstance(item, dict)]
 
 
 def _merge_dispatch_executed(

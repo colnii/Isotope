@@ -163,7 +163,8 @@
 | `--goal-low-water` | 低水位补任务阈值；活跃目标少于该数量时，`loop` 可让 LLM 读当前文档补充目标队列，默认 0 关闭 | 产品功能/模型/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py`, `src/isotope/features/supervisor/goal_planner.py` |
 | `--goal-replenish-limit` | 低水位补任务的单轮写入上限，避免一次补太多 active goals | 产品功能/控制策略 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/daemon.py` |
 | `goal_replenishment` | `loop --json` 输出字段，记录本轮是否由低水位触发 LLM 补任务、补了多少、失败原因是什么 | 产品功能/输出字段 | `src/isotope/features/supervisor/runner.py` |
-| `worker_lifecycle_execution` | `loop --json` 输出字段，记录程序从 `worker_lifecycle_decision.next_step` 归一出的固定流程执行计划；当前托管 merge-dispatch，清理类动作继续走显式 guard | 产品功能/输出字段/控制策略 | `src/isotope/features/supervisor/lifecycle/executor.py`, `src/isotope/features/supervisor/supervise/payload.py` |
+| `worker_lifecycle_execution` | `loop --json` 输出字段，记录程序从 `worker_lifecycle_decision.next_step` 归一出的固定流程执行计划；merge-dispatch 可单独执行，清理类动作默认只报告计划 | 产品功能/输出字段/控制策略 | `src/isotope/features/supervisor/lifecycle/executor.py`, `src/isotope/features/supervisor/supervise/payload.py` |
+| `--lifecycle-cleanup-execute` | `loop` 参数，显式执行 `worker_lifecycle_execution` 里的 `archive_cleanup` / `cleanup_worktree` 计划；默认不开，避免无意归档或删除 worktree | 产品功能/控制策略 | `src/isotope/features/supervisor/commands/parser/loop.py`, `src/isotope/features/supervisor/commands/supervise/execution.py` |
 | `goal queue` | 目标队列，保存用户交给 Supervisor 的长期目标，供 daemon/loop 动态消费 | 产品功能/控制策略 | `src/isotope/features/supervisor/goal_queue.py`, `src/isotope/features/supervisor/runner.py` |
 | `goals.jsonl` | Supervisor 目标队列事件文件，保存目标添加、状态回写和归档事件 | 产品功能/状态账本 | `src/isotope/features/supervisor/goal_queue.py` |
 | `goal add/list/archive` | Supervisor 目标队列命令，用于添加、查看和归档活跃目标 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py` |

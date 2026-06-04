@@ -160,6 +160,14 @@ def add_loop_command_parsers(
         ),
     )
     loop_parser.add_argument(
+        "--lifecycle-cleanup-execute",
+        action="store_true",
+        help=(
+            "Execute program-owned archive/delete cleanup lifecycle plans. "
+            "Default loop only reports cleanup plans."
+        ),
+    )
+    loop_parser.add_argument(
         "--auto-merge-promote",
         action="store_true",
         help=(

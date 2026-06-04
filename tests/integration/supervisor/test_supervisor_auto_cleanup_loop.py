@@ -310,6 +310,68 @@ def test_supervisor_loop_keeps_already_integrated_worktree_for_explicit_cleanup(
     assert archived_names == []
 
 
+def test_supervisor_loop_executes_lifecycle_cleanup_only_with_explicit_flag(
+    tmp_path,
+    capsys,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    repo_root = tmp_path / "repo"
+    done_worktree = repo_root / ".worktrees" / "supervisor" / "done-worker-12345678"
+    done_worktree.mkdir(parents=True)
+    _write_managed_record(
+        codex_home,
+        record_id="managed-done",
+        name="done-worker",
+        cwd=done_worktree,
+        protocol_status="done",
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.collect_integration_reviews",
+        lambda *, codex_home, base_ref, include_unfinished, **kwargs: _integration_payload(
+            ready_to_integrate=[],
+            already_integrated=[
+                {
+                    "record_id": "managed-done",
+                    "name": "done-worker",
+                    "group": "already_integrated",
+                }
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.flow._git_branch_for",
+        lambda cwd: None,
+    )
+
+    exit_code = supervisor_main(
+        [
+            "loop",
+            "--codex-home",
+            str(codex_home),
+            "--iterations",
+            "1",
+            "--interval",
+            "1",
+            "--no-auto-adopt",
+            "--lifecycle-cleanup-execute",
+            "--json",
+        ]
+    )
+
+    assert exit_code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["worker_lifecycle_execution"]["kind"] == "archive_cleanup"
+    assert payload["executed"]["kind"] == "archive_cleanup"
+    assert payload["executed"]["archived"][0]["managed"]["record_id"] == "managed-done"
+
+    registry_events = _registry_events(codex_home)
+    archived_names = [
+        item["name"] for item in registry_events if item.get("status") == "archived"
+    ]
+    assert archived_names == ["done-worker"]
+
+
 def test_auto_archive_merge_cleanup_targets_source_record_id_when_names_repeat(tmp_path):
     codex_home = tmp_path / ".codex"
     workspace = tmp_path / "workspace"

@@ -13,26 +13,51 @@ class WorkerLifecycleExecutionPlan:
     source: str
     next_step: str
     status: str
-    merge_dispatch: dict[str, Any]
+    merge_dispatch: dict[str, Any] | None = None
+    cleanup_candidates: tuple[dict[str, Any], ...] = ()
+    delete_worktree_actions: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "kind": self.kind,
             "source": self.source,
             "next_step": self.next_step,
             "status": self.status,
-            "merge_dispatch": dict(self.merge_dispatch),
         }
+        if self.merge_dispatch is not None:
+            payload["merge_dispatch"] = dict(self.merge_dispatch)
+        if self.cleanup_candidates:
+            payload["cleanup_candidates"] = [
+                dict(candidate) for candidate in self.cleanup_candidates
+            ]
+        if self.delete_worktree_actions:
+            payload["delete_worktree_actions"] = [
+                dict(action) for action in self.delete_worktree_actions
+            ]
+        return payload
 
 
 def build_worker_lifecycle_execution_plan(
     *,
     worker_lifecycle_decision: Mapping[str, Any] | None,
     merge_dispatch: Mapping[str, Any] | None = None,
+    cleanup_candidates: list[dict[str, Any]] | None = None,
+    delete_worktree_candidates: list[dict[str, Any]] | None = None,
 ) -> WorkerLifecycleExecutionPlan | None:
     if not _is_program_resolved_lifecycle_decision(worker_lifecycle_decision):
         return None
+    program_action = _program_action(worker_lifecycle_decision)
+    if worker_lifecycle_decision.get("next_step") == "archive_worker":
+        if program_action != "archive_integrated":
+            return None
+        return _archive_cleanup_plan(cleanup_candidates)
+    if worker_lifecycle_decision.get("next_step") == "cleanup_worktree":
+        if program_action != "archive_integrated":
+            return None
+        return _cleanup_worktree_plan(delete_worktree_candidates)
     if worker_lifecycle_decision.get("next_step") != "launch_merge_worker":
+        return None
+    if program_action != "dispatch_merge":
         return None
     if not isinstance(merge_dispatch, Mapping):
         return None
@@ -49,6 +74,26 @@ def build_worker_lifecycle_execution_plan(
 
 
 def worker_lifecycle_execution_action(plan: Mapping[str, Any]) -> dict[str, Any]:
+    if plan.get("kind") == "archive_cleanup":
+        candidates = _mapping_list(plan.get("cleanup_candidates"))
+        first = candidates[0] if candidates else {}
+        return {
+            "kind": "archive_cleanup",
+            "source": "worker_lifecycle",
+            "count": len(candidates),
+            "target_name": first.get("name"),
+            "record_id": first.get("record_id"),
+        }
+    if plan.get("kind") == "cleanup_worktree":
+        actions = _mapping_list(plan.get("delete_worktree_actions"))
+        first = actions[0] if actions else {}
+        return {
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "count": len(actions),
+            "target_name": first.get("target_name"),
+            "record_id": first.get("record_id"),
+        }
     merge_dispatch = _merge_dispatch(plan)
     if plan.get("kind") != "merge_dispatch" or merge_dispatch is None:
         return {
@@ -80,6 +125,22 @@ def worker_lifecycle_execution_action(plan: Mapping[str, Any]) -> dict[str, Any]
 def worker_lifecycle_execution_planned_executed(
     plan: Mapping[str, Any],
 ) -> dict[str, Any]:
+    if plan.get("kind") == "archive_cleanup":
+        return {
+            "kind": "archive_cleanup",
+            "source": "worker_lifecycle",
+            "skipped": True,
+            "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+            "count": len(_mapping_list(plan.get("cleanup_candidates"))),
+        }
+    if plan.get("kind") == "cleanup_worktree":
+        return {
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "skipped": True,
+            "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+            "count": len(_mapping_list(plan.get("delete_worktree_actions"))),
+        }
     action = worker_lifecycle_execution_action(plan)
     if plan.get("status") == "worker_already_running":
         action["skipped"] = True
@@ -112,12 +173,82 @@ def _is_program_resolved_lifecycle_decision(
     policy = worker_lifecycle_decision.get("policy")
     if not isinstance(policy, Mapping):
         return False
-    return (
-        policy.get("policy_status") == "program_resolved"
-        and policy.get("program_action") == "dispatch_merge"
-    )
+    return policy.get("policy_status") == "program_resolved"
+
+
+def _program_action(worker_lifecycle_decision: Mapping[str, Any]) -> Any:
+    policy = worker_lifecycle_decision.get("policy")
+    return policy.get("program_action") if isinstance(policy, Mapping) else None
 
 
 def _merge_dispatch(plan: Mapping[str, Any]) -> dict[str, Any] | None:
     merge_dispatch = plan.get("merge_dispatch")
     return dict(merge_dispatch) if isinstance(merge_dispatch, Mapping) else None
+
+
+def _archive_cleanup_plan(
+    cleanup_candidates: list[dict[str, Any]] | None,
+) -> WorkerLifecycleExecutionPlan | None:
+    candidates = tuple(
+        dict(candidate)
+        for candidate in cleanup_candidates or []
+        if candidate.get("kind") == "managed_worker"
+        and isinstance(candidate.get("name"), str)
+        and isinstance(candidate.get("record_id"), str)
+    )
+    if not candidates:
+        return None
+    return WorkerLifecycleExecutionPlan(
+        kind="archive_cleanup",
+        source="worker_lifecycle",
+        next_step="archive_worker",
+        status="ready_to_archive",
+        cleanup_candidates=candidates,
+    )
+
+
+def _cleanup_worktree_plan(
+    delete_worktree_candidates: list[dict[str, Any]] | None,
+) -> WorkerLifecycleExecutionPlan | None:
+    actions = tuple(
+        action
+        for candidate in delete_worktree_candidates or []
+        for action in (_delete_worktree_action(candidate),)
+        if action is not None
+    )
+    if not actions:
+        return None
+    return WorkerLifecycleExecutionPlan(
+        kind="cleanup_worktree",
+        source="worker_lifecycle",
+        next_step="cleanup_worktree",
+        status="ready_to_delete",
+        delete_worktree_actions=actions,
+    )
+
+
+def _delete_worktree_action(candidate: Mapping[str, Any]) -> dict[str, Any] | None:
+    target_name = candidate.get("target_name") or candidate.get("name")
+    record_id = candidate.get("record_id")
+    if not isinstance(target_name, str) or not target_name:
+        return None
+    if not isinstance(record_id, str) or not record_id:
+        return None
+    if candidate.get("archived") is not True:
+        return None
+    if candidate.get("integration_group") != "already_integrated":
+        return None
+    return {
+        "kind": "delete_worktree",
+        "target_name": target_name,
+        "record_id": record_id,
+        "confirm_delete_worktree": True,
+        "base_ref": str(candidate.get("base_ref") or "main"),
+        "source": "worker_lifecycle",
+    }
+
+
+def _mapping_list(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [dict(item) for item in value if isinstance(item, Mapping)]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from isotope.features.supervisor.lifecycle import (
@@ -82,14 +83,40 @@ def append_supervise_planning_payload(
         )
     if merge_dispatch is not None:
         payload["merge_dispatch"] = merge_dispatch
+    lifecycle_can_consume_cleanup = (
+        allows_llm
+        and not fanout_paused
+        and worker_role_guard is None
+        and fanout_plan is None
+    )
+    cleanup_candidates = (
+        api._cleanup_candidate_dicts(Path(args.codex_home))
+        if lifecycle_can_consume_cleanup
+        else None
+    )
+    delete_worktree_candidates = (
+        api._delete_worktree_candidate_payloads(args)
+        if lifecycle_can_consume_cleanup
+        else None
+    )
+    integration_review = (
+        merge_dispatch.get("integration_review")
+        if isinstance(merge_dispatch, dict)
+        else None
+    )
+    if lifecycle_can_consume_cleanup and integration_review is None:
+        integration_review = api.collect_integration_reviews(
+            codex_home=Path(args.codex_home),
+            base_ref="main",
+            include_unfinished=False,
+            run_test_gate=False,
+            run_candidate_validation=False,
+        )
     lifecycle_decision = build_worker_lifecycle_decision(
         worker_reviews=worker_reviews,
-        integration_review=(
-            merge_dispatch.get("integration_review")
-            if isinstance(merge_dispatch, dict)
-            else None
-        ),
+        integration_review=integration_review,
         merge_dispatch=merge_dispatch,
+        cleanup_candidates=cleanup_candidates,
         cleanup_archived=(
             payload.get("cleanup_archived")
             if isinstance(payload.get("cleanup_archived"), list)
@@ -105,6 +132,8 @@ def append_supervise_planning_payload(
     lifecycle_execution_plan = build_worker_lifecycle_execution_plan(
         worker_lifecycle_decision=lifecycle_decision,
         merge_dispatch=merge_dispatch,
+        cleanup_candidates=cleanup_candidates,
+        delete_worktree_candidates=delete_worktree_candidates,
     )
     lifecycle_execution = (
         lifecycle_execution_plan.to_dict()
@@ -126,6 +155,8 @@ def append_supervise_planning_payload(
             lifecycle_execution_plan = build_worker_lifecycle_execution_plan(
                 worker_lifecycle_decision=lifecycle_decision,
                 merge_dispatch=merge_dispatch,
+                cleanup_candidates=cleanup_candidates,
+                delete_worktree_candidates=delete_worktree_candidates,
             )
             lifecycle_execution = (
                 lifecycle_execution_plan.to_dict()
