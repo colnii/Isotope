@@ -136,10 +136,7 @@ def resolve_workbench_ask_provider_from_env(
     codex_executable_resolver: Callable[[str], str | None] = shutil.which,
 ) -> PooledWorkbenchAskProvider:
     env = dict(os.environ if environ is None else environ)
-    if (
-        "ISOTOPE_LLM_POOL_TOML_FILES" in env
-        and "SUPERVISOR_LLM_POOL_TOML_FILES" not in env
-    ):
+    if "ISOTOPE_LLM_POOL_TOML_FILES" in env:
         env["SUPERVISOR_LLM_POOL_TOML_FILES"] = env["ISOTOPE_LLM_POOL_TOML_FILES"]
     entries = resolve_pool_entries_from_env(
         env,

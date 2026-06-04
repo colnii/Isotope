@@ -150,6 +150,59 @@ def test_workbench_ask_pool_provider_reports_missing_entries(tmp_path):
         )
 
 
+def test_workbench_ask_pool_provider_prefers_isotope_env_over_supervisor_env(tmp_path):
+    ask_path = tmp_path / "ask.toml"
+    supervisor_path = tmp_path / "supervisor.toml"
+    ask_path.write_text(
+        """\
+[[keys]]
+provider = "ask-provider"
+base_url = "https://api.ask.example.com"
+model = "ask-model"
+api_keys = ["env:ASK_KEY"]
+""",
+        encoding="utf-8",
+    )
+    supervisor_path.write_text(
+        """\
+[[keys]]
+provider = "supervisor-provider"
+base_url = "https://api.supervisor.example.com"
+model = "supervisor-model"
+api_keys = ["env:SUPERVISOR_KEY"]
+""",
+        encoding="utf-8",
+    )
+    captured: dict[str, Any] = {}
+
+    def transport(
+        url: str,
+        payload: dict[str, Any],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> dict[str, Any]:
+        captured["url"] = url
+        captured["payload"] = payload
+        return {"choices": [{"message": {"content": "ask answer"}}]}
+
+    provider = resolve_workbench_ask_provider_from_env(
+        {
+            "ISOTOPE_LLM_POOL_TOML_FILES": str(ask_path),
+            "SUPERVISOR_LLM_POOL_TOML_FILES": str(supervisor_path),
+            "ASK_KEY": "sk-ask",
+            "SUPERVISOR_KEY": "sk-supervisor",
+        },
+        transport=transport,
+    )
+
+    response = provider.generate([{"role": "user", "content": "下一步做什么？"}])
+
+    assert response.provider == "ask-provider"
+    assert response.model == "ask-model"
+    assert captured["url"] == "https://api.ask.example.com/chat/completions"
+    assert captured["payload"]["model"] == "ask-model"
+
+
 def test_workbench_ask_pool_provider_uses_codex_entry_without_api_key(tmp_path):
     toml_path = tmp_path / "pool.toml"
     toml_path.write_text(
