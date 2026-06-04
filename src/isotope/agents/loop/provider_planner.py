@@ -39,6 +39,7 @@ def run_agent_loop_provider_planner_tick(
     decision_id: str,
     tick_budget: dict[str, Any] | None = None,
     user_pause: dict[str, Any] | None = None,
+    capability_system_inputs: dict[str, Any] | None = None,
     max_tokens: int = 512,
 ) -> dict[str, Any]:
     """Ask a provider for one planner decision, then execute it through loop contracts."""
@@ -82,6 +83,10 @@ def run_agent_loop_provider_planner_tick(
         tick_id=tick_id,
         decision_id=decision_id,
         max_tokens=max_tokens,
+    )
+    provider_result = _attach_capability_system_inputs(
+        provider_result,
+        capability_system_inputs,
     )
     contract_result = api.run_agent_loop_real_planner_contract_step(run_id, provider_result)
     after_policy = api.get_agent_loop_tick_policy(
@@ -224,6 +229,27 @@ def _parsed_planner_output(
             "request": deepcopy(request),
         },
     }
+
+
+def _attach_capability_system_inputs(
+    provider_result: dict[str, Any],
+    system_inputs: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not system_inputs:
+        return provider_result
+    result = deepcopy(provider_result)
+    parsed = result.get("parsed_planner_output")
+    if not isinstance(parsed, dict):
+        return result
+    decision = parsed.get("decision")
+    if not isinstance(decision, dict) or decision.get("step") != "call_capability":
+        return result
+    parsed["_private_system_inputs"] = {
+        key: value
+        for key, value in system_inputs.items()
+        if isinstance(key, str)
+    }
+    return result
 
 
 def _extract_json_object(text: str) -> dict[str, Any]:

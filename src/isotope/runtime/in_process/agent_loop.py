@@ -97,6 +97,7 @@ class InProcessAgentLoopMixin:
         decision_id: str,
         tick_budget: dict[str, Any] | None = None,
         user_pause: dict[str, Any] | None = None,
+        capability_system_inputs: dict[str, Any] | None = None,
         max_tokens: int = 512,
     ) -> dict[str, Any]:
         return run_agent_loop_provider_planner_tick(
@@ -108,6 +109,7 @@ class InProcessAgentLoopMixin:
             decision_id=decision_id,
             tick_budget=tick_budget,
             user_pause=user_pause,
+            capability_system_inputs=capability_system_inputs,
             max_tokens=max_tokens,
         )
 

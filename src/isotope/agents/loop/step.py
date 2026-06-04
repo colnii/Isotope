@@ -10,7 +10,7 @@ from typing import Any
 
 from .loop_engine import LoopEngine, LoopStepContext
 from ...platform.ids import new_id
-from ...platform.schemas.input_contract import contract_properties
+from ...platform.schemas.input_contract import contract_properties, system_contract_keys
 from ...platform.schemas.refs import ResourceRef
 
 
@@ -132,14 +132,31 @@ def _capability_inputs_for_agent_loop(
     request: dict[str, Any],
 ) -> dict[str, Any]:
     inputs = _optional_dict(request, "inputs") or {}
+    request_system_inputs = _optional_dict(request, "_system_inputs") or {}
     capability = runner.describe_capability(capability_id)
-    properties = contract_properties(capability.get("input_contract", {}))
-    system_inputs: dict[str, str] = {}
-    if "run_id" in properties:
+    input_contract = capability.get("input_contract", {})
+    properties = contract_properties(input_contract)
+    system_keys = set(system_contract_keys(input_contract))
+    system_inputs: dict[str, Any] = {
+        key: value
+        for key, value in request_system_inputs.items()
+        if key in system_keys
+    }
+    if "run_id" in properties or "run_id" in system_keys:
         system_inputs["run_id"] = run_id
-    if "execution_id" in properties:
+    if "execution_id" in properties or "execution_id" in system_keys:
         system_inputs["execution_id"] = new_id("exec")
-    return {**system_inputs, **inputs}
+    if "workspace_id" in system_keys and "workspace_id" not in system_inputs:
+        system_inputs["workspace_id"] = (
+            "workspace_coding_task_run_"
+            + new_id("workspace").split("_", 1)[-1]
+        )
+    model_inputs = {
+        key: value
+        for key, value in inputs.items()
+        if key not in system_inputs
+    }
+    return {**model_inputs, **system_inputs}
 
 
 def _capability_run_root(api: Any, run_id: str, capability_id: str) -> Path:

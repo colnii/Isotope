@@ -128,6 +128,26 @@ def test_planner_step_adapter_can_select_capability_call_through_step_driver(tmp
     _assert_no_forbidden_content_keys(result)
 
 
+def test_planner_step_adapter_rejects_model_authored_system_inputs(tmp_path):
+    api, run_id = _new_run(tmp_path)
+    control = api.get_agent_loop_control(run_id)
+    output = _planner_output(
+        control,
+        "call_capability",
+        {
+            "capability_id": "code.search",
+            "inputs": {"query": "value"},
+            "_system_inputs": {"root": "/model/root", "cwd": "/model/cwd"},
+        },
+    )
+    before_events = list(api.get_events(run_id))
+
+    with pytest.raises(ValueError, match="private system inputs"):
+        api.run_agent_loop_planner_step(run_id, output)
+
+    assert api.get_events(run_id) == before_events
+
+
 def test_planner_step_adapter_can_resume_approval_after_restart(tmp_path):
     api, run_id = _new_run(tmp_path)
     pending = api.run_agent_loop_step(

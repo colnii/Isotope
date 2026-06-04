@@ -38,10 +38,15 @@ def run_agent_loop_planner_step(api: Any, run_id: str, planner_output: dict[str,
     if not isinstance(request, dict):
         raise ValueError("planner decision request must be a dict")
     request = deepcopy(request)
+    if "_system_inputs" in request:
+        raise ValueError("planner request may not provide private system inputs")
     requested_step = request.get("step")
     if requested_step is not None and requested_step != step:
         raise ValueError("planner decision step does not match request step")
     request["step"] = step
+    private_system_inputs = planner_output.get("_private_system_inputs")
+    if isinstance(private_system_inputs, dict) and step == "call_capability":
+        request["_system_inputs"] = deepcopy(private_system_inputs)
 
     step_result = api.run_agent_loop_step(run_id, request)
     return {

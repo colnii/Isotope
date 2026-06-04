@@ -206,6 +206,66 @@ def test_agent_loop_step_driver_passes_inputs_to_capability_runner(tmp_path):
     _assert_no_forbidden_content_keys(result)
 
 
+def test_agent_loop_step_uses_internal_system_inputs_and_ignores_model_routing(
+    tmp_path,
+    monkeypatch,
+):
+    api, run_id = _new_run(tmp_path)
+    captured: dict[str, Any] = {}
+
+    class RecordingRunner:
+        def describe_capability(self, capability_id: str) -> dict[str, Any]:
+            return {
+                "input_contract": {
+                    "type": "object",
+                    "required": ["root", "cwd", "query"],
+                    "properties": {
+                        "query": {"type": "string"},
+                        "root": {"type": "string", "x-system-input": True},
+                        "cwd": {"type": "string", "x-system-input": True},
+                        "run_id": {"type": "string", "x-system-input": True},
+                        "execution_id": {"type": "string", "x-system-input": True},
+                    },
+                }
+            }
+
+        def run_capability(self, capability_id: str, *, root_path, inputs):
+            captured["inputs"] = dict(inputs)
+            return {
+                "kind": "capability_run_result",
+                "capability_id": capability_id,
+                "status": "completed",
+            }
+
+    monkeypatch.setattr(
+        "isotope.capabilities.runner.CapabilityRunner",
+        lambda: RecordingRunner(),
+    )
+
+    api.run_agent_loop_step(
+        run_id,
+        {
+            "step": "call_capability",
+            "capability_id": "code.search",
+            "inputs": {
+                "query": "value",
+                "root": "/model/must/not/win",
+                "cwd": "/model/must/not/win",
+            },
+            "_system_inputs": {
+                "root": str(tmp_path / "state"),
+                "cwd": str(tmp_path / "repo"),
+            },
+        },
+    )
+
+    assert captured["inputs"]["query"] == "value"
+    assert captured["inputs"]["root"] == str(tmp_path / "state")
+    assert captured["inputs"]["cwd"] == str(tmp_path / "repo")
+    assert captured["inputs"]["run_id"] == run_id
+    assert captured["inputs"]["execution_id"].startswith("exec_")
+
+
 def test_agent_loop_step_driver_rejects_unavailable_step_without_side_effects(tmp_path):
     api, run_id = _new_run(tmp_path)
     before_events = list(api.get_events(run_id))

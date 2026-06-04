@@ -147,6 +147,78 @@ def test_provider_planner_tick_runs_deterministic_provider_through_tick_executio
     _assert_no_forbidden_provider_keys(result)
 
 
+def test_provider_planner_adds_system_inputs_to_execution_not_prompt(
+    tmp_path,
+    monkeypatch,
+):
+    api, run_id = _new_run(tmp_path)
+    control = api.get_agent_loop_control(run_id)
+    captured: dict[str, Any] = {}
+
+    class RecordingRunner:
+        def describe_capability(self, capability_id: str) -> dict[str, Any]:
+            return {
+                "input_contract": {
+                    "type": "object",
+                    "required": ["root", "cwd", "query"],
+                    "properties": {
+                        "query": {"type": "string"},
+                        "root": {"type": "string", "x-system-input": True},
+                        "cwd": {"type": "string", "x-system-input": True},
+                    },
+                }
+            }
+
+        def run_capability(self, capability_id: str, *, root_path, inputs):
+            captured["inputs"] = dict(inputs)
+            return {
+                "kind": "capability_run_result",
+                "capability_id": capability_id,
+                "status": "completed",
+            }
+
+    monkeypatch.setattr(
+        "isotope.capabilities.runner.CapabilityRunner",
+        lambda: RecordingRunner(),
+    )
+    provider = DeterministicPlannerProvider(
+        json.dumps(
+            {
+                "planner_run_id": "planner-1",
+                "basis": {
+                    "run_id": run_id,
+                    "last_event_id": control["last_event_id"],
+                },
+                "decision": {
+                    "step": "call_capability",
+                    "request": {
+                        "capability_id": "code.search",
+                        "inputs": {"query": "value"},
+                    },
+                },
+            }
+        )
+    )
+
+    api.run_agent_loop_provider_planner_tick(
+        run_id,
+        provider=provider,
+        agent_id="agent-coding",
+        tick_id="tick-coding-1",
+        decision_id="decision-coding-1",
+        capability_system_inputs={
+            "root": str(tmp_path / "state"),
+            "cwd": str(tmp_path / "repo"),
+        },
+    )
+
+    prompt = provider.calls[0]["messages"][1]["content"]
+    assert str(tmp_path / "state") not in prompt
+    assert str(tmp_path / "repo") not in prompt
+    assert captured["inputs"]["root"] == str(tmp_path / "state")
+    assert captured["inputs"]["cwd"] == str(tmp_path / "repo")
+
+
 def test_provider_planner_tick_rejects_bad_json_without_side_effects(tmp_path):
     api, run_id = _new_run(tmp_path)
     provider = DeterministicPlannerProvider("not-json")
