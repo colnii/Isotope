@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ...llm.provider import resolve_llm_chat_provider
 from .beta_check import QQBetaCheckConfig, check_qq_beta_pack
 from .character_card import CharacterCard
 from .stickers import StickerLibrary
@@ -59,6 +60,7 @@ def check_qq_startup_gate(config: QQStartupGateConfig) -> QQStartupGateResult:
         _check_beta_pack(pack_dir),
         _check_profile_assets(config_payload, base_dir=pack_dir),
         _check_sticker_assets(config_payload, base_dir=pack_dir),
+        _check_llm_reply_provider(config_payload),
         _check_replay_report(
             config.replay_report,
             min_sticker_candidates=config.min_sticker_candidates,
@@ -146,6 +148,42 @@ def _check_sticker_assets(payload: dict[str, Any], *, base_dir: Path) -> dict[st
         "entry_count": len(library.entries),
         "media_entry_count": len(media_entries),
         "errors": errors,
+    }
+
+
+def _check_llm_reply_provider(payload: dict[str, Any]) -> dict[str, Any]:
+    runtime = payload.get("runtime", {})
+    if not isinstance(runtime, dict):
+        return {
+            "name": "llm_reply_provider",
+            "ok": False,
+            "reply_provider": None,
+            "errors": ["runtime must be a JSON object"],
+        }
+    reply_provider = runtime.get("reply_provider", "deterministic")
+    if reply_provider == "deterministic":
+        return {
+            "name": "llm_reply_provider",
+            "ok": True,
+            "reply_provider": "deterministic",
+            "reason_code": "deterministic_reply_provider",
+            "errors": [],
+        }
+    if reply_provider != "llm":
+        return {
+            "name": "llm_reply_provider",
+            "ok": False,
+            "reply_provider": reply_provider,
+            "errors": ["runtime.reply_provider must be deterministic or llm"],
+        }
+    resolution = resolve_llm_chat_provider()
+    return {
+        "name": "llm_reply_provider",
+        "ok": resolution.status == "configured" and resolution.provider is not None,
+        "reply_provider": "llm",
+        "provider_name": resolution.provider_name,
+        "reason_code": resolution.reason_code,
+        "errors": [] if resolution.status == "configured" else [resolution.reason_code],
     }
 
 

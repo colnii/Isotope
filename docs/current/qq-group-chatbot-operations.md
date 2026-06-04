@@ -92,10 +92,13 @@ isotope-social qq startup-check --pack-dir .isotope/qq-beta \
 ```
 
 `ready` must be `true`. The checks are `beta_pack`, `profile_assets`,
-`sticker_assets`, and `replay_report`. If `profile_assets` fails, apply the
-profile pack again. If `replay_report` fails, fix the replay result before
-connecting to OneBot. Generated `dry-run.sh` and `send-run.sh` run
-`startup-check.sh` before the live command.
+`sticker_assets`, `llm_reply_provider`, and `replay_report`. If
+`profile_assets` fails, apply the profile pack again. If `llm_reply_provider`
+fails, either switch the beta config back to `runtime.reply_provider =
+"deterministic"` or configure the shared Isotope LLM provider. If
+`replay_report` fails, fix the replay result before connecting to OneBot.
+Generated `dry-run.sh` and `send-run.sh` run `startup-check.sh` before the live
+command.
 
 ## Inspect
 

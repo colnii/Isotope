@@ -238,6 +238,12 @@ isotope-social qq beta-check --pack-dir ../qq-beta --json
 
 Replace `qq-image://profile/...` media refs with real sendable QQ image refs
 before enabling sticker-heavy behavior in a real group.
+
+The generated beta pack defaults to `runtime.reply_provider = "deterministic"`.
+To use LLM-generated text replies, edit the beta pack `config.json` and set
+`runtime.reply_provider = "llm"` after the shared Isotope LLM provider is
+configured. Run `startup-check.sh` before live dry-run; it blocks missing LLM
+configuration.
 """
 
 

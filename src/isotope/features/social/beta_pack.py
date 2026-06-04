@@ -297,6 +297,9 @@ def _config_payload(config: QQBetaPackConfig) -> dict[str, Any]:
             "paused_groups": [],
             "default_dry_run": True,
         },
+        "runtime": {
+            "reply_provider": "deterministic",
+        },
         "role_card": _role_card(),
         "sticker_library": {"entries": []},
     }
@@ -383,6 +386,10 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 Automated scripts start in dry-run. `send-run.sh` refuses to send unless
 `ISOTOPE_QQ_ENABLE_SEND=1` is set for that command. `dry-run.sh` and
 `send-run.sh` both run `startup-check.sh` before connecting to OneBot.
+The generated `config.json` defaults to `runtime.reply_provider = "deterministic"`
+for stable replay output. To use LLM-generated text replies, change it to
+`runtime.reply_provider = "llm"` and configure the shared Isotope LLM provider;
+`startup-check.sh` will block if the LLM provider is missing.
 `review-dry-run.sh` only writes a review report; it does not enable sends.
 `beta-day-report.sh` combines the dry-run review, exported audit log, and
 `logs/failures.json`; it does not enable sends.

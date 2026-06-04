@@ -39,6 +39,9 @@ Keep the runtime config equivalent to this shape:
     "paused_groups": [],
     "default_dry_run": true
   },
+  "runtime": {
+    "reply_provider": "deterministic"
+  },
   "role_card_path": "tests/fixtures/social/character_cards/qq_helper.json",
   "sticker_library_path": "tests/fixtures/social/stickers/engineering.json"
 }
@@ -116,9 +119,11 @@ isotope-social qq startup-check --pack-dir .isotope/qq-beta \
 ```
 
 The result must show `ready: true`. The check names are `beta_pack`,
-`profile_assets`, `sticker_assets`, and `replay_report`. A blocked result means
-the generated `dry-run.sh` and `send-run.sh` will stop before connecting to
-OneBot.
+`profile_assets`, `sticker_assets`, `llm_reply_provider`, and
+`replay_report`. A blocked result means the generated `dry-run.sh` and
+`send-run.sh` will stop before connecting to OneBot. `llm_reply_provider` passes
+without model configuration when `runtime.reply_provider` is `deterministic`;
+when it is `llm`, the shared Isotope LLM provider must resolve successfully.
 
 ## Run
 

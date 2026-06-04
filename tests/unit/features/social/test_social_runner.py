@@ -5,9 +5,14 @@ from pathlib import Path
 import subprocess
 import tomllib
 
-from isotope.features.social import CharacterCard, StickerLibrary, qq_runtime_commands
-from isotope.llm.provider import LLMProviderResolution
+from isotope.features.social import (
+    CharacterCard,
+    StickerLibrary,
+    qq_runtime_commands,
+    startup_gate,
+)
 from isotope.features.social.runner import main
+from isotope.llm.provider import LLMProviderResolution
 from tests.unit.features.social.test_character_card import _card_dict
 
 
@@ -900,10 +905,13 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert config["group_policy"]["allowed_groups"] == ["99999"]
     assert config["group_policy"]["operator_user_ids"] == ["op"]
     assert config["dry_run"] is True
+    assert config["runtime"]["reply_provider"] == "deterministic"
     assert (output_dir / "state").is_dir()
     assert (output_dir / "logs").is_dir()
     assert (output_dir / "regressions").is_dir()
-    assert "First run order" in (output_dir / "README.md").read_text(encoding="utf-8")
+    readme = (output_dir / "README.md").read_text(encoding="utf-8")
+    assert "First run order" in readme
+    assert 'runtime.reply_provider = "llm"' in readme
 
     health = (output_dir / "health.sh").read_text(encoding="utf-8")
     assert "live-run" in health
@@ -1122,7 +1130,9 @@ def test_social_runner_qq_init_profile_writes_editable_role_and_stickers(
         "calm-down",
     ]
     assert stickers.entries[0].allowed_groups == ("99999",)
-    assert "apply-profile" in (profile_dir / "README.md").read_text(encoding="utf-8")
+    profile_readme = (profile_dir / "README.md").read_text(encoding="utf-8")
+    assert "apply-profile" in profile_readme
+    assert 'runtime.reply_provider = "llm"' in profile_readme
 
 
 def test_social_runner_qq_apply_profile_updates_beta_config_and_beta_check(
@@ -1189,6 +1199,7 @@ def test_social_runner_qq_apply_profile_updates_beta_config_and_beta_check(
     config = _read_json(beta_dir / "config.json")
     assert config["role_card_path"] == "../qq-profile/role-card.json"
     assert config["sticker_library_path"] == "../qq-profile/sticker-library.json"
+    assert config["runtime"]["reply_provider"] == "deterministic"
     assert "role_card" not in config
     assert "sticker_library" not in config
     assert (beta_dir / "config.before-profile.json").exists()
@@ -1243,9 +1254,50 @@ def test_social_runner_qq_startup_check_passes_after_profile_and_replay(
         "beta_pack",
         "profile_assets",
         "sticker_assets",
+        "llm_reply_provider",
         "replay_report",
     ]
     assert all(check["ok"] for check in payload["checks"])
+
+
+def test_social_runner_qq_startup_check_blocks_llm_reply_without_provider(
+    tmp_path: Path,
+    capsys,
+    monkeypatch,
+) -> None:
+    beta_dir, report_path = _prepare_profiled_replay_pack(tmp_path, capsys)
+    config_path = beta_dir / "config.json"
+    config = _read_json(config_path)
+    config["runtime"]["reply_provider"] = "llm"
+    _write_json(config_path, config)
+    monkeypatch.setattr(
+        startup_gate,
+        "resolve_llm_chat_provider",
+        lambda: LLMProviderResolution(
+            status="missing_configuration",
+            reason_code="llm_provider_not_configured",
+            provider_name="auto",
+        ),
+    )
+
+    code = main(
+        [
+            "qq",
+            "startup-check",
+            "--pack-dir",
+            str(beta_dir),
+            "--replay-report",
+            str(report_path),
+            "--json",
+        ]
+    )
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "blocked"
+    failed = [check for check in payload["checks"] if not check["ok"]]
+    assert [check["name"] for check in failed] == ["llm_reply_provider"]
+    assert failed[0]["reason_code"] == "llm_provider_not_configured"
 
 
 def test_social_runner_qq_startup_check_blocks_missing_profile_and_replay(
