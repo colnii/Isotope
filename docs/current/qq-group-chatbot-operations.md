@@ -36,8 +36,9 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 ```
 
 The pack writes `health.sh`, `startup-check.sh`, `dry-run.sh`,
-`review-dry-run.sh`, `send-run.sh`, `pause.sh`, `resume.sh`, and
-`export-log.sh`. Run `send-run.sh` only with `ISOTOPE_QQ_ENABLE_SEND=1`.
+`review-dry-run.sh`, `beta-day-report.sh`, `send-run.sh`, `pause.sh`,
+`resume.sh`, and `export-log.sh`. It also writes `logs/failures.json`. Run
+`send-run.sh` only with `ISOTOPE_QQ_ENABLE_SEND=1`.
 
 Generate an editable profile pack and apply it to the beta pack before checking
 or running it:
@@ -124,6 +125,14 @@ isotope-social qq startup-check --pack-dir .isotope/qq-beta \
   --replay-report .isotope/qq-beta/logs/replay-report.json --json
 isotope-social qq review-dry-run --state-root .isotope/qq-beta/state \
   --group <group_id> --output .isotope/qq-beta/logs/dry-run-review.json --json
+isotope-social qq export-log --state-root .isotope/qq-beta/state \
+  --group <group_id> --output .isotope/qq-beta/logs/qq-<group_id>.json --json
+isotope-social qq beta-day-report --date 2026-06-04 \
+  --group <group_id> \
+  --dry-run-review .isotope/qq-beta/logs/dry-run-review.json \
+  --export-log .isotope/qq-beta/logs/qq-<group_id>.json \
+  --failures-json .isotope/qq-beta/logs/failures.json \
+  --output .isotope/qq-beta/logs/beta-day-report.json --json
 isotope-social qq inspect role --config-json config.json
 isotope-social qq inspect lorebook --config-json config.json
 isotope-social qq inspect stickers --config-json config.json
@@ -195,6 +204,34 @@ Before enabling sends, review:
 sends still require the operator to inspect warnings and manually set
 `ISOTOPE_QQ_ENABLE_SEND=1`.
 
+## Beta Day Report
+
+At the end of each dry-run or send-enabled beta day, export the group audit log,
+record any observed failures in `failures.json`, then write the daily report:
+
+```bash
+isotope-social qq export-log --state-root .isotope/qq-beta/state \
+  --group <group_id> --output .isotope/qq-beta/logs/qq-<group_id>.json --json
+isotope-social qq beta-day-report --date 2026-06-04 \
+  --group <group_id> \
+  --dry-run-review .isotope/qq-beta/logs/dry-run-review.json \
+  --export-log .isotope/qq-beta/logs/qq-<group_id>.json \
+  --failures-json .isotope/qq-beta/logs/failures.json \
+  --output .isotope/qq-beta/logs/beta-day-report.json --json
+```
+
+For generated packs, the same flow is:
+
+```bash
+./export-log.sh
+./beta-day-report.sh
+```
+
+`beta-day-report.json` contains `review_warnings`, audit counts,
+`open_failure_count`, and `next_actions`. Treat `open_failure_count > 0` as
+unfinished product work: fix the behavior, add or update regression tests, then
+close the failure entry.
+
 To enable real sends in the controlled group, use the same live command with
 `--send`:
 
@@ -205,8 +242,36 @@ isotope-social qq live-run --config-json config.json --state-root .isotope/qq \
 
 ## Failure Log
 
-No real beta failures are recorded yet in this branch. Once beta starts, each
-failure entry must use this format:
+The generated pack initializes `logs/failures.json` as:
+
+```json
+{
+  "failures": []
+}
+```
+
+Once beta starts, each failure entry should use this JSON shape:
+
+```json
+{
+  "failures": [
+    {
+      "date": "2026-06-04",
+      "group": "<group_id>",
+      "status": "open",
+      "symptom": "表情包语气太像公告",
+      "observed_input": "...",
+      "decision_log_entry": "...",
+      "send_or_capability_log_entry": "...",
+      "root_cause": "...",
+      "fix": "...",
+      "regression_test": "tests/integration/social/test_social_fake_platform_flow.py"
+    }
+  ]
+}
+```
+
+If you keep a text note while debugging, preserve these fields:
 
 ```text
 Date:
@@ -243,7 +308,13 @@ Run this checklist for each controlled beta day:
 - Run `./health.sh` before consuming messages.
 - Start in dry-run and review at least five representative messages.
 - Run `qq review-dry-run` or `./review-dry-run.sh` and inspect warnings.
-- Enable sends only after dry-run decisions look correct.
+- Run `qq export-log` or `./export-log.sh`.
+- Record observed failures in `logs/failures.json`.
+- Run `qq beta-day-report` or `./beta-day-report.sh`.
+- Inspect `beta-day-report.json`, especially `open_failure_count` and
+  `next_actions`.
+- Enable sends only after dry-run decisions look correct and the report has no
+  unresolved failures.
 - Check health and adapter state at least once per session.
 - Inspect role card and sticker library after any config change.
 - Confirm no duplicate message IDs created duplicate replies.

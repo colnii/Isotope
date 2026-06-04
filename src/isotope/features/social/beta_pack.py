@@ -10,6 +10,7 @@ from typing import Any
 
 
 SCRIPT_NAMES = (
+    "beta-day-report.sh",
     "health.sh",
     "startup-check.sh",
     "dry-run.sh",
@@ -74,6 +75,12 @@ def create_qq_beta_pack(config: QQBetaPackConfig) -> QQBetaPackResult:
     logs_dir = output_dir / "logs"
     state_dir.mkdir(exist_ok=True)
     logs_dir.mkdir(exist_ok=True)
+    failures_path = logs_dir / "failures.json"
+    if not failures_path.exists():
+        failures_path.write_text(
+            json.dumps({"failures": []}, ensure_ascii=False, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
 
     config_path = output_dir / "config.json"
     config_path.write_text(
@@ -105,6 +112,9 @@ def _write_script(path: Path, body: str) -> Path:
 
 def _script_body(name: str, config: QQBetaPackConfig) -> str:
     common = _common_env(config)
+    if name == "beta-day-report.sh":
+        command = _beta_day_report_command(config)
+        return f"{common}\n{command}\n"
     if name == "health.sh":
         command = _live_run_command(config, max_events=0, send=False)
         return f"{common}\n{command}\n"
@@ -221,8 +231,31 @@ def _review_dry_run_command(config: QQBetaPackConfig) -> str:
     return " ".join(shlex.quote(part) for part in parts)
 
 
+def _beta_day_report_command(config: QQBetaPackConfig) -> str:
+    output = f"logs/qq-{config.group_id}.json"
+    parts = [
+        "isotope-social",
+        "qq",
+        "beta-day-report",
+        "--date",
+        '"${ISOTOPE_QQ_BETA_DATE:-$(date +%F)}"',
+        "--group",
+        config.group_id,
+        "--dry-run-review",
+        "logs/dry-run-review.json",
+        "--export-log",
+        output,
+        "--failures-json",
+        "logs/failures.json",
+        "--output",
+        "logs/beta-day-report.json",
+        "--json",
+    ]
+    return " ".join(_quote_command_part(part) for part in parts)
+
+
 def _quote_command_part(part: str) -> str:
-    if part == '"$ONEBOT_ACCESS_TOKEN"':
+    if part in {'"$ONEBOT_ACCESS_TOKEN"', '"${ISOTOPE_QQ_BETA_DATE:-$(date +%F)}"'}:
         return part
     return shlex.quote(part)
 
@@ -303,8 +336,10 @@ OneBot WebSocket: `{config.websocket_url}`
 3. Run `./health.sh`.
 4. Run `./dry-run.sh`.
 5. Run `./review-dry-run.sh` and inspect `logs/dry-run-review.json`.
-6. Inspect `state/social-qq-state.json` and exported logs.
-7. Only after dry-run behavior is acceptable, run:
+6. Run `./export-log.sh`.
+7. Record observed issues in `logs/failures.json`.
+8. Run `./beta-day-report.sh` and inspect `logs/beta-day-report.json`.
+9. Only after dry-run behavior is acceptable, run:
 
 ```bash
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
@@ -315,11 +350,14 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 - Pause the group with `./pause.sh`.
 - Resume with `./resume.sh` only after the issue is understood.
 - Export the audit log with `./export-log.sh`.
+- Write the daily beta report with `./beta-day-report.sh`.
 
 Automated scripts start in dry-run. `send-run.sh` refuses to send unless
 `ISOTOPE_QQ_ENABLE_SEND=1` is set for that command. `dry-run.sh` and
 `send-run.sh` both run `startup-check.sh` before connecting to OneBot.
 `review-dry-run.sh` only writes a review report; it does not enable sends.
+`beta-day-report.sh` combines the dry-run review, exported audit log, and
+`logs/failures.json`; it does not enable sends.
 """
 
 

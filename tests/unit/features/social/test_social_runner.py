@@ -491,6 +491,92 @@ def test_social_runner_qq_review_dry_run_writes_operator_report(
     assert "dry_run_candidates_not_selected" in report["warnings"]
 
 
+def test_social_runner_qq_beta_day_report_combines_review_log_and_failures(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    dry_run_review = _write_json(
+        tmp_path / "dry-run-review.json",
+        {
+            "kind": "qq_dry_run_review",
+            "group_id": "99999",
+            "ready_for_send": False,
+            "summary": {
+                "decision_count": 5,
+                "dry_run_decision_count": 5,
+                "proposed_action_count": 4,
+                "selected_action_count": 0,
+                "rejected_action_count": 4,
+                "sticker_candidate_count": 2,
+                "send_feedback_count": 0,
+            },
+            "warnings": ["dry_run_candidates_not_selected"],
+        },
+    )
+    export_log = _write_json(
+        tmp_path / "qq-99999.json",
+        {
+            "entries": [
+                {"kind": "decision", "group_id": "99999", "payload": {}},
+                {"kind": "decision", "group_id": "99999", "payload": {}},
+                {"kind": "send", "group_id": "99999", "payload": {"status": "failed"}},
+            ]
+        },
+    )
+    failures = _write_json(
+        tmp_path / "failures.json",
+        {
+            "failures": [
+                {
+                    "status": "open",
+                    "symptom": "表情包语气太像公告",
+                    "root_cause": "role-card sticker meaning too broad",
+                    "regression_test": "tests/integration/social/test_social_fake_platform_flow.py",
+                }
+            ]
+        },
+    )
+    output = tmp_path / "beta-day-report.json"
+
+    code = main(
+        [
+            "qq",
+            "beta-day-report",
+            "--date",
+            "2026-06-04",
+            "--group",
+            "99999",
+            "--dry-run-review",
+            str(dry_run_review),
+            "--export-log",
+            str(export_log),
+            "--failures-json",
+            str(failures),
+            "--output",
+            str(output),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "beta-day-report"
+    assert payload["output"] == str(output)
+    assert payload["ready_for_send"] is False
+    assert payload["open_failure_count"] == 1
+    assert payload["summary"]["audit_entry_count"] == 3
+    assert payload["summary"]["decision_count"] == 5
+    assert "resolve_open_failures" in payload["next_actions"]
+
+    report = _read_json(output)
+    assert report["kind"] == "qq_beta_day_report"
+    assert report["date"] == "2026-06-04"
+    assert report["group_id"] == "99999"
+    assert report["review_warnings"] == ["dry_run_candidates_not_selected"]
+    assert report["failures"][0]["symptom"] == "表情包语气太像公告"
+
+
 def test_social_runner_qq_live_run_send_records_feedback(
     tmp_path: Path,
     capsys,
@@ -624,6 +710,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert payload["command"] == "init-beta"
     assert payload["output_dir"] == str(output_dir)
     assert sorted(payload["scripts"]) == [
+        "beta-day-report.sh",
         "dry-run.sh",
         "export-log.sh",
         "health.sh",
@@ -658,6 +745,15 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert "--state-root state" in review
     assert "--group 99999" in review
     assert "--output logs/dry-run-review.json" in review
+
+    beta_day = (output_dir / "beta-day-report.sh").read_text(encoding="utf-8")
+    assert " qq beta-day-report " in beta_day
+    assert 'ISOTOPE_QQ_BETA_DATE:-$(date +%F)' in beta_day
+    assert "--dry-run-review logs/dry-run-review.json" in beta_day
+    assert "--export-log logs/qq-99999.json" in beta_day
+    assert "--failures-json logs/failures.json" in beta_day
+    assert "--output logs/beta-day-report.json" in beta_day
+    assert _read_json(output_dir / "logs" / "failures.json") == {"failures": []}
 
     send_run = (output_dir / "send-run.sh").read_text(encoding="utf-8")
     assert "ISOTOPE_QQ_ENABLE_SEND" in send_run
@@ -718,6 +814,11 @@ def test_social_runner_qq_init_beta_force_overwrites_pack(
     output_dir = tmp_path / "qq-beta"
     output_dir.mkdir()
     (output_dir / "config.json").write_text("{}", encoding="utf-8")
+    (output_dir / "logs").mkdir()
+    existing_failures = _write_json(
+        output_dir / "logs" / "failures.json",
+        {"failures": [{"status": "open", "symptom": "existing issue"}]},
+    )
 
     code = main(
         [
@@ -744,6 +845,7 @@ def test_social_runner_qq_init_beta_force_overwrites_pack(
     assert _read_json(output_dir / "config.json")["group_policy"]["allowed_groups"] == [
         "99999"
     ]
+    assert _read_json(existing_failures)["failures"][0]["symptom"] == "existing issue"
 
 
 def test_social_runner_qq_beta_check_exercises_operator_pack(

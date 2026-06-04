@@ -10,6 +10,11 @@ from typing import Any
 from ...integrations.qq import FakeOneBotClient, OneBotAdapter, OneBotWebSocketClient
 from .audit_log import SocialAuditEntry, SocialAuditLog
 from .beta_check import QQBetaCheckConfig, check_qq_beta_pack
+from .beta_day_report import (
+    QQBetaDayReportConfig,
+    build_qq_beta_day_report,
+    write_qq_beta_day_report,
+)
 from .beta_pack import QQBetaPackConfig, create_qq_beta_pack
 from .character_card import CharacterCard
 from .config import SocialGroupPolicy, SocialOperationsConfig
@@ -182,6 +187,25 @@ def _build_parser() -> argparse.ArgumentParser:
     review_dry_run.add_argument("--output", required=True, help="Review report JSON file.")
     review_dry_run.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    beta_day_report = qq_subparsers.add_parser(
+        "beta-day-report",
+        help="Write a QQ beta day report from review, audit log, and failure records.",
+    )
+    beta_day_report.add_argument("--date", required=True, help="Beta day date, usually YYYY-MM-DD.")
+    beta_day_report.add_argument("--group", required=True, help="QQ group id.")
+    beta_day_report.add_argument(
+        "--dry-run-review",
+        required=True,
+        help="Dry-run review report JSON file.",
+    )
+    beta_day_report.add_argument("--export-log", required=True, help="Exported audit log JSON file.")
+    beta_day_report.add_argument(
+        "--failures-json",
+        help="Operator-maintained failure records JSON file.",
+    )
+    beta_day_report.add_argument("--output", required=True, help="Beta day report JSON file.")
+    beta_day_report.add_argument("--json", action="store_true", help="Print JSON output.")
+
     for name, help_text in (
         ("pause", "Pause one QQ group."),
         ("resume", "Resume one QQ group."),
@@ -264,6 +288,8 @@ def _handle_qq(args: argparse.Namespace) -> dict[str, Any]:
         return _handle_startup_check(args)
     if args.command == "review-dry-run":
         return _handle_review_dry_run(args)
+    if args.command == "beta-day-report":
+        return _handle_beta_day_report(args)
     if args.command in {"pause", "resume"}:
         return _handle_pause_resume(args)
     if args.command == "inspect":
@@ -497,6 +523,30 @@ def _handle_review_dry_run(args: argparse.Namespace) -> dict[str, Any]:
         "ready_for_send": bool(report["ready_for_send"]),
         "summary": report["summary"],
         "warnings": report["warnings"],
+    }
+
+
+def _handle_beta_day_report(args: argparse.Namespace) -> dict[str, Any]:
+    output = Path(args.output)
+    report = build_qq_beta_day_report(
+        QQBetaDayReportConfig(
+            date=args.date,
+            group_id=str(args.group),
+            dry_run_review=Path(args.dry_run_review),
+            export_log=Path(args.export_log),
+            failures_json=Path(args.failures_json) if args.failures_json else None,
+            output=output,
+        )
+    )
+    write_qq_beta_day_report(output, report)
+    return {
+        "status": "ok",
+        "command": "beta-day-report",
+        "output": str(output),
+        "ready_for_send": bool(report["ready_for_send"]),
+        "open_failure_count": int(report["summary"]["open_failure_count"]),
+        "summary": report["summary"],
+        "next_actions": report["next_actions"],
     }
 
 

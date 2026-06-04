@@ -57,9 +57,10 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 ```
 
 The generated pack contains `config.json`, `state/`, `logs/`, `health.sh`,
-`startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`, `send-run.sh`,
-`pause.sh`, `resume.sh`, `export-log.sh`, and a `README.md` with the first-run
-order.
+`startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`, `beta-day-report.sh`,
+`send-run.sh`, `pause.sh`, `resume.sh`, `export-log.sh`, and a `README.md`
+with the first-run order. It also creates `logs/failures.json` for operator
+failure records.
 
 Generate editable role and sticker files before the first real session:
 
@@ -157,6 +158,24 @@ actions, `sticker_candidate_count`, and `warnings`. `ready_for_send` is not
 permission to send; it is only a review field. Read the warnings and still
 enable sends manually.
 
+Export the audit log and close the beta day with a daily report:
+
+```bash
+isotope-social qq export-log --state-root .isotope/qq \
+  --group <controlled_group_id> --output .isotope/qq/qq-<controlled_group_id>.json --json
+isotope-social qq beta-day-report --date 2026-06-04 \
+  --group <controlled_group_id> \
+  --dry-run-review .isotope/qq/dry-run-review.json \
+  --export-log .isotope/qq/qq-<controlled_group_id>.json \
+  --failures-json .isotope/qq/failures.json \
+  --output .isotope/qq/beta-day-report.json --json
+```
+
+`beta-day-report.json` combines dry-run warnings, audit counts, and
+`failures.json`. Inspect `open_failure_count` and `next_actions` before
+continuing. Open failures need fixes and regression tests before the next beta
+session.
+
 Enable sends only after dry-run decisions are acceptable:
 
 ```bash
@@ -185,8 +204,9 @@ cd .isotope/qq-beta
 ./health.sh
 ./dry-run.sh
 ./review-dry-run.sh
-ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 ./export-log.sh
+./beta-day-report.sh
+ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 ```
 
 If NapCat has an access token, pass it explicitly:
