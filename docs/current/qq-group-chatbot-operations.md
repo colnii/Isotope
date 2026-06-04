@@ -39,6 +39,17 @@ The pack writes `health.sh`, `dry-run.sh`, `send-run.sh`, `pause.sh`,
 `resume.sh`, and `export-log.sh`. Run `send-run.sh` only with
 `ISOTOPE_QQ_ENABLE_SEND=1`.
 
+Before the first live session, run the pack check:
+
+```bash
+isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
+```
+
+The check must pass before `./health.sh` or `./dry-run.sh` becomes the operator
+path. It verifies the pack files, script syntax, pause/resume/export-log
+commands, and the `send-run.sh` guard that refuses to send without
+`ISOTOPE_QQ_ENABLE_SEND=1`.
+
 ## Inspect
 
 Inspect before enabling real sends:
@@ -53,6 +64,7 @@ ops.health_check(adapter_states=(adapter.connection_state().to_public_dict(),))
 Current CLI surface:
 
 ```bash
+isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
 isotope-social qq inspect role --config-json config.json
 isotope-social qq inspect lorebook --config-json config.json
 isotope-social qq inspect stickers --config-json config.json
@@ -152,6 +164,7 @@ Run this checklist for each controlled beta day:
 - Confirm the bot is in the intended group only.
 - If starting from a fresh directory, generate the beta pack with `qq init-beta`.
 - Confirm `allowed_groups` and `operator_user_ids`.
+- Run `isotope-social qq beta-check --pack-dir .isotope/qq-beta --json`.
 - Run `./health.sh` before consuming messages.
 - Start in dry-run and review at least five representative messages.
 - Enable sends only after dry-run decisions look correct.

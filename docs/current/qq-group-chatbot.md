@@ -60,6 +60,16 @@ The generated pack contains `config.json`, `state/`, `logs/`, `health.sh`,
 `dry-run.sh`, `send-run.sh`, `pause.sh`, `resume.sh`, `export-log.sh`, and a
 `README.md` with the first-run order.
 
+Before connecting it to a real group session, check the pack itself:
+
+```bash
+isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
+```
+
+The check validates required files, parses `config.json`, runs shell syntax
+checks, exercises `pause.sh`, `resume.sh`, and `export-log.sh`, and confirms
+`send-run.sh` still refuses to run unless `ISOTOPE_QQ_ENABLE_SEND=1` is set.
+
 ## Run
 
 NapCat must expose a OneBot 11 WebSocket endpoint. The live path is:
@@ -97,10 +107,12 @@ isotope-social qq live-run --config-json config.json --state-root .isotope/qq \
 For a generated beta pack, use:
 
 ```bash
+isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
 cd .isotope/qq-beta
 ./health.sh
 ./dry-run.sh
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
+./export-log.sh
 ```
 
 If NapCat has an access token, pass it explicitly:

@@ -9,6 +9,7 @@ from typing import Any
 
 from ...integrations.qq import FakeOneBotClient, OneBotAdapter, OneBotWebSocketClient
 from .audit_log import SocialAuditEntry, SocialAuditLog
+from .beta_check import QQBetaCheckConfig, check_qq_beta_pack
 from .beta_pack import QQBetaPackConfig, create_qq_beta_pack
 from .character_card import CharacterCard
 from .config import SocialGroupPolicy, SocialOperationsConfig
@@ -91,6 +92,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     init_beta.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    beta_check = qq_subparsers.add_parser(
+        "beta-check",
+        help="Verify a generated QQ beta pack before operator use.",
+    )
+    beta_check.add_argument("--pack-dir", required=True, help="Generated beta pack directory.")
+    beta_check.add_argument("--json", action="store_true", help="Print JSON output.")
+
     for name, help_text in (
         ("pause", "Pause one QQ group."),
         ("resume", "Resume one QQ group."),
@@ -158,6 +166,8 @@ def _handle_qq(args: argparse.Namespace) -> dict[str, Any]:
         return _handle_live_run(args)
     if args.command == "init-beta":
         return _handle_init_beta(args)
+    if args.command == "beta-check":
+        return _handle_beta_check(args)
     if args.command in {"pause", "resume"}:
         return _handle_pause_resume(args)
     if args.command == "inspect":
@@ -250,6 +260,13 @@ def _handle_init_beta(args: argparse.Namespace) -> dict[str, Any]:
     )
     payload = result.to_public_dict()
     payload.update({"status": "ok", "command": "init-beta"})
+    return payload
+
+
+def _handle_beta_check(args: argparse.Namespace) -> dict[str, Any]:
+    result = check_qq_beta_pack(QQBetaCheckConfig(pack_dir=Path(args.pack_dir)))
+    payload = result.to_public_dict()
+    payload.update({"status": "ok", "command": "beta-check"})
     return payload
 
 

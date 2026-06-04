@@ -21,6 +21,7 @@ def test_qq_group_chatbot_runbooks_cover_beta_operations() -> None:
         "Shutdown",
         "live-run",
         "init-beta",
+        "beta-check",
         "send-run.sh",
         "ISOTOPE_QQ_ENABLE_SEND",
         "--send",

@@ -577,6 +577,53 @@ def test_social_runner_qq_init_beta_force_overwrites_pack(
     ]
 
 
+def test_social_runner_qq_beta_check_exercises_operator_pack(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    output_dir = tmp_path / "qq-beta"
+
+    assert main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(output_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    code = main(["qq", "beta-check", "--pack-dir", str(output_dir), "--json"])
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "beta-check"
+    assert payload["pack_dir"] == str(output_dir)
+    assert payload["ok"] is True
+    assert [check["name"] for check in payload["checks"]] == [
+        "required_files",
+        "config_json",
+        "shell_syntax",
+        "operator_scripts",
+        "send_guard",
+    ]
+    assert all(check["ok"] for check in payload["checks"])
+    assert payload["export_log_path"] == str(output_dir / "logs" / "qq-99999.json")
+    state = _read_json(output_dir / "state" / "social-qq-state.json")
+    assert state["paused_groups"] == []
+    assert _read_json(output_dir / "logs" / "qq-99999.json") == {"entries": []}
+
+
 def test_social_runner_entry_point_is_registered() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
 
