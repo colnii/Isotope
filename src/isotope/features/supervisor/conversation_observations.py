@@ -81,6 +81,18 @@ def model_observation_from_agent_loop(
     )
     if result is not None:
         observation["result"] = result
+    if capacity_id == "coding_task.run":
+        reviewed_apply = agent_loop.get("reviewed_apply_request")
+        if isinstance(reviewed_apply, dict):
+            arguments = reviewed_apply.get("arguments")
+            if isinstance(arguments, dict):
+                observation["suggested_next_call"] = {
+                    "capacity_id": "coding_task.apply_reviewed_diff",
+                    "arguments": {
+                        "review_handle_id": arguments.get("review_handle_id"),
+                    },
+                    "requires_user_approval": True,
+                }
     image_urls = _screen_observation_image_urls(agent_loop, state_root=state_root)
     if image_urls:
         observation["image_urls"] = image_urls

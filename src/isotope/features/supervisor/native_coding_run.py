@@ -79,6 +79,7 @@ def run_native_coding_agent_loop(
         "tick_count": len(ticks),
         "context_call_count": _capability_call_count(ticks, {"code.search", "code.read"}),
         "source_workspace_write": "not_performed",
+        "reviewed_apply_request": _reviewed_apply_request(ticks),
         "ticks": ticks,
     }
 
@@ -108,6 +109,29 @@ def _coding_workspace_id(ticks: list[dict[str, Any]]) -> str | None:
             workspace_id = execution.get("workspace_id")
             if isinstance(workspace_id, str) and workspace_id:
                 return workspace_id
+    return None
+
+
+def _reviewed_apply_request(ticks: list[dict[str, Any]]) -> dict[str, Any] | None:
+    for tick in reversed(ticks):
+        execution = _coding_execution(tick)
+        if not isinstance(execution, Mapping):
+            continue
+        reviewed_apply = execution.get("reviewed_apply")
+        if not isinstance(reviewed_apply, Mapping):
+            continue
+        handle_id = reviewed_apply.get("review_handle_id")
+        workspace_id = reviewed_apply.get("workspace_id")
+        changed_files = reviewed_apply.get("changed_files")
+        if not isinstance(handle_id, str) or not isinstance(workspace_id, str):
+            continue
+        return {
+            "capability_id": "coding_task.apply_reviewed_diff",
+            "arguments": {"review_handle_id": handle_id},
+            "workspace_id": workspace_id,
+            "changed_files": list(changed_files) if isinstance(changed_files, list) else [],
+            "source_workspace_write": "requires_explicit_apply",
+        }
     return None
 
 

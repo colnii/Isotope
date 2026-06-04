@@ -60,12 +60,30 @@ def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _agent_loop_native_coding_summary(agent_loop: Mapping[str, Any]) -> dict[str, Any]:
+    reviewed_apply = agent_loop.get("reviewed_apply_request")
+    changed_files = (
+        reviewed_apply.get("changed_files")
+        if isinstance(reviewed_apply, Mapping)
+        else []
+    )
     return {
         "agent_loop_coding_status": agent_loop.get("status"),
         "agent_loop_coding_workspace_id": agent_loop.get("workspace_id"),
         "agent_loop_coding_tick_count": agent_loop.get("tick_count"),
         "agent_loop_coding_context_calls": agent_loop.get("context_call_count"),
         "agent_loop_coding_source_workspace_write": agent_loop.get("source_workspace_write"),
+        "agent_loop_coding_review_handle_available": isinstance(
+            reviewed_apply,
+            Mapping,
+        ),
+        "agent_loop_coding_reviewed_apply_capability_id": (
+            reviewed_apply.get("capability_id")
+            if isinstance(reviewed_apply, Mapping)
+            else None
+        ),
+        "agent_loop_coding_reviewed_apply_changed_file_count": (
+            len(changed_files) if isinstance(changed_files, list) else 0
+        ),
     }
 
 

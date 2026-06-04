@@ -1217,6 +1217,18 @@ def test_conversation_loop_runs_coding_task_run_through_existing_agent_loop(
     summary = events[1].payload["result_summary"]
     assert summary["agent_loop_coding_status"] == "verified"
     assert summary["agent_loop_coding_context_calls"] >= 2
+    assert summary["agent_loop_coding_review_handle_available"] is True
+    assert (
+        summary["agent_loop_coding_reviewed_apply_capability_id"]
+        == "coding_task.apply_reviewed_diff"
+    )
+    assert summary["agent_loop_coding_reviewed_apply_changed_file_count"] == 1
+    second_prompt = provider.calls[-1]["messages"][1]["content"]
+    assert '"suggested_next_call"' in second_prompt
+    assert '"coding_task.apply_reviewed_diff"' in second_prompt
+    assert '"review_handle_id"' in second_prompt
+    assert '"expected_source_digests"' not in second_prompt
+    assert str(workspace) not in second_prompt
     assert (workspace / "src" / "app.py").read_text(encoding="utf-8") == "value = 1\n"
     rendered = json.dumps([event.payload for event in events], ensure_ascii=False)
     assert "value = 1" not in rendered
@@ -1331,8 +1343,7 @@ def test_conversation_loop_applies_reviewed_native_coding_diff(tmp_path) -> None
                     "kind": "call_capability",
                     "capacity_id": "coding_task.apply_reviewed_diff",
                     "arguments": {
-                        "workspace_id": reviewed_apply["workspace_id"],
-                        "expected_source_digests": reviewed_apply["expected_source_digests"],
+                        "review_handle_id": reviewed_apply["review_handle_id"],
                         "include_paths": ["src"],
                     },
                 }
@@ -1360,6 +1371,7 @@ def test_conversation_loop_applies_reviewed_native_coding_diff(tmp_path) -> None
     rendered = json.dumps([event.payload for event in events], ensure_ascii=False)
     assert str(root) not in rendered
     assert str(workspace) not in rendered
+    assert "expected_source_digests" not in rendered
     assert "value = 2" not in rendered
 
 

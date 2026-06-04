@@ -593,11 +593,7 @@ def _capacity_display_inputs(capacity_id: str, inputs: dict[str, Any]) -> dict[s
         display.pop("root", None)
         display.pop("cwd", None)
         display.pop("workspace_id", None)
-        source_digests = display.get("expected_source_digests")
-        if isinstance(source_digests, dict):
-            display["expected_source_digests"] = {
-                "path_count": len(source_digests),
-            }
+        display.pop("expected_source_digests", None)
         return display
     if capacity_id in {"supervisor.project_status", "isotope.self_repair"}:
         display.pop("state_root", None)

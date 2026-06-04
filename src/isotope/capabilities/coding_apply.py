@@ -187,14 +187,11 @@ def _inputs_with_review_handle(inputs: Mapping[str, Any] | None) -> dict[str, An
             "review_handle_id must reference a native coding reviewed apply request"
         )
     input_mapping["review_handle_id"] = handle_id.strip()
-    for key in (
-        "workspace_id",
-        "expected_source_digests",
-        "expected_changed_files",
-        "include_paths",
-    ):
-        if key in payload and key not in input_mapping:
+    for key in ("workspace_id", "expected_source_digests", "expected_changed_files"):
+        if key in payload:
             input_mapping[key] = payload[key]
+    if "include_paths" in payload and "include_paths" not in input_mapping:
+        input_mapping["include_paths"] = payload["include_paths"]
     return input_mapping
 
 
