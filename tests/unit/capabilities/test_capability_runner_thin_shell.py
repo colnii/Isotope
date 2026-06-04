@@ -896,6 +896,8 @@ def test_runner_discovers_coding_task_apply_reviewed_diff_from_default_catalog()
     assert properties["root"]["x-system-input"] is True
     assert properties["cwd"]["x-system-input"] is True
     assert properties["workspace_id"]["x-system-input"] is True
+    assert properties["expected_source_digests"]["x-system-input"] is True
+    assert properties["review_handle_id"]["type"] == "string"
     assert "source_workspace_write_requires_explicit_apply" in description["safety_boundaries"]
     assert "source_digest_conflict_guard" in description["safety_boundaries"]
 
@@ -1041,6 +1043,56 @@ def test_runner_applies_reviewed_native_coding_workspace_to_source(tmp_path):
     assert result["status"] == "completed"
     assert applied["status"] == "applied"
     assert applied["source_workspace_write"] == "performed"
+    assert applied["applied_files"] == ["src/app.py"]
+    assert (source / "src" / "app.py").read_text(encoding="utf-8") == "value = 2\n"
+    assert "value = 2" not in json.dumps(applied, ensure_ascii=False)
+
+
+def test_runner_applies_reviewed_native_coding_workspace_by_review_handle(tmp_path):
+    source = tmp_path / "repo"
+    (source / "src").mkdir(parents=True)
+    (source / "src" / "app.py").write_text("value = 1\n", encoding="utf-8")
+    root = tmp_path / "state"
+    execute_result = _runner().run_capability(
+        "coding_task.execute",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "workspace_id": "workspace_native_apply_handle",
+            "goal": "Change value to 2.",
+            "patch": (
+                "--- a/src/app.py\n"
+                "+++ b/src/app.py\n"
+                "@@ -1 +1 @@\n"
+                "-value = 1\n"
+                "+value = 2\n"
+            ),
+            "argv": [
+                "python3",
+                "-c",
+                "from pathlib import Path; assert Path('src/app.py').read_text() == 'value = 2\\n'",
+            ],
+            "allowed_commands": ["python3"],
+            "run_id": "run_native_apply_handle",
+            "execution_id": "execution_native_apply_handle",
+            "include_paths": ["src"],
+        },
+    )
+
+    result = _runner().run_capability(
+        "coding_task.apply_reviewed_diff",
+        inputs={
+            "root": str(root),
+            "cwd": str(source),
+            "review_handle_id": execute_result["coding_execution"]["reviewed_apply"][
+                "review_handle_id"
+            ],
+        },
+    )
+
+    applied = result["reviewed_apply"]
+    assert applied["status"] == "applied"
+    assert applied["review_handle_id"]
     assert applied["applied_files"] == ["src/app.py"]
     assert (source / "src" / "app.py").read_text(encoding="utf-8") == "value = 2\n"
     assert "value = 2" not in json.dumps(applied, ensure_ascii=False)

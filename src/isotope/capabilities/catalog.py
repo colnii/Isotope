@@ -620,8 +620,16 @@ class CapabilityCatalog:
                                 "type": "string",
                                 "x-system-input": True,
                             },
+                            "review_handle_id": {
+                                "type": "string",
+                                "description": (
+                                    "Reviewed native coding apply handle returned "
+                                    "by coding_task.run or coding_task.execute."
+                                ),
+                            },
                             "expected_source_digests": {
                                 "type": "object",
+                                "x-system-input": True,
                                 "description": (
                                     "Map of workspace-relative paths to source "
                                     "sha256 digests captured during review."

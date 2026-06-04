@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from json import JSONDecodeError
 from hashlib import sha256
 from pathlib import Path, PurePosixPath
 import shutil
@@ -9,6 +11,7 @@ from typing import Any, Mapping
 
 from .workspace_files import run_workspace_changed_files
 from ..platform.schemas.input_contract import missing_required_input_keys
+from ..workspace.artifacts import ArtifactStore
 
 
 CODING_TASK_APPLY_REVIEWED_DIFF_CAPABILITY = "coding_task.apply_reviewed_diff"
@@ -34,6 +37,11 @@ def validate_coding_apply_inputs(
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"{name} must be a non-empty string")
         input_mapping[name] = value.strip()
+    review_handle_id = input_mapping.get("review_handle_id")
+    if review_handle_id is not None:
+        if not isinstance(review_handle_id, str) or not review_handle_id.strip():
+            raise ValueError("review_handle_id must be a non-empty string")
+        input_mapping["review_handle_id"] = review_handle_id.strip()
     if "expected_source_digests" not in missing_inputs:
         input_mapping["expected_source_digests"] = _digest_mapping(
             input_mapping.get("expected_source_digests")
@@ -54,13 +62,14 @@ def validate_coding_apply_inputs(
 def run_coding_task_apply_reviewed_diff(
     *, inputs: Mapping[str, Any] | None
 ) -> dict[str, Any]:
+    resolved_inputs = _inputs_with_review_handle(inputs)
     required_inputs = ["root", "cwd", "workspace_id", "expected_source_digests"]
-    missing_inputs = missing_required_input_keys(inputs, required_inputs)
+    missing_inputs = missing_required_input_keys(resolved_inputs, required_inputs)
     if missing_inputs:
         raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
     input_mapping = validate_coding_apply_inputs(
         capability_id=CODING_TASK_APPLY_REVIEWED_DIFF_CAPABILITY,
-        inputs=inputs,
+        inputs=resolved_inputs,
         missing_inputs=missing_inputs,
     )
     changed = run_workspace_changed_files(
@@ -146,6 +155,7 @@ def run_coding_task_apply_reviewed_diff(
         "reviewed_apply": {
             "status": "applied",
             "workspace_id": input_mapping["workspace_id"],
+            "review_handle_id": input_mapping.get("review_handle_id"),
             "changed_files": changed_files,
             "applied_files": applied_files,
             "source_workspace_write": "performed" if applied_files else "not_performed",
@@ -153,6 +163,39 @@ def run_coding_task_apply_reviewed_diff(
             "event_append": "not_performed",
         },
     }
+
+
+def _inputs_with_review_handle(inputs: Mapping[str, Any] | None) -> dict[str, Any]:
+    input_mapping = dict(inputs or {})
+    handle_id = input_mapping.get("review_handle_id")
+    if not isinstance(handle_id, str) or not handle_id:
+        return input_mapping
+    root = input_mapping.get("root")
+    if not isinstance(root, str) or not root:
+        raise ValueError("root is required when review_handle_id is used")
+    try:
+        payload = json.loads(
+            ArtifactStore(Path(root).expanduser()).get_content(handle_id)
+        )
+    except JSONDecodeError as exc:
+        raise ValueError("review handle content must be JSON") from exc
+    if (
+        not isinstance(payload, dict)
+        or payload.get("kind") != "native_coding_reviewed_apply_request"
+    ):
+        raise ValueError(
+            "review_handle_id must reference a native coding reviewed apply request"
+        )
+    input_mapping["review_handle_id"] = handle_id.strip()
+    for key in (
+        "workspace_id",
+        "expected_source_digests",
+        "expected_changed_files",
+        "include_paths",
+    ):
+        if key in payload and key not in input_mapping:
+            input_mapping[key] = payload[key]
+    return input_mapping
 
 
 def reviewed_apply_source_digests(
@@ -181,6 +224,7 @@ def _blocked(
         "reviewed_apply": {
             "status": "blocked",
             "workspace_id": input_mapping["workspace_id"],
+            "review_handle_id": input_mapping.get("review_handle_id"),
             "changed_files": changed_files,
             "applied_files": [],
             "blocked_reason": reason,
