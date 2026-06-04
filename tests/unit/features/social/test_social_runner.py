@@ -890,6 +890,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert payload["output_dir"] == str(output_dir)
     assert sorted(payload["scripts"]) == [
         "beta-day-report.sh",
+        "diagnostics.sh",
         "dry-run.sh",
         "export-log.sh",
         "health.sh",
@@ -913,8 +914,13 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert (output_dir / "regressions").is_dir()
     readme = (output_dir / "README.md").read_text(encoding="utf-8")
     assert "First run order" in readme
+    assert "./diagnostics.sh" in readme
     assert "beta-diagnostics" in readme
     assert 'runtime.reply_provider = "llm"' in readme
+
+    diagnostics = (output_dir / "diagnostics.sh").read_text(encoding="utf-8")
+    assert " qq beta-diagnostics " in diagnostics
+    assert "--pack-dir ." in diagnostics
 
     health = (output_dir / "health.sh").read_text(encoding="utf-8")
     assert "live-run" in health

@@ -60,12 +60,12 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
   --bot-user-id <bot_qq> --websocket-url ws://127.0.0.1:3001 --json
 ```
 
-The generated pack contains `config.json`, `state/`, `logs/`, `health.sh`,
-`startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`, `beta-day-report.sh`,
-`regression-intake.sh`, `send-run.sh`, `pause.sh`, `resume.sh`,
-`export-log.sh`, and a `README.md` with the first-run order. It also creates
-`logs/failures.json` for operator failure records and `regressions/` for replay
-drafts.
+The generated pack contains `config.json`, `state/`, `logs/`, `diagnostics.sh`,
+`health.sh`, `startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`,
+`beta-day-report.sh`, `regression-intake.sh`, `send-run.sh`, `pause.sh`,
+`resume.sh`, `export-log.sh`, and a `README.md` with the first-run order. It
+also creates `logs/failures.json` for operator failure records and
+`regressions/` for replay drafts.
 
 Generate editable role and sticker files before the first real session:
 
@@ -85,6 +85,13 @@ Run a no-network diagnostics summary whenever the pack changes:
 
 ```bash
 isotope-social qq beta-diagnostics --pack-dir .isotope/qq-beta --json
+```
+
+For generated packs, the same check is available inside the pack:
+
+```bash
+cd .isotope/qq-beta
+./diagnostics.sh
 ```
 
 The diagnostics output reports `allowed_groups`, `operator_user_ids`,
@@ -249,7 +256,6 @@ isotope-social qq init-profile --output-dir .isotope/qq-profile \
   --group <controlled_group_id> --name 群聊工程猫 --json
 isotope-social qq apply-profile --pack-dir .isotope/qq-beta \
   --profile-dir .isotope/qq-profile --json
-isotope-social qq beta-diagnostics --pack-dir .isotope/qq-beta --json
 isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
 isotope-social qq init-replay --output .isotope/qq-beta/replay.json \
   --group <controlled_group_id> --bot-user-id <bot_qq> --json
@@ -260,6 +266,7 @@ isotope-social qq replay --config-json .isotope/qq-beta/config.json \
 isotope-social qq startup-check --pack-dir .isotope/qq-beta \
   --replay-report .isotope/qq-beta/logs/replay-report.json --json
 cd .isotope/qq-beta
+./diagnostics.sh
 ./startup-check.sh
 ./health.sh
 ./dry-run.sh

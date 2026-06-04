@@ -35,7 +35,7 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
   --bot-user-id <bot_qq> --websocket-url ws://127.0.0.1:3001 --json
 ```
 
-The pack writes `health.sh`, `startup-check.sh`, `dry-run.sh`,
+The pack writes `diagnostics.sh`, `health.sh`, `startup-check.sh`, `dry-run.sh`,
 `review-dry-run.sh`, `beta-day-report.sh`, `regression-intake.sh`,
 `send-run.sh`, `pause.sh`, `resume.sh`, and `export-log.sh`. It also writes
 `logs/failures.json` and creates `regressions/`. Run `send-run.sh` only with
@@ -59,6 +59,13 @@ After any profile or config edit, run diagnostics before touching OneBot:
 
 ```bash
 isotope-social qq beta-diagnostics --pack-dir .isotope/qq-beta --json
+```
+
+For generated packs, the same check is available inside the pack:
+
+```bash
+cd .isotope/qq-beta
+./diagnostics.sh
 ```
 
 Diagnostics does not connect to QQ. It summarizes the configured group,
@@ -329,7 +336,7 @@ Run this checklist for each controlled beta day:
 - Generate or update the editable profile with `qq init-profile`.
 - Apply the profile with `qq apply-profile`.
 - Confirm `allowed_groups` and `operator_user_ids`.
-- Run `qq beta-diagnostics` and follow `next_steps`.
+- Run `qq beta-diagnostics` or `./diagnostics.sh` and follow `next_steps`.
 - Run `isotope-social qq beta-check --pack-dir .isotope/qq-beta --json`.
 - Run `qq init-replay` and `qq replay`, then review `replay-report.json`.
 - Run `qq startup-check` and require `ready: true`.

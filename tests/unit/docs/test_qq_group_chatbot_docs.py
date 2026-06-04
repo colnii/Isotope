@@ -22,6 +22,7 @@ def test_qq_group_chatbot_runbooks_cover_beta_operations() -> None:
         "live-run",
         "init-beta",
         "beta-diagnostics",
+        "diagnostics.sh",
         "beta-check",
         "startup-check",
         "ready",

@@ -11,6 +11,7 @@ from typing import Any
 
 SCRIPT_NAMES = (
     "beta-day-report.sh",
+    "diagnostics.sh",
     "health.sh",
     "startup-check.sh",
     "dry-run.sh",
@@ -118,6 +119,9 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
     if name == "beta-day-report.sh":
         command = _beta_day_report_command(config)
         return f"{common}\n{command}\n"
+    if name == "diagnostics.sh":
+        command = _diagnostics_command()
+        return f"{common}\n{command}\n"
     if name == "health.sh":
         command = _live_run_command(config, max_events=0, send=False)
         return f"{common}\n{command}\n"
@@ -216,6 +220,18 @@ def _startup_check_command() -> str:
         ".",
         "--replay-report",
         "logs/replay-report.json",
+        "--json",
+    ]
+    return " ".join(shlex.quote(part) for part in parts)
+
+
+def _diagnostics_command() -> str:
+    parts = [
+        "isotope-social",
+        "qq",
+        "beta-diagnostics",
+        "--pack-dir",
+        ".",
         "--json",
     ]
     return " ".join(shlex.quote(part) for part in parts)
@@ -362,7 +378,7 @@ OneBot WebSocket: `{config.websocket_url}`
 ## First run order
 
 1. Apply an editable profile pack.
-2. Run `isotope-social qq beta-diagnostics --pack-dir . --json`.
+2. Run `./diagnostics.sh`.
 3. Create and run replay, then run `./startup-check.sh`.
 4. Run `./health.sh`.
 5. Run `./dry-run.sh`.
@@ -388,9 +404,10 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 Automated scripts start in dry-run. `send-run.sh` refuses to send unless
 `ISOTOPE_QQ_ENABLE_SEND=1` is set for that command. `dry-run.sh` and
 `send-run.sh` both run `startup-check.sh` before connecting to OneBot.
-`beta-diagnostics` does not connect to OneBot; it reads this pack and reports
-the configured group, operator, bot, OneBot URL, reply provider, replay report,
-and next steps.
+`diagnostics.sh` does not connect to OneBot; it runs
+`isotope-social qq beta-diagnostics --pack-dir . --json`, reads this pack, and
+reports the configured group, operator, bot, OneBot URL, reply provider, replay
+report, and next steps.
 The generated `config.json` defaults to `runtime.reply_provider = "deterministic"`
 for stable replay output. To use LLM-generated text replies, change it to
 `runtime.reply_provider = "llm"` and configure the shared Isotope LLM provider;
