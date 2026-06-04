@@ -1,16 +1,15 @@
 # Refactoring Debt
 
-## Social QQ CLI Runner
+## Social QQ CLI Handler Split
 
-- Added on 2026-06-04: `src/isotope/features/social/runner.py` is now a
-  800+ line CLI dispatcher covering runtime commands, beta pack generation,
-  profile application, replay, startup checks, dry-run review reports,
-  beta day reports, regression intake, inspection, health, and log export. Keep
-  domain behavior in focused modules such as `beta_pack.py`, `beta_check.py`,
-  `profile_pack.py`, `replay.py`, `startup_gate.py`, `dry_run_review.py`,
-  `beta_day_report.py`, and `regression_intake.py`. If more QQ commands are
-  added, split parser/handler registration into a QQ command package instead of
-  continuing to grow `runner.py`.
+- Addressed first split on 2026-06-04: QQ parser registration and command
+  dispatch moved from `src/isotope/features/social/runner.py` into
+  `src/isotope/features/social/qq_runner.py`, and a structure regression keeps
+  `runner.py` below 700 lines.
+- Remaining debt: QQ handler implementations still live in `runner.py` with
+  state loading, config loading, runtime construction, and command handlers in
+  one file. Move those handlers and shared helpers behind an explicit QQ runtime
+  command module before adding more QQ commands.
 
 ## Supervisor Web Handler
 
