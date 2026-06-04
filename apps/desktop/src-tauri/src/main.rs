@@ -1,3 +1,4 @@
+mod native_orb;
 mod window_commands;
 
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
@@ -35,9 +36,7 @@ fn register_global_shortcuts(app: &tauri::App) {
 }
 
 fn open_startup_windows(app: &tauri::App) {
-    if let Err(error) = window_commands::open_startup_orb(app.handle()) {
-        eprintln!("failed to open startup orb window: {error}");
-    }
+    native_orb::spawn_startup_orb(app.handle().clone());
 }
 
 fn main() {

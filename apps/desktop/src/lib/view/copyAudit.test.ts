@@ -4,8 +4,7 @@ import { describe, expect, test } from 'vitest';
 
 const visibleCopyFiles = [
   'src/routes/+page.svelte',
-  'src/lib/client/agentClient.ts',
-  'src/lib/components/orb/FloatingOrb.svelte'
+  'src/lib/client/agentClient.ts'
 ];
 
 const forbiddenVisibleCopy = [

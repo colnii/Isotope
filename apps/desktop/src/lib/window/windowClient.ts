@@ -1,6 +1,6 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 
-export type WindowLabel = 'orb' | 'mini' | 'main';
+export type WindowLabel = 'mini' | 'main';
 
 export type OpenWindowOptions = {
   focus?: boolean;

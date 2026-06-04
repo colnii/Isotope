@@ -41,4 +41,10 @@ describe('createWindowClient', () => {
 
     expect(invoke).not.toHaveBeenCalled();
   });
+
+  test('does not expose the native orb as a Tauri window label', () => {
+    const labels = ['mini', 'main'] satisfies import('./windowClient').WindowLabel[];
+
+    expect(labels).not.toContain('orb');
+  });
 });

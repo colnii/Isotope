@@ -1,7 +1,7 @@
-export type DesktopWindowSurface = 'dev' | 'orb' | 'mini' | 'main';
+export type DesktopWindowSurface = 'dev' | 'mini' | 'main';
 export type ComponentSurface = 'dev' | 'window';
 
-const tauriSurfaces = new Set<DesktopWindowSurface>(['orb', 'mini', 'main']);
+const tauriSurfaces = new Set<DesktopWindowSurface>(['mini', 'main']);
 
 export function resolveWindowSurface(search: string): DesktopWindowSurface {
   const value = new URLSearchParams(search).get('window') as DesktopWindowSurface | null;

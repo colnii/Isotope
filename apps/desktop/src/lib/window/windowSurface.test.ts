@@ -7,7 +7,7 @@ import {
 
 describe('resolveWindowSurface', () => {
   test.each([
-    ['?window=orb', 'orb'],
+    ['?window=orb', 'dev'],
     ['?window=mini', 'mini'],
     ['?window=main', 'main'],
     ['', 'dev'],
@@ -28,8 +28,7 @@ describe('buildPageSurfaceClass', () => {
     expect(buildPageSurfaceClass('mini')).toContain('bg-transparent');
   });
 
-  test('hides overflow in compact floating window surfaces', () => {
-    expect(buildPageSurfaceClass('orb')).toContain('overflow-hidden');
+  test('hides overflow in the compact MiniWindow surface', () => {
     expect(buildPageSurfaceClass('mini')).toContain('overflow-hidden');
     expect(buildPageSurfaceClass('main')).not.toContain('overflow-hidden');
   });

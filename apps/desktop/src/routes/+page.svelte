@@ -3,7 +3,6 @@
   import { onMount } from 'svelte';
   import { createIsotopeClient } from '$lib/client/isotopeClient';
   import MainWindowShell from '$lib/components/main/MainWindowShell.svelte';
-  import FloatingOrb from '$lib/components/orb/FloatingOrb.svelte';
   import MiniWindow from '$lib/components/mini/MiniWindow.svelte';
   import { createAppState } from '$lib/stores/appState';
   import { windowClient } from '$lib/window/windowClient';
@@ -27,7 +26,6 @@
   } = appState;
 
   let loadError = $state<string | null>(null);
-  let miniOpen = $state(false);
   let surface = $state<DesktopWindowSurface>(browser ? resolveWindowSurface(window.location.search) : 'dev');
 
   onMount(() => {
@@ -37,46 +35,19 @@
     });
   });
 
-  function openMiniWindow() {
-    if (surface === 'dev') {
-      miniOpen = true;
-      return;
-    }
-
-    void windowClient.open('mini', { focus: true });
-  }
-
   function openMainWindow() {
-    if (surface === 'dev') {
-      miniOpen = false;
-      return;
-    }
-
     void windowClient.open('main', { focus: true });
     void windowClient.hide('mini');
   }
 
   function closeMiniWindow() {
-    if (surface === 'dev') {
-      miniOpen = false;
-      return;
-    }
-
     void windowClient.hide('mini');
   }
 
 </script>
 
 <main class={buildPageSurfaceClass(surface)}>
-  {#if surface === 'orb'}
-    {#if $snapshot}
-      <FloatingOrb surface="window" onOpenMini={openMiniWindow} />
-    {:else}
-      <div class="grid min-h-[96px] place-items-center text-xs text-isotope-muted">
-        {loadError ? '悬浮球快照不可用' : '正在加载悬浮球'}
-      </div>
-    {/if}
-  {:else if surface === 'mini'}
+  {#if surface === 'mini'}
     {#if $snapshot}
       <MiniWindow
         snapshot={$snapshot}
@@ -126,17 +97,6 @@
         onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
         onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
       />
-      {#if miniOpen}
-        <MiniWindow
-          snapshot={$snapshot}
-          chatMessages={$chatMessages}
-          chatError={$chatError}
-          isAsking={$isAskingDesktop}
-          onAsk={(question) => void appState.askDesktopQuestion(question)}
-          onOpenMain={openMainWindow}
-          onClose={closeMiniWindow}
-        />
-      {/if}
     {:else}
       <div class="border border-isotope-line bg-white p-5 text-sm text-isotope-muted">
         {loadError ? '对话不可用' : '正在加载 Isotope 对话'}
