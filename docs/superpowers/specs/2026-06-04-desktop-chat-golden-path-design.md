@@ -7,9 +7,9 @@ Date: 2026-06-04
 Make Desktop chat the primary product entrypoint for Isotope.
 
 The user should state a goal in natural language. The model should keep agency:
-it decides whether to answer directly, inspect project state, modify code, call
-Codex, search the web, use or install supporting skills/MCPs, or repair Isotope
-itself when Isotope is the limiting factor.
+it decides whether to answer directly, inspect project state, launch Codex,
+search the web, use or install supporting skills/MCPs, or repair Isotope itself
+when Isotope is the limiting factor.
 
 This design must not turn Desktop chat into an intent classifier, fixed router,
 pipeline, workflow, or staged checklist.
@@ -30,8 +30,8 @@ model:
 
 - registered capabilities and their contracts;
 - project state, memory, artifacts, approvals, and worker summaries;
-- bounded code-editing and validation capability;
-- Codex-backed worker launch when the task is larger than native execution;
+- bounded native code-editing for small, explicit patches;
+- Codex-backed worker launch as the main path for non-trivial code changes;
 - web/search and installable extension options where available;
 - low-sensitive execution observations after each action.
 
@@ -89,13 +89,20 @@ available actions:
 - inspect Isotope code and docs;
 - search for a solution;
 - use or install a skill/MCP when allowed;
-- modify Isotope in an isolated worktree;
+- launch Codex in an isolated worktree to perform non-trivial Isotope changes;
+- use bounded native coding only for small, explicit patches;
 - run targeted verification;
 - present the diff and result back to the user;
 - retry the original goal after repair when practical.
 
 This is an action space, not a prescribed pipeline. The model chooses the next
 move from context and observations.
+
+Isotope is not expected to complete meaningful self-repair with native coding
+alone. For the first useful version, Isotope's role is orchestration and
+supervision: provide context, workspace isolation, verification, result
+projection, and retry support. Codex is the expected executor for substantial
+code changes.
 
 ## Boundaries
 
@@ -104,7 +111,8 @@ The model may continue autonomously for low-risk actions:
 - read-only inspection;
 - web/search research;
 - creating an isolated worktree;
-- editing Isotope inside that worktree;
+- launching Codex to edit Isotope inside that worktree;
+- applying small explicit patches through bounded native coding;
 - running allowlisted verification commands;
 - summarizing diff and verification results.
 
@@ -123,6 +131,8 @@ The model must stop for approval before high-risk actions:
 - `run_supervisor_conversation_events(...)` remains the model-action loop.
 - `CapabilityRunner.list_capabilities()` remains the capability metadata source.
 - `coding_task.execute` remains the first bounded native code-change capability.
+- Codex worker/capacity support is the expected executor for non-trivial
+  Isotope self-repair.
 - Supervisor state projections remain the source for project-state answers.
 - Existing capacity start/result stream events should be rendered in product
   language instead of raw implementation wording.
@@ -134,8 +144,7 @@ Targeted verification should cover:
 - Desktop chat can answer project-state questions from Supervisor projections.
 - Desktop chat can execute a small code-change request and surface changed files
   plus verification status.
-- A modeled Isotope limitation can trigger self-repair behavior in an isolated
-  workspace without merging automatically.
+- A modeled Isotope limitation can trigger Codex-assisted self-repair in an
+  isolated workspace without merging automatically.
 - The prompt and decision layer do not encode fixed intent-to-route rules.
 - High-risk self-repair actions require approval.
-
