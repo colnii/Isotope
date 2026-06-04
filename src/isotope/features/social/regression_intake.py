@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,7 @@ def build_qq_regression_intake(config: QQRegressionIntakeConfig) -> dict[str, An
     drafts: list[dict[str, Any]] = []
     for index, failure in enumerate(open_failures, start=1):
         failure_id = _failure_id(failure, index=index)
+        regression_test = _regression_test(failure)
         replay_path = config.output_dir / f"{_slug(failure_id)}.replay.json"
         replay = _replay_draft(
             failure=failure,
@@ -60,6 +62,8 @@ def build_qq_regression_intake(config: QQRegressionIntakeConfig) -> dict[str, An
                 "failure_id": failure_id,
                 "symptom": str(failure.get("symptom", "")).strip(),
                 "status": str(failure.get("status", "open")).strip() or "open",
+                "regression_test": regression_test,
+                "pytest_command": _pytest_command(regression_test),
                 "replay_json": str(replay_path),
                 "_replay": replay,
             }
@@ -142,6 +146,19 @@ def _observed_input(failure: dict[str, Any]) -> str:
     if symptom:
         return symptom
     return "请复现这个 beta 失败。"
+
+
+def _regression_test(failure: dict[str, Any]) -> str:
+    return str(failure.get("regression_test", "")).strip()
+
+
+def _pytest_command(regression_test: str) -> str:
+    if not regression_test:
+        return ""
+    return (
+        "PYTHONPATH=src .venv/bin/python -m pytest "
+        f"{shlex.quote(regression_test)} -q"
+    )
 
 
 def _failure_entries(payload: dict[str, Any]) -> list[dict[str, Any]]:

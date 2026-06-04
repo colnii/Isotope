@@ -389,6 +389,15 @@ def _failure_to_regression_command() -> str:
         "    command += f\"--replay-json {shlex.quote(replay_json)} \"\n"
         '    command += "--output logs/replay-report.json --json"\n'
         "    print(command)\n"
+        "pytest_commands = [\n"
+        "    str(draft.get('pytest_command', '')).strip()\n"
+        "    for draft in drafts\n"
+        "    if isinstance(draft, dict) and str(draft.get('pytest_command', '')).strip()\n"
+        "]\n"
+        "if pytest_commands:\n"
+        '    print("Next pytest command(s):")\n'
+        "    for command in pytest_commands:\n"
+        "        print(command)\n"
         "PY\n"
     )
 
@@ -397,8 +406,9 @@ def _record_failure_command(config: QQBetaPackConfig) -> str:
     return (
         'SYMPTOM="${1:-${ISOTOPE_QQ_FAILURE_SYMPTOM:-}}"\n'
         'OBSERVED_INPUT="${2:-${ISOTOPE_QQ_FAILURE_OBSERVED_INPUT:-}}"\n'
+        'REGRESSION_TEST="${3:-${ISOTOPE_QQ_FAILURE_REGRESSION_TEST:-}}"\n'
         'if [ -z "$SYMPTOM" ]; then\n'
-        '  echo "Usage: ./record-failure.sh <symptom> [observed_input]" >&2\n'
+        '  echo "Usage: ./record-failure.sh <symptom> [observed_input] [regression_test]" >&2\n'
         '  echo "Or set ISOTOPE_QQ_FAILURE_SYMPTOM before running." >&2\n'
         "  exit 2\n"
         "fi\n"
@@ -424,8 +434,8 @@ def _record_failure_command(config: QQBetaPackConfig) -> str:
         'if [ -n "${ISOTOPE_QQ_FAILURE_FIX:-}" ]; then\n'
         '  args+=(--fix "$ISOTOPE_QQ_FAILURE_FIX")\n'
         "fi\n"
-        'if [ -n "${ISOTOPE_QQ_FAILURE_REGRESSION_TEST:-}" ]; then\n'
-        '  args+=(--regression-test "$ISOTOPE_QQ_FAILURE_REGRESSION_TEST")\n'
+        'if [ -n "$REGRESSION_TEST" ]; then\n'
+        '  args+=(--regression-test "$REGRESSION_TEST")\n'
         "fi\n"
         '"${args[@]}" --json\n'
     )
@@ -563,7 +573,9 @@ for stable replay output. To use LLM-generated text replies, change it to
 `logs/failures.json`.
 `failure-to-regression.sh` runs `record-failure.sh`, runs
 `regression-intake.sh`, then prints the next `qq replay` command(s) to review.
-It does not connect to OneBot and does not send messages.
+If the failure includes a regression test path, it also prints the next pytest
+command(s). It does not connect to OneBot, does not send messages, and does not
+run pytest automatically.
 `regression-intake.sh` writes replay drafts under `regressions/`; it does not
 close failures automatically.
 """

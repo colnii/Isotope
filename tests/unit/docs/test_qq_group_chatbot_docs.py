@@ -43,6 +43,7 @@ def test_qq_group_chatbot_runbooks_cover_beta_operations() -> None:
         "dry-run-review.json",
         "beta-day-report.json",
         "regression-intake.json",
+        "pytest_command",
         "regressions/",
         "failures.json",
         "ready_for_send",

@@ -724,6 +724,14 @@ def test_social_runner_qq_regression_intake_writes_replay_drafts(
     assert index["kind"] == "qq_regression_intake"
     assert index["group_id"] == "99999"
     assert index["drafts"][0]["failure_id"] == "qq-beta-1"
+    assert (
+        index["drafts"][0]["regression_test"]
+        == "tests/integration/social/test_social_fake_platform_flow.py"
+    )
+    assert index["drafts"][0]["pytest_command"] == (
+        "PYTHONPATH=src .venv/bin/python -m pytest "
+        "tests/integration/social/test_social_fake_platform_flow.py -q"
+    )
     draft_path = Path(index["drafts"][0]["replay_json"])
     assert payload["drafts"] == [str(draft_path)]
 
@@ -1030,6 +1038,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert "--failures-json logs/failures.json" in record_failure
     assert "ISOTOPE_QQ_FAILURE_SYMPTOM" in record_failure
     assert "ISOTOPE_QQ_FAILURE_OBSERVED_INPUT" in record_failure
+    assert 'REGRESSION_TEST="${3:-${ISOTOPE_QQ_FAILURE_REGRESSION_TEST:-}}"' in record_failure
 
     regression_intake = (output_dir / "regression-intake.sh").read_text(encoding="utf-8")
     assert " qq regression-intake " in regression_intake
@@ -1046,6 +1055,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert "./regression-intake.sh" in failure_to_regression
     assert "qq replay" in failure_to_regression
     assert "--replay-json" in failure_to_regression
+    assert "Next pytest command(s):" in failure_to_regression
     assert "live-run" not in failure_to_regression
     assert "send-run" not in failure_to_regression
 
@@ -1221,7 +1231,12 @@ def test_social_runner_qq_failure_to_regression_script_records_and_drafts(
     capsys.readouterr()
 
     result = subprocess.run(
-        ["./failure-to-regression.sh", "表情包过度热情", "这能发吗"],
+        [
+            "./failure-to-regression.sh",
+            "表情包过度热情",
+            "这能发吗",
+            "tests/integration/qq/test_fake_onebot_flow.py",
+        ],
         cwd=output_dir,
         env={
             **os.environ,
@@ -1243,6 +1258,11 @@ def test_social_runner_qq_failure_to_regression_script_records_and_drafts(
     assert "qq replay" in combined_output
     assert "--replay-json" in combined_output
     assert "regressions/qq-failure-1.replay.json" in combined_output
+    assert "Next pytest command(s):" in combined_output
+    assert (
+        "PYTHONPATH=src .venv/bin/python -m pytest "
+        "tests/integration/qq/test_fake_onebot_flow.py -q"
+    ) in combined_output
     assert "live-run" not in combined_output
     assert "send-run" not in combined_output
 
@@ -1252,10 +1272,18 @@ def test_social_runner_qq_failure_to_regression_script_records_and_drafts(
     assert failures["failures"][0]["date"] == "2026-06-05"
     assert failures["failures"][0]["symptom"] == "表情包过度热情"
     assert failures["failures"][0]["observed_input"] == "这能发吗"
+    assert (
+        failures["failures"][0]["regression_test"]
+        == "tests/integration/qq/test_fake_onebot_flow.py"
+    )
 
     intake = _read_json(output_dir / "logs" / "regression-intake.json")
     assert intake["draft_count"] == 1
     assert intake["drafts"][0]["replay_json"] == "regressions/qq-failure-1.replay.json"
+    assert intake["drafts"][0]["pytest_command"] == (
+        "PYTHONPATH=src .venv/bin/python -m pytest "
+        "tests/integration/qq/test_fake_onebot_flow.py -q"
+    )
     assert (output_dir / "regressions" / "qq-failure-1.replay.json").is_file()
 
 

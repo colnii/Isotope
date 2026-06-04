@@ -272,9 +272,19 @@ the generated wrapper instead:
 ./failure-to-regression.sh "表情包过度热情" "这能发吗"
 ```
 
+You can pass the planned regression test path as the third argument:
+
+```bash
+./failure-to-regression.sh "表情包过度热情" "这能发吗" \
+  "tests/integration/qq/test_fake_onebot_flow.py"
+```
+
 It runs `record-failure.sh`, runs `regression-intake.sh`, and prints the next
-`qq replay` command(s) for operator review. It does not connect to OneBot and
-does not send messages.
+`qq replay` command(s) for operator review. When a failure has a
+`regression_test`, the intake report also includes `pytest_command`, and the
+wrapper prints the pytest command to run from the repo root after the replay
+captures the failure. It does not connect to OneBot, does not send messages, and
+does not run pytest automatically.
 
 `beta-day-report.json` contains `review_warnings`, audit counts,
 `open_failure_count`, and `next_actions`. Treat `open_failure_count > 0` as
@@ -316,7 +326,8 @@ isotope-social qq record-failure \
   --observed-input "这能发吗" --json
 cd .isotope/qq-beta
 ./record-failure.sh "表情包过度热情" "这能发吗"
-./failure-to-regression.sh "表情包过度热情" "这能发吗"
+./failure-to-regression.sh "表情包过度热情" "这能发吗" \
+  "tests/integration/qq/test_fake_onebot_flow.py"
 ```
 
 Each failure entry uses this JSON shape:
@@ -352,6 +363,14 @@ Send or capability log entry:
 Root cause:
 Fix:
 Regression test:
+```
+
+Generated `record-failure.sh` accepts that field as the third positional
+argument. The environment variable form is still available:
+
+```bash
+ISOTOPE_QQ_FAILURE_REGRESSION_TEST=tests/integration/qq/test_fake_onebot_flow.py \
+  ./record-failure.sh "表情包过度热情" "这能发吗"
 ```
 
 Every real beta bug needs a regression test before the failure is closed. Good
