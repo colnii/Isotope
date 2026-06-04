@@ -19,6 +19,7 @@ from .dry_run_review import (
     build_qq_dry_run_review,
     write_qq_dry_run_review,
 )
+from .failure_log import QQRecordFailureConfig, record_qq_beta_failure
 from .qq_state_config import state_path
 from .regression_intake import (
     QQRegressionIntakeConfig,
@@ -152,3 +153,22 @@ def handle_regression_intake(args: argparse.Namespace) -> dict[str, Any]:
             if isinstance(draft, dict)
         ],
     }
+
+
+def handle_record_failure(args: argparse.Namespace) -> dict[str, Any]:
+    result = record_qq_beta_failure(
+        QQRecordFailureConfig(
+            failures_json=Path(args.failures_json),
+            date=args.date,
+            group_id=str(args.group),
+            status=args.status,
+            symptom=args.symptom,
+            observed_input=args.observed_input or "",
+            decision_log_entry=args.decision_log_entry or "",
+            send_or_capability_log_entry=args.send_or_capability_log_entry or "",
+            root_cause=args.root_cause or "",
+            fix=args.fix or "",
+            regression_test=args.regression_test or "",
+        )
+    )
+    return {"status": "ok", "command": "record-failure", **result}

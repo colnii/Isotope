@@ -62,10 +62,11 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 
 The generated pack contains `config.json`, `state/`, `logs/`, `diagnostics.sh`,
 `first-run.sh`, `health.sh`, `startup-check.sh`, `dry-run.sh`,
-`review-dry-run.sh`, `beta-day-report.sh`, `regression-intake.sh`,
-`send-run.sh`, `pause.sh`, `resume.sh`, `export-log.sh`, and a `README.md`
-with the first-run order. It also creates `logs/failures.json` for operator
-failure records and `regressions/` for replay drafts.
+`review-dry-run.sh`, `beta-day-report.sh`, `record-failure.sh`,
+`regression-intake.sh`, `send-run.sh`, `pause.sh`, `resume.sh`,
+`export-log.sh`, and a `README.md` with the first-run order. It also creates
+`logs/failures.json` for operator failure records and `regressions/` for replay
+drafts.
 
 Generate editable role and sticker files before the first real session:
 
@@ -213,11 +214,17 @@ actions, `sticker_candidate_count`, and `warnings`. `ready_for_send` is not
 permission to send; it is only a review field. Read the warnings and still
 enable sends manually.
 
-Export the audit log and close the beta day with a daily report:
+Export the audit log, record observed failures, and close the beta day with a
+daily report:
 
 ```bash
 isotope-social qq export-log --state-root .isotope/qq \
   --group <controlled_group_id> --output .isotope/qq/qq-<controlled_group_id>.json --json
+isotope-social qq record-failure \
+  --failures-json .isotope/qq/failures.json \
+  --date 2026-06-04 --group <controlled_group_id> \
+  --symptom "表情包过度热情" \
+  --observed-input "这能发吗" --json
 isotope-social qq beta-day-report --date 2026-06-04 \
   --group <controlled_group_id> \
   --dry-run-review .isotope/qq/dry-run-review.json \
@@ -274,6 +281,7 @@ cd .isotope/qq-beta
 ./dry-run.sh
 ./review-dry-run.sh
 ./export-log.sh
+./record-failure.sh "表情包过度热情" "这能发吗"
 ./beta-day-report.sh
 ./regression-intake.sh
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh

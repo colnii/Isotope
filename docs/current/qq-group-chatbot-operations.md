@@ -37,9 +37,10 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 
 The pack writes `diagnostics.sh`, `first-run.sh`, `health.sh`,
 `startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`, `beta-day-report.sh`,
-`regression-intake.sh`, `send-run.sh`, `pause.sh`, `resume.sh`, and
-`export-log.sh`. It also writes `logs/failures.json` and creates
-`regressions/`. Run `send-run.sh` only with `ISOTOPE_QQ_ENABLE_SEND=1`.
+`record-failure.sh`, `regression-intake.sh`, `send-run.sh`, `pause.sh`,
+`resume.sh`, and `export-log.sh`. It also writes `logs/failures.json` and
+creates `regressions/`. Run `send-run.sh` only with
+`ISOTOPE_QQ_ENABLE_SEND=1`.
 
 Generate an editable profile pack and apply it to the beta pack before checking
 or running it:
@@ -236,11 +237,16 @@ sends still require the operator to inspect warnings and manually set
 ## Beta Day Report
 
 At the end of each dry-run or send-enabled beta day, export the group audit log,
-record any observed failures in `failures.json`, then write the daily report:
+record any observed failures, then write the daily report:
 
 ```bash
 isotope-social qq export-log --state-root .isotope/qq-beta/state \
   --group <group_id> --output .isotope/qq-beta/logs/qq-<group_id>.json --json
+isotope-social qq record-failure \
+  --failures-json .isotope/qq-beta/logs/failures.json \
+  --date 2026-06-04 --group <group_id> \
+  --symptom "表情包过度热情" \
+  --observed-input "这能发吗" --json
 isotope-social qq beta-day-report --date 2026-06-04 \
   --group <group_id> \
   --dry-run-review .isotope/qq-beta/logs/dry-run-review.json \
@@ -253,6 +259,7 @@ For generated packs, the same flow is:
 
 ```bash
 ./export-log.sh
+./record-failure.sh "表情包过度热情" "这能发吗"
 ./beta-day-report.sh
 ./regression-intake.sh
 ```
@@ -287,7 +294,19 @@ The generated pack initializes `logs/failures.json` as:
 }
 ```
 
-Once beta starts, each failure entry should use this JSON shape:
+Prefer the CLI or generated script when adding entries:
+
+```bash
+isotope-social qq record-failure \
+  --failures-json .isotope/qq-beta/logs/failures.json \
+  --date 2026-06-04 --group <group_id> \
+  --symptom "表情包过度热情" \
+  --observed-input "这能发吗" --json
+cd .isotope/qq-beta
+./record-failure.sh "表情包过度热情" "这能发吗"
+```
+
+Each failure entry uses this JSON shape:
 
 ```json
 {
@@ -347,7 +366,7 @@ Run this checklist for each controlled beta day:
 - Start in dry-run and review at least five representative messages.
 - Run `qq review-dry-run` or `./review-dry-run.sh` and inspect warnings.
 - Run `qq export-log` or `./export-log.sh`.
-- Record observed failures in `logs/failures.json`.
+- Record observed failures with `qq record-failure` or `./record-failure.sh`.
 - Run `qq beta-day-report` or `./beta-day-report.sh`.
 - Inspect `beta-day-report.json`, especially `open_failure_count` and
   `next_actions`.

@@ -19,6 +19,7 @@ SCRIPT_NAMES = (
     "review-dry-run.sh",
     "send-run.sh",
     "pause.sh",
+    "record-failure.sh",
     "resume.sh",
     "export-log.sh",
     "regression-intake.sh",
@@ -156,6 +157,8 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
             "isotope-social qq pause --config-json config.json --state-root state "
             f"--group {shlex.quote(config.group_id)} --operator {shlex.quote(config.operator_user_id)} --json\n"
         )
+    if name == "record-failure.sh":
+        return f"{common}\n{_record_failure_command(config)}"
     if name == "resume.sh":
         return (
             f"{common}\n"
@@ -352,6 +355,44 @@ def _regression_intake_command(config: QQBetaPackConfig) -> str:
     return " ".join(shlex.quote(part) for part in parts)
 
 
+def _record_failure_command(config: QQBetaPackConfig) -> str:
+    return (
+        'SYMPTOM="${1:-${ISOTOPE_QQ_FAILURE_SYMPTOM:-}}"\n'
+        'OBSERVED_INPUT="${2:-${ISOTOPE_QQ_FAILURE_OBSERVED_INPUT:-}}"\n'
+        'if [ -z "$SYMPTOM" ]; then\n'
+        '  echo "Usage: ./record-failure.sh <symptom> [observed_input]" >&2\n'
+        '  echo "Or set ISOTOPE_QQ_FAILURE_SYMPTOM before running." >&2\n'
+        "  exit 2\n"
+        "fi\n"
+        "args=(\n"
+        "  isotope-social qq record-failure\n"
+        "  --failures-json logs/failures.json\n"
+        f"  --date \"${{ISOTOPE_QQ_FAILURE_DATE:-$(date +%F)}}\"\n"
+        f"  --group {shlex.quote(config.group_id)}\n"
+        '  --symptom "$SYMPTOM"\n'
+        ")\n"
+        'if [ -n "$OBSERVED_INPUT" ]; then\n'
+        '  args+=(--observed-input "$OBSERVED_INPUT")\n'
+        "fi\n"
+        'if [ -n "${ISOTOPE_QQ_FAILURE_DECISION_LOG_ENTRY:-}" ]; then\n'
+        '  args+=(--decision-log-entry "$ISOTOPE_QQ_FAILURE_DECISION_LOG_ENTRY")\n'
+        "fi\n"
+        'if [ -n "${ISOTOPE_QQ_FAILURE_SEND_OR_CAPABILITY_LOG_ENTRY:-}" ]; then\n'
+        '  args+=(--send-or-capability-log-entry "$ISOTOPE_QQ_FAILURE_SEND_OR_CAPABILITY_LOG_ENTRY")\n'
+        "fi\n"
+        'if [ -n "${ISOTOPE_QQ_FAILURE_ROOT_CAUSE:-}" ]; then\n'
+        '  args+=(--root-cause "$ISOTOPE_QQ_FAILURE_ROOT_CAUSE")\n'
+        "fi\n"
+        'if [ -n "${ISOTOPE_QQ_FAILURE_FIX:-}" ]; then\n'
+        '  args+=(--fix "$ISOTOPE_QQ_FAILURE_FIX")\n'
+        "fi\n"
+        'if [ -n "${ISOTOPE_QQ_FAILURE_REGRESSION_TEST:-}" ]; then\n'
+        '  args+=(--regression-test "$ISOTOPE_QQ_FAILURE_REGRESSION_TEST")\n'
+        "fi\n"
+        '"${args[@]}" --json\n'
+    )
+
+
 def _quote_command_part(part: str) -> str:
     if part in {'"$ONEBOT_ACCESS_TOKEN"', '"${ISOTOPE_QQ_BETA_DATE:-$(date +%F)}"'}:
         return part
@@ -454,6 +495,7 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 - Pause the group with `./pause.sh`.
 - Resume with `./resume.sh` only after the issue is understood.
 - Export the audit log with `./export-log.sh`.
+- Record a real beta issue with `./record-failure.sh`.
 - Write the daily beta report with `./beta-day-report.sh`.
 - Draft replay regressions with `./regression-intake.sh`.
 
@@ -474,6 +516,8 @@ for stable replay output. To use LLM-generated text replies, change it to
 `review-dry-run.sh` only writes a review report; it does not enable sends.
 `beta-day-report.sh` combines the dry-run review, exported audit log, and
 `logs/failures.json`; it does not enable sends.
+`record-failure.sh` appends one structured failure record to
+`logs/failures.json`.
 `regression-intake.sh` writes replay drafts under `regressions/`; it does not
 close failures automatically.
 """

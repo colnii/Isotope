@@ -193,6 +193,34 @@ def register_qq_commands(subparsers: argparse._SubParsersAction) -> None:
     )
     regression_intake.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    record_failure = qq_subparsers.add_parser(
+        "record-failure",
+        help="Append one structured QQ beta failure record.",
+    )
+    record_failure.add_argument(
+        "--failures-json",
+        required=True,
+        help="Operator-maintained failure records JSON file.",
+    )
+    record_failure.add_argument("--date", required=True, help="Failure date, usually YYYY-MM-DD.")
+    record_failure.add_argument("--group", required=True, help="QQ group id.")
+    record_failure.add_argument("--symptom", required=True, help="Observed failure symptom.")
+    record_failure.add_argument(
+        "--status",
+        default="open",
+        help="Failure status. Defaults to open.",
+    )
+    record_failure.add_argument("--observed-input", help="Group message or scene that triggered it.")
+    record_failure.add_argument("--decision-log-entry", help="Related decision log reference.")
+    record_failure.add_argument(
+        "--send-or-capability-log-entry",
+        help="Related send or capability log reference.",
+    )
+    record_failure.add_argument("--root-cause", help="Current root-cause note.")
+    record_failure.add_argument("--fix", help="Current fix note.")
+    record_failure.add_argument("--regression-test", help="Regression test path or planned path.")
+    record_failure.add_argument("--json", action="store_true", help="Print JSON output.")
+
     for name, help_text in (
         ("pause", "Pause one QQ group."),
         ("resume", "Resume one QQ group."),
