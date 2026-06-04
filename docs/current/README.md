@@ -17,7 +17,7 @@
 
 - `status.md` 记录主线事实。
 - `agent-task-queue.md` 记录当前可执行任务。
-- `codex-supervisor-readonly.md` 是 quick start；命令索引看
+- `codex-supervisor-guide.md` 是 quick start；命令索引看
   `supervisor-command-reference.md`。
 - `docs-map.md` 是导航。
 - `import-map.md` 和 `compat-proxy-audit.md` 服务于目录/导入收束。

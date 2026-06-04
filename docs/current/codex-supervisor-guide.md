@@ -2,10 +2,9 @@
 
 状态：`当前入口 / quick start`
 
-命令索引和边界见 [Supervisor 命令参考](./supervisor-command-reference.md)，
-历史长跑流程见 [Supervisor operations runbook](./supervisor-operations-runbook.md)。
-能力登记见
-[Supervisor 能力地图](./supervisor-capability-map.md)。
+命令索引和运行边界见 [Supervisor 命令参考](./supervisor-command-reference.md)，
+当前可执行任务见 [任务队列](./agent-task-queue.md)，术语定位见
+[术语索引](./terminology.md)。
 
 ## 目标
 
@@ -56,16 +55,13 @@ Research 测试入口：
 - merge worker 可以按工单推送验证分支；普通 worker 不应主动 push。
 - runner 不直接重写历史、不 force push、不删除未确认集成的 worktree。
 - `delete_worktree` 只有在 done、archived、already_integrated 且路径安全时才允许。
-- 新增 Supervisor 能力前先查
-  [Supervisor 能力详情](./supervisor-capability-details.md)。
+- 新增 Supervisor 能力前先查 [Supervisor 命令参考](./supervisor-command-reference.md)
+  和 [术语索引](./terminology.md)。
 - `research` 只代理 artifact/provenance-backed Research flow；search 成功写
   `research.report`，失败写 `research.provider_trace`，不直接写 durable memory。
 
 ## 相关文档
 
 - [Supervisor 命令参考](./supervisor-command-reference.md)
-- [Supervisor operations runbook](./supervisor-operations-runbook.md)
-- [Supervisor 能力地图](./supervisor-capability-map.md)
-- [Supervisor 能力详情](./supervisor-capability-details.md)
-- [Supervisor 架构迁移表](./supervisor-architecture-migration-table.md)
 - [任务队列](./agent-task-queue.md)
+- [术语索引](./terminology.md)

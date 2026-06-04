@@ -134,7 +134,7 @@
 | `send` | Supervisor 控制命令，向登记的 tmux Codex 会话发送一行文本，短暂等待后用 `C-m` 提交 | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `adopt` | 接管已有 tmux 会话，把它登记成 Supervisor 可监控和发送指令的 lane | 产品功能/控制通道 | `src/isotope/features/supervisor/runner.py`, `src/isotope/features/supervisor/registry.py` |
 | `tmux` | 本机终端复用工具，适合人类透明旁观同一个 TUI；现在是辅助控制通道，不是唯一主通道 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
-| `attach` | 连接到 tmux 会话查看同一个终端窗口 | 外部集成/人类观察 | `docs/current/codex-supervisor-readonly.md` |
+| `attach` | 连接到 tmux 会话查看同一个终端窗口 | 外部集成/人类观察 | `docs/current/codex-supervisor-guide.md` |
 | `set-buffer` / `paste-buffer` | tmux 缓冲区写入和粘贴命令，用于把文本送入托管 Codex 窗口 | 外部集成/控制通道 | `src/isotope/features/supervisor/registry.py` |
 | `bell` | tmux 提醒信号，可作为窗口可能结束或需要查看的弱证据 | 外部集成/状态判断 | `src/isotope/features/supervisor/flow.py`, `docs/current/supervisor-capability-map.md` |
 | `managed_bell` | 托管 tmux 会话是否出现过 bell 提醒的结构化字段 | 产品功能/状态判断 | `src/isotope/features/supervisor/flow.py` |
@@ -212,7 +212,7 @@
 | `planner adapter` | 规划器适配层，把规划输出接到现有执行循环 | 智能体 | `src/isotope/agents/loop/planner_adapter.py` |
 | `tick policy` | 步进策略，决定智能体循环每轮是否继续、暂停或停止 | 智能体 | `src/isotope/agents/loop/control.py` |
 | `tick driver` | 单 tick 驱动器，先看 tick policy，允许时执行一个 planner-selected step，再返回执行后的 policy | 智能体 | `src/isotope/agents/loop/tick.py` |
-| `bounded goal runner` | 有界目标 runner，在单 tick driver 外做有限循环，每轮复用 tick policy、planner adapter 和 step driver；当前不接真实 LLM、不默认打开 Supervisor 长循环 | 智能体 | `src/isotope/agents/loop/runner.py` |
+| `finite-step goal runner` | 有限步目标 runner，在单 tick driver 外做有限循环，每轮复用 tick policy、planner adapter 和 step driver，并由 tick policy 统一控制终止条件 | 智能体 | `src/isotope/agents/loop/runner.py` |
 | `provider planner tick` | provider 驱动的单 tick 规划入口，用注入的 LLM provider 生成 JSON planner decision，再走现有 planner contract 和 step driver；当前测试只用 deterministic test provider，不打开真实网络；prompt 默认带 `default_context.memory` 低敏记忆 preview | 智能体/模型 | `src/isotope/agents/loop/provider_planner.py`, `src/isotope/agents/loop/context.py` |
 | `AgentConversationMessage` | agent 候选发言 contract，表达哪个 agent 想回应、插话、内部记录或沉默 | 智能体/对话 | `src/isotope/agents/loop/conversation.py` |
 | `conversation arbiter` | 对话仲裁器，在同一回合内按 interrupt、priority、state_lock 和可见消息上限筛选 agent 候选发言，避免抢话和状态锁冲突 | 智能体/对话 | `src/isotope/agents/loop/conversation.py` |

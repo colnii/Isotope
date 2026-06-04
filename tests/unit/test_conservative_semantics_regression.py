@@ -7,6 +7,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 MODEL_FACING_FILES = [
+    "README.md",
+    "docs/current/README.md",
+    "docs/current/agent-task-queue.md",
+    "docs/current/codex-supervisor-guide.md",
+    "docs/current/docs-map.md",
+    "docs/current/supervisor-command-reference.md",
+    "docs/current/terminology.md",
     "src/isotope/agents/loop/context.py",
     "src/isotope/agents/loop/control.py",
     "src/isotope/capabilities/catalog.py",

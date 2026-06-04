@@ -17,5 +17,5 @@
 | 判断项目当前状态 | [status](./status.md) |
 | 找下一步任务 | [agent-task-queue](./agent-task-queue.md) |
 | 查英文术语和中文解释 | [terminology](./terminology.md) |
-| Supervisor 快速上手 | [codex-supervisor-readonly.md](./codex-supervisor-readonly.md) |
+| Supervisor 快速上手 | [codex-supervisor-guide.md](./codex-supervisor-guide.md) |
 | Supervisor 命令参考 | [supervisor-command-reference.md](./supervisor-command-reference.md) |

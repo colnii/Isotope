@@ -14,13 +14,12 @@
 
 - 第三批已经完成 current 长文拆分：
   [当前状态](./status.md)、本文件、
-  [Codex Supervisor 监控与托管](./codex-supervisor-readonly.md) 和
-  [Supervisor 能力地图](./supervisor-capability-map.md) 都保留为短入口。
+  [Codex Supervisor 监控与托管](./codex-supervisor-guide.md) 和
+  [Supervisor 命令参考](./supervisor-command-reference.md) 都保留为短入口。
 - 归档原因：历史流水、命令大全和详细能力表会干扰当前接手判断，所以移到
   [agent-task-history](../archive/current/agent-task-history.md)、
   [status-history](../archive/current/status-history.md)、
-  [supervisor-command-reference](./supervisor-command-reference.md) 和
-  [supervisor-capability-details](./supervisor-capability-details.md)。
+  [supervisor-command-reference](./supervisor-command-reference.md)。
 - 旧 v0.1 implementation / coding plans 已移到
   [archived plans](../archive/plans/)。归档原因：它们是早期最小闭环和编码拆解，
   已被后续实现、目录重组和 Supervisor 产品路径替代，不应继续放在
@@ -55,10 +54,10 @@
   `POST /runs/{run_id}/agent-loop-tick` 会先看 tick policy，允许继续时只执行
   一个已解析的 planner-selected step，再返回执行后的 tick policy；它仍不接
   真实 LLM，不自动多轮循环。
-- Agent loop bounded goal runner 已补第一片：`run_agent_loop_until_stop(...)`
-  会在单 tick driver 外做有限 `while`，每轮重新读取 tick policy、调用外部
+- Agent loop finite-step goal runner 已补第一片：`run_agent_loop_until_stop(...)`
+  会在单 tick driver 外做有限步 `while`，每轮重新读取 tick policy、调用外部
   planner callable、再执行一个 tick；它复用现有 tick policy / planner adapter /
-  step driver，不接真实 LLM，不定义 agent-to-agent 对话协议，也不会无限循环。
+  step driver，并把终止条件交给 tick policy 统一控制。
 - Agent loop provider planner tick 已补第一片：
   `run_agent_loop_provider_planner_tick(...)` 用注入 provider 生成 JSON planner
   decision，解析成现有 `planner_output`，再走

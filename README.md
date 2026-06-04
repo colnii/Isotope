@@ -121,7 +121,7 @@ CLI report + Web dashboard + local event logs
 ## 主要入口
 
 - 项目状态：[docs/current/status.md](docs/current/status.md)
-- Supervisor 说明：[docs/current/codex-supervisor-readonly.md](docs/current/codex-supervisor-readonly.md)
+- Supervisor 说明：[docs/current/codex-supervisor-guide.md](docs/current/codex-supervisor-guide.md)
 - 文档地图：[docs/current/docs-map.md](docs/current/docs-map.md)
 - 任务队列：[docs/current/agent-task-queue.md](docs/current/agent-task-queue.md)
 - 协作规则：[AGENTS.md](AGENTS.md)
