@@ -10,7 +10,10 @@ from typing import Any
 import pytest
 
 from isotope.capabilities import research as research_capability
-from isotope.features.research.providers import ResearchProviderError
+from isotope.features.research.providers import (
+    ResearchProviderError,
+    build_research_provider,
+)
 from isotope.features.supervisor.web import create_dashboard_server
 from isotope.llm.provider import LLMResponse
 
@@ -137,6 +140,15 @@ def test_research_runtime_private_tavily_readiness_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    monkeypatch.setattr(
+        research_capability,
+        "build_research_provider",
+        lambda provider_id, **kwargs: build_research_provider(
+            provider_id,
+            tavily_config_path=tmp_path / "missing_research_tavily.toml",
+            **kwargs,
+        ),
+    )
 
     result = research_capability.run_research_search(
         inputs={
