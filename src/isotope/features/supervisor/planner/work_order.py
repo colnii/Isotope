@@ -21,6 +21,15 @@ def build_launch_work_order_prompt(
             f"goal: {goal.strip()}",
             f"cwd: {cwd.strip()}",
             f"target_name: {target_name.strip()}",
+            "worker_prompt_contract:",
+            "task_goal: 只完成本工单 goal，不主动扩写产品范围。",
+            "context_evidence: 先复用仓库已有实现、测试和文档；引用关键文件、命令或证据。",
+            "allowed_actions: 修改本 goal 直接相关文件、补测试、跑验证、提交本 worktree 改动。",
+            "forbidden_actions: 不合并 main、不删除 worktree、不改无关文件、不改写共享历史。",
+            "verification_evidence: SUPERVISOR_SUMMARY 必须写明验证命令和结果。",
+            "report_lines: SUPERVISOR_STATUS: working|done|blocked|needs_user",
+            "report_lines: SUPERVISOR_SUMMARY: 用一句或几句中文写明改动、验证证据和提交哈希",
+            "report_lines: SUPERVISOR_NEXT: 用一句中文说明建议下一步",
             "allowed_scope: 只处理本次 goal 直接相关的代码、测试和必要文档。",
             (
                 f"forbidden_scope: {remote_push_rule}"

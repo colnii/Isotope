@@ -101,6 +101,24 @@ def test_launch_work_order_prompt_includes_standard_completion_template():
     assert "SUPERVISOR_STATUS: done" not in prompt
 
 
+def test_launch_work_order_prompt_includes_worker_prompt_contract():
+    prompt = build_launch_work_order_prompt(
+        target_name="worker-a",
+        cwd="/tmp/isotope-worker",
+        goal="实现目标队列 worker。",
+    )
+
+    assert "worker_prompt_contract:" in prompt
+    assert "task_goal: 只完成本工单 goal" in prompt
+    assert "context_evidence: 先复用仓库已有实现、测试和文档" in prompt
+    assert "allowed_actions: 修改本 goal 直接相关文件、补测试、跑验证、提交本 worktree 改动" in prompt
+    assert "forbidden_actions: 不合并 main、不删除 worktree、不改无关文件、不改写共享历史" in prompt
+    assert "verification_evidence: SUPERVISOR_SUMMARY 必须写明验证命令和结果" in prompt
+    assert "SUPERVISOR_STATUS: working|done|blocked|needs_user" in prompt
+    assert "SUPERVISOR_SUMMARY: 用一句或几句中文写明改动、验证证据和提交哈希" in prompt
+    assert "SUPERVISOR_NEXT: 用一句中文说明建议下一步" in prompt
+
+
 def test_coding_worker_profile_defaults_to_high_reasoning_gpt_5_5():
     args = argparse.Namespace(
         worker_codex_model=None,
