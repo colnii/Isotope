@@ -60,6 +60,26 @@ def test_all_production_prompt_templates_are_registered_md_assets():
         assert fragment in load_prompt_template(name)
 
 
+def test_supervisor_conversation_prompt_does_not_encode_fixed_intent_routes():
+    prompt = load_prompt_template("supervisor_conversation_loop")
+
+    forbidden = [
+        "普通问候优先 direct_answer",
+        "如果本轮已有 capacity_observation，优先基于 observation 输出 direct_answer",
+        "已有 capacity_observation，优先基于 observation 输出 direct_answer",
+        "明确要求访问、搜索或总结外部网页时，优先选择 `research.search`",
+        "if project question",
+        "if code request",
+    ]
+    for phrase in forbidden:
+        assert phrase not in prompt
+
+    assert "capacity_manifest" in prompt
+    assert "capacity_observation" in prompt
+    assert "call_capability" in prompt
+    assert "report_capability_gap" in prompt
+
+
 def test_prompt_template_renderer_replaces_placeholders_and_rejects_missing_values():
     rendered = render_prompt_text(
         "before {{ first }} middle {{second}} after",
