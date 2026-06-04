@@ -61,7 +61,7 @@ def _run_project_workspace_demo(root: Path) -> dict[str, Any]:
         "workbench_counts": dict(workbench["counts"]),
         "search_result_types": search_result_types,
         "post_workspace_status_code": response.status_code,
-        "content_policy": "summary_only",
+        "content_policy": "public_metadata",
         "memory_status": "active",
     }
 
@@ -130,7 +130,7 @@ def _run_project_workspace_append_demo(root: Path) -> dict[str, Any]:
         "search_result_types": search_result_types,
         "post_workspace_status_code": created.status_code,
         "append_workspace_status_code": appended.status_code,
-        "content_policy": "summary_only",
+        "content_policy": "public_metadata",
         "memory_status": "active",
     }
 
@@ -213,7 +213,7 @@ def _run_workbench_demo(root: Path) -> dict[str, Any]:
         "post_workbench_status_code": post_workbench_response.status_code,
         "search_query": "portfolio",
         "memory_status": "active",
-        "content_policy": "summary_only",
+        "content_policy": "public_metadata",
     }
 
 
@@ -269,7 +269,7 @@ def _run_workbench_ask_demo(root: Path) -> dict[str, Any]:
         "provider_call_count": provider.call_count,
         "context_counts": answer["context"]["counts"],
         "post_workbench_ask_status_code": answer_response.status_code,
-        "content_policy": "summary_only",
+        "content_policy": "public_metadata",
         "memory_status": "active",
     }
 

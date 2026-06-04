@@ -1512,7 +1512,7 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "memory_preview_only",
+                        "memory_public_metadata",
                         "source_refs_metadata",
                         "no_memory_record_content",
                         "no_source_artifact_full_content_read",

@@ -40,7 +40,7 @@ def test_capacity_result_extracts_public_metadata_agent_loop_fields():
                                 "memory_query": {
                                     "status": "completed",
                                     "results": [{"memory_id": "mem_1"}],
-                                    "content_policy": "summary_only",
+                                    "content_policy": "public_metadata",
                                 },
                             },
                             "raw": "PRIVATE_ACTION_PAYLOAD",
@@ -65,7 +65,7 @@ def test_capacity_result_extracts_public_metadata_agent_loop_fields():
         "agent_loop_post_step_stop_reason": None,
         "agent_loop_memory_query_status": "completed",
         "agent_loop_memory_query_result_count": 1,
-        "agent_loop_memory_query_content_policy": "summary_only",
+        "agent_loop_memory_query_content_policy": "public_metadata",
     }
     assert "PRIVATE_" not in str(summary)
 

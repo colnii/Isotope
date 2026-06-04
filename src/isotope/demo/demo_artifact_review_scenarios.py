@@ -47,7 +47,7 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
         },
         purpose="artifact_review_flow",
     )
-    summary_only_ok = "content" not in source_summary and source_summary["ref"] == source_artifact_ref.to_dict()
+    metadata_projection_ok = "content" not in source_summary and source_summary["ref"] == source_artifact_ref.to_dict()
     controlled_retrieval_ok = (
         controlled_retrieval.get("status") == "ok"
         and controlled_retrieval.get("view") == "full"
@@ -122,7 +122,7 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
     replay_ok = asdict(replay_state) == asdict(final_state)
     checkpoint_ok = asdict(checkpoint_state) == asdict(replay_state)
     content_policy_ok = (
-        summary_only_ok
+        metadata_projection_ok
         and controlled_retrieval_ok
         and _route_status(http_full_content_response) == "active"
     )
@@ -167,7 +167,7 @@ def _run_artifact_review_spike(root: Path) -> dict[str, Any]:
         "review_decision": review_decision,
         "review_artifact_provenance": dict(review_artifact_state["provenance"]),
         "review_action_chain_ok": review_action_chain_ok,
-        "summary_only_ok": summary_only_ok,
+        "metadata_projection_ok": metadata_projection_ok,
         "content_policy_ok": content_policy_ok,
         "controlled_retrieval_ok": controlled_retrieval_ok,
         "controlled_retrieval_view": controlled_retrieval.get("view"),

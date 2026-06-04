@@ -171,7 +171,7 @@ def test_memory_promotion_payload_does_not_expose_raw_source_text():
             "source_type": "artifact",
             "artifact_ref": ARTIFACT_REF,
             "artifact_type": "research.report",
-            "summary": "Safe summary only.",
+            "summary": "Safe public metadata.",
             "provenance": {"execution_id": "exec_research"},
         },
     )

@@ -67,7 +67,7 @@ def test_artifact_review_content_policy_and_http_content_route_are_active(tmp_pa
     data = run_demo(tmp_path, scenario=SCENARIO)
 
     assert data["content_policy_ok"] is True
-    assert data["summary_only_ok"] is True
+    assert data["metadata_projection_ok"] is True
     assert data["controlled_retrieval_ok"] is True
     assert data["controlled_retrieval_view"] == "full"
     assert data["http_full_content_route_status"] == "active"

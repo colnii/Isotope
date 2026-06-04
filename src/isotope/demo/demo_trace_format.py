@@ -107,7 +107,7 @@ def _format_artifact_review_trace(result: dict[str, Any]) -> str:
         f"create run: {result['run_id']}",
         "create source action and policy decision: approved",
         f"create source artifact summary/ref: {_artifact_id(result['artifact_ref'])}",
-        f"read source artifact summary only: {_bool_text(result['summary_only_ok'])}",
+        f"read source artifact metadata projection: {_bool_text(result['metadata_projection_ok'])}",
         f"policy approved controlled retrieval: {_bool_text(result['controlled_retrieval_ok'])}",
         "propose review action through action chain",
         f"create review artifact summary/ref: {_artifact_id(result['review_artifact_ref'])}",

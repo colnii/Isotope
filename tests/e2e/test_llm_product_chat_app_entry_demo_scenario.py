@@ -111,7 +111,7 @@ def _assert_no_forbidden_content_keys(value: Any) -> None:
             _assert_no_forbidden_content_keys(nested)
 
 
-def test_llm_product_chat_app_entry_demo_plain_cli_prints_gate_summary_only():
+def test_llm_product_chat_app_entry_demo_plain_cli_prints_gate_public_metadata():
     result = _run_demo("--scenario", SCENARIO)
 
     assert result.returncode == 0, result.stderr

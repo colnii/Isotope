@@ -187,7 +187,7 @@ def test_tool_output_does_not_expose_full_content_by_default(tmp_path):
             "action": "call_tool",
             "tool": "write_artifact_tool",
             "text": "full content should stay out of events",
-            "summary": "summary only",
+            "summary": "metadata projection",
         },
     )
     public_shape = {

@@ -129,7 +129,7 @@ def test_memory_query_plain_output_shows_materialized_controlled_expand_metadata
                     "record_id": "mem_preview",
                     "scope": "run",
                     "quality": "candidate",
-                    "summary": "Preview only.",
+                    "summary": "Public metadata.",
                 }
             ],
         }

@@ -38,7 +38,7 @@ def _valid_capability(**overrides):
         "domain_tags": ("artifact", "review"),
         "input_contract": {"type": "object", "required": ["artifact_ref"]},
         "output_contract": {"type": "object", "fields": ["review_artifact_ref"]},
-        "safety_boundaries": ("summary_only", "no_full_content"),
+        "safety_boundaries": ("public_metadata", "no_full_content"),
         "default_enabled": True,
         "required_env": (),
         "network_required": False,
