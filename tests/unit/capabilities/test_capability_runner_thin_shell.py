@@ -843,7 +843,17 @@ def test_runner_discovers_research_search_from_default_catalog():
         "root",
         "query",
     ]
-    assert set(description["input_contract"]["properties"]) == {"root", "query"}
+    properties = description["input_contract"]["properties"]
+    assert set(properties) == {
+        "root",
+        "query",
+        "provider",
+        "allow_network",
+        "tavily_max_results",
+    }
+    assert properties["provider"]["x-system-input"] is True
+    assert properties["allow_network"]["x-system-input"] is True
+    assert properties["tavily_max_results"]["x-system-input"] is True
     assert "reuses_research_flow" in description["safety_boundaries"]
     assert "runtime_provider_policy" in description["safety_boundaries"]
 

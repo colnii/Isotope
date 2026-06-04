@@ -1746,6 +1746,23 @@ class CapabilityCatalog:
                                 "type": "string",
                                 "description": "Research query.",
                             },
+                            "provider": {
+                                "type": "string",
+                                "enum": ["codex", "tavily"],
+                                "x-system-input": True,
+                                "description": "Internal research provider policy.",
+                            },
+                            "allow_network": {
+                                "type": "boolean",
+                                "x-system-input": True,
+                                "description": "Internal network execution gate.",
+                            },
+                            "tavily_max_results": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "x-system-input": True,
+                                "description": "Internal Tavily result budget.",
+                            },
                         },
                     },
                     output_contract={

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -20,6 +21,7 @@ from isotope.features.supervisor.native_coding_run import (
     CODING_TASK_RUN_CAPABILITY,
     run_native_coding_agent_loop,
 )
+from isotope.features.research.providers import tavily_api_key_from_config
 from isotope.llm.prompts import render_json_prompt_template
 from isotope.llm.provider import LLMResponse
 from isotope.platform.schemas.input_contract import (
@@ -633,13 +635,24 @@ def _normalize_conversation_capability_inputs(
         return normalized
     if capacity_id != "research.search":
         return inputs
-    if inputs.get("provider") == "tavily":
-        return inputs
-    return {
+    normalized = {
         key: value
         for key, value in inputs.items()
         if key not in {"allow_network", "tavily_max_results"}
     }
+    if _configured_tavily_research_available():
+        normalized.setdefault("provider", "tavily")
+        normalized.setdefault("allow_network", True)
+    return normalized
+
+
+def _configured_tavily_research_available() -> bool:
+    if os.environ.get("TAVILY_API_KEY"):
+        return True
+    try:
+        return bool(tavily_api_key_from_config())
+    except Exception:
+        return False
 
 
 def _capability_input_names(capacity_id: str) -> set[str]:
@@ -700,6 +713,11 @@ def _capacity_display_inputs(capacity_id: str, inputs: dict[str, Any]) -> dict[s
     if capacity_id in {"supervisor.project_status", "isotope.self_repair"}:
         display.pop("state_root", None)
         display.pop("cwd", None)
+        return display
+    if capacity_id == "research.search":
+        display.pop("provider", None)
+        display.pop("allow_network", None)
+        display.pop("tavily_max_results", None)
         return display
     if capacity_id != "coding_task.execute":
         return display

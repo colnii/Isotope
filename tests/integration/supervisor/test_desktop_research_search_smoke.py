@@ -78,6 +78,10 @@ def test_desktop_chat_research_search_reports_default_codex_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from isotope.features.supervisor import conversation_loop
+
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    monkeypatch.setattr(conversation_loop, "tavily_api_key_from_config", lambda: None)
     provider_calls: list[dict[str, Any]] = []
 
     def build_provider(provider_id: str, **kwargs: Any) -> FailingCodexResearchProvider:
@@ -133,6 +137,99 @@ def test_desktop_chat_research_search_reports_default_codex_failure(
     assert "provider_failed" in second_turn
     assert "codex delegated research provider is not configured" in second_turn
     assert "raw_response" not in second_turn
+
+
+def test_desktop_chat_research_search_uses_configured_tavily_internally(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TAVILY_API_KEY", "test-tavily-key")
+    provider_calls: list[dict[str, Any]] = []
+
+    class RecordingTavilyResearchProvider:
+        provider_name = "tavily"
+
+        def run(self, query: str) -> dict[str, Any]:
+            return {
+                "research_id": "desktop_tavily_policy",
+                "query": query,
+                "provider": "tavily",
+                "created_at": "2026-06-04T00:00:00Z",
+                "status": "ok",
+                "evidence_status": "complete",
+                "sources": [
+                    {
+                        "source_id": "src_001",
+                        "title": "Tavily desktop source",
+                        "url": "https://example.com/desktop-tavily",
+                        "snippet": "Desktop chat used Tavily internally.",
+                        "why_used": "integration test Tavily provider",
+                        "retrieved_at": "2026-06-04T00:00:00Z",
+                    }
+                ],
+                "report": {
+                    "summary": "Desktop chat Tavily summary.",
+                    "claims": [
+                        {
+                            "text": "Desktop chat used Tavily internally.",
+                            "source_ids": ["src_001"],
+                            "confidence": "medium",
+                        }
+                    ],
+                    "limitations": [],
+                    "next_queries": [],
+                },
+                "provenance": {"provider": "tavily"},
+            }
+
+    def build_provider(
+        provider_id: str,
+        **kwargs: Any,
+    ) -> RecordingTavilyResearchProvider:
+        provider_calls.append({"provider_id": provider_id, **kwargs})
+        return RecordingTavilyResearchProvider()
+
+    monkeypatch.setattr(research_capability, "build_research_provider", build_provider)
+    provider = ResearchDecisionProvider(query="desktop tavily configured policy")
+    server = create_dashboard_server(
+        codex_home=tmp_path,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        desktop_chat_provider=provider,
+    )
+
+    response, body = _post_desktop_chat(
+        server,
+        {"question": "搜索 desktop tavily configured policy"},
+    )
+
+    assert response.status == 200
+    events = _parse_sse(body)
+    assert [event["event"] for event in events] == [
+        "start",
+        "capacity_start",
+        "capacity_result",
+        "delta",
+        "done",
+    ]
+    capacity_start = events[1]["data"]
+    assert capacity_start["inputs"] == {
+        "query": "desktop tavily configured policy",
+        "root": str(tmp_path),
+    }
+    capacity_result = events[2]["data"]
+    assert capacity_result["status"] == "ok"
+    assert capacity_result["result"]["agent_loop_research_provider"] == "tavily"
+    assert provider_calls == [
+        {
+            "provider_id": "tavily",
+            "workspace_root": str(tmp_path),
+            "tavily_enable_network": True,
+        }
+    ]
 
 
 def test_research_runtime_private_tavily_readiness_failure(

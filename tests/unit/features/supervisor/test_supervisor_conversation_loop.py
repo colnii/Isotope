@@ -558,6 +558,10 @@ def test_conversation_loop_filters_model_supplied_inputs_to_capability_contract(
     monkeypatch,
 ) -> None:
     from isotope.capabilities import research as research_capability
+    from isotope.features.supervisor import conversation_loop
+
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    monkeypatch.setattr(conversation_loop, "tavily_api_key_from_config", lambda: None)
 
     class RecordingCodexProvider:
         provider_name = "codex_delegated"
@@ -646,7 +650,10 @@ def test_conversation_loop_uses_internal_research_provider_policy(
     monkeypatch,
 ) -> None:
     from isotope.capabilities import research as research_capability
+    from isotope.features.supervisor import conversation_loop
 
+    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    monkeypatch.setattr(conversation_loop, "tavily_api_key_from_config", lambda: None)
     provider_calls: list[dict[str, Any]] = []
 
     class RecordingCodexProvider:
@@ -741,6 +748,104 @@ def test_conversation_loop_uses_internal_research_provider_policy(
         {
             "provider_id": "codex",
             "workspace_root": str(tmp_path),
+        }
+    ]
+
+
+def test_conversation_loop_uses_configured_tavily_without_exposing_policy_inputs(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from isotope.capabilities import research as research_capability
+
+    monkeypatch.setenv("TAVILY_API_KEY", "test-tavily-key")
+    provider_calls: list[dict[str, Any]] = []
+
+    class RecordingTavilyProvider:
+        provider_name = "tavily"
+
+        def run(self, query: str) -> dict[str, Any]:
+            return {
+                "research_id": "research_tavily_unit",
+                "query": query,
+                "provider": "tavily",
+                "created_at": "2026-06-04T00:00:00Z",
+                "status": "ok",
+                "evidence_status": "complete",
+                "sources": [
+                    {
+                        "source_id": "src_001",
+                        "title": "Tavily source",
+                        "url": "https://example.com/tavily",
+                        "snippet": "Tavily returned source-backed search data.",
+                        "why_used": "unit test Tavily provider",
+                        "retrieved_at": "2026-06-04T00:00:00Z",
+                    }
+                ],
+                "report": {
+                    "summary": "Tavily search summary.",
+                    "claims": [
+                        {
+                            "text": "Tavily returned source-backed search data.",
+                            "source_ids": ["src_001"],
+                            "confidence": "medium",
+                        }
+                    ],
+                    "limitations": [],
+                    "next_queries": [],
+                },
+                "provenance": {"provider": "tavily"},
+            }
+
+    def build_provider(provider_id: str, **kwargs: Any) -> RecordingTavilyProvider:
+        provider_calls.append({"provider_id": provider_id, **kwargs})
+        return RecordingTavilyProvider()
+
+    monkeypatch.setattr(
+        research_capability,
+        "build_research_provider",
+        build_provider,
+    )
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "research.search",
+                    "arguments": {"query": "OpenAI news"},
+                    "rationale": "需要 research.search。",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "research.search 已执行。",
+                    "rationale": "基于 capability observation 回答。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=tmp_path / "repo",
+            user_message="搜索 OpenAI news",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert events[0].payload["inputs"] == {
+        "query": "OpenAI news",
+        "root": str(tmp_path),
+    }
+    assert events[1].payload["result"]["agent_loop_research_provider"] == "tavily"
+    assert provider_calls == [
+        {
+            "provider_id": "tavily",
+            "workspace_root": str(tmp_path),
+            "tavily_enable_network": True,
         }
     ]
 
