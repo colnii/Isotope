@@ -1,4 +1,4 @@
-"""Read-only progressive discovery for local Codex skills."""
+"""Public progressive discovery for local Codex skills."""
 
 from __future__ import annotations
 

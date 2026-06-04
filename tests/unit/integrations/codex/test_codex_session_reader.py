@@ -82,7 +82,7 @@ def test_codex_session_reader_reads_jsonl_session_without_supervisor_flow(tmp_pa
     ]
 
 
-def test_codex_session_reader_reads_index_and_state_threads_readonly(tmp_path):
+def test_codex_session_reader_reads_index_and_state_threads_as_projection(tmp_path):
     codex_home = tmp_path / ".codex"
     index_path = codex_home / "session_index.jsonl"
     index_path.parent.mkdir(parents=True)

@@ -34,6 +34,8 @@ MODEL_FACING_FILES = [
     "src/isotope/features/supervisor/runner.py",
     "src/isotope/features/supervisor/state/projection.py",
     "src/isotope/features/supervisor/workers/integration_review.py",
+    "src/isotope/extensions/skills.py",
+    "src/isotope/integrations/codex/session_reader.py",
     "src/isotope/memory/__init__.py",
     "src/isotope/memory/views.py",
     "src/isotope/platform/state/multi_worker.py",
@@ -41,6 +43,7 @@ MODEL_FACING_FILES = [
     "src/isotope/rag/sparse.py",
     "src/isotope/rag/ingestion.py",
     "src/isotope/runtime/in_process/actions.py",
+    "src/isotope/workspace/__init__.py",
 ]
 
 FORBIDDEN_PATTERNS = [

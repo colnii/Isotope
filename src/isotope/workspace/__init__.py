@@ -13,7 +13,7 @@ class WorkspaceBinding:
 
 
 class WorkspaceManager:
-    """No-op/shared read-only workspace boundary for the first slice."""
+    """Shared workspace binding boundary for the first slice."""
 
     def get_binding(self, grants: dict[str, Any]) -> WorkspaceBinding:
         if not isinstance(grants, dict):

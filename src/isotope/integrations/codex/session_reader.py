@@ -1,4 +1,4 @@
-"""Read-only Codex session file and index readers."""
+"""Codex session file and index projection readers."""
 
 from __future__ import annotations
 

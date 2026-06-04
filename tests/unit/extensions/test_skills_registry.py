@@ -63,7 +63,7 @@ def test_discover_skills_returns_metadata_without_body(tmp_path) -> None:
     assert "PRIVATE BODY SHOULD NOT APPEAR" not in repr(result)
 
 
-def test_describe_skill_returns_bounded_body_without_linked_files(tmp_path) -> None:
+def test_describe_skill_returns_scoped_body_without_linked_files(tmp_path) -> None:
     root = tmp_path / "skills"
     _write_skill(
         root,
