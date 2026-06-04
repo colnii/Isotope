@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from isotope.features.social import qq_handlers
+from isotope.features.social import qq_runtime_commands
 from isotope.features.social import runner as social_runner
 from isotope.features.social import SocialMessagePart, SocialReplyAction, SocialTarget
 from isotope.integrations.qq import FakeOneBotClient, OneBotAdapter
@@ -93,7 +93,7 @@ def test_real_qq_smoke_harness_health_mode_uses_live_run(
 ) -> None:
     FakeLiveOneBotClient.instances = []
     monkeypatch.setattr(
-        qq_handlers,
+        qq_runtime_commands,
         "OneBotWebSocketClient",
         FakeLiveOneBotClient,
     )
@@ -120,7 +120,7 @@ def test_real_qq_smoke_harness_dry_run_consumes_one_event_without_sending(
 ) -> None:
     FakeLiveOneBotClient.instances = []
     monkeypatch.setattr(
-        qq_handlers,
+        qq_runtime_commands,
         "OneBotWebSocketClient",
         FakeLiveOneBotClient,
     )
@@ -146,7 +146,7 @@ def test_real_qq_smoke_test_body_runs_with_fake_live_client(
 ) -> None:
     FakeLiveOneBotClient.instances = []
     monkeypatch.setattr(
-        qq_handlers,
+        qq_runtime_commands,
         "OneBotWebSocketClient",
         FakeLiveOneBotClient,
     )
