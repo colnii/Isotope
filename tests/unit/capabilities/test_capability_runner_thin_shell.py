@@ -211,11 +211,25 @@ def test_runner_discovers_screen_report_from_default_catalog():
     assert "screen.report" in _ids(runner.list_capabilities())
     search = runner.search_capabilities(query="screen report")
 
-    assert _ids(search["capabilities"]) == ["screen.report"]
+    assert "screen.report" in _ids(search["capabilities"])
     description = runner.describe_capability("screen.report")
     assert description["input_contract"]["required"] == ["root", "run_id"]
     assert "screen_artifact_view_only" in description["safety_boundaries"]
     assert "public_metadata_summary_only" in description["safety_boundaries"]
+
+
+def test_runner_discovers_screen_observe_from_default_catalog():
+    runner = _runner()
+
+    assert "screen.observe" in _ids(runner.list_capabilities())
+    search = runner.search_capabilities(query="screen observe")
+
+    assert "screen.observe" in _ids(search["capabilities"])
+    description = runner.describe_capability("screen.observe")
+    assert description["input_contract"]["required"] == ["target_selector"]
+    assert "policy_gated_screen_observe" in description["safety_boundaries"]
+    assert "low_sensitive_report_only" in description["safety_boundaries"]
+    assert "no_screenshot_content" in description["safety_boundaries"]
 
 
 def test_runner_discovers_research_search_from_default_catalog():
@@ -1669,6 +1683,19 @@ def test_screen_report_plan_stops_when_required_inputs_are_missing():
     assert plan["scenario"] is None
 
 
+def test_screen_observe_plan_stops_when_target_selector_is_missing(tmp_path):
+    plan = _runner().plan_capability_run(
+        "screen.observe",
+        inputs={"root": str(tmp_path)},
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["runner_kind"] == "deterministic_local"
+    assert plan["missing_inputs"] == ["target_selector"]
+    assert plan["scenario"] is None
+
+
 @pytest.mark.parametrize(
     ("field_name", "bad_value"),
     [
@@ -2402,6 +2429,145 @@ def test_screen_report_capability_runs_existing_public_metadata_report(tmp_path)
         "restore_window"
     ]
     assert "raw screen control payload" not in json.dumps(result, sort_keys=True)
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
+
+
+def test_screen_observe_capability_runs_policy_gated_observe_and_reports_artifacts(
+    tmp_path,
+    monkeypatch,
+):
+    from isotope.capabilities import screen as screen_capability
+
+    class FakeScreenBackend:
+        def __init__(self):
+            self.calls = []
+
+        def run(self, request):
+            self.calls.append(request)
+            return {
+                "backend_session_id": "fake_screen_001",
+                "status": "captured",
+                "started_at": "2026-05-24T00:00:00Z",
+                "finished_at": "2026-05-24T00:00:01Z",
+                "summary": "screen observe captured",
+                "output_artifacts": [
+                    {
+                        "artifact_type": "screen_metadata",
+                        "summary": "screen metadata captured",
+                        "content": json.dumps(
+                            {
+                                "matched_count": 1,
+                                "selected_window_id": "window_001",
+                                "selection_reason": "first_match",
+                                "target": {
+                                    "window_id": "window_001",
+                                    "title": "Notes",
+                                    "app": "notepad.exe",
+                                    "is_minimized": False,
+                                },
+                            },
+                            sort_keys=True,
+                        ),
+                    },
+                    {
+                        "artifact_type": "screen_screenshot",
+                        "summary": "screen screenshot captured",
+                        "content": "raw screenshot bytes must not leak",
+                    },
+                ],
+                "reason_code": "screen_observe_captured",
+                "retryable": False,
+                "resource_usage": {"window_count": 1},
+            }
+
+    backend = FakeScreenBackend()
+    monkeypatch.setattr(
+        screen_capability,
+        "WindowsScreenBackend",
+        lambda: backend,
+        raising=False,
+    )
+
+    result = _runner().run_capability(
+        "screen.observe",
+        root_path=tmp_path,
+        inputs={
+            "target_selector": {
+                "kind": "window",
+                "selector": {"app": "notepad.exe"},
+            },
+            "target_allowlist": {"allowed_apps": ["notepad.exe"]},
+            "capture": ["metadata", "screenshot"],
+        },
+    )
+
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "screen.observe"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "deterministic_local"
+    assert result["screen_observe"]["status"] == "completed"
+    assert result["screen_observe"]["run_id"] == result["screen_report"]["run_id"]
+    assert backend.calls[0].tool_name == "screen_observe"
+    assert backend.calls[0].capture == ["metadata", "screenshot"]
+    screen_report = result["screen_report"]
+    assert screen_report["summary"]["observe_status"] == "captured"
+    assert screen_report["summary"]["screenshot_available"] is True
+    assert screen_report["summary"]["matched_count"] == 1
+    assert screen_report["summary"]["selected_window_id"] == "window_001"
+    assert "raw screenshot bytes" not in json.dumps(result, sort_keys=True)
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
+
+
+def test_screen_observe_capability_reports_backend_failure_without_artifacts(
+    tmp_path,
+    monkeypatch,
+):
+    from isotope.capabilities import screen as screen_capability
+
+    class FakeScreenBackend:
+        def run(self, request):
+            return {
+                "backend_session_id": "fake_screen_unavailable",
+                "status": "failed",
+                "started_at": "2026-05-24T00:00:00Z",
+                "finished_at": "2026-05-24T00:00:01Z",
+                "summary": "Windows screen backend is unavailable",
+                "output_artifacts": [],
+                "reason_code": "screen_windows_backend_unavailable",
+                "retryable": False,
+                "resource_usage": {},
+            }
+
+    monkeypatch.setattr(
+        screen_capability,
+        "WindowsScreenBackend",
+        FakeScreenBackend,
+        raising=False,
+    )
+
+    result = _runner().run_capability(
+        "screen.observe",
+        root_path=tmp_path,
+        inputs={
+            "target_selector": {
+                "kind": "window",
+                "selector": {"app": "notepad.exe"},
+            },
+            "target_allowlist": {"allowed_apps": ["notepad.exe"]},
+            "capture": ["metadata"],
+        },
+    )
+
+    assert result["status"] == "completed"
+    assert result["screen_observe"]["status"] == "failed"
+    assert result["screen_observe"]["failure"] == {
+        "reason_code": "screen_windows_backend_unavailable",
+        "message": "Windows screen backend is unavailable",
+    }
+    assert result["screen_report"]["summary"]["observe_status"] == "no_screen_artifacts"
+    assert result["screen_report"]["summary"]["artifact_count"] == 0
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 

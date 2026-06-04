@@ -486,3 +486,111 @@ def test_conversation_loop_executes_native_coding_capacity_with_safe_observation
     assert "value = 1" not in second_prompt
     assert "value = 2" not in second_prompt
 
+
+def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from isotope.capabilities import screen as screen_capability
+
+    class FakeScreenBackend:
+        def run(self, request):
+            return {
+                "backend_session_id": "fake_screen_001",
+                "status": "captured",
+                "started_at": "2026-05-24T00:00:00Z",
+                "finished_at": "2026-05-24T00:00:01Z",
+                "summary": "screen observe captured",
+                "output_artifacts": [
+                    {
+                        "artifact_type": "screen_metadata",
+                        "summary": "screen metadata captured",
+                        "content": json.dumps(
+                            {
+                                "matched_count": 1,
+                                "selected_window_id": "window_001",
+                                "selection_reason": "first_match",
+                                "target": {
+                                    "window_id": "window_001",
+                                    "title": "Notes",
+                                    "app": "notepad.exe",
+                                    "is_minimized": False,
+                                },
+                            },
+                            sort_keys=True,
+                        ),
+                    },
+                    {
+                        "artifact_type": "screen_screenshot",
+                        "summary": "screen screenshot captured",
+                        "content": "raw screenshot bytes must not leak",
+                    },
+                ],
+                "reason_code": "screen_observe_captured",
+                "retryable": False,
+                "resource_usage": {"window_count": 1},
+            }
+
+    monkeypatch.setattr(
+        screen_capability,
+        "WindowsScreenBackend",
+        FakeScreenBackend,
+        raising=False,
+    )
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "screen.observe",
+                    "arguments": {
+                        "target_selector": {
+                            "kind": "window",
+                            "selector": {"app": "notepad.exe"},
+                        },
+                        "target_allowlist": {"allowed_apps": ["notepad.exe"]},
+                    },
+                    "rationale": "Observe the allowed target window.",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "已完成屏幕观察。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="看看记事本窗口。",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[0].payload["capacity_id"] == "screen.observe"
+    assert events[1].payload["status"] == "ok"
+    assert events[1].payload["result_summary"]["agent_loop_tick_status"] == "executed"
+    assert events[1].payload["result_summary"]["agent_loop_screen_report_status"] == "ok"
+    assert events[1].payload["result_summary"]["agent_loop_screen_observe_status"] == "captured"
+    assert events[1].payload["result_summary"][
+        "agent_loop_screen_screenshot_available"
+    ] is True
+    assert events[2].payload["text"] == "已完成屏幕观察。"
+    rendered_events = json.dumps(
+        [event.payload for event in events],
+        ensure_ascii=False,
+    )
+    assert "raw screenshot bytes" not in rendered_events
+    second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
+    assert "capacity_observation" in second_prompt
+    assert "raw screenshot bytes" not in second_prompt

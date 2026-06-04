@@ -61,10 +61,13 @@ from .research import (
     validate_research_inputs,
 )
 from .screen import (
+    SCREEN_OBSERVE_CAPABILITY,
     SCREEN_REPORT_CAPABILITY,
+    is_screen_capability,
     is_screen_readonly_capability,
+    run_screen_observe,
     run_screen_report,
-    validate_screen_readonly_inputs,
+    validate_screen_inputs,
 )
 from .supervisor import (
     SUPERVISOR_CODEX_OPERATION_CAPABILITY,
@@ -231,7 +234,7 @@ class CapabilityRunner:
             inputs=input_mapping,
             missing_inputs=missing_inputs,
         )
-        validate_screen_readonly_inputs(
+        validate_screen_inputs(
             capability_id=capability_id,
             inputs=input_mapping,
             missing_inputs=missing_inputs,
@@ -313,7 +316,7 @@ class CapabilityRunner:
             scenario is None
             and not is_memory_readonly_capability(capability_id)
             and not is_research_capability(capability_id)
-            and not is_screen_readonly_capability(capability_id)
+            and not is_screen_capability(capability_id)
             and not is_supervisor_readonly_capability(capability_id)
             and not is_coding_capability(capability_id)
             and not is_coding_execute_capability(capability_id)
@@ -369,7 +372,7 @@ class CapabilityRunner:
         if (
             is_memory_readonly_capability(capability_id)
             or is_research_capability(capability_id)
-            or is_screen_readonly_capability(capability_id)
+            or is_screen_capability(capability_id)
             or is_supervisor_readonly_capability(capability_id)
             or is_coding_capability(capability_id)
             or is_coding_execute_capability(capability_id)
@@ -388,7 +391,7 @@ class CapabilityRunner:
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
             )
-            validate_screen_readonly_inputs(
+            validate_screen_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
@@ -465,6 +468,8 @@ class CapabilityRunner:
             return run_research_promote(inputs=input_mapping)
         if capability_id == RESEARCH_SEARCH_CAPABILITY:
             return run_research_search(inputs=input_mapping)
+        if capability_id == SCREEN_OBSERVE_CAPABILITY:
+            return run_screen_observe(root_path=root_path, inputs=input_mapping)
         if capability_id == SCREEN_REPORT_CAPABILITY:
             return run_screen_report(inputs=input_mapping)
         if capability_id == SUPERVISOR_CODEX_OPERATION_CAPABILITY:
@@ -621,6 +626,8 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
     if is_memory_readonly_capability(str(capability.get("capability_id", ""))):
         return "deterministic_readonly"
     if is_research_capability(str(capability.get("capability_id", ""))):
+        return "deterministic_local"
+    if capability.get("capability_id") == SCREEN_OBSERVE_CAPABILITY:
         return "deterministic_local"
     if is_screen_readonly_capability(str(capability.get("capability_id", ""))):
         return "deterministic_readonly"

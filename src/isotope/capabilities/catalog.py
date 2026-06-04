@@ -1340,6 +1340,79 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="screen.observe",
+                    title="Screen Observe",
+                    description=(
+                        "Run a policy-gated local screen observation and return "
+                        "the shared low-sensitive screen report."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "screen",
+                        "observe",
+                        "screenshot",
+                        "metadata",
+                        "gui",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["target_selector"],
+                        "properties": {
+                            "target_selector": {
+                                "type": "object",
+                                "description": (
+                                    "Window selector with kind=window and selector "
+                                    "keys such as app, title_contains, or window_id."
+                                ),
+                            },
+                            "target_allowlist": {
+                                "type": "object",
+                                "description": (
+                                    "Optional allowed_apps / allowed_title_contains "
+                                    "policy override for this observe call."
+                                ),
+                            },
+                            "capture": {
+                                "type": "array",
+                                "description": (
+                                    "Capture kinds, limited to metadata and screenshot."
+                                ),
+                            },
+                            "mode": {
+                                "type": "string",
+                                "enum": ["non_intrusive"],
+                                "description": "Observation mode.",
+                            },
+                            "root": {
+                                "type": "string",
+                                "description": (
+                                    "Optional runtime root. Agent loop calls use "
+                                    "their capability root when this is omitted."
+                                ),
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "screen_observe",
+                            "screen_report",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "policy_gated_screen_observe",
+                        "local_backend_only",
+                        "low_sensitive_report_only",
+                        "no_screenshot_content",
+                        "no_input_execution",
+                        "target_allowlist_supported",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="screen.report",
                     title="Screen Report",
                     description=(
