@@ -20,6 +20,12 @@ def test_lifecycle_decision_dispatches_merge_for_ready_workers() -> None:
     assert decision["reason"] == "ready_to_integrate workers require merge dispatch"
     assert decision["stage"] == "ready_to_merge"
     assert decision["next_step"] == "launch_merge_worker"
+    assert decision["policy"] == {
+        "policy_status": "program_resolved",
+        "program_action": "dispatch_merge",
+        "remaining_step": "launch_merge_worker",
+        "blocked_reason": None,
+    }
     assert decision["summary"]["ready_to_integrate"] == 2
     assert decision["summary"]["merge_dispatch_status"] == "ready_to_launch"
 
@@ -162,6 +168,12 @@ def test_lifecycle_decision_needs_human_for_conflicts() -> None:
         decision["reason"]
         == "integration review has conflict or review-required workers"
     )
+    assert decision["policy"] == {
+        "policy_status": "human_required",
+        "program_action": None,
+        "remaining_step": "request_human_review",
+        "blocked_reason": "integration review has conflict or review-required workers",
+    }
     assert decision["summary"]["conflict_risk"] == 1
     assert decision["summary"]["needs_review"] == 1
 
@@ -172,6 +184,12 @@ def test_lifecycle_decision_monitors_empty_review() -> None:
     assert decision["action"] == "monitor"
     assert decision["source"] == "worker_review"
     assert decision["reason"] == "no lifecycle-ready worker evidence"
+    assert decision["policy"] == {
+        "policy_status": "model_required",
+        "program_action": None,
+        "remaining_step": "monitor",
+        "blocked_reason": "no lifecycle-ready worker evidence",
+    }
 
 
 def _integration_review(

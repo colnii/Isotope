@@ -110,11 +110,18 @@ def _decision(
     timeline: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     stage, next_step = _stage_and_next_step(action, source=source)
+    policy = _policy(
+        action=action,
+        reason=reason,
+        source=source,
+        next_step=next_step,
+    )
     return {
         "kind": "worker_lifecycle_decision",
         "action": action,
         "stage": stage,
         "next_step": next_step,
+        "policy": policy,
         "reason": reason,
         "source": source,
         "summary": dict(summary),
@@ -135,6 +142,35 @@ def _stage_and_next_step(action: str, *, source: str) -> tuple[str, str]:
     if action == "needs_human":
         return "blocked", "request_human_review"
     return "monitoring", "monitor"
+
+
+def _policy(
+    *,
+    action: str,
+    reason: str,
+    source: str,
+    next_step: str,
+) -> dict[str, Any]:
+    if action == "needs_human":
+        return {
+            "policy_status": "human_required",
+            "program_action": None,
+            "remaining_step": "request_human_review",
+            "blocked_reason": reason,
+        }
+    if action == "monitor" and source == "worker_review":
+        return {
+            "policy_status": "model_required",
+            "program_action": None,
+            "remaining_step": next_step,
+            "blocked_reason": reason,
+        }
+    return {
+        "policy_status": "program_resolved",
+        "program_action": action,
+        "remaining_step": next_step,
+        "blocked_reason": None,
+    }
 
 
 def _timeline(
