@@ -147,6 +147,35 @@ def research_artifact_detail_from_agent_loop(
     }
 
 
+def capability_result_detail_from_agent_loop(
+    *,
+    capacity_id: str,
+    agent_loop: dict[str, Any],
+) -> dict[str, Any] | None:
+    result = _capability_result_observation(
+        capacity_id=capacity_id,
+        agent_loop=agent_loop,
+    )
+    if result is None:
+        return None
+    return {
+        "label": _capability_result_detail_label(capacity_id),
+        "kind": "json",
+        "content": result,
+    }
+
+
+def _capability_result_detail_label(capacity_id: str) -> str:
+    labels = {
+        "memory.query": "Memory query result",
+        "code.search": "Code search result",
+        "code.read": "Code read result",
+        "code.apply_patch": "Patch result",
+        "artifact.diff_summary": "Artifact summary",
+    }
+    return labels.get(capacity_id, "Capability result")
+
+
 def _json_context_message(label: str, value: dict[str, Any]) -> str:
     return f"{label}:\n" + json.dumps(
         value,

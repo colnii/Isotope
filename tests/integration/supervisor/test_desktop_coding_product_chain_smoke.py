@@ -134,6 +134,20 @@ def test_desktop_chat_can_drive_search_read_patch_and_diff_artifact(
         "artifact.diff_summary",
     ]
     assert [result["status"] for result in capacity_results] == ["ok", "ok", "ok", "ok"]
+    code_search_detail = _detail_content(capacity_results[0], "Code search result")
+    assert code_search_detail["matches"][0]["path"] == "src/app.py"
+    assert code_search_detail["matches"][0]["excerpt"].strip() == (
+        "return 'old desktop value'"
+    )
+    code_read_detail = _detail_content(capacity_results[1], "Code read result")
+    assert code_read_detail["path"] == "src/app.py"
+    assert "def answer" in code_read_detail["excerpt"]
+    patch_detail = _detail_content(capacity_results[2], "Patch result")
+    assert patch_detail["changed_files"] == ["src/app.py"]
+    assert patch_detail["file_count"] == 1
+    diff_detail = _detail_content(capacity_results[3], "Artifact summary")
+    assert diff_detail["artifact_type"] == "native_coding.diff_summary"
+    assert diff_detail["summary"] == "1 changed file in desktop_code_workspace"
     assert (workspace / "src" / "app.py").read_text(encoding="utf-8") == (
         "def answer():\n"
         "    value = 'new desktop value'\n"
@@ -234,6 +248,17 @@ def _post_desktop_chat(
         server.server_close()
         thread.join(timeout=2)
     return response, body
+
+
+def _detail_content(capacity_result: dict[str, Any], label: str) -> dict[str, Any]:
+    matching = [
+        detail
+        for detail in capacity_result["details"]
+        if detail["label"] == label
+    ]
+    assert len(matching) == 1
+    assert matching[0]["kind"] == "json"
+    return matching[0]["content"]
 
 
 def _parse_sse(body: str) -> list[dict[str, Any]]:

@@ -90,6 +90,12 @@ def test_desktop_chat_capacity_result_can_feed_model_and_http_artifact_content(
     assert capacity_result["status"] == "ok"
     assert capacity_result["result_summary"]["agent_loop_memory_query_status"] == "ok"
     assert capacity_result["result_summary"]["agent_loop_memory_query_result_count"] == 1
+    memory_detail = _detail_content(capacity_result, "Memory query result")
+    assert memory_detail["results"][0]["record_id"] == "mem_product_chain"
+    assert (
+        memory_detail["results"][0]["summary"]
+        == "Product chain memory is reachable from desktop chat."
+    )
 
     second_turn = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
     assert "capacity_observation" in second_turn
@@ -165,6 +171,17 @@ def _post_desktop_chat(
         server.server_close()
         thread.join(timeout=2)
     return response, body
+
+
+def _detail_content(capacity_result: dict[str, Any], label: str) -> dict[str, Any]:
+    matching = [
+        detail
+        for detail in capacity_result["details"]
+        if detail["label"] == label
+    ]
+    assert len(matching) == 1
+    assert matching[0]["kind"] == "json"
+    return matching[0]["content"]
 
 
 def _parse_sse(body: str) -> list[dict[str, Any]]:

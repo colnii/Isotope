@@ -30,6 +30,7 @@ from isotope.platform.schemas.input_contract import (
 
 from .desktop_chat_context import compact_desktop_chat_history_messages
 from .conversation_observations import (
+    capability_result_detail_from_agent_loop,
     capacity_observation_from_event_payload,
     capacity_observation_message_content,
     model_observation_from_agent_loop,
@@ -381,6 +382,10 @@ def _run_capability_decision(
         extra_details = [
             detail
             for detail in [
+                capability_result_detail_from_agent_loop(
+                    capacity_id=capacity_id,
+                    agent_loop=agent_loop,
+                ),
                 screen_artifact_detail_from_agent_loop(agent_loop),
                 research_artifact_detail_from_agent_loop(agent_loop),
             ]
