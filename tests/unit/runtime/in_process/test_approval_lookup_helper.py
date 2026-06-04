@@ -58,7 +58,7 @@ def _assert_no_internal_repr(value: Any) -> None:
             _assert_no_internal_repr(nested)
 
 
-def test_get_pending_approvals_returns_projected_summary_without_event_side_effects(tmp_path):
+def test_get_pending_approvals_returns_projected_label_without_event_side_effects(tmp_path):
     api, run_id, approval_id, result = _submit_pending_approval(tmp_path)
     before_events = list(api.get_events(run_id))
 
@@ -72,14 +72,15 @@ def test_get_pending_approvals_returns_projected_summary_without_event_side_effe
             "decision_id": result["decision"].decision_id,
             "status": "pending",
             "reason_codes": ["approval_required"],
-            "requested_action_summary": {"action_type": "call_tool"},
+            "requested_action_label": {"action_type": "call_tool"},
         }
     ]
+    assert "requested_action" + "_summary" not in approvals[0]
     assert api.get_events(run_id) == before_events
     _assert_no_internal_repr(approvals)
 
 
-def test_get_approval_returns_copy_of_projected_summary(tmp_path):
+def test_get_approval_returns_copy_of_projected_label(tmp_path):
     api, run_id, approval_id, _result = _submit_pending_approval(tmp_path)
 
     approval = api.get_approval(run_id, approval_id)
@@ -134,4 +135,3 @@ def test_approval_tool_runner_demo_uses_lookup_helper_not_event_scan(tmp_path, m
 
     assert result["approval_tool_runner_ok"] is True
     assert "approval_id discovery currently scans canonical events" not in result["api_friction"]
-

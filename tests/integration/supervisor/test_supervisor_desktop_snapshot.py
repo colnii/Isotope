@@ -178,7 +178,7 @@ def test_desktop_snapshot_redacts_long_or_secret_preview_content(tmp_path):
     assert "summary" not in goal_node
 
 
-def test_desktop_snapshot_maps_active_decision_to_approval_summary(tmp_path):
+def test_desktop_snapshot_maps_active_decision_to_approval_card(tmp_path):
     record_decision_request(
         codex_home=tmp_path,
         action={
@@ -237,8 +237,8 @@ def test_desktop_snapshot_includes_runtime_pending_approval_without_command_leak
     assert approval["status"] == "pending"
     assert approval["title"] == "需要批准 terminal_exec: bash"
     assert approval["source"]["label"] == "runtime_approval_request"
-    assert approval["requestedActionSummary"]["tool"] == "terminal_exec"
-    assert approval["requestedActionSummary"]["terminal_command"] == "bash"
+    assert approval["requestedActionLabel"]["tool"] == "terminal_exec"
+    assert approval["requestedActionLabel"]["terminal_command"] == "bash"
     assert "SHOULD_NOT_LEAK" not in json.dumps(snapshot, ensure_ascii=False)
 
 

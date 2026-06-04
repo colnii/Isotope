@@ -109,7 +109,7 @@ def test_agent_loop_control_for_pending_approval_shows_blocker_and_resume_action
             "approval_id": approval_id,
             "status": "pending",
             "reason_codes": ["approval_required"],
-            "requested_action_summary": {"action_type": "call_tool"},
+            "requested_action_label": {"action_type": "call_tool"},
         }
     ]
     assert control["next_actions"] == ["get_approval", "resolve_approval"]

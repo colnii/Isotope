@@ -37,9 +37,9 @@ class RunProjectorLifecycleValidationMixin:
                 self._proposal_action_types[proposal_id] = action_type
                 registry_basis = self._registry_basis_from_payload(payload)
                 self._proposal_registry_basis[proposal_id] = registry_basis
-                requested_summary = payload.get("requested_action_summary")
-                if isinstance(requested_summary, dict):
-                    self._proposal_summaries[proposal_id] = dict(requested_summary)
+                requested_label = payload.get("requested_action_label")
+                if isinstance(requested_label, dict):
+                    self._proposal_labels[proposal_id] = dict(requested_label)
                 agent_id = payload.get("agent_id")
                 if isinstance(agent_id, str) and agent_id:
                     self._proposal_agents[proposal_id] = agent_id

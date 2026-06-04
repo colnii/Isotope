@@ -89,7 +89,7 @@ def test_get_run_pending_approval_exposes_approval_read_model(tmp_path):
         "decision_id": approval["decision_id"],
         "status": "pending",
         "reason_codes": ["approval_required"],
-        "requested_action_summary": {"action_type": "call_tool"},
+        "requested_action_label": {"action_type": "call_tool"},
     }
     assert state["actions"][result["decision"].proposal_id]["status"] == "pending_user_approval"
 

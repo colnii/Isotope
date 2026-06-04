@@ -296,7 +296,7 @@ class InProcessActionMixin:
                 "registry_id": proposal.registry_id,
                 "registry_version": proposal.registry_version,
                 "registry_basis": proposal.registry_basis,
-                "requested_action_summary": self._requested_action_summary(proposal),
+                "requested_action_label": self._requested_action_label(proposal),
             },
         )
 
@@ -426,29 +426,29 @@ class InProcessActionMixin:
             result["artifact_ref"] = artifact_ref
         return result
 
-    def _requested_action_summary(self, proposal) -> dict[str, Any]:
-        summary: dict[str, Any] = {"action_type": proposal.action_type}
+    def _requested_action_label(self, proposal) -> dict[str, Any]:
+        label: dict[str, Any] = {"action_type": proposal.action_type}
         tool_name = proposal.payload.get("tool")
         if tool_name == "terminal_exec":
-            summary["tool"] = tool_name
+            label["tool"] = tool_name
             argv = proposal.payload.get("argv")
             if isinstance(argv, list) and argv and isinstance(argv[0], str):
-                summary["terminal_command"] = argv[0]
-                summary["argv_count"] = len(argv)
+                label["terminal_command"] = argv[0]
+                label["argv_count"] = len(argv)
         if tool_name in {"screen_observe", "screen_control"}:
-            summary["tool"] = tool_name
+            label["tool"] = tool_name
             target_selector = proposal.payload.get("target_selector")
             if isinstance(target_selector, dict):
-                summary["target_kind"] = target_selector.get("kind")
+                label["target_kind"] = target_selector.get("kind")
                 selector = target_selector.get("selector")
                 if isinstance(selector, dict):
-                    summary["selector_keys"] = sorted(str(key) for key in selector.keys())
+                    label["selector_keys"] = sorted(str(key) for key in selector.keys())
             if tool_name == "screen_control":
                 actions = proposal.payload.get("actions")
                 if isinstance(actions, list):
-                    summary["action_count"] = len(actions)
-                summary["execution_mode"] = proposal.payload.get("execution_mode")
-        return summary
+                    label["action_count"] = len(actions)
+                label["execution_mode"] = proposal.payload.get("execution_mode")
+        return label
 
 
     def _validate_action_intent(self, intent: object) -> None:

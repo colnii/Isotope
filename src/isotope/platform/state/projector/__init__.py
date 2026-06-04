@@ -43,7 +43,7 @@ class RunProjector(RunProjectorCheckpointMixin, RunProjectorHandlersMixin, RunPr
     CHECKPOINT_ARTIFACT_FIELDS = ("ref", "artifact_type", "summary", "provenance")
     CHECKPOINT_MEMORY_RECORD_FIELDS = ("record_id", "summary", "source_refs", "provenance")
     CHECKPOINT_MEMORY_RECORD_FORBIDDEN_FIELDS = ("content", "full_content", "artifact_content", "raw_content")
-    ACTION_SUMMARY_FORBIDDEN_FIELDS = (
+    ACTION_LABEL_FORBIDDEN_FIELDS = (
         "content",
         "full_content",
         "artifact_content",

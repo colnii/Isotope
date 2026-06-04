@@ -402,13 +402,13 @@ class RunProjectorDomainValidationMixin:
         if ref["ref_type"] != "artifact":
             raise ValueError(f"{label} must be an artifact ResourceRef")
 
-    def _validate_action_summary(self, value: Any, label: str) -> None:
+    def _validate_action_label(self, value: Any, label: str) -> None:
         if isinstance(value, dict):
             for key, nested in value.items():
-                if key in self.ACTION_SUMMARY_FORBIDDEN_FIELDS:
+                if key in self.ACTION_LABEL_FORBIDDEN_FIELDS:
                     raise ValueError(f"{label} cannot contain {key}")
-                self._validate_action_summary(nested, f"{label}.{key}")
+                self._validate_action_label(nested, f"{label}.{key}")
             return
         if isinstance(value, list):
             for index, nested in enumerate(value):
-                self._validate_action_summary(nested, f"{label}[{index}]")
+                self._validate_action_label(nested, f"{label}[{index}]")

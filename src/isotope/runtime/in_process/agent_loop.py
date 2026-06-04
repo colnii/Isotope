@@ -154,7 +154,7 @@ class InProcessAgentLoopMixin:
                 "action_type": "write_memory",
                 "registry_id": "agent_loop_memory",
                 "registry_version": "v0.2",
-                "requested_action_summary": {"action_type": "write_memory"},
+                "requested_action_label": {"action_type": "write_memory"},
             },
         )
         self._append(
@@ -291,7 +291,7 @@ class InProcessAgentLoopMixin:
                 "action_type": "write_memory",
                 "registry_id": "agent_loop_memory_promotion",
                 "registry_version": "v0.2",
-                "requested_action_summary": {
+                "requested_action_label": {
                     "action_type": "write_memory",
                     "promotion": "run_to_session",
                     "source_record_id": source_record.memory_id,

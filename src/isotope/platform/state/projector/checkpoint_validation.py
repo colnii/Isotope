@@ -250,8 +250,8 @@ class RunProjectorCheckpointValidationMixin:
             reason_codes = approval.get("reason_codes")
             if not isinstance(reason_codes, list):
                 raise ValueError("checkpoint pending approval reason_codes must be a list")
-            if not isinstance(approval.get("requested_action_summary"), dict):
-                raise ValueError("checkpoint pending approval requested_action_summary must be a dict")
+            if not isinstance(approval.get("requested_action_label"), dict):
+                raise ValueError("checkpoint pending approval requested_action_label must be a dict")
         else:
             if approval.get("resolution") != status:
                 raise ValueError("checkpoint resolved approval resolution must match status")

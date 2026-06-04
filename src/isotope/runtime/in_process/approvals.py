@@ -112,10 +112,10 @@ class InProcessApprovalMixin:
             raise ValueError("unknown approval")
 
         state = self.get_run_state(run_id)
-        approval_summary = state.approvals.get(approval_id)
-        if approval_summary is None:
+        approval_label = state.approvals.get(approval_id)
+        if approval_label is None:
             raise ValueError("unknown approval")
-        if approval_summary.get("status") != "pending":
+        if approval_label.get("status") != "pending":
             raise ValueError("approval already resolved")
 
         context = approval_event.payload.get("resolution_context")

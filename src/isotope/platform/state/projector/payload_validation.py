@@ -41,11 +41,11 @@ class RunProjectorPayloadValidationMixin:
                     raise ValueError("action.proposed registry_basis.registry_id must match registry_id")
                 if registry_basis.get("registry_version") != payload["registry_version"]:
                     raise ValueError("action.proposed registry_basis.registry_version must match registry_version")
-            requested_summary = payload.get("requested_action_summary")
-            if requested_summary is not None:
-                if not isinstance(requested_summary, dict):
-                    raise ValueError("action.proposed requested_action_summary must be a dict")
-                self._validate_action_summary(requested_summary, "action.proposed requested_action_summary")
+            requested_label = payload.get("requested_action_label")
+            if requested_label is not None:
+                if not isinstance(requested_label, dict):
+                    raise ValueError("action.proposed requested_action_label must be a dict")
+                self._validate_action_label(requested_label, "action.proposed requested_action_label")
         elif event.event_type == "action.decided":
             self._require_fields(
                 event.event_type,

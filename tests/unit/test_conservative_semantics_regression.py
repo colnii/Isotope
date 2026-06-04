@@ -17,9 +17,12 @@ MODEL_FACING_FILES = [
     "src/isotope/demo/demo_trace_format.py",
     "src/isotope/demo/demo_workspace_scenarios.py",
     "src/isotope/features/supervisor/capability_gaps.py",
+    "src/isotope/features/supervisor/desktop_snapshot.py",
     "src/isotope/memory/__init__.py",
+    "src/isotope/platform/state/projector/handlers.py",
     "src/isotope/rag/sparse.py",
     "src/isotope/rag/ingestion.py",
+    "src/isotope/runtime/in_process/actions.py",
 ]
 
 FORBIDDEN_PATTERNS = [
@@ -29,6 +32,7 @@ FORBIDDEN_PATTERNS = [
     r"\bsummary" + "_refs" + "_provenance" + "_only" + r"\b",
     r"\bsummary" + "_only" + r"\b",
     r"\bpublic" + "_metadata" + "_summary" + "_only" + r"\b",
+    r"\brequested" + "_action" + "_summary" + r"\b",
     r"\bpreview" + "_only" + r"\b",
     r"\bview" + "_only" + r"\b",
     r"\bfuture\b",

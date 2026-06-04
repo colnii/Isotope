@@ -74,7 +74,7 @@ def _event_types(api, run_id: str) -> list[str]:
     return [event.event_type for event in api.get_events(run_id)]
 
 
-def test_pending_approval_state_has_explicit_blocked_signal_and_summary(tmp_path):
+def test_pending_approval_state_has_explicit_blocked_signal_and_label(tmp_path):
     api, run_id, result, approval = _submit_pending_approval(tmp_path)
 
     state = api.get_run_state(run_id)
@@ -87,8 +87,9 @@ def test_pending_approval_state_has_explicit_blocked_signal_and_summary(tmp_path
         "decision_id": approval["decision_id"],
         "status": "pending",
         "reason_codes": ["approval_required"],
-        "requested_action_summary": {"action_type": "call_tool"},
+        "requested_action_label": {"action_type": "call_tool"},
     }
+    assert "requested_action" + "_summary" not in state.approvals[approval["approval_id"]]
     assert state.actions[result["decision"].proposal_id]["status"] == "pending_user_approval"
 
 

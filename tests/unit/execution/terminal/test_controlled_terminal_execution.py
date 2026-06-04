@@ -160,7 +160,7 @@ def test_terminal_exec_runs_allowlisted_argv_and_stores_output_as_artifact(tmp_p
     assert content["shell"] is False
 
 
-def test_terminal_exec_projects_safe_action_summary_and_artifact_ref(tmp_path):
+def test_terminal_exec_projects_safe_action_label_and_artifact_ref(tmp_path):
     api, run_id = _new_run(tmp_path)
 
     result = api.submit_action(
@@ -169,7 +169,7 @@ def test_terminal_exec_projects_safe_action_summary_and_artifact_ref(tmp_path):
     )
 
     action = result["run_state"].actions[result["execution_id"]]
-    assert action["requested_action_summary"] == {
+    assert action["requested_action_label"] == {
         "action_type": "call_tool",
         "tool": "terminal_exec",
         "terminal_command": "printf",

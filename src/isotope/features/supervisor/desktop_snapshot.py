@@ -31,8 +31,8 @@ def build_desktop_snapshot(*, state_root: Path | str) -> dict[str, Any]:
     ]
     active_goal = _goal_summary(active_goals[0]) if active_goals else None
     approvals = [
-        *[_approval_summary(decision) for decision in active_decisions],
-        *_runtime_pending_approval_summaries(root),
+        *[_approval_card(decision) for decision in active_decisions],
+        *_runtime_pending_approval_cards(root),
     ]
 
     snapshot = {
@@ -173,7 +173,7 @@ def _goal_summary(goal: dict[str, Any]) -> dict[str, Any]:
     })
 
 
-def _approval_summary(decision: dict[str, Any]) -> dict[str, Any]:
+def _approval_card(decision: dict[str, Any]) -> dict[str, Any]:
     request_id = str(decision["request_id"])
     title = _public_metadata_preview(decision.get("question") or "需要 Supervisor 审批")
     title = title or "需要 Supervisor 审批"
@@ -190,7 +190,7 @@ def _approval_summary(decision: dict[str, Any]) -> dict[str, Any]:
     })
 
 
-def _runtime_pending_approval_summaries(root: Path) -> list[dict[str, Any]]:
+def _runtime_pending_approval_cards(root: Path) -> list[dict[str, Any]]:
     runs_root = root / "runs"
     if not runs_root.exists():
         return []
@@ -203,16 +203,16 @@ def _runtime_pending_approval_summaries(root: Path) -> list[dict[str, Any]]:
         for approval in state.approvals.values():
             if approval.get("status") != "pending":
                 continue
-            approvals.append(_runtime_approval_summary(approval))
+            approvals.append(_runtime_approval_card(approval))
     return approvals
 
 
-def _runtime_approval_summary(approval: dict[str, Any]) -> dict[str, Any]:
+def _runtime_approval_card(approval: dict[str, Any]) -> dict[str, Any]:
     approval_id = str(approval["approval_id"])
-    requested_summary = _public_metadata_mapping(
-        approval.get("requested_action_summary"),
+    requested_label = _public_metadata_mapping(
+        approval.get("requested_action_label"),
     )
-    title = _runtime_approval_title(requested_summary)
+    title = _runtime_approval_title(requested_label)
     source_ref = {"kind": "approval", "id": approval_id, "label": title}
     return _omit_none({
         "id": approval_id,
@@ -223,7 +223,7 @@ def _runtime_approval_summary(approval: dict[str, Any]) -> dict[str, Any]:
         "proposalId": approval.get("proposal_id"),
         "decisionId": approval.get("decision_id"),
         "reasonCodes": list(approval.get("reason_codes", [])),
-        "requestedActionSummary": requested_summary,
+        "requestedActionLabel": requested_label,
         "source": {
             "kind": "derived",
             "label": "runtime_approval_request",
@@ -232,25 +232,25 @@ def _runtime_approval_summary(approval: dict[str, Any]) -> dict[str, Any]:
     })
 
 
-def _runtime_approval_title(requested_summary: dict[str, Any] | None) -> str:
-    tool = _summary_string(requested_summary, "tool")
+def _runtime_approval_title(requested_label: dict[str, Any] | None) -> str:
+    tool = _label_string(requested_label, "tool")
     if tool == "terminal_exec":
-        command = _summary_string(requested_summary, "terminal_command")
+        command = _label_string(requested_label, "terminal_command")
         if command:
             return f"需要批准 terminal_exec: {command}"
         return "需要批准 terminal_exec"
     if tool:
         return f"需要批准 {tool}"
-    action_type = _summary_string(requested_summary, "action_type")
+    action_type = _label_string(requested_label, "action_type")
     if action_type:
         return f"需要批准 {action_type}"
     return "需要批准运行时操作"
 
 
-def _summary_string(summary: dict[str, Any] | None, key: str) -> str | None:
-    if summary is None:
+def _label_string(label: dict[str, Any] | None, key: str) -> str | None:
+    if label is None:
         return None
-    value = summary.get(key)
+    value = label.get(key)
     if not isinstance(value, str) or not value:
         return None
     return _public_metadata_preview(value)

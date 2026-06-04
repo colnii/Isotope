@@ -133,7 +133,7 @@ def test_http_agent_loop_control_shows_pending_approval_without_side_effects(tmp
             "approval_id": approval_id,
             "status": "pending",
             "reason_codes": ["approval_required"],
-            "requested_action_summary": {"action_type": "call_tool"},
+            "requested_action_label": {"action_type": "call_tool"},
         }
     ]
     assert body["next_actions"] == ["get_approval", "resolve_approval"]

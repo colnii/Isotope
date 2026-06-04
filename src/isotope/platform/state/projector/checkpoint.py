@@ -29,7 +29,7 @@ class RunProjectorCheckpointMixin(RunProjectorCheckpointValidationMixin):
         self._proposal_outcomes = {}
         self._proposal_action_types = {}
         self._proposal_reason_codes = {}
-        self._proposal_summaries = {}
+        self._proposal_labels = {}
         self._proposal_agents = {}
         self._proposal_grants = {}
         self._proposal_registry_basis = {}

@@ -193,7 +193,7 @@ def _approval_waiting_item(approval: dict[str, Any]) -> dict[str, Any]:
         "approval_id": approval["approval_id"],
         "status": approval["status"],
         "reason_codes": list(approval.get("reason_codes", [])),
-        "requested_action_summary": dict(approval.get("requested_action_summary", {})),
+        "requested_action_label": dict(approval.get("requested_action_label", {})),
     }
 
 

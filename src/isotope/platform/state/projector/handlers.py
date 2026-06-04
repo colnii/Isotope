@@ -25,9 +25,9 @@ class RunProjectorHandlersMixin:
         reason_codes = self._proposal_reason_codes.get(proposal_id)
         if reason_codes is not None:
             projected["reason_codes"] = list(reason_codes)
-        requested_summary = self._proposal_summaries.get(proposal_id)
-        if requested_summary is not None:
-            projected["requested_action_summary"] = dict(requested_summary)
+        requested_label = self._proposal_labels.get(proposal_id)
+        if requested_label is not None:
+            projected["requested_action_label"] = dict(requested_label)
         return projected
 
     def apply(self, state: RunState, event: CanonicalEvent) -> None:
@@ -109,8 +109,8 @@ class RunProjectorHandlersMixin:
                 "decision_id": payload.get("decision_id"),
                 "status": "pending",
                 "reason_codes": list(self._proposal_reason_codes.get(proposal_id, [])),
-                "requested_action_summary": dict(
-                    self._proposal_summaries.get(
+                "requested_action_label": dict(
+                    self._proposal_labels.get(
                         proposal_id,
                         {"action_type": payload.get("action_type")},
                     )

@@ -82,14 +82,14 @@ def test_http_get_pending_approvals_returns_in_process_read_helper_response(tmp_
             "decision_id": result["decision"].decision_id,
             "status": "pending",
             "reason_codes": ["approval_required"],
-            "requested_action_summary": {"action_type": "call_tool"},
+            "requested_action_label": {"action_type": "call_tool"},
         }
     ]
     assert app.server.get_events(run_id) == before_events
     _assert_no_internal_repr(body)
 
 
-def test_http_get_approval_returns_resolved_approval_summary(tmp_path):
+def test_http_get_approval_returns_resolved_approval_label(tmp_path):
     app = create_http_app(tmp_path)
     run_id, approval_id, _result = _submit_pending_approval(app)
     app.server.resolve_approval(approval_id, _denied_body())
