@@ -871,6 +871,11 @@ def print_dashboard_worker_lifecycle_execution(execution: Any) -> None:
     result_summary = _dashboard_text(execution.get("result_summary"), "")
     if result_summary:
         print(f"  result={result_summary}")
+    evidence = _dashboard_lifecycle_delete_evidence_summary(
+        execution.get("delete_evidence")
+    )
+    if evidence:
+        print(f"  delete_evidence={evidence}")
 
 
 def dashboard_worker_lifecycle_execution_payload(
@@ -898,6 +903,7 @@ def dashboard_worker_lifecycle_execution_payload(
         ),
         "result_summary": _dashboard_lifecycle_result_summary(result),
         "result_actions": _dashboard_lifecycle_result_actions(result),
+        "delete_evidence": _dashboard_lifecycle_delete_evidence(plan),
         "execute_hint": _dashboard_lifecycle_execution_hint(plan, result),
         "execute_command": _dashboard_lifecycle_execution_command(plan, result),
     }
@@ -905,6 +911,8 @@ def dashboard_worker_lifecycle_execution_payload(
         payload.pop("result_summary")
     if not payload["result_actions"]:
         payload.pop("result_actions")
+    if not payload["delete_evidence"]:
+        payload.pop("delete_evidence")
     return payload
 
 
@@ -916,6 +924,35 @@ def _dashboard_lifecycle_execution_action_count(plan: dict[str, Any]) -> int:
     if isinstance(plan.get("merge_dispatch"), dict):
         return 1
     return 0
+
+
+def _dashboard_lifecycle_delete_evidence(plan: dict[str, Any]) -> list[dict[str, Any]]:
+    actions = plan.get("delete_worktree_actions")
+    if not isinstance(actions, list):
+        return []
+    items: list[dict[str, Any]] = []
+    for action in actions:
+        if not isinstance(action, dict):
+            continue
+        evidence = action.get("delete_evidence")
+        if not isinstance(evidence, dict):
+            continue
+        item = {
+            "target_name": _dashboard_text(action.get("target_name"), ""),
+            "record_id": _dashboard_text(action.get("record_id"), ""),
+            "archived": evidence.get("archived"),
+            "supervisor_protocol_status": _dashboard_text(
+                evidence.get("supervisor_protocol_status"), ""
+            ),
+            "supervisor_worktree": evidence.get("supervisor_worktree"),
+            "integration_group": _dashboard_text(evidence.get("integration_group"), ""),
+            "main_contains_worker": evidence.get("main_contains_worker"),
+            "main_has_worker_patch": evidence.get("main_has_worker_patch"),
+            "dirty": evidence.get("dirty"),
+            "base_ref": _dashboard_text(evidence.get("base_ref"), ""),
+        }
+        items.append({key: value for key, value in item.items() if value != ""})
+    return items
 
 
 def _dashboard_lifecycle_execution_hint(
@@ -1090,6 +1127,38 @@ def _dashboard_capacity_line_text(
     if summary_text:
         parts.append(f"/ {summary_text}")
     return " ".join(parts)
+
+
+def _dashboard_lifecycle_delete_evidence_summary(value: Any) -> str:
+    if not isinstance(value, list):
+        return ""
+    summaries: list[str] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        target = _dashboard_text(item.get("target_name"), "unknown")
+        protocol = _dashboard_text(item.get("supervisor_protocol_status"), "unknown")
+        group = _dashboard_text(item.get("integration_group"), "unknown")
+        archived = _dashboard_bool_text(item.get("archived"))
+        worktree = _dashboard_bool_text(item.get("supervisor_worktree"))
+        integrated = _dashboard_bool_text(
+            item.get("main_contains_worker") is True
+            or item.get("main_has_worker_patch") is True
+        )
+        clean = _dashboard_bool_text(item.get("dirty") is False)
+        summaries.append(
+            f"{target} archived={archived} protocol={protocol} "
+            f"worktree={worktree} group={group} integrated={integrated} clean={clean}"
+        )
+    return "; ".join(summaries)
+
+
+def _dashboard_bool_text(value: Any) -> str:
+    if value is True:
+        return "true"
+    if value is False:
+        return "false"
+    return "unknown"
 
 
 def _dashboard_text(value: Any, fallback: str) -> str:

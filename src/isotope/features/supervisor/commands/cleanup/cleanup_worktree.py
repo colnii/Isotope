@@ -167,7 +167,8 @@ def delete_worktree_candidate_payloads(
         protocol = _supervisor_protocol_from_text(
             _managed_process_log_excerpt(record.log_path) or ""
         )
-        if (protocol.get("status") or "").strip().lower() != "done":
+        protocol_status = (protocol.get("status") or "").strip().lower()
+        if protocol_status != "done":
             continue
         integration = api.review_managed_record_integration(
             record,
@@ -184,9 +185,12 @@ def delete_worktree_candidate_payloads(
                 "record_id": record.record_id,
                 "cwd": record.cwd,
                 "archived": True,
+                "supervisor_protocol_status": protocol_status,
+                "supervisor_worktree": True,
                 "integration_group": integration.get("group"),
                 "main_contains_worker": integration.get("main_contains_worker"),
                 "main_has_worker_patch": integration.get("main_has_worker_patch"),
+                "dirty": integration.get("dirty"),
                 "worker_commit": integration.get("worker_commit"),
                 "base_ref": integration.get("base_ref"),
             }

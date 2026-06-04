@@ -238,13 +238,34 @@ def _delete_worktree_action(candidate: Mapping[str, Any]) -> dict[str, Any] | No
         return None
     if candidate.get("integration_group") != "already_integrated":
         return None
+    base_ref = str(candidate.get("base_ref") or "main")
     return {
         "kind": "delete_worktree",
         "target_name": target_name,
         "record_id": record_id,
         "confirm_delete_worktree": True,
-        "base_ref": str(candidate.get("base_ref") or "main"),
+        "base_ref": base_ref,
         "source": "worker_lifecycle",
+        "delete_evidence": _delete_worktree_evidence(candidate, base_ref=base_ref),
+    }
+
+
+def _delete_worktree_evidence(
+    candidate: Mapping[str, Any],
+    *,
+    base_ref: str,
+) -> dict[str, Any]:
+    return {
+        "archived": candidate.get("archived") is True,
+        "supervisor_protocol_status": str(
+            candidate.get("supervisor_protocol_status") or ""
+        ),
+        "supervisor_worktree": candidate.get("supervisor_worktree") is True,
+        "integration_group": candidate.get("integration_group"),
+        "main_contains_worker": candidate.get("main_contains_worker"),
+        "main_has_worker_patch": candidate.get("main_has_worker_patch"),
+        "dirty": candidate.get("dirty"),
+        "base_ref": base_ref,
     }
 
 

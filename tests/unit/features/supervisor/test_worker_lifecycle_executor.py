@@ -167,6 +167,11 @@ def test_lifecycle_execution_plan_deletes_guarded_worktree_candidates() -> None:
                 "record_id": "managed-source",
                 "archived": True,
                 "integration_group": "already_integrated",
+                "main_contains_worker": True,
+                "main_has_worker_patch": False,
+                "dirty": False,
+                "supervisor_protocol_status": "done",
+                "supervisor_worktree": True,
             },
             {
                 "name": "review-worker",
@@ -192,6 +197,16 @@ def test_lifecycle_execution_plan_deletes_guarded_worktree_candidates() -> None:
                 "confirm_delete_worktree": True,
                 "base_ref": "main",
                 "source": "worker_lifecycle",
+                "delete_evidence": {
+                    "archived": True,
+                    "supervisor_protocol_status": "done",
+                    "supervisor_worktree": True,
+                    "integration_group": "already_integrated",
+                    "main_contains_worker": True,
+                    "main_has_worker_patch": False,
+                    "dirty": False,
+                    "base_ref": "main",
+                },
             }
         ],
     }
@@ -327,13 +342,23 @@ def test_supervise_planning_builds_cleanup_worktree_lifecycle_execution() -> Non
             {
                 "kind": "delete_worktree",
                 "target_name": "source-worker",
-                "record_id": "managed-source",
-                "confirm_delete_worktree": True,
-                "base_ref": "main",
-                "source": "worker_lifecycle",
-            }
-        ],
-    }
+                    "record_id": "managed-source",
+                    "confirm_delete_worktree": True,
+                    "base_ref": "main",
+                    "source": "worker_lifecycle",
+                    "delete_evidence": {
+                        "archived": True,
+                        "supervisor_protocol_status": "",
+                        "supervisor_worktree": False,
+                        "integration_group": "already_integrated",
+                        "main_contains_worker": None,
+                        "main_has_worker_patch": None,
+                        "dirty": None,
+                        "base_ref": "main",
+                    },
+                }
+            ],
+        }
     assert payload["worker_lifecycle_decision"]["next_step"] == "cleanup_worktree"
     assert payload["worker_lifecycle_execution"] == planning.lifecycle_execution
 
@@ -535,6 +560,16 @@ def test_supervise_execution_deletes_lifecycle_worktree_candidates() -> None:
             "confirm_delete_worktree": True,
             "base_ref": "main",
             "source": "worker_lifecycle",
+            "delete_evidence": {
+                "archived": True,
+                "supervisor_protocol_status": "",
+                "supervisor_worktree": False,
+                "integration_group": "already_integrated",
+                "main_contains_worker": None,
+                "main_has_worker_patch": None,
+                "dirty": None,
+                "base_ref": "main",
+            },
         }
     ]
 

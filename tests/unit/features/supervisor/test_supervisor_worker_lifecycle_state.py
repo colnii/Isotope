@@ -82,6 +82,17 @@ def test_record_worker_lifecycle_decision_persists_execution_projection(tmp_path
                     "base_ref": "main",
                     "source": "worker_lifecycle",
                     "command": "private command is not projected",
+                    "delete_evidence": {
+                        "archived": True,
+                        "supervisor_protocol_status": "done",
+                        "supervisor_worktree": True,
+                        "integration_group": "already_integrated",
+                        "main_contains_worker": True,
+                        "main_has_worker_patch": False,
+                        "dirty": False,
+                        "base_ref": "main",
+                        "private_path": "/repo/.worktrees/supervisor/source-worker",
+                    },
                 }
             ],
         },
@@ -118,6 +129,16 @@ def test_record_worker_lifecycle_decision_persists_execution_projection(tmp_path
                 "record_id": "managed-source",
                 "base_ref": "main",
                 "source": "worker_lifecycle",
+                "delete_evidence": {
+                    "archived": True,
+                    "supervisor_protocol_status": "done",
+                    "supervisor_worktree": True,
+                    "integration_group": "already_integrated",
+                    "main_contains_worker": True,
+                    "main_has_worker_patch": False,
+                    "dirty": False,
+                    "base_ref": "main",
+                },
             }
         ],
     }

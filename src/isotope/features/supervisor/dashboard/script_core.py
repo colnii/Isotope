@@ -269,7 +269,31 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
       if (item.execute_command) parts.push("command=" + text(item.execute_command));
       if (item.result_summary) parts.push("result=" + text(item.result_summary));
       if (item.execution_reason) parts.push("reason=" + text(item.execution_reason));
+      const evidence = workerLifecycleDeleteEvidenceText(item.delete_evidence);
+      if (evidence) parts.push("evidence=" + evidence);
       return parts.join(" · ");
+    }
+
+    function workerLifecycleDeleteEvidenceText(value) {
+      const items = Array.isArray(value) ? value : [];
+      if (!items.length) return "";
+      return items.map((item) => {
+        const integrated = item.main_contains_worker === true || item.main_has_worker_patch === true;
+        const clean = item.dirty === false;
+        return text(item.target_name || "unknown")
+          + " archived=" + boolText(item.archived)
+          + " protocol=" + text(item.supervisor_protocol_status || "unknown")
+          + " worktree=" + boolText(item.supervisor_worktree)
+          + " group=" + text(item.integration_group || "unknown")
+          + " integrated=" + boolText(integrated)
+          + " clean=" + boolText(clean);
+      }).join("; ");
+    }
+
+    function boolText(value) {
+      if (value === true) return "true";
+      if (value === false) return "false";
+      return "unknown";
     }
 
     function workerLifecycleTimelineText(timeline) {

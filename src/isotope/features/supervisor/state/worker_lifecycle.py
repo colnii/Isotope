@@ -342,10 +342,31 @@ def _delete_worktree_action_payloads(value: Any) -> list[dict[str, Any]]:
             "base_ref": _lifecycle_scalar(item.get("base_ref")),
             "source": _lifecycle_scalar(item.get("source")),
         }
+        evidence = _delete_evidence_payload(item.get("delete_evidence"))
+        if evidence:
+            action["delete_evidence"] = evidence
         items.append(
             {key: value for key, value in action.items() if value is not None}
         )
     return items
+
+
+def _delete_evidence_payload(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    evidence = {
+        "archived": _lifecycle_bool(value.get("archived")),
+        "supervisor_protocol_status": _lifecycle_scalar(
+            value.get("supervisor_protocol_status")
+        ),
+        "supervisor_worktree": _lifecycle_bool(value.get("supervisor_worktree")),
+        "integration_group": _lifecycle_scalar(value.get("integration_group")),
+        "main_contains_worker": _lifecycle_bool(value.get("main_contains_worker")),
+        "main_has_worker_patch": _lifecycle_bool(value.get("main_has_worker_patch")),
+        "dirty": _lifecycle_bool(value.get("dirty")),
+        "base_ref": _lifecycle_scalar(value.get("base_ref")),
+    }
+    return {key: item for key, item in evidence.items() if item is not None}
 
 
 def _merge_dispatch_payload(value: Any) -> dict[str, Any]:
@@ -371,6 +392,12 @@ def _event_projection_payload(event: dict[str, Any]) -> dict[str, Any]:
 
 def _lifecycle_scalar(value: Any) -> str | bool | int | float | None:
     if isinstance(value, (str, bool, int, float)):
+        return value
+    return None
+
+
+def _lifecycle_bool(value: Any) -> bool | None:
+    if isinstance(value, bool):
         return value
     return None
 

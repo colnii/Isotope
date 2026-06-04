@@ -161,6 +161,16 @@ def test_dashboard_payload_projects_worker_lifecycle_execution_from_snapshot() -
                 "confirm_delete_worktree": True,
                 "base_ref": "main",
                 "source": "worker_lifecycle",
+                "delete_evidence": {
+                    "archived": True,
+                    "supervisor_protocol_status": "done",
+                    "supervisor_worktree": True,
+                    "integration_group": "already_integrated",
+                    "main_contains_worker": True,
+                    "main_has_worker_patch": False,
+                    "dirty": False,
+                    "base_ref": "main",
+                },
             }
         ],
     }
@@ -202,6 +212,20 @@ def test_dashboard_payload_projects_worker_lifecycle_execution_from_snapshot() -
                 "status": "deleted",
             }
         ],
+        "delete_evidence": [
+            {
+                "target_name": "source-worker",
+                "record_id": "managed-source",
+                "archived": True,
+                "supervisor_protocol_status": "done",
+                "supervisor_worktree": True,
+                "integration_group": "already_integrated",
+                "main_contains_worker": True,
+                "main_has_worker_patch": False,
+                "dirty": False,
+                "base_ref": "main",
+            }
+        ],
         "execute_hint": "--lifecycle-cleanup-execute",
         "execute_command": "isotope-supervisor loop --iterations 1 --lifecycle-cleanup-execute",
     }
@@ -236,6 +260,44 @@ def test_dashboard_payload_projects_merge_lifecycle_execute_command() -> None:
     assert payload["worker_lifecycle_execution"]["execute_command"] == (
         "isotope-supervisor loop --iterations 1 --merge-dispatch-execute"
     )
+
+
+def test_dashboard_plain_prints_worker_lifecycle_delete_evidence(capsys) -> None:
+    print_dashboard_plain(
+        {
+            "generated_at": "2026-06-04T12:00:00Z",
+            "recommendation": {"label": "继续监控"},
+            "pending_decisions_count": 0,
+            "capability_calls_count": 0,
+            "groups": {"needs_attention": [], "done": [], "working": []},
+            "worker_lifecycle": {},
+            "worker_lifecycle_execution": {
+                "status": "ready_to_delete",
+                "kind": "cleanup_worktree",
+                "action_count": 1,
+                "execution_status": "planned",
+                "delete_evidence": [
+                    {
+                        "target_name": "source-worker",
+                        "archived": True,
+                        "supervisor_protocol_status": "done",
+                        "supervisor_worktree": True,
+                        "integration_group": "already_integrated",
+                        "main_contains_worker": True,
+                        "main_has_worker_patch": False,
+                        "dirty": False,
+                    }
+                ],
+            },
+        },
+        api=_StubDashboardApi(),
+    )
+
+    text = capsys.readouterr().out
+    assert (
+        "delete_evidence=source-worker archived=true protocol=done "
+        "worktree=true group=already_integrated integrated=true clean=true"
+    ) in text
 
 
 def test_dashboard_plain_prints_worker_lifecycle(capsys) -> None:

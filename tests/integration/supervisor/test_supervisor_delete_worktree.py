@@ -294,6 +294,9 @@ def test_delete_worktree_candidates_include_archived_integrated_merge_worker(
             "integration_group": "merge_workers",
             "main_contains_worker": True,
             "main_has_worker_patch": True,
+            "dirty": False,
+            "supervisor_protocol_status": "done",
+            "supervisor_worktree": True,
             "worker_commit": "merge111",
             "base_ref": "main",
         }
