@@ -1,4 +1,4 @@
-"""Read-only tmux discovery helpers for Codex Supervisor."""
+"""Tmux discovery helpers for Codex Supervisor."""
 
 from __future__ import annotations
 

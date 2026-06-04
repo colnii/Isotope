@@ -1,4 +1,4 @@
-"""Read-only Supervisor state projection for dashboard and loop inputs."""
+"""Supervisor state projection for dashboard and loop inputs."""
 
 from __future__ import annotations
 

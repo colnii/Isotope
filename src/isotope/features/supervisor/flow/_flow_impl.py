@@ -1,4 +1,4 @@
-"""Read-only Codex session supervisor flow."""
+"""Codex session supervisor flow."""
 
 from __future__ import annotations
 
@@ -212,7 +212,7 @@ class CodexSupervisorReport:
 
 
 class CodexSupervisorFlow:
-    """Build a read-only status report from local Codex session files."""
+    """Build a state projection report from local Codex session files."""
 
     def __init__(
         self,

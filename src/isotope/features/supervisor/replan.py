@@ -1,4 +1,4 @@
-"""Read-only next-round advice for Supervisor worker reviews."""
+"""Next-round advice for Supervisor worker reviews."""
 
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ def build_supervisor_replan(
     integration_reviews: dict[str, Any] | None = None,
     active_goals: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
-    """Build read-only advice for the next Supervisor loop.
+    """Build next-step advice for the next Supervisor loop.
 
     The function consumes existing read models only. It does not start workers,
     merge branches, archive records, or touch git state.

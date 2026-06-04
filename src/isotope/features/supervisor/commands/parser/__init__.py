@@ -222,7 +222,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     for check_command, help_text in (
         (
             "check",
-            "Print one read-only morning summary across daemon, goals, review, and cleanup.",
+            "Print one morning state projection across daemon, goals, review, and cleanup.",
         ),
         (
             "overnight-check",
@@ -306,7 +306,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     add_memory_command_parsers(subparsers)
     integration_review_parser = subparsers.add_parser(
         "integration-review",
-        help="Group managed workers by read-only integration readiness.",
+        help="Group managed workers by integration readiness.",
     )
     _add_state_root_arg(integration_review_parser)
     integration_review_parser.add_argument(
@@ -332,7 +332,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     _add_webhook_args(integration_review_parser)
     merge_work_order_parser = subparsers.add_parser(
         "merge-work-order",
-        help="Build a read-only merge work order from integration-review.",
+        help="Build a merge work order from integration-review.",
     )
     _add_state_root_arg(merge_work_order_parser)
     merge_work_order_parser.add_argument(
@@ -343,7 +343,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     merge_work_order_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     replan_parser = subparsers.add_parser(
         "replan",
-        help="Build read-only next-round advice from worker-review candidates.",
+        help="Build next-round advice from worker-review candidates.",
     )
     _add_state_root_arg(replan_parser)
     replan_parser.add_argument(
@@ -418,13 +418,13 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
         "--tavily-timeout-seconds",
         type=int,
         default=30,
-        help="Tavily request timeout for future Tavily execution.",
+        help="Tavily request timeout for Tavily execution.",
     )
     research_parser.add_argument(
         "--tavily-max-results",
         type=int,
         default=5,
-        help="Maximum Tavily results requested by future Tavily execution.",
+        help="Maximum Tavily results requested by Tavily execution.",
     )
     research_parser.add_argument(
         "--timeout-seconds",
@@ -718,7 +718,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     )
     trace_parser = subparsers.add_parser(
         "trace",
-        help="Print a read-only Supervisor lifecycle trace.",
+        help="Print a Supervisor lifecycle trace.",
     )
     _add_state_root_arg(trace_parser)
     trace_parser.add_argument("--json", action="store_true", help="Print JSON output.")

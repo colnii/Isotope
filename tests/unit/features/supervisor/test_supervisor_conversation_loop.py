@@ -1536,7 +1536,7 @@ def test_conversation_loop_runs_coding_task_run_through_existing_agent_loop(
     assert "argv" not in rendered
 
 
-def test_coding_task_run_allows_bounded_revision_after_failed_verification(
+def test_coding_task_run_allows_scoped_revision_after_failed_verification(
     tmp_path,
 ) -> None:
     workspace = tmp_path / "repo"

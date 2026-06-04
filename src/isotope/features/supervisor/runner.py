@@ -1,4 +1,4 @@
-"""CLI runner for the read-only Codex supervisor."""
+"""CLI runner for the Supervisor command surface."""
 
 from __future__ import annotations
 

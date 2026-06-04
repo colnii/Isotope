@@ -1,4 +1,4 @@
-"""Read-only integration review for Supervisor-managed workers."""
+"""Integration projection review for Supervisor-managed workers."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def collect_integration_reviews(
     run: RunCommand | None = None,
     validation_run: RunCommand | None = None,
 ) -> dict[str, Any]:
-    """Collect read-only integration status for Supervisor-managed workers."""
+    """Collect integration projection status for Supervisor-managed workers."""
     run_command = run or subprocess.run
     validation_command = validation_run or (subprocess.run if run is None else None)
     records = [

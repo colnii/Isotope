@@ -727,7 +727,7 @@ def test_supervisor_runner_delegates_lifecycle_trace_helpers():
         assert f"def {function_name}(" not in source
 
 
-def test_supervisor_runner_delegates_readonly_command_handlers():
+def test_supervisor_runner_delegates_projection_command_handlers():
     decision_module = importlib.import_module(
         "isotope.features.supervisor.commands.handlers.decision"
     )

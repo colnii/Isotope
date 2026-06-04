@@ -5281,7 +5281,7 @@ def test_codex_supervisor_runner_cleanup_delete_worktree_plain_reports_deleted(
     assert "cwd：/tmp/worktree" in out
 
 
-def test_codex_supervisor_runner_check_json_summarizes_readonly_surfaces(
+def test_codex_supervisor_runner_check_json_summarizes_projection_surfaces(
     tmp_path,
     capsys,
 ):

@@ -269,11 +269,11 @@ def _generate_with_timeout(
     if timeout_seconds <= 0:
         raise TimeoutError("desktop chat response timed out")
     executor = ThreadPoolExecutor(max_workers=1)
-    future = executor.submit(provider.generate, messages, max_tokens=max_tokens)
+    pending_call = executor.submit(provider.generate, messages, max_tokens=max_tokens)
     try:
-        return future.result(timeout=timeout_seconds)
+        return pending_call.result(timeout=timeout_seconds)
     except FutureTimeoutError as exc:
-        future.cancel()
+        pending_call.cancel()
         raise TimeoutError("desktop chat response timed out") from exc
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
@@ -406,7 +406,7 @@ def _run_capability_decision(
                 goal=_require_text(inputs.get("goal"), "goal"),
                 inputs=inputs,
                 provider=provider,
-                max_steps=_bounded_coding_steps(inputs.get("max_steps")),
+                max_steps=_scoped_coding_steps(inputs.get("max_steps")),
             )
         else:
             agent_loop = _execute_capacity_step_with_timeout(
@@ -499,7 +499,7 @@ def _execute_capacity_step_with_timeout(
     if timeout_seconds <= 0:
         raise TimeoutError("capacity execution timed out")
     executor = ThreadPoolExecutor(max_workers=1)
-    future = executor.submit(
+    pending_call = executor.submit(
         _execute_agent_loop_capacity_step,
         goal=goal,
         capability_id=capability_id,
@@ -507,15 +507,15 @@ def _execute_capacity_step_with_timeout(
         state_root=state_root,
     )
     try:
-        return future.result(timeout=timeout_seconds)
+        return pending_call.result(timeout=timeout_seconds)
     except FutureTimeoutError as exc:
-        future.cancel()
+        pending_call.cancel()
         raise TimeoutError("capacity execution timed out") from exc
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
 
 
-def _bounded_coding_steps(value: Any) -> int:
+def _scoped_coding_steps(value: Any) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         return 6
     return min(max(value, 1), 12)

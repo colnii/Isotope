@@ -259,18 +259,18 @@ def _stream_desktop_chat_chunks_with_timeout(
             queue.put(("error", exc))
 
     executor = ThreadPoolExecutor(max_workers=1)
-    future = executor.submit(run_provider)
+    pending_call = executor.submit(run_provider)
     deadline = monotonic() + timeout_seconds
     try:
         while True:
             remaining = deadline - monotonic()
             if remaining <= 0:
-                future.cancel()
+                pending_call.cancel()
                 raise TimeoutError("desktop chat response timed out")
             try:
                 kind, payload = queue.get(timeout=remaining)
             except Empty as exc:
-                future.cancel()
+                pending_call.cancel()
                 raise TimeoutError("desktop chat response timed out") from exc
             if kind == "chunk":
                 if not isinstance(payload, LLMStreamChunk):
@@ -430,7 +430,7 @@ def _build_capacity_plan_with_timeout(
     capacity_runner = runner or CapabilityRunner()
     offered_capacities = _capacity_manifests_from_runner(capacity_runner)
     executor = ThreadPoolExecutor(max_workers=1)
-    future = executor.submit(
+    pending_call = executor.submit(
         build_supervisor_capacity_plan,
         goal=goal,
         provider=provider,
@@ -448,9 +448,9 @@ def _build_capacity_plan_with_timeout(
         allow_no_capacity=True,
     )
     try:
-        return future.result(timeout=timeout_seconds)
+        return pending_call.result(timeout=timeout_seconds)
     except FutureTimeoutError as exc:
-        future.cancel()
+        pending_call.cancel()
         raise TimeoutError("capacity selection timed out") from exc
     finally:
         executor.shutdown(wait=False, cancel_futures=True)
