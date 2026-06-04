@@ -11,6 +11,7 @@ from ...llm.prompts import load_system_prompt, render_json_prompt_template
 from ...llm.provider import LLMResponse
 from .context import (
     build_agent_loop_default_context,
+    merge_agent_loop_default_context,
     safe_agent_loop_default_context,
 )
 from .planner_contract import RAW_PROVIDER_FIELDS
@@ -39,6 +40,7 @@ def run_agent_loop_provider_planner_tick(
     decision_id: str,
     tick_budget: dict[str, Any] | None = None,
     user_pause: dict[str, Any] | None = None,
+    default_context_extra: dict[str, Any] | None = None,
     capability_system_inputs: dict[str, Any] | None = None,
     max_tokens: int = 512,
 ) -> dict[str, Any]:
@@ -74,6 +76,10 @@ def run_agent_loop_provider_planner_tick(
         api,
         run_id,
         control=control,
+    )
+    default_context = merge_agent_loop_default_context(
+        default_context,
+        default_context_extra,
     )
     provider_result = build_agent_loop_provider_planner_result(
         provider,

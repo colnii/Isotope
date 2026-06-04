@@ -43,7 +43,37 @@ def safe_agent_loop_default_context(
                 content_policy="memory_record_refs_expandable",
             )
         }
-    return {"memory": _safe_memory_context(memory)}
+    safe = {"memory": _safe_memory_context(memory)}
+    coding_task = default_context.get("coding_task")
+    if isinstance(coding_task, dict):
+        safe["coding_task"] = {
+            key: value
+            for key, value in coding_task.items()
+            if key
+            in {
+                "goal",
+                "workspace_label",
+                "allowed_capabilities",
+                "verification_intent",
+            }
+            and isinstance(value, (str, list))
+        }
+    return safe
+
+
+def merge_agent_loop_default_context(
+    default_context: dict[str, Any],
+    extra: dict[str, Any] | None,
+) -> dict[str, Any]:
+    merged = dict(default_context)
+    if isinstance(extra, dict):
+        for key, value in extra.items():
+            if isinstance(key, str) and isinstance(
+                value,
+                (dict, list, str, int, float, bool),
+            ):
+                merged[key] = value
+    return merged
 
 
 def _default_memory_context(
