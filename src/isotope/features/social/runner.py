@@ -31,6 +31,7 @@ from .replay import (
 )
 from .runtime import SocialRuntime, SocialRuntimeConfig
 from .stickers import StickerLibrary
+from .startup_gate import QQStartupGateConfig, check_qq_startup_gate
 
 
 STATE_FILENAME = "social-qq-state.json"
@@ -153,6 +154,20 @@ def _build_parser() -> argparse.ArgumentParser:
     beta_check.add_argument("--pack-dir", required=True, help="Generated beta pack directory.")
     beta_check.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    startup_check = qq_subparsers.add_parser(
+        "startup-check",
+        help="Verify QQ beta startup readiness before generated live scripts run.",
+    )
+    startup_check.add_argument("--pack-dir", required=True, help="Generated beta pack directory.")
+    startup_check.add_argument("--replay-report", required=True, help="Replay report JSON file.")
+    startup_check.add_argument(
+        "--min-sticker-candidates",
+        type=int,
+        default=1,
+        help="Minimum replay sticker candidates required for startup readiness.",
+    )
+    startup_check.add_argument("--json", action="store_true", help="Print JSON output.")
+
     for name, help_text in (
         ("pause", "Pause one QQ group."),
         ("resume", "Resume one QQ group."),
@@ -196,11 +211,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.surface != "qq":
             raise ValueError(f"unknown social surface: {args.surface}")
         payload = _handle_qq(args)
+        exit_code = int(payload.pop("_exit_code", 0))
         if getattr(args, "json", False):
             _print_json(payload)
         else:
             _print_plain(payload)
-        return 0
+        return exit_code
     except (FileNotFoundError, RuntimeError, TimeoutError, ValueError) as exc:
         payload = {
             "status": "error",
@@ -230,6 +246,8 @@ def _handle_qq(args: argparse.Namespace) -> dict[str, Any]:
         return _handle_replay(args)
     if args.command == "beta-check":
         return _handle_beta_check(args)
+    if args.command == "startup-check":
+        return _handle_startup_check(args)
     if args.command in {"pause", "resume"}:
         return _handle_pause_resume(args)
     if args.command == "inspect":
@@ -422,6 +440,26 @@ def _handle_beta_check(args: argparse.Namespace) -> dict[str, Any]:
     result = check_qq_beta_pack(QQBetaCheckConfig(pack_dir=Path(args.pack_dir)))
     payload = result.to_public_dict()
     payload.update({"status": "ok", "command": "beta-check"})
+    return payload
+
+
+def _handle_startup_check(args: argparse.Namespace) -> dict[str, Any]:
+    result = check_qq_startup_gate(
+        QQStartupGateConfig(
+            pack_dir=Path(args.pack_dir),
+            replay_report=Path(args.replay_report),
+            min_sticker_candidates=args.min_sticker_candidates,
+        )
+    )
+    payload = result.to_public_dict()
+    payload.update(
+        {
+            "status": "ok" if result.ready else "blocked",
+            "command": "startup-check",
+        }
+    )
+    if not result.ready:
+        payload["_exit_code"] = 2
     return payload
 
 

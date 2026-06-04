@@ -57,8 +57,8 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 ```
 
 The generated pack contains `config.json`, `state/`, `logs/`, `health.sh`,
-`dry-run.sh`, `send-run.sh`, `pause.sh`, `resume.sh`, `export-log.sh`, and a
-`README.md` with the first-run order.
+`startup-check.sh`, `dry-run.sh`, `send-run.sh`, `pause.sh`, `resume.sh`,
+`export-log.sh`, and a `README.md` with the first-run order.
 
 Generate editable role and sticker files before the first real session:
 
@@ -104,6 +104,18 @@ two processed events, at least one proposed action, at least one sticker
 candidate through `min_sticker_candidates`, no send feedback, no sent group
 messages, and `require_all_dry_run`. Treat `passed: false` in
 `replay-report.json` or CLI JSON as a blocker before live dry-run.
+
+Run the startup gate after replay and before generated live scripts:
+
+```bash
+isotope-social qq startup-check --pack-dir .isotope/qq-beta \
+  --replay-report .isotope/qq-beta/logs/replay-report.json --json
+```
+
+The result must show `ready: true`. The check names are `beta_pack`,
+`profile_assets`, `sticker_assets`, and `replay_report`. A blocked result means
+the generated `dry-run.sh` and `send-run.sh` will stop before connecting to
+OneBot.
 
 ## Run
 
@@ -153,7 +165,10 @@ isotope-social qq replay --config-json .isotope/qq-beta/config.json \
   --state-root .isotope/qq-beta/state \
   --replay-json .isotope/qq-beta/replay.json \
   --output .isotope/qq-beta/logs/replay-report.json --json
+isotope-social qq startup-check --pack-dir .isotope/qq-beta \
+  --replay-report .isotope/qq-beta/logs/replay-report.json --json
 cd .isotope/qq-beta
+./startup-check.sh
 ./health.sh
 ./dry-run.sh
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh

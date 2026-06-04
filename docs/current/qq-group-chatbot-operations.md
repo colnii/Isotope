@@ -35,8 +35,8 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
   --bot-user-id <bot_qq> --websocket-url ws://127.0.0.1:3001 --json
 ```
 
-The pack writes `health.sh`, `dry-run.sh`, `send-run.sh`, `pause.sh`,
-`resume.sh`, and `export-log.sh`. Run `send-run.sh` only with
+The pack writes `health.sh`, `startup-check.sh`, `dry-run.sh`, `send-run.sh`,
+`pause.sh`, `resume.sh`, and `export-log.sh`. Run `send-run.sh` only with
 `ISOTOPE_QQ_ENABLE_SEND=1`.
 
 Generate an editable profile pack and apply it to the beta pack before checking
@@ -59,8 +59,7 @@ Before the first live session, run the pack check:
 isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
 ```
 
-The check must pass before `./health.sh` or `./dry-run.sh` becomes the operator
-path. It verifies the pack files, script syntax, pause/resume/export-log
+The check verifies the pack files, script syntax, pause/resume/export-log
 commands, and the `send-run.sh` guard that refuses to send without
 `ISOTOPE_QQ_ENABLE_SEND=1`.
 
@@ -82,6 +81,19 @@ The generated replay file has an `expectations` section with rules such as
 `min_sticker_candidates`, `max_send_feedback`, and `require_all_dry_run`.
 `qq replay` writes `passed` plus each rule result. Do not continue to live
 dry-run while `passed` is `false`.
+
+Run the startup gate after replay:
+
+```bash
+isotope-social qq startup-check --pack-dir .isotope/qq-beta \
+  --replay-report .isotope/qq-beta/logs/replay-report.json --json
+```
+
+`ready` must be `true`. The checks are `beta_pack`, `profile_assets`,
+`sticker_assets`, and `replay_report`. If `profile_assets` fails, apply the
+profile pack again. If `replay_report` fails, fix the replay result before
+connecting to OneBot. Generated `dry-run.sh` and `send-run.sh` run
+`startup-check.sh` before the live command.
 
 ## Inspect
 
@@ -108,6 +120,8 @@ isotope-social qq replay --config-json .isotope/qq-beta/config.json \
   --state-root .isotope/qq-beta/state \
   --replay-json .isotope/qq-beta/replay.json \
   --output .isotope/qq-beta/logs/replay-report.json --json
+isotope-social qq startup-check --pack-dir .isotope/qq-beta \
+  --replay-report .isotope/qq-beta/logs/replay-report.json --json
 isotope-social qq inspect role --config-json config.json
 isotope-social qq inspect lorebook --config-json config.json
 isotope-social qq inspect stickers --config-json config.json
@@ -211,6 +225,7 @@ Run this checklist for each controlled beta day:
 - Confirm `allowed_groups` and `operator_user_ids`.
 - Run `isotope-social qq beta-check --pack-dir .isotope/qq-beta --json`.
 - Run `qq init-replay` and `qq replay`, then review `replay-report.json`.
+- Run `qq startup-check` and require `ready: true`.
 - Run `./health.sh` before consuming messages.
 - Start in dry-run and review at least five representative messages.
 - Enable sends only after dry-run decisions look correct.

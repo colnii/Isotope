@@ -11,6 +11,7 @@ from typing import Any
 
 SCRIPT_NAMES = (
     "health.sh",
+    "startup-check.sh",
     "dry-run.sh",
     "send-run.sh",
     "pause.sh",
@@ -106,9 +107,12 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
     if name == "health.sh":
         command = _live_run_command(config, max_events=0, send=False)
         return f"{common}\n{command}\n"
+    if name == "startup-check.sh":
+        command = _startup_check_command()
+        return f"{common}\n{command}\n"
     if name == "dry-run.sh":
         command = _live_run_command(config, max_events=config.max_events, send=False)
-        return f"{common}\n{command}\n"
+        return f"{common}\n./startup-check.sh 1>&2\n{command}\n"
     if name == "send-run.sh":
         command = _live_run_command(config, max_events=config.max_events, send=True)
         return (
@@ -118,6 +122,7 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
             'dry-run output." >&2\n'
             "  exit 2\n"
             "fi\n"
+            "./startup-check.sh 1>&2\n"
             f"{command}\n"
         )
     if name == "pause.sh":
@@ -180,6 +185,20 @@ def _live_run_command(
     if send:
         parts.append("--send")
     return " ".join(_quote_command_part(part) for part in parts)
+
+
+def _startup_check_command() -> str:
+    parts = [
+        "isotope-social",
+        "qq",
+        "startup-check",
+        "--pack-dir",
+        ".",
+        "--replay-report",
+        "logs/replay-report.json",
+        "--json",
+    ]
+    return " ".join(shlex.quote(part) for part in parts)
 
 
 def _quote_command_part(part: str) -> str:
@@ -259,10 +278,12 @@ OneBot WebSocket: `{config.websocket_url}`
 
 ## First run order
 
-1. Run `./health.sh`.
-2. Run `./dry-run.sh` and review the JSON output.
-3. Inspect `state/social-qq-state.json` and exported logs.
-4. Only after dry-run behavior is acceptable, run:
+1. Apply an editable profile pack and run replay.
+2. Run `./startup-check.sh`.
+3. Run `./health.sh`.
+4. Run `./dry-run.sh` and review the JSON output.
+5. Inspect `state/social-qq-state.json` and exported logs.
+6. Only after dry-run behavior is acceptable, run:
 
 ```bash
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
@@ -275,7 +296,8 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 - Export the audit log with `./export-log.sh`.
 
 Automated scripts start in dry-run. `send-run.sh` refuses to send unless
-`ISOTOPE_QQ_ENABLE_SEND=1` is set for that command.
+`ISOTOPE_QQ_ENABLE_SEND=1` is set for that command. `dry-run.sh` and
+`send-run.sh` both run `startup-check.sh` before connecting to OneBot.
 """
 
 

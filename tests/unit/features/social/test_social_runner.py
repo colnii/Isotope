@@ -64,6 +64,89 @@ def _read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _prepare_profiled_replay_pack(tmp_path: Path, capsys) -> tuple[Path, Path]:
+    beta_dir = tmp_path / "qq-beta"
+    profile_dir = tmp_path / "qq-profile"
+    replay_path = beta_dir / "replay.json"
+    report_path = beta_dir / "logs" / "replay-report.json"
+
+    assert main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(beta_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert main(
+        [
+            "qq",
+            "init-profile",
+            "--output-dir",
+            str(profile_dir),
+            "--group",
+            "99999",
+            "--name",
+            "群聊工程猫",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert main(
+        [
+            "qq",
+            "apply-profile",
+            "--pack-dir",
+            str(beta_dir),
+            "--profile-dir",
+            str(profile_dir),
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert main(
+        [
+            "qq",
+            "init-replay",
+            "--output",
+            str(replay_path),
+            "--group",
+            "99999",
+            "--bot-user-id",
+            "bot_qq",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert main(
+        [
+            "qq",
+            "replay",
+            "--config-json",
+            str(beta_dir / "config.json"),
+            "--state-root",
+            str(beta_dir / "state"),
+            "--replay-json",
+            str(replay_path),
+            "--output",
+            str(report_path),
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    return beta_dir, report_path
+
+
 class FakeLiveOneBotClient:
     instances: list["FakeLiveOneBotClient"] = []
 
@@ -471,6 +554,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
         "pause.sh",
         "resume.sh",
         "send-run.sh",
+        "startup-check.sh",
     ]
 
     config = _read_json(output_dir / "config.json")
@@ -490,10 +574,12 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     dry_run = (output_dir / "dry-run.sh").read_text(encoding="utf-8")
     assert "--max-events 7" in dry_run
     assert "--send" not in dry_run
+    assert "./startup-check.sh" in dry_run
 
     send_run = (output_dir / "send-run.sh").read_text(encoding="utf-8")
     assert "ISOTOPE_QQ_ENABLE_SEND" in send_run
     assert "--send" in send_run
+    assert send_run.index("ISOTOPE_QQ_ENABLE_SEND") < send_run.index("./startup-check.sh")
 
     pause = (output_dir / "pause.sh").read_text(encoding="utf-8")
     assert " qq pause " in pause
@@ -760,6 +846,83 @@ def test_social_runner_qq_apply_profile_updates_beta_config_and_beta_check(
     assert main(["qq", "beta-check", "--pack-dir", str(beta_dir), "--json"]) == 0
     check_payload = json.loads(capsys.readouterr().out)
     assert check_payload["ok"] is True
+
+
+def test_social_runner_qq_startup_check_passes_after_profile_and_replay(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    beta_dir, report_path = _prepare_profiled_replay_pack(tmp_path, capsys)
+
+    code = main(
+        [
+            "qq",
+            "startup-check",
+            "--pack-dir",
+            str(beta_dir),
+            "--replay-report",
+            str(report_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "startup-check"
+    assert payload["ready"] is True
+    assert [check["name"] for check in payload["checks"]] == [
+        "beta_pack",
+        "profile_assets",
+        "sticker_assets",
+        "replay_report",
+    ]
+    assert all(check["ok"] for check in payload["checks"])
+
+
+def test_social_runner_qq_startup_check_blocks_missing_profile_and_replay(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    beta_dir = tmp_path / "qq-beta"
+    assert main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(beta_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    code = main(
+        [
+            "qq",
+            "startup-check",
+            "--pack-dir",
+            str(beta_dir),
+            "--replay-report",
+            str(beta_dir / "logs" / "replay-report.json"),
+            "--json",
+        ]
+    )
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "blocked"
+    assert payload["command"] == "startup-check"
+    assert payload["ready"] is False
+    failed = [check["name"] for check in payload["checks"] if not check["ok"]]
+    assert failed == ["profile_assets", "sticker_assets", "replay_report"]
 
 
 def test_social_runner_qq_init_replay_writes_editable_event_file(
