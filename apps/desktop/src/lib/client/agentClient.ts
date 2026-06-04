@@ -35,6 +35,32 @@ export type DesktopCapacityCall = {
   details: DesktopCapacityDetailSection[];
 };
 
+export type DesktopScreenArtifactContent = {
+  status: 'ok';
+  artifact: {
+    artifactType: 'screen_screenshot';
+    summary: string;
+    ref: {
+      ref_type: 'artifact';
+      scope: 'run';
+      run_id: string;
+      artifact_id: string;
+    };
+  };
+  image: {
+    mediaType: string;
+    width?: number;
+    height?: number;
+    data: string;
+    dataUrl: string;
+  };
+  file: {
+    path: string;
+    directory: string;
+    downloadFilename: string;
+  };
+};
+
 export type DesktopChatHistoryMessage = {
   role: 'user' | 'assistant';
   content: string;
@@ -50,6 +76,7 @@ export type DesktopChatHandlers = {
 
 export type AgentClient = {
   loadSnapshot(): Promise<IsotopeSnapshot>;
+  loadScreenArtifactContent(artifactId: string): Promise<DesktopScreenArtifactContent>;
   resolveApproval(
     approvalId: string,
     resolution: ApprovalResolution,
@@ -72,6 +99,23 @@ export function createAgentClient(baseUrl: string | null = null): AgentClient {
       } catch {
         return mockSnapshot;
       }
+    },
+    async loadScreenArtifactContent(artifactId) {
+      if (!apiBaseUrl) {
+        throw new Error('截图原图需要配置后端 URL');
+      }
+      const cleanArtifactId = artifactId.trim();
+      if (!cleanArtifactId) {
+        throw new Error('artifact ID 不能为空');
+      }
+      const response = await fetch(
+        `${apiBaseUrl}/desktop/artifacts/${encodeURIComponent(cleanArtifactId)}/screen-content`,
+        { cache: 'no-store' }
+      );
+      if (!response.ok) {
+        throw new Error(await responseErrorMessage(response));
+      }
+      return (await response.json()) as DesktopScreenArtifactContent;
     },
     async resolveApproval(approvalId, resolution, reason) {
       if (!apiBaseUrl) {

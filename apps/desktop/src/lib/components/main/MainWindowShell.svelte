@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ApprovalSummary, ActivityNode, IsotopeSnapshot } from '../../contracts/isotope';
-  import type { ApprovalResolution } from '../../client/agentClient';
+  import type { AgentClient, ApprovalResolution } from '../../client/agentClient';
   import type { DesktopChatMessage } from '../../stores/appState';
   import { buildMainWindowProductView } from '../../view/mainWindowProductView';
   import ConversationWorkspace from './ConversationWorkspace.svelte';
@@ -13,6 +13,7 @@
     isAskingDesktop = false,
     resolvingApprovalId = null,
     approvalError = null,
+    agentClient,
     onAskDesktop,
     onResolveApproval
   } = $props<{
@@ -23,6 +24,7 @@
     isAskingDesktop?: boolean;
     resolvingApprovalId?: string | null;
     approvalError?: string | null;
+    agentClient: AgentClient;
     onAskDesktop: (question: string) => void;
     onResolveApproval: (approvalId: string, resolution: ApprovalResolution) => void;
   }>();
@@ -51,6 +53,7 @@
     {chatMessages}
     {chatError}
     isAsking={isAskingDesktop}
+    {agentClient}
     onAsk={onAskDesktop}
     onResolveApproval={onResolveApproval}
   />

@@ -25,6 +25,7 @@ from .conversation_observations import (
     capacity_observation_from_event_payload,
     capacity_observation_message_content,
     model_observation_from_agent_loop,
+    screen_artifact_detail_from_agent_loop,
 )
 
 
@@ -350,6 +351,11 @@ def _run_capability_decision(
             timeout_seconds=timeout_seconds,
         )
         result_summary = agent_loop_json_summary({"agent_loop": agent_loop})
+        extra_details = [
+            detail
+            for detail in [screen_artifact_detail_from_agent_loop(agent_loop)]
+            if detail is not None
+        ]
         private = {
             "model_observation": model_observation_from_agent_loop(
                 capacity_id=capacity_id,
@@ -369,6 +375,7 @@ def _run_capability_decision(
             "error_type": type(exc).__name__,
             "message": str(exc) or type(exc).__name__,
         }
+        extra_details = []
         private = {
             "model_observation": {
                 "kind": "capacity_observation",
@@ -398,6 +405,7 @@ def _run_capability_decision(
                     "kind": "json",
                     "content": _safe_detail_value(result_summary),
                 },
+                *extra_details,
             ],
         },
         private=private,

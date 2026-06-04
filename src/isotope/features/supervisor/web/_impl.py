@@ -20,6 +20,7 @@ from ..desktop_chat import (
 from ..desktop_snapshot import build_desktop_snapshot
 from isotope.llm.capacity_calling import CapacityCallingProvider
 from isotope.runtime.in_process import InProcessServer
+from isotope.workspace.artifacts import ArtifactStore
 from ..dashboard.html import dashboard_page_html
 from ..planner.decision_requests import (
     DEFAULT_DECISION_TIMEOUT_SECONDS,
@@ -124,6 +125,12 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
 
     def desktop_snapshot_payload(self) -> dict[str, Any]:
         return build_desktop_snapshot(state_root=self.codex_home)
+
+    def desktop_screen_artifact_content_payload(self, artifact_id: str) -> dict[str, Any]:
+        return {
+            "status": "ok",
+            **_screen_screenshot_artifact_payload(self.codex_home, artifact_id),
+        }
 
     def resolve_desktop_approval_payload(
         self,
@@ -340,6 +347,10 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                 content_type="application/json; charset=utf-8",
             )
             return
+        artifact_id = _desktop_screen_artifact_content_id(path)
+        if artifact_id is not None:
+            self._send_desktop_screen_artifact_content(artifact_id)
+            return
         if path == "/events":
             self._send_events()
             return
@@ -546,6 +557,35 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             )
             return
         self._send_json(result)
+
+    def _send_desktop_screen_artifact_content(self, artifact_id: str) -> None:
+        try:
+            payload = self.server.desktop_screen_artifact_content_payload(artifact_id)
+        except FileNotFoundError:
+            self._send_json(
+                {
+                    "status": "error",
+                    "error": {
+                        "code": "artifact_not_found",
+                        "message": "screen artifact not found",
+                    },
+                },
+                status_code=404,
+            )
+            return
+        except ValueError as exc:
+            self._send_json(
+                {
+                    "status": "error",
+                    "error": {
+                        "code": "screen_artifact_unavailable",
+                        "message": str(exc),
+                    },
+                },
+                status_code=400,
+            )
+            return
+        self._send_json(payload)
 
     def _send_goal_plan(self) -> None:
         try:
@@ -764,6 +804,87 @@ def _desktop_approval_resolve_id(path: str) -> str | None:
     if "/" in approval_id or not approval_id:
         return None
     return approval_id
+
+
+def _desktop_screen_artifact_content_id(path: str) -> str | None:
+    prefix = "/desktop/artifacts/"
+    suffix = "/screen-content"
+    if not path.startswith(prefix) or not path.endswith(suffix):
+        return None
+    artifact_id = unquote(path[len(prefix) : -len(suffix)])
+    if "/" in artifact_id or not artifact_id:
+        return None
+    return artifact_id
+
+
+def _screen_screenshot_artifact_payload(root: Path, artifact_id: str) -> dict[str, Any]:
+    store = ArtifactStore(root)
+    artifact = store.get_metadata(artifact_id, include_provenance=True)
+    if artifact.get("artifact_type") != "screen_screenshot":
+        raise ValueError("artifact is not a screen_screenshot")
+    artifact_path = _artifact_file_for_id(root, artifact_id)
+    if artifact_path is None:
+        raise FileNotFoundError(f"artifact not found: {artifact_id}")
+    try:
+        image = json.loads(store.get_content(artifact_id))
+    except json.JSONDecodeError as exc:
+        raise ValueError("screen screenshot artifact content is malformed") from exc
+    if not isinstance(image, dict):
+        raise ValueError("screen screenshot artifact content must be an object")
+    if image.get("encoding") != "base64":
+        raise ValueError("screen screenshot artifact must use base64 encoding")
+    media_type = image.get("media_type")
+    data = image.get("data")
+    if not isinstance(media_type, str) or not media_type.startswith("image/"):
+        raise ValueError("screen screenshot artifact media_type must be an image")
+    if not isinstance(data, str) or not data:
+        raise ValueError("screen screenshot artifact data must be non-empty")
+    return {
+        "artifact": {
+            "artifactType": artifact["artifact_type"],
+            "summary": artifact["summary"],
+            "ref": _artifact_ref_for_path(root, artifact_path, artifact_id),
+            "provenance": artifact.get("provenance", {}),
+        },
+        "image": {
+            "mediaType": media_type,
+            "width": image.get("width"),
+            "height": image.get("height"),
+            "data": data,
+            "dataUrl": f"data:{media_type};base64,{data}",
+        },
+        "file": {
+            "path": str(artifact_path),
+            "directory": str(artifact_path.parent),
+            "downloadFilename": f"{artifact_id}.{_image_extension(media_type)}",
+        },
+    }
+
+
+def _artifact_file_for_id(root: Path, artifact_id: str) -> Path | None:
+    matches = sorted((root / "runs").glob(f"*/artifacts/{artifact_id}.json"))
+    return matches[0] if matches else None
+
+
+def _artifact_ref_for_path(root: Path, artifact_path: Path, artifact_id: str) -> dict[str, str]:
+    try:
+        run_id = artifact_path.relative_to(root).parts[1]
+    except (ValueError, IndexError):
+        run_id = ""
+    return {
+        "ref_type": "artifact",
+        "scope": "run",
+        "run_id": run_id,
+        "artifact_id": artifact_id,
+    }
+
+
+def _image_extension(media_type: str) -> str:
+    if media_type == "image/jpeg":
+        return "jpg"
+    if media_type == "image/png":
+        return "png"
+    return media_type.removeprefix("image/").replace("+xml", "") or "img"
 
 
 def _env_number(name: str, *, default: float) -> float:

@@ -1,6 +1,6 @@
 <script lang="ts">
   import CommandComposer from '../common/CommandComposer.svelte';
-  import type { ApprovalResolution } from '../../client/agentClient';
+  import type { AgentClient, ApprovalResolution } from '../../client/agentClient';
   import type { ApprovalSummary } from '../../contracts/isotope';
   import type { DesktopChatMessage } from '../../stores/appState';
   import CapacityCallCard from './CapacityCallCard.svelte';
@@ -19,6 +19,7 @@
     chatMessages = [],
     chatError = null,
     isAsking = false,
+    agentClient,
     onAsk,
     onResolveApproval
   } = $props<{
@@ -35,6 +36,7 @@
     chatMessages?: DesktopChatMessage[];
     chatError?: string | null;
     isAsking?: boolean;
+    agentClient: AgentClient;
     onAsk: (question: string) => void;
     onResolveApproval: (approvalId: string, resolution: ApprovalResolution) => void;
   }>();
@@ -171,7 +173,7 @@
               {#if message.role === 'assistant' && message.capacityCalls?.length}
                 <div class="mt-3 space-y-2">
                   {#each message.capacityCalls as call (call.id)}
-                    <CapacityCallCard {call} />
+                    <CapacityCallCard {call} {agentClient} />
                   {/each}
                 </div>
               {/if}

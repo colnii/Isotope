@@ -594,6 +594,18 @@ def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(
     assert events[1].payload["result_summary"][
         "agent_loop_screen_screenshot_available"
     ] is True
+    screen_artifact_details = [
+        detail
+        for detail in events[1].payload["details"]
+        if detail["label"] == "Screen artifacts"
+    ]
+    assert screen_artifact_details
+    assert screen_artifact_details[0]["content"]["artifacts"][1]["artifact_type"] == (
+        "screen_screenshot"
+    )
+    assert screen_artifact_details[0]["content"]["artifacts"][1]["ref"]["artifact_id"].startswith(
+        "artifact_"
+    )
     assert events[2].payload["text"] == "已完成屏幕观察。"
     rendered_events = json.dumps(
         [event.payload for event in events],

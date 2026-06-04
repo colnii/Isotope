@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::process::Command;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 #[derive(Clone, Copy)]
@@ -20,6 +21,13 @@ pub struct WindowCommandResult {
     label: String,
     visible: bool,
     focused: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenPathResult {
+    status: String,
+    path: String,
 }
 
 #[derive(Clone, Copy)]
@@ -217,8 +225,48 @@ pub fn hide_window(app: AppHandle, label: String) -> Result<WindowCommandResult,
     Ok(command_result(parsed, false, false))
 }
 
+#[tauri::command]
+pub fn open_path(path: String) -> Result<OpenPathResult, String> {
+    if path.trim().is_empty() {
+        return Err("path must not be empty".to_string());
+    }
+    let clean_path = path.trim().to_string();
+    system_open_path(&clean_path)?;
+    Ok(OpenPathResult {
+        status: "ok".to_string(),
+        path: clean_path,
+    })
+}
+
 pub async fn open_mini_from_shortcut(app: AppHandle) -> Result<WindowCommandResult, String> {
     show_or_create_window(&app, DesktopWindowLabel::Mini, true)
+}
+
+#[cfg(target_os = "windows")]
+fn system_open_path(path: &str) -> Result<(), String> {
+    Command::new("explorer")
+        .arg(path)
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn system_open_path(path: &str) -> Result<(), String> {
+    Command::new("open")
+        .arg(path)
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+fn system_open_path(path: &str) -> Result<(), String> {
+    Command::new("xdg-open")
+        .arg(path)
+        .spawn()
+        .map_err(|error| error.to_string())?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -235,6 +283,11 @@ mod tests {
     #[test]
     fn rejects_unknown_window_labels() {
         assert!(DesktopWindowLabel::parse("settings").is_err());
+    }
+
+    #[test]
+    fn open_path_rejects_empty_path() {
+        assert!(super::open_path("  ".to_string()).is_err());
     }
 
     #[test]

@@ -15,6 +15,7 @@ from isotope.features.supervisor.planner.goal_queue import (
     record_supervisor_goal_status,
 )
 from isotope.features.supervisor.web import create_dashboard_server
+from isotope.workspace.artifacts import ArtifactStore
 
 
 def _terminal_intent(argv: list[str]) -> dict:
@@ -216,6 +217,57 @@ def test_desktop_snapshot_endpoint_serves_real_snapshot(tmp_path):
     assert response.getheader("access-control-allow-origin") == "*"
     assert payload["schemaVersion"] == 1
     assert payload["source"]["kind"] == "real"
+
+
+def test_desktop_screen_artifact_endpoint_serves_original_screenshot_payload(tmp_path):
+    artifact = ArtifactStore(tmp_path).create_artifact(
+        "run_screen_001",
+        "exec_screen_001",
+        "screen_screenshot",
+        "screen screenshot captured",
+        json.dumps(
+            {
+                "encoding": "base64",
+                "media_type": "image/png",
+                "width": 1920,
+                "height": 1080,
+                "data": "ZmFrZS1mdWxsLXBuZw==",
+            },
+            sort_keys=True,
+        ),
+    )
+    server = create_dashboard_server(
+        codex_home=tmp_path,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request("GET", f"/desktop/artifacts/{artifact.artifact_id}/screen-content")
+        response = conn.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    assert payload["status"] == "ok"
+    assert payload["artifact"]["ref"] == artifact.ref.to_dict()
+    assert payload["image"]["mediaType"] == "image/png"
+    assert payload["image"]["width"] == 1920
+    assert payload["image"]["height"] == 1080
+    assert payload["image"]["dataUrl"] == "data:image/png;base64,ZmFrZS1mdWxsLXBuZw=="
+    assert payload["image"]["data"] == "ZmFrZS1mdWxsLXBuZw=="
+    assert payload["file"]["path"].endswith(f"{artifact.artifact_id}.json")
+    assert payload["file"]["directory"].endswith("runs/run_screen_001/artifacts")
+    assert payload["file"]["downloadFilename"] == f"{artifact.artifact_id}.png"
 
 
 def test_desktop_snapshot_endpoint_allows_browser_readiness_check(tmp_path):

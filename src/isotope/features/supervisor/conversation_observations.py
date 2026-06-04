@@ -81,6 +81,35 @@ def model_observation_from_agent_loop(
     return observation
 
 
+def screen_artifact_detail_from_agent_loop(
+    agent_loop: dict[str, Any],
+) -> dict[str, Any] | None:
+    capability_run = _agent_loop_capability_run(agent_loop)
+    if not isinstance(capability_run, dict):
+        return None
+    screen_report = capability_run.get("screen_report")
+    if not isinstance(screen_report, dict):
+        return None
+    artifacts = screen_report.get("artifacts")
+    if not isinstance(artifacts, list) or not artifacts:
+        return None
+    safe_artifacts = [
+        _safe_screen_artifact_record(artifact)
+        for artifact in artifacts
+        if isinstance(artifact, dict)
+    ]
+    safe_artifacts = [artifact for artifact in safe_artifacts if artifact is not None]
+    if not safe_artifacts:
+        return None
+    return {
+        "label": "Screen artifacts",
+        "kind": "json",
+        "content": {
+            "artifacts": safe_artifacts,
+        },
+    }
+
+
 def _json_context_message(label: str, value: dict[str, Any]) -> str:
     return f"{label}:\n" + json.dumps(
         value,
@@ -125,6 +154,28 @@ def _screen_observation_image_urls(
         if image_url is not None:
             image_urls.append(image_url)
     return image_urls
+
+
+def _safe_screen_artifact_record(artifact: dict[str, Any]) -> dict[str, Any] | None:
+    artifact_type = artifact.get("artifact_type")
+    ref = artifact.get("ref")
+    if not isinstance(artifact_type, str) or not isinstance(ref, dict):
+        return None
+    artifact_id = artifact.get("artifact_id") or ref.get("artifact_id")
+    run_id = artifact.get("run_id") or ref.get("run_id")
+    if not isinstance(artifact_id, str) or not isinstance(run_id, str):
+        return None
+    return {
+        "artifact_type": artifact_type,
+        "artifact_id": artifact_id,
+        "run_id": run_id,
+        "summary": artifact.get("summary") if isinstance(artifact.get("summary"), str) else "",
+        "ref": {
+            key: value
+            for key, value in ref.items()
+            if key in {"ref_type", "scope", "run_id", "artifact_id"} and isinstance(value, str)
+        },
+    }
 
 
 def _screen_observation_artifact_root(agent_loop: dict[str, Any], *, state_root: Path) -> Path:

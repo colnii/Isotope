@@ -20,6 +20,15 @@ describe('createWindowClient', () => {
     expect(invoke).toHaveBeenCalledWith('hide_window', { label: 'mini' });
   });
 
+  test('opens a local folder path through Tauri', async () => {
+    const invoke = vi.fn().mockResolvedValue({ status: 'ok', path: 'C:\\tmp\\screen' });
+    const client = createWindowClient({ invoke, canInvoke: () => true });
+
+    await client.openPath('C:\\tmp\\screen');
+
+    expect(invoke).toHaveBeenCalledWith('open_path', { path: 'C:\\tmp\\screen' });
+  });
+
   test('uses a no-op result outside the Tauri runtime', async () => {
     const invoke = vi.fn();
     const client = createWindowClient({ invoke, canInvoke: () => false });

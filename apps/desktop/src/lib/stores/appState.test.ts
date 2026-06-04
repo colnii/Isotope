@@ -94,6 +94,7 @@ describe('appState', () => {
     const state = createAppState({
       agentClient: {
         loadSnapshot: async () => realSnapshot(),
+        loadScreenArtifactContent: async () => { throw new Error('not used'); },
         resolveApproval: async () => ({
           status: 'ok',
           approvalId: 'decision-1',
@@ -117,6 +118,7 @@ describe('appState', () => {
     const state = createAppState({
       agentClient: {
         loadSnapshot: async () => realSnapshot(),
+        loadScreenArtifactContent: async () => { throw new Error('not used'); },
         resolveApproval: async () => ({
           status: 'ok',
           approvalId: 'decision-1',
@@ -140,6 +142,7 @@ describe('appState', () => {
     const state = createAppState({
       agentClient: {
         loadSnapshot: async () => realSnapshot(),
+        loadScreenArtifactContent: async () => { throw new Error('not used'); },
         resolveApproval: async () => ({
           status: 'ok',
           approvalId: 'decision-1',
@@ -226,6 +229,7 @@ describe('appState', () => {
     const state = createAppState({
       agentClient: {
         loadSnapshot: async () => realSnapshot(),
+        loadScreenArtifactContent: async () => { throw new Error('not used'); },
         resolveApproval: async () => ({
           status: 'ok',
           approvalId: 'decision-1',
@@ -285,6 +289,7 @@ describe('appState', () => {
     const state = createAppState({
       agentClient: {
         loadSnapshot: async () => before,
+        loadScreenArtifactContent: async () => { throw new Error('not used'); },
         resolveApproval: async (approvalId, resolution, reason) => {
           resolved.push({ approvalId, resolution, reason });
           return {

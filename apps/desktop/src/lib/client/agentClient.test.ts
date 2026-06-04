@@ -121,6 +121,52 @@ describe('agentClient', () => {
     expect(result.snapshot.counts.approvals).toBe(1);
   });
 
+  test('loads original screen screenshot artifact content from configured backend', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            status: 'ok',
+            artifact: {
+              artifactType: 'screen_screenshot',
+              summary: 'screen screenshot captured',
+              ref: {
+                ref_type: 'artifact',
+                scope: 'run',
+                run_id: 'run_screen_001',
+                artifact_id: 'artifact_screen_001'
+              }
+            },
+            image: {
+              mediaType: 'image/png',
+              width: 1920,
+              height: 1080,
+              data: 'ZmFrZS1mdWxsLXBuZw==',
+              dataUrl: 'data:image/png;base64,ZmFrZS1mdWxsLXBuZw=='
+            },
+            file: {
+              path: '/tmp/state/runs/run_screen_001/artifacts/artifact_screen_001.json',
+              directory: '/tmp/state/runs/run_screen_001/artifacts',
+              downloadFilename: 'artifact_screen_001.png'
+            }
+          }),
+          { status: 200 }
+        )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const artifact = await createAgentClient('http://127.0.0.1:8765').loadScreenArtifactContent(
+      'artifact_screen_001'
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://127.0.0.1:8765/desktop/artifacts/artifact_screen_001/screen-content',
+      { cache: 'no-store' }
+    );
+    expect(artifact.image.dataUrl).toBe('data:image/png;base64,ZmFrZS1mdWxsLXBuZw==');
+    expect(artifact.file.directory).toBe('/tmp/state/runs/run_screen_001/artifacts');
+  });
+
   test('streams desktop chat answer from the configured backend', async () => {
     const stream = new ReadableStream({
       start(controller) {

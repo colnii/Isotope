@@ -14,7 +14,8 @@
   } from '$lib/window/windowSurface';
 
   const desktopApiBaseUrl = import.meta.env.VITE_ISOTOPE_DESKTOP_API_BASE as string | undefined;
-  const appState = createAppState(createIsotopeClient(desktopApiBaseUrl?.trim() || null));
+  const isotopeClient = createIsotopeClient(desktopApiBaseUrl?.trim() || null);
+  const appState = createAppState(isotopeClient);
   const {
     snapshot,
     selectedActivity,
@@ -102,6 +103,7 @@
         isAskingDesktop={$isAskingDesktop}
         resolvingApprovalId={$isResolvingApproval}
         approvalError={$approvalError}
+        agentClient={isotopeClient.agentClient}
         onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
         onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
       />
@@ -120,6 +122,7 @@
         isAskingDesktop={$isAskingDesktop}
         resolvingApprovalId={$isResolvingApproval}
         approvalError={$approvalError}
+        agentClient={isotopeClient.agentClient}
         onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
         onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
       />

@@ -12,6 +12,11 @@ export type WindowCommandResult = {
   focused: boolean;
 };
 
+export type OpenPathResult = {
+  status: 'ok' | 'noop';
+  path: string;
+};
+
 type InvokeFn = <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
 
 type WindowClientOptions = {
@@ -38,6 +43,11 @@ export function createWindowClient(options: WindowClientOptions = {}) {
     hide(label: WindowLabel) {
       if (!canInvoke()) return Promise.resolve(noopResult(label, false));
       return invokeFn<WindowCommandResult>('hide_window', { label });
+    },
+
+    openPath(path: string) {
+      if (!canInvoke()) return Promise.resolve({ status: 'noop' as const, path });
+      return invokeFn<OpenPathResult>('open_path', { path });
     }
   };
 }

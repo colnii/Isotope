@@ -3,7 +3,9 @@ import type { DesktopCapacityCall } from '../client/agentClient';
 import {
   capacityCallStatusLabel,
   capacityCallSummary,
-  formatCapacityDetailContent
+  formatCapacityDetailContent,
+  screenArtifactsForCapacityCall,
+  screenArtifactActions
 } from './capacityCallView';
 
 const call: DesktopCapacityCall = {
@@ -51,5 +53,56 @@ describe('capacityCallView', () => {
         content: 'human text'
       })
     ).toBe('human text');
+  });
+
+  test('extracts screen screenshot artifacts for original-image actions', () => {
+    const screenCall: DesktopCapacityCall = {
+      ...call,
+      capacityId: 'screen.observe',
+      details: [
+        {
+          label: 'Screen artifacts',
+          kind: 'json',
+          content: {
+            artifacts: [
+              {
+                artifact_type: 'screen_metadata',
+                artifact_id: 'artifact_metadata_001',
+                run_id: 'run_screen_001',
+                ref: {
+                  ref_type: 'artifact',
+                  scope: 'run',
+                  run_id: 'run_screen_001',
+                  artifact_id: 'artifact_metadata_001'
+                }
+              },
+              {
+                artifact_type: 'screen_screenshot',
+                artifact_id: 'artifact_screen_001',
+                run_id: 'run_screen_001',
+                summary: 'screen screenshot captured',
+                ref: {
+                  ref_type: 'artifact',
+                  scope: 'run',
+                  run_id: 'run_screen_001',
+                  artifact_id: 'artifact_screen_001'
+                }
+              }
+            ]
+          }
+        }
+      ]
+    };
+
+    const artifacts = screenArtifactsForCapacityCall(screenCall);
+
+    expect(artifacts).toEqual([
+      {
+        artifactId: 'artifact_screen_001',
+        runId: 'run_screen_001',
+        summary: 'screen screenshot captured'
+      }
+    ]);
+    expect(screenArtifactActions()).toEqual(['view-original', 'open-folder', 'download']);
   });
 });
