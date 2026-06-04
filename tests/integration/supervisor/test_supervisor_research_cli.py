@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import subprocess
 import sys
+import threading
+
+import pytest
 
 from isotope.workspace.artifacts import ArtifactStore
 
@@ -27,23 +31,71 @@ def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_supervisor_research_command_proxies_research_flow(tmp_path):
-    result = _run_cli(
+@pytest.fixture
+def local_research_url() -> str:
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            body = (
+                "<html><head><title>Supervisor Research Fixture</title></head>"
+                "<body><main><h1>Supervisor Research Fixture</h1>"
+                "<p>Local supervisor research content for source-backed artifacts.</p>"
+                "</main></body></html>"
+            ).encode("utf-8")
+            self.send_response(200)
+            self.send_header("content-type", "text/html; charset=utf-8")
+            self.send_header("content-length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, format: str, *args: object) -> None:
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}/research"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def _run_supervisor_tavily_exact_url_search(
+    root: Path,
+    query: str,
+    *,
+    json_output: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    args = [
         "research",
         "--root",
-        str(tmp_path),
+        str(root),
         "--query",
-        "agent memory retrieval",
+        query,
         "--provider",
-        "fake",
-        "--json",
-    )
+        "tavily",
+        "--tavily-api-key",
+        "test-secret-key",
+        "--tavily-enable-network",
+    ]
+    if json_output:
+        args.append("--json")
+    return _run_cli(*args)
+
+
+def test_supervisor_research_command_proxies_research_flow(
+    tmp_path,
+    local_research_url,
+):
+    result = _run_supervisor_tavily_exact_url_search(tmp_path, local_research_url)
 
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["status"] == "ok"
-    assert payload["research"]["query"] == "agent memory retrieval"
-    assert payload["research"]["provider"] == "fake"
+    assert payload["research"]["query"] == local_research_url
+    assert payload["research"]["provider"] == "tavily"
+    assert payload["research"]["research_id"] == "research_tavily_exact_url"
     assert payload["research"]["sources"][0]["source_kind"] == "unknown"
     assert payload["research"]["sources"][0]["source_authority"] == "unknown"
     assert [artifact["artifact_type"] for artifact in payload["artifacts"]] == [
@@ -59,7 +111,6 @@ def test_supervisor_research_providers_proxies_registry_json(tmp_path):
     payload = json.loads(result.stdout)
     assert payload["status"] == "ok"
     assert [provider["provider_id"] for provider in payload["providers"]] == [
-        "fake",
         "codex",
         "tavily",
         "searxng",
@@ -119,17 +170,11 @@ def test_supervisor_research_accepts_tavily_config_path(tmp_path, monkeypatch):
     assert "test-secret-key" not in result.stdout
 
 
-def test_supervisor_research_promote_proxies_research_memory_promotion(tmp_path):
-    search_result = _run_cli(
-        "research",
-        "--root",
-        str(tmp_path),
-        "--query",
-        "agent memory retrieval",
-        "--provider",
-        "fake",
-        "--json",
-    )
+def test_supervisor_research_promote_proxies_research_memory_promotion(
+    tmp_path,
+    local_research_url,
+):
+    search_result = _run_supervisor_tavily_exact_url_search(tmp_path, local_research_url)
     assert search_result.returncode == 0, search_result.stderr
     search_payload = json.loads(search_result.stdout)
     report_ref = search_payload["artifact_refs"][1]
@@ -160,15 +205,14 @@ def test_supervisor_research_promote_proxies_research_memory_promotion(tmp_path)
     assert payload["proposal"]["payload"]["source_refs"] == [report_ref]
 
 
-def test_supervisor_research_plain_output_lists_artifacts(tmp_path):
-    result = _run_cli(
-        "research",
-        "--root",
-        str(tmp_path),
-        "--query",
-        "agent memory retrieval",
-        "--provider",
-        "fake",
+def test_supervisor_research_plain_output_lists_artifacts(
+    tmp_path,
+    local_research_url,
+):
+    result = _run_supervisor_tavily_exact_url_search(
+        tmp_path,
+        local_research_url,
+        json_output=False,
     )
 
     assert result.returncode == 0, result.stderr

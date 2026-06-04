@@ -86,7 +86,7 @@ def test_conversation_loop_manifest_exposes_research_provider_gate_contract(
 
     assert '"capability_id": "research.search"' in system_prompt
     assert '"provider"' in system_prompt
-    assert '"enum": ["fake", "codex", "tavily"]' in system_prompt
+    assert '"enum": ["codex", "tavily"]' in system_prompt
     assert '"provider_gate"' in system_prompt
     assert '"enum": ["codex_research", "tavily_research"]' in system_prompt
     assert '"allow_network"' in system_prompt
@@ -143,7 +143,37 @@ def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) 
 
 def test_conversation_loop_filters_model_supplied_inputs_to_capability_contract(
     tmp_path,
+    monkeypatch,
 ) -> None:
+    from isotope.capabilities import research as research_capability
+
+    class RecordingCodexProvider:
+        provider_name = "codex_delegated"
+
+        def run(self, query: str) -> dict[str, Any]:
+            return {
+                "research_id": "research_contract_filter_unit",
+                "query": query,
+                "provider": "codex_delegated",
+                "created_at": "2026-06-03T00:00:00Z",
+                "status": "ok",
+                "evidence_status": "complete",
+                "sources": [],
+                "report": {
+                    "summary": "Filtered research input summary.",
+                    "claims": [],
+                    "limitations": [],
+                    "next_queries": [],
+                },
+                "provenance": {"provider": "codex_delegated"},
+            }
+
+    monkeypatch.setattr(
+        research_capability,
+        "build_research_provider",
+        lambda provider_id, **kwargs: RecordingCodexProvider(),
+    )
+
     provider = RecordingConversationProvider(
         [
             json.dumps(
@@ -152,6 +182,8 @@ def test_conversation_loop_filters_model_supplied_inputs_to_capability_contract(
                     "capacity_id": "research.search",
                     "arguments": {
                         "query": "capacity research integration",
+                        "provider": "tavily",
+                        "provider_gate": "tavily_research",
                         "root": "/",
                         "cwd": "/tmp/model-cwd",
                         "state_root": "/tmp/model-state-root",
@@ -191,7 +223,9 @@ def test_conversation_loop_filters_model_supplied_inputs_to_capability_contract(
     }
     assert events[1].payload["capacity_id"] == "research.search"
     assert events[1].payload["status"] == "ok"
-    assert events[1].payload["result_summary"]["agent_loop_research_provider"] == "fake"
+    assert events[1].payload["result_summary"]["agent_loop_research_provider"] == (
+        "codex_delegated"
+    )
     assert events[2].payload == {"text": "research.search 已执行。"}
 
 

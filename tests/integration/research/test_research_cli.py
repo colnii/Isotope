@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from datetime import datetime, timezone
 from pathlib import Path
 import subprocess
 import sys
+import threading
+
+import pytest
 
 from isotope.features.research.runner import _build_parser, _print_plain
 from isotope.workspace.artifacts import ArtifactStore
@@ -29,21 +33,69 @@ def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_research_cli_search_returns_json(tmp_path):
-    result = _run_cli(
+@pytest.fixture
+def local_research_url() -> str:
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            body = (
+                "<html><head><title>Isotope Research Fixture</title></head>"
+                "<body><main><h1>Isotope Research Fixture</h1>"
+                "<p>Local research fixture content for source-backed artifact tests.</p>"
+                "</main></body></html>"
+            ).encode("utf-8")
+            self.send_response(200)
+            self.send_header("content-type", "text/html; charset=utf-8")
+            self.send_header("content-length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, format: str, *args: object) -> None:
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}/research"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def _run_tavily_exact_url_search(
+    root: Path,
+    query: str,
+    *,
+    json_output: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    args = [
         "search",
         "--root",
-        str(tmp_path),
+        str(root),
         "--query",
-        "agent memory retrieval",
+        query,
         "--provider",
-        "--json",
-    )
+        "tavily",
+        "--tavily-api-key",
+        "test-secret-key",
+        "--tavily-enable-network",
+    ]
+    if json_output:
+        args.append("--json")
+    return _run_cli(*args)
+
+
+def test_research_cli_search_returns_json(tmp_path, local_research_url):
+    result = _run_tavily_exact_url_search(tmp_path, local_research_url)
 
     assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert payload["status"] == "ok"
-    assert payload["research"]["provider"] == "fake"
+    assert payload["research"]["provider"] == "tavily"
+    assert payload["research"]["query"] == local_research_url
+    assert payload["research"]["research_id"] == "research_tavily_exact_url"
+    assert payload["research"]["sources"][0]["title"] == "Isotope Research Fixture"
     assert payload["research"]["sources"][0]["source_kind"] == "unknown"
     assert len(payload["artifact_refs"]) == 2
     assert [artifact["artifact_type"] for artifact in payload["artifacts"]] == [
@@ -164,14 +216,11 @@ def test_research_cli_accepts_tavily_network_gate_args(tmp_path):
     assert args.tavily_max_results == 3
 
 
-def test_research_cli_plain_output_lists_artifacts(tmp_path):
-    result = _run_cli(
-        "search",
-        "--root",
-        str(tmp_path),
-        "--query",
-        "agent memory retrieval",
-        "--provider",
+def test_research_cli_plain_output_lists_artifacts(tmp_path, local_research_url):
+    result = _run_tavily_exact_url_search(
+        tmp_path,
+        local_research_url,
+        json_output=False,
     )
 
     assert result.returncode == 0, result.stderr
@@ -180,16 +229,11 @@ def test_research_cli_plain_output_lists_artifacts(tmp_path):
     assert "artifact: research.report artifact_002" in result.stdout
 
 
-def test_research_cli_inspect_returns_research_artifact_json(tmp_path):
-    search = _run_cli(
-        "search",
-        "--root",
-        str(tmp_path),
-        "--query",
-        "agent memory retrieval",
-        "--provider",
-        "--json",
-    )
+def test_research_cli_inspect_returns_research_artifact_json(
+    tmp_path,
+    local_research_url,
+):
+    search = _run_tavily_exact_url_search(tmp_path, local_research_url)
     assert search.returncode == 0, search.stderr
 
     result = _run_cli(
@@ -207,26 +251,27 @@ def test_research_cli_inspect_returns_research_artifact_json(tmp_path):
     payload = json.loads(result.stdout)
     assert payload["status"] == "ok"
     assert payload["artifact"]["artifact_type"] == "research.report"
-    assert payload["artifact"]["summary"] == "Fake research summary for agent memory retrieval."
+    assert payload["artifact"]["summary"] == (
+        "Isotope Research Fixture Local research fixture content for "
+        "source-backed artifact tests."
+    )
     assert payload["artifact"]["ref"] == {
         "ref_type": "artifact",
         "scope": "run",
         "run_id": "run_001",
         "artifact_id": "artifact_002",
     }
-    assert payload["content"]["report"]["summary"] == "Fake research summary for agent memory retrieval."
-
-
-def test_research_cli_promotes_report_artifact_as_memory_proposal(tmp_path):
-    search_result = _run_cli(
-        "search",
-        "--root",
-        str(tmp_path),
-        "--query",
-        "agent memory retrieval",
-        "--provider",
-        "--json",
+    assert payload["content"]["report"]["summary"] == (
+        "Isotope Research Fixture Local research fixture content for "
+        "source-backed artifact tests."
     )
+
+
+def test_research_cli_promotes_report_artifact_as_memory_proposal(
+    tmp_path,
+    local_research_url,
+):
+    search_result = _run_tavily_exact_url_search(tmp_path, local_research_url)
     assert search_result.returncode == 0, search_result.stderr
     search_payload = json.loads(search_result.stdout)
     report_ref = search_payload["artifact_refs"][1]
@@ -263,16 +308,11 @@ def test_research_cli_promotes_report_artifact_as_memory_proposal(tmp_path):
     assert "raw research provider output" not in json.dumps(proposal)
 
 
-def test_research_cli_promote_rejects_raw_transcript_artifact(tmp_path):
-    search_result = _run_cli(
-        "search",
-        "--root",
-        str(tmp_path),
-        "--query",
-        "agent memory retrieval",
-        "--provider",
-        "--json",
-    )
+def test_research_cli_promote_rejects_raw_transcript_artifact(
+    tmp_path,
+    local_research_url,
+):
+    search_result = _run_tavily_exact_url_search(tmp_path, local_research_url)
     assert search_result.returncode == 0, search_result.stderr
     search_payload = json.loads(search_result.stdout)
     raw_ref = search_payload["artifact_refs"][0]
@@ -351,14 +391,14 @@ def test_research_cli_promote_rejects_low_quality_report(tmp_path):
     ]
 
 
-def test_research_cli_inspect_prints_research_artifact_plain(tmp_path):
-    search = _run_cli(
-        "search",
-        "--root",
-        str(tmp_path),
-        "--query",
-        "agent memory retrieval",
-        "--provider",
+def test_research_cli_inspect_prints_research_artifact_plain(
+    tmp_path,
+    local_research_url,
+):
+    search = _run_tavily_exact_url_search(
+        tmp_path,
+        local_research_url,
+        json_output=False,
     )
     assert search.returncode == 0, search.stderr
 
@@ -375,8 +415,8 @@ def test_research_cli_inspect_prints_research_artifact_plain(tmp_path):
     assert result.returncode == 0, result.stderr
     assert "status: ok" in result.stdout
     assert "artifact: research.raw_transcript artifact_001" in result.stdout
-    assert "summary: raw research provider output: agent memory retrieval" in result.stdout
-    assert '"provider": "fake"' in result.stdout
+    assert f"summary: raw research provider output: {local_research_url}" in result.stdout
+    assert '"provider": "tavily"' in result.stdout
 
 
 def test_research_cli_inspect_rejects_non_research_artifact(tmp_path):
@@ -643,7 +683,7 @@ def test_research_cli_requires_query(tmp_path):
         "--root",
         str(tmp_path),
         "--provider",
-        "fake",
+        "tavily",
         "--json",
     )
 

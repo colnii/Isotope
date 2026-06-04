@@ -382,7 +382,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     research_parser.add_argument("--query", help="Research query.")
     research_parser.add_argument(
         "--provider",
-        default="fake",
+        default="codex",
         choices=api.research_provider_choices(),
         help="Research provider.",
     )

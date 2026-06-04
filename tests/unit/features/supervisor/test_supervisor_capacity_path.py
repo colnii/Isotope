@@ -882,7 +882,54 @@ def test_supervisor_capacity_plan_summarizes_screen_report_agent_loop_result(tmp
     _assert_no_agent_loop_raw_payload(result["agent_loop_summary"])
 
 
-def test_supervisor_capacity_plan_summarizes_research_search_agent_loop_result(tmp_path):
+def test_supervisor_capacity_plan_summarizes_research_search_agent_loop_result(
+    tmp_path,
+    monkeypatch,
+):
+    from isotope.capabilities import research as research_capability
+
+    class RecordingCodexProvider:
+        provider_name = "codex_delegated"
+
+        def run(self, query):
+            return {
+                "research_id": "research_codex_capacity",
+                "query": query,
+                "provider": "codex_delegated",
+                "created_at": "2026-06-03T00:00:00Z",
+                "status": "ok",
+                "evidence_status": "complete",
+                "sources": [
+                    {
+                        "source_id": "src_001",
+                        "title": "Capacity research note",
+                        "url": "https://example.com/capacity-research",
+                        "snippet": "Capacity research is source-backed.",
+                        "why_used": "unit test Codex provider",
+                        "retrieved_at": "2026-06-03T00:00:00Z",
+                    }
+                ],
+                "report": {
+                    "summary": "Capacity research summary.",
+                    "claims": [
+                        {
+                            "text": "Capacity research is source-backed.",
+                            "source_ids": ["src_001"],
+                            "confidence": "medium",
+                        }
+                    ],
+                    "limitations": [],
+                    "next_queries": [],
+                },
+                "provenance": {"provider": "codex_delegated"},
+            }
+
+    monkeypatch.setattr(
+        research_capability,
+        "build_research_provider",
+        lambda *_args, **_kwargs: RecordingCodexProvider(),
+    )
+
     root = tmp_path / "runtime"
     provider = FakeCapacityProvider(
         json.dumps(
@@ -916,9 +963,11 @@ def test_supervisor_capacity_plan_summarizes_research_search_agent_loop_result(t
     assert capability_run["status"] == "completed"
     research_search = capability_run["research_search"]
     assert research_search["status"] == "ok"
-    assert research_search["provider"] == "fake"
+    assert research_search["provider"] == "codex_delegated"
     assert result["agent_loop_summary"]["agent_loop_research_search_status"] == "ok"
-    assert result["agent_loop_summary"]["agent_loop_research_provider"] == "fake"
+    assert result["agent_loop_summary"]["agent_loop_research_provider"] == (
+        "codex_delegated"
+    )
     assert result["agent_loop_summary"]["agent_loop_research_source_count"] == 1
     assert result["agent_loop_summary"]["agent_loop_research_artifact_count"] == 2
     assert "raw_transcript" not in json.dumps(result["agent_loop_summary"])

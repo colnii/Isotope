@@ -241,12 +241,17 @@ def test_runner_discovers_research_search_from_default_catalog():
 
     assert _ids(search["capabilities"]) == ["research.search"]
     description = runner.describe_capability("research.search")
-    assert description["input_contract"]["required"] == ["root", "query"]
+    assert description["input_contract"]["required"] == [
+        "root",
+        "query",
+        "provider",
+        "provider_gate",
+    ]
     assert description["input_contract"]["properties"]["provider"]["enum"] == [
-        "fake",
         "codex",
         "tavily",
     ]
+    assert "default" not in description["input_contract"]["properties"]["provider"]
     assert "provider_gate" in description["input_contract"]["properties"]
     assert "allow_network" in description["input_contract"]["properties"]
     assert "reuses_research_flow" in description["safety_boundaries"]
@@ -1757,16 +1762,19 @@ def test_memory_promotion_preview_plan_rejects_invalid_inputs(field_name, bad_va
 
 
 @pytest.mark.parametrize("provider", ["codex", "tavily"])
-def test_research_search_plan_rejects_real_provider_without_provider_gate(provider):
-    with pytest.raises(ValueError, match="provider_gate"):
-        _runner().plan_capability_run(
-            "research.search",
-            inputs={
-                "root": "/tmp/isotope-runtime",
-                "query": "capacity research integration",
-                "provider": provider,
-            },
-        )
+def test_research_search_plan_reports_missing_provider_gate(provider):
+    plan = _runner().plan_capability_run(
+        "research.search",
+        inputs={
+            "root": "/tmp/isotope-runtime",
+            "query": "capacity research integration",
+            "provider": provider,
+        },
+    )
+
+    assert plan["can_launch"] is False
+    assert plan["status"] == "missing_inputs"
+    assert plan["missing_inputs"] == ["provider_gate"]
 
 
 def test_worker_review_plan_rejects_non_string_state_root():
@@ -2573,7 +2581,59 @@ def test_screen_observe_capability_reports_backend_failure_without_artifacts(
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
-def test_research_search_capability_runs_existing_fake_research_flow(tmp_path):
+def test_research_search_capability_runs_default_codex_research_flow(
+    tmp_path, monkeypatch
+):
+    from isotope.capabilities import research as research_capability
+
+    calls = []
+
+    class RecordingCodexProvider:
+        provider_name = "codex_delegated"
+
+        def run(self, query):
+            return {
+                "research_id": "research_codex_unit",
+                "query": query,
+                "provider": "codex_delegated",
+                "created_at": "2026-06-03T00:00:00Z",
+                "status": "ok",
+                "evidence_status": "complete",
+                "sources": [
+                    {
+                        "source_id": "src_001",
+                        "title": "Isotope research note",
+                        "url": "https://example.com/isotope-research",
+                        "snippet": "Research claims should cite source ids.",
+                        "why_used": "unit test Codex provider",
+                        "retrieved_at": "2026-06-03T00:00:00Z",
+                    }
+                ],
+                "report": {
+                    "summary": "Codex research summary for capacity research integration.",
+                    "claims": [
+                        {
+                            "text": "Research claims should cite source ids.",
+                            "source_ids": ["src_001"],
+                            "confidence": "medium",
+                        }
+                    ],
+                    "limitations": [],
+                    "next_queries": [],
+                },
+                "provenance": {"provider": "codex_delegated"},
+            }
+
+    def build_provider(provider_id, **kwargs):
+        calls.append({"provider_id": provider_id, **kwargs})
+        return RecordingCodexProvider()
+
+    monkeypatch.setattr(
+        research_capability,
+        "build_research_provider",
+        build_provider,
+    )
+
     result = _runner().run_capability(
         "research.search",
         inputs={
@@ -2589,21 +2649,21 @@ def test_research_search_capability_runs_existing_fake_research_flow(tmp_path):
     research_search = result["research_search"]
     assert research_search["status"] == "ok"
     assert research_search["query"] == "capacity research integration"
-    assert research_search["provider"] == "fake"
+    assert research_search["provider"] == "codex_delegated"
     assert research_search["evidence_status"] == "complete"
     assert research_search["source_count"] == 1
+    assert calls == [{"provider_id": "codex", "workspace_root": str(tmp_path)}]
     assert (
         research_search["report_summary"]
-        == "Fake research summary for capacity research integration."
+        == "Codex research summary for capacity research integration."
     )
     assert research_search["source_previews"] == [
         {
             "source_id": "src_001",
-            "title": "Fake source-backed research note",
+            "title": "Isotope research note",
             "url": "https://example.com/isotope-research",
             "snippet": "Research claims should cite source ids.",
-            "why_used": "deterministic fake source for tests",
-            "provider_rank": 1,
+            "why_used": "unit test Codex provider",
         }
     ]
     assert [item["artifact_type"] for item in research_search["artifacts"]] == [

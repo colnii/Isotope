@@ -19,11 +19,8 @@ RESEARCH_CAPABILITIES = frozenset(
         RESEARCH_SEARCH_CAPABILITY,
     }
 )
-VALID_RESEARCH_CAPABILITY_PROVIDERS = frozenset({"fake", "codex", "tavily"})
-RESEARCH_PROVIDER_GATES = {
-    "codex": "codex_research",
-    "tavily": "tavily_research",
-}
+VALID_RESEARCH_CAPABILITY_PROVIDERS = frozenset({"codex", "tavily"})
+DEFAULT_RESEARCH_CAPABILITY_PROVIDER = "codex"
 VALID_RESEARCH_PROMOTION_SCOPES = frozenset({"thread", "run", "session"})
 
 
@@ -61,13 +58,13 @@ def run_research_search(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         inputs=inputs,
         missing_inputs=missing_inputs,
     )
-    provider_id = input_mapping["provider"]
+    provider_policy = _resolve_research_provider_policy(input_mapping)
     payload = (
         ResearchFlow.in_process(
             Path(input_mapping["root"]).expanduser(),
             provider=build_research_provider(
-                provider_id,
-                **_research_provider_kwargs(input_mapping),
+                provider_policy["provider"],
+                **_research_provider_kwargs(input_mapping, provider_policy),
             ),
         )
         .search(input_mapping["query"])
@@ -81,7 +78,9 @@ def run_research_search(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         "status": payload.get("status"),
         "query": payload.get("query"),
         "provider": (
-            research.get("provider") if isinstance(research, Mapping) else provider_id
+            research.get("provider")
+            if isinstance(research, Mapping)
+            else provider_policy["provider"]
         ),
         "evidence_status": (
             research.get("evidence_status") if isinstance(research, Mapping) else None
@@ -184,20 +183,18 @@ def _validate_research_search_inputs(
         if not value.strip():
             raise ValueError(f"{name} must be a non-empty string")
 
-    provider_input = input_mapping.get("provider", "fake")
+    return dict(input_mapping)
+
+
+def _resolve_research_provider_policy(
+    input_mapping: Mapping[str, Any],
+) -> dict[str, Any]:
+    provider_input = input_mapping.get("provider", DEFAULT_RESEARCH_CAPABILITY_PROVIDER)
     if not isinstance(provider_input, str) or not provider_input.strip():
         raise ValueError("provider must be a non-empty string")
     provider = provider_input.strip()
     if provider not in VALID_RESEARCH_CAPABILITY_PROVIDERS:
-        raise ValueError("provider must be fake, codex, or tavily")
-
-    provider_gate = input_mapping.get("provider_gate")
-    expected_gate = RESEARCH_PROVIDER_GATES.get(provider)
-    if expected_gate:
-        if provider_gate != expected_gate:
-            raise ValueError(
-                f"provider_gate must be {expected_gate} for {provider} provider"
-            )
+        raise ValueError("provider must be codex or tavily")
 
     allow_network = input_mapping.get("allow_network", False)
     if not isinstance(allow_network, bool):
@@ -213,19 +210,21 @@ def _validate_research_search_inputs(
     ):
         raise ValueError("tavily_max_results must be a positive integer")
 
-    normalized = dict(input_mapping)
-    normalized["provider"] = provider
-    normalized["allow_network"] = allow_network
-    if isinstance(provider_gate, str):
-        normalized["provider_gate"] = provider_gate.strip()
-    return normalized
+    return {
+        "provider": provider,
+        "allow_network": allow_network,
+        "tavily_max_results": tavily_max_results,
+    }
 
 
-def _research_provider_kwargs(input_mapping: Mapping[str, Any]) -> dict[str, Any]:
+def _research_provider_kwargs(
+    input_mapping: Mapping[str, Any],
+    provider_policy: Mapping[str, Any],
+) -> dict[str, Any]:
     kwargs: dict[str, Any] = {"workspace_root": input_mapping["root"]}
-    if input_mapping["provider"] == "tavily":
-        kwargs["tavily_enable_network"] = input_mapping["allow_network"]
-        tavily_max_results = input_mapping.get("tavily_max_results")
+    if provider_policy["provider"] == "tavily":
+        kwargs["tavily_enable_network"] = provider_policy["allow_network"]
+        tavily_max_results = provider_policy.get("tavily_max_results")
         if isinstance(tavily_max_results, int) and not isinstance(
             tavily_max_results, bool
         ):

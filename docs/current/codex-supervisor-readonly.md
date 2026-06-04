@@ -45,7 +45,7 @@ worker，汇总证据，生成下一步建议，并通过白名单动作进行�
 Research 测试入口：
 
 ```bash
-.venv/bin/isotope-supervisor research --root /tmp/isotope-research --query "agent memory retrieval" --provider fake
+.venv/bin/isotope-supervisor research --root /tmp/isotope-research --query "agent memory retrieval" --provider codex
 .venv/bin/isotope-supervisor research list --root /tmp/isotope-research
 .venv/bin/isotope-supervisor research inspect --root /tmp/isotope-research --run-id run_001 --artifact-id artifact_002
 ```

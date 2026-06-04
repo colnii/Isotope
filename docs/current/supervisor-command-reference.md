@@ -28,7 +28,7 @@
 | 受限清理 worktree | `cleanup list`、`cleanup delete-worktree` |
 | 规划或执行 capability | `capacity plan`、`capacity plan --execute-agent-loop`、`isotope-capability search/plan/run` |
 | 查询本地 memory preview | `memory --query <query>` |
-| 代理 Research flow | `research --root . --query "..." --provider fake --json`、`research list --root .`、`research inspect --root . --run-id <run> --artifact-id <artifact>` |
+| 代理 Research flow | `research --root . --query "..." --provider codex --json`、`research list --root .`、`research inspect --root . --run-id <run> --artifact-id <artifact>` |
 
 安装后优先使用：
 
@@ -101,7 +101,7 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
 
 ```bash
 .venv/bin/isotope-supervisor research providers --root /tmp/isotope-research
-.venv/bin/isotope-supervisor research --root /tmp/isotope-research --query "agent memory retrieval" --provider fake
+.venv/bin/isotope-supervisor research --root /tmp/isotope-research --query "agent memory retrieval" --provider codex
 .venv/bin/isotope-supervisor research list --root /tmp/isotope-research --limit 5
 .venv/bin/isotope-supervisor research inspect --root /tmp/isotope-research --run-id run_001 --artifact-id artifact_002
 ```
@@ -110,7 +110,7 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
 
 ```bash
 .venv/bin/isotope-research providers
-.venv/bin/isotope-research search --root /tmp/isotope-research --query "agent memory retrieval" --provider fake
+.venv/bin/isotope-research search --root /tmp/isotope-research --query "agent memory retrieval" --provider codex
 .venv/bin/isotope-research list --root /tmp/isotope-research --artifact-type research.provider_trace
 .venv/bin/isotope-research inspect --root /tmp/isotope-research --run-id run_001 --artifact-id artifact_001
 ```
@@ -174,7 +174,7 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   unknown sources，但当前不因 unknown source 单独拒绝；Supervisor 侧
   `research promote` 复用同一 helper。该入口只生成提案，不写 memory、不读取
   `research.raw_transcript` 正文。
-- `research providers` 列出 provider registry；当前 `fake` / `codex` 可运行，
+- `research providers` 列出 provider registry；当前 `codex` 可运行，
   `tavily` 也可运行但默认 preflight；只有显式 `--tavily-enable-network` 才会请求
   Tavily `/search`。Tavily key 可来自 `--tavily-api-key`、`TAVILY_API_KEY`，或
   git-ignored 的 `src/isotope/features/research/research_tavily.toml`；缺 key 或未开
