@@ -326,6 +326,33 @@ def test_lifecycle_execution_plan_reports_cleanup_worktree_blockers() -> None:
     }
 
 
+def test_lifecycle_execution_action_monitors_delete_blockers() -> None:
+    plan = build_worker_lifecycle_execution_plan(
+        worker_lifecycle_decision=_decision(
+            next_step="cleanup_worktree",
+            program_action="archive_integrated",
+        ),
+        delete_worktree_blockers=[
+            {
+                "name": "dirty-worker",
+                "target_name": "dirty-worker",
+                "record_id": "managed-dirty",
+                "reason": "worker worktree is dirty",
+            }
+        ],
+    )
+
+    assert plan is not None
+    assert worker_lifecycle_execution_action(plan.to_dict()) == {
+        "kind": "monitor",
+        "source": "worker_lifecycle",
+        "reason": "worker lifecycle delete is blocked",
+        "recommended_next_step": "delete_blocked",
+        "blockers": 1,
+        "command_suggestion": None,
+    }
+
+
 def test_supervise_action_uses_lifecycle_execution_plan() -> None:
     payload: dict[str, object] = {}
     action = append_supervise_llm_action(
@@ -347,6 +374,50 @@ def test_supervise_action_uses_lifecycle_execution_plan() -> None:
         "kind": "launch_session",
         "target_name": "supervisor-merge-dispatch",
         "source": "integration_review",
+    }
+    assert payload["llm_action"] == action
+
+
+def test_supervise_action_routes_delete_blockers_without_llm() -> None:
+    plan = build_worker_lifecycle_execution_plan(
+        worker_lifecycle_decision=_decision(
+            next_step="cleanup_worktree",
+            program_action="archive_integrated",
+        ),
+        delete_worktree_blockers=[
+            {
+                "name": "dirty-worker",
+                "target_name": "dirty-worker",
+                "record_id": "managed-dirty",
+                "reason": "worker worktree is dirty",
+            }
+        ],
+    )
+    assert plan is not None
+    payload: dict[str, object] = {}
+
+    action = append_supervise_llm_action(
+        argparse.Namespace(llm_action=True, llm_execute=False),
+        payload,
+        action_report=object(),
+        active_goals=[],
+        explicit_goal=None,
+        fanout_status=None,
+        fanout_paused=False,
+        worker_role_guard=None,
+        merge_dispatch=None,
+        fanout_plan=None,
+        lifecycle_execution=plan.to_dict(),
+        api=_StubActionApi(),
+    )
+
+    assert action == {
+        "kind": "monitor",
+        "source": "worker_lifecycle",
+        "reason": "worker lifecycle delete is blocked",
+        "recommended_next_step": "delete_blocked",
+        "blockers": 1,
+        "command_suggestion": None,
     }
     assert payload["llm_action"] == action
 

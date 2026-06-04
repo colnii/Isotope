@@ -140,6 +140,16 @@ def worker_lifecycle_execution_action(plan: Mapping[str, Any]) -> dict[str, Any]
         }
     if plan.get("kind") == "cleanup_worktree":
         actions = _mapping_list(plan.get("delete_worktree_actions"))
+        blockers = _mapping_list(plan.get("delete_worktree_blockers"))
+        if blockers and not actions:
+            return {
+                "kind": "monitor",
+                "source": "worker_lifecycle",
+                "reason": "worker lifecycle delete is blocked",
+                "recommended_next_step": "delete_blocked",
+                "blockers": len(blockers),
+                "command_suggestion": None,
+            }
         first = actions[0] if actions else {}
         return {
             "kind": "cleanup_worktree",
