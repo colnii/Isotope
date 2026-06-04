@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Mapping
 
+from ..features.supervisor.capability_gaps import read_open_capability_gaps
 from ..features.supervisor.notifications.context import request_project_context
 from ..features.supervisor.workers.integration_review import (
     GROUPS as INTEGRATION_REVIEW_GROUPS,
@@ -171,6 +172,10 @@ def run_supervisor_project_status(
         lightweight=True,
     )
     self_repair_workers = _self_repair_workers_payload(worker_review)[:10]
+    open_capability_gaps = read_open_capability_gaps(
+        state_root=Path(input_mapping[SUPERVISOR_STATE_ROOT_INPUT]),
+        limit=10,
+    )
     summary = {
         "snapshot_id": snapshot.get("snapshotId"),
         "generated_at": snapshot.get("generatedAt"),
@@ -183,6 +188,7 @@ def run_supervisor_project_status(
         "artifacts": snapshot.get("artifacts", [])[:10],
         "self_repair_workers": self_repair_workers,
         "latest_self_repair": _latest_self_repair_payload(self_repair_workers),
+        "open_capability_gaps": open_capability_gaps,
     }
     return {
         "kind": "capability_run_result",

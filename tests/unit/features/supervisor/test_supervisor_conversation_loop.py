@@ -969,6 +969,80 @@ def test_conversation_loop_project_status_observes_latest_self_repair_summary(
     }
 
 
+def test_conversation_loop_project_status_observes_open_capability_gaps(
+    tmp_path,
+) -> None:
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    gap_dir = tmp_path / "supervisor" / "capability-gaps"
+    gap_dir.mkdir(parents=True)
+    (gap_dir / "gap_skills.json").write_text(
+        json.dumps(
+            {
+                "kind": "capability_gap",
+                "gap_id": "gap_skills",
+                "status": "recorded",
+                "missing_capability_kind": "skills.mcp.install",
+                "reason": "需要安装 skills MCP，但当前没有安全安装能力。",
+                "needed_context": ["skills registry", "mcp config"],
+                "suggested_next_capability": "isotope.self_repair",
+                "source_entrypoint": "desktop_chat",
+                "user_goal": "private gap user goal should not be projected",
+                "created_at": "2026-06-04T02:00:00Z",
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "supervisor.project_status",
+                    "arguments": {},
+                    "rationale": "需要读取未解决能力缺口。",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "当前有 skills MCP 安装能力缺口，可用自修复继续处理。",
+                    "rationale": "基于 open_capability_gaps observation 回答。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=workspace,
+            user_message="Isotope 现在缺什么能力？",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    result = events[1].payload["result"]
+    assert result["agent_loop_project_status_open_capability_gap_count"] == 1
+    second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
+    observation_message = provider.calls[1]["messages"][1]["content"]
+    assert "open_capability_gaps" in second_prompt
+    assert "gap_skills" in second_prompt
+    assert "skills.mcp.install" in second_prompt
+    assert "需要安装 skills MCP" in second_prompt
+    assert "private gap user goal" not in observation_message
+    assert events[2].payload == {
+        "text": "当前有 skills MCP 安装能力缺口，可用自修复继续处理。"
+    }
+
+
 def test_conversation_loop_can_launch_codex_assisted_self_repair(
     tmp_path,
     monkeypatch,

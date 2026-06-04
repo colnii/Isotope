@@ -2031,6 +2031,10 @@ class CapabilityCatalog:
                                 "type": "string",
                                 "description": "Optional repair direction for Codex.",
                             },
+                            "gap_id": {
+                                "type": "string",
+                                "description": "Optional recorded capability gap id to include as repair context.",
+                            },
                             "target_name": {
                                 "type": "string",
                                 "description": "Optional managed worker name.",

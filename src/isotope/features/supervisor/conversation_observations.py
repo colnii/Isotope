@@ -630,6 +630,10 @@ def _project_status_observation(capability_run: dict[str, Any]) -> dict[str, Any
                 limit=10,
             ),
             "latest_self_repair": _safe_mapping(summary.get("latest_self_repair")),
+            "open_capability_gaps": _safe_mapping_list(
+                summary.get("open_capability_gaps"),
+                limit=10,
+            ),
         },
     }
 
@@ -640,12 +644,14 @@ def _self_repair_observation(capability_run: dict[str, Any]) -> dict[str, Any] |
         return None
     managed = self_repair.get("managed")
     worktree = self_repair.get("worktree")
+    capability_gap = self_repair.get("capability_gap")
     return {
         "kind": "self_repair",
         "status": self_repair.get("status"),
         "runner_kind": capability_run.get("runner_kind"),
         "managed": _self_repair_managed_observation(managed),
         "worktree": _self_repair_worktree_observation(worktree),
+        "capability_gap": _safe_mapping(capability_gap),
     }
 
 

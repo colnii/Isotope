@@ -22,6 +22,7 @@ def launch_isotope_self_repair(
     failure_summary: str,
     suggested_fix_summary: str = "",
     target_name: str = DEFAULT_SELF_REPAIR_NAME,
+    capability_gap: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     workspace = Path(cwd).expanduser()
     if not workspace.is_dir():
@@ -50,6 +51,7 @@ def launch_isotope_self_repair(
         user_goal=goal,
         failure_summary=failure,
         suggested_fix_summary=suggested_fix_summary,
+        capability_gap=capability_gap,
     )
     record = launch_managed_codex(
         codex_home=Path(state_root).expanduser(),
@@ -63,6 +65,7 @@ def launch_isotope_self_repair(
         "status": "launched",
         "worktree": dict(worktree),
         "managed": _managed_record_payload(record),
+        "capability_gap": dict(capability_gap or {}),
     }
 
 
@@ -73,6 +76,7 @@ def self_repair_work_order_prompt(
     user_goal: str,
     failure_summary: str,
     suggested_fix_summary: str = "",
+    capability_gap: dict[str, Any] | None = None,
 ) -> str:
     fix_hint = suggested_fix_summary.strip() or "由你根据代码和验证结果判断。"
     goal = "\n".join(
@@ -80,6 +84,7 @@ def self_repair_work_order_prompt(
             "Isotope self-repair request.",
             f"用户原始目标：{user_goal.strip()}",
             f"当前 Isotope 能力缺口：{failure_summary.strip()}",
+            _capability_gap_prompt_section(capability_gap),
             f"建议修复方向：{fix_hint}",
             (
                 "边界：你在隔离 worktree 中修复 Isotope 自身；"
@@ -100,6 +105,27 @@ def self_repair_work_order_prompt(
         cwd=str(cwd),
         goal=goal,
         allow_remote_push=False,
+    )
+
+
+def _capability_gap_prompt_section(capability_gap: dict[str, Any] | None) -> str:
+    if not capability_gap:
+        return "关联 capability gap：无。"
+    needed_context = capability_gap.get("needed_context")
+    context_text = (
+        "、".join(item for item in needed_context if isinstance(item, str))
+        if isinstance(needed_context, list)
+        else ""
+    )
+    return "\n".join(
+        [
+            "关联 capability gap：",
+            f"- gap_id：{capability_gap.get('gap_id') or ''}",
+            f"- missing_capability_kind：{capability_gap.get('missing_capability_kind') or ''}",
+            f"- reason：{capability_gap.get('reason') or ''}",
+            f"- needed_context：{context_text}",
+            f"- suggested_next_capability：{capability_gap.get('suggested_next_capability') or ''}",
+        ]
     )
 
 

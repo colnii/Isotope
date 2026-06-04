@@ -447,6 +447,67 @@ def test_project_status_capability_includes_latest_self_repair_summary(tmp_path)
     assert "old private self-repair prompt" not in rendered
 
 
+def test_project_status_capability_includes_open_capability_gaps(tmp_path):
+    gap_dir = tmp_path / "supervisor" / "capability-gaps"
+    gap_dir.mkdir(parents=True)
+    (gap_dir / "gap_open.json").write_text(
+        json.dumps(
+            {
+                "kind": "capability_gap",
+                "gap_id": "gap_open",
+                "status": "recorded",
+                "missing_capability_kind": "skills.mcp.install",
+                "reason": "需要安装 skills MCP，但当前没有安全安装能力。",
+                "needed_context": ["skills registry", "mcp config"],
+                "suggested_next_capability": "isotope.self_repair",
+                "source_entrypoint": "desktop_chat",
+                "user_goal": "private user request should not be projected",
+                "created_at": "2026-06-04T02:00:00Z",
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    (gap_dir / "gap_resolved.json").write_text(
+        json.dumps(
+            {
+                "kind": "capability_gap",
+                "gap_id": "gap_resolved",
+                "status": "resolved",
+                "missing_capability_kind": "old.gap",
+                "reason": "已解决的缺口不应出现在 open 列表。",
+                "needed_context": [],
+                "created_at": "2026-06-04T01:00:00Z",
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    result = _runner().run_capability(
+        "supervisor.project_status",
+        inputs={"state_root": str(tmp_path)},
+    )
+
+    gaps = result["project_state"]["open_capability_gaps"]
+    assert gaps == [
+        {
+            "kind": "capability_gap",
+            "gap_id": "gap_open",
+            "status": "recorded",
+            "missing_capability_kind": "skills.mcp.install",
+            "reason": "需要安装 skills MCP，但当前没有安全安装能力。",
+            "needed_context": ["skills registry", "mcp config"],
+            "suggested_next_capability": "isotope.self_repair",
+            "source_entrypoint": "desktop_chat",
+            "created_at": "2026-06-04T02:00:00Z",
+        }
+    ]
+    rendered = json.dumps(result, ensure_ascii=False)
+    assert "private user request" not in rendered
+    assert "gap_resolved" not in rendered
+
+
 def test_runner_discovers_isotope_self_repair_from_default_catalog():
     runner = _runner()
 
@@ -459,6 +520,7 @@ def test_runner_discovers_isotope_self_repair_from_default_catalog():
         "user_goal",
         "failure_summary",
     ]
+    assert description["input_contract"]["properties"]["gap_id"]["type"] == "string"
     assert "codex_worker_required_for_non_trivial_changes" in description["safety_boundaries"]
     assert "no_auto_merge" in description["safety_boundaries"]
 
@@ -529,6 +591,86 @@ def test_isotope_self_repair_launches_codex_worker_in_isolated_worktree(
     assert launched["worker_role"] == "self_repair"
     assert "不要合入 main" in launched["prompt"]
     assert "让 Desktop chat 可以总结项目态势。" in launched["prompt"]
+
+
+def test_isotope_self_repair_can_include_capability_gap_context(
+    tmp_path, monkeypatch
+):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    state_root = tmp_path / ".isotope"
+    gap_dir = state_root / "supervisor" / "capability-gaps"
+    gap_dir.mkdir(parents=True)
+    (gap_dir / "gap_skills.json").write_text(
+        json.dumps(
+            {
+                "kind": "capability_gap",
+                "gap_id": "gap_skills",
+                "status": "recorded",
+                "missing_capability_kind": "skills.mcp.install",
+                "reason": "需要安装 skills MCP，但当前没有安全安装能力。",
+                "needed_context": ["skills registry", "mcp config"],
+                "suggested_next_capability": "isotope.self_repair",
+                "source_entrypoint": "desktop_chat",
+                "user_goal": "private gap user goal should not enter worker prompt",
+                "created_at": "2026-06-04T02:00:00Z",
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    launched = {}
+
+    def fake_prepare_launch_worktree(*, cwd, target_name, api=None):
+        repair_root = workspace / ".worktrees" / "supervisor" / target_name
+        repair_root.mkdir(parents=True)
+        return {
+            "enabled": True,
+            "source_cwd": str(cwd),
+            "cwd": str(repair_root),
+            "worktree_root": str(repair_root),
+            "branch": f"codex/{target_name}",
+        }
+
+    class FakeRecord:
+        name = "desktop-self-repair"
+        record_id = "managed-self-repair"
+        pid = 12345
+        backend = "process"
+        worker_role = "self_repair"
+        cwd = str(workspace / ".worktrees" / "supervisor" / "desktop-self-repair")
+        log_path = str(tmp_path / "self-repair.log")
+
+    def fake_launch_managed_codex(**kwargs):
+        launched.update(kwargs)
+        return FakeRecord()
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.self_repair.prepare_launch_worktree",
+        fake_prepare_launch_worktree,
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.self_repair.launch_managed_codex",
+        fake_launch_managed_codex,
+    )
+
+    result = _runner().run_capability(
+        "isotope.self_repair",
+        inputs={
+            "state_root": str(state_root),
+            "cwd": str(workspace),
+            "user_goal": "修复 skills MCP 安装能力。",
+            "failure_summary": "模型报告了 skills MCP 安装能力缺口。",
+            "gap_id": "gap_skills",
+        },
+    )
+
+    assert result["self_repair"]["capability_gap"]["gap_id"] == "gap_skills"
+    assert "gap_skills" in launched["prompt"]
+    assert "skills.mcp.install" in launched["prompt"]
+    assert "需要安装 skills MCP" in launched["prompt"]
+    assert "skills registry" in launched["prompt"]
+    assert "private gap user goal" not in launched["prompt"]
 
 
 def test_isotope_self_repair_blocks_when_isolated_worktree_is_unavailable(

@@ -46,6 +46,10 @@ export function capacityCallSummary(call: DesktopCapacityCall): string {
     if (latestSelfRepair) {
       return [capacityCallProductTitle(call), latestSelfRepair].join(' · ');
     }
+    const openGaps = projectStatusCapabilityGapSummary(call.resultSummary);
+    if (openGaps) {
+      return [capacityCallProductTitle(call), openGaps].join(' · ');
+    }
   }
   const resultParts = Object.entries(call.resultSummary)
     .filter(([, value]) => value !== undefined && value !== null && value !== '')
@@ -129,6 +133,12 @@ function projectStatusLatestSelfRepairSummary(resultSummary: Record<string, unkn
     resultSummary.agent_loop_project_status_latest_self_repair_merge_suitable;
   const mergeLabel = mergeSuitable === true ? '可合并' : '需复查';
   return `最近自修复: ${name} / ${statusLabel} / ${mergeLabel}`;
+}
+
+function projectStatusCapabilityGapSummary(resultSummary: Record<string, unknown>): string {
+  const count = resultSummary.agent_loop_project_status_open_capability_gap_count;
+  if (typeof count !== 'number' || count <= 0) return '';
+  return `能力缺口: ${count}`;
 }
 
 function stringValue(value: unknown): string {

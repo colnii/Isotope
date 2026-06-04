@@ -74,6 +74,17 @@ describe('capacityCallView', () => {
         title: 'Supervisor Project Status',
         resultSummary: {
           agent_loop_project_status_status: 'completed',
+          agent_loop_project_status_open_capability_gap_count: 2
+        }
+      })
+    ).toBe('查看项目态势 · 能力缺口: 2');
+    expect(
+      capacityCallSummary({
+        ...call,
+        capacityId: 'supervisor.project_status',
+        title: 'Supervisor Project Status',
+        resultSummary: {
+          agent_loop_project_status_status: 'completed',
           agent_loop_project_status_self_repair_count: 1,
           agent_loop_project_status_latest_self_repair_name: 'desktop-self-repair',
           agent_loop_project_status_latest_self_repair_status: 'done',

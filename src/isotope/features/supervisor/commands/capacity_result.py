@@ -280,6 +280,7 @@ def _agent_loop_project_status_result(
     counts = project_status.get("counts")
     self_repair_workers = project_status.get("self_repair_workers")
     latest_self_repair = project_status.get("latest_self_repair")
+    open_capability_gaps = project_status.get("open_capability_gaps")
     latest_mapping = (
         latest_self_repair if isinstance(latest_self_repair, Mapping) else {}
     )
@@ -289,6 +290,9 @@ def _agent_loop_project_status_result(
         "agent_loop_project_status_counts": dict(counts) if isinstance(counts, Mapping) else {},
         "agent_loop_project_status_self_repair_count": (
             len(self_repair_workers) if isinstance(self_repair_workers, list) else 0
+        ),
+        "agent_loop_project_status_open_capability_gap_count": (
+            len(open_capability_gaps) if isinstance(open_capability_gaps, list) else 0
         ),
         "agent_loop_project_status_latest_self_repair_name": (
             latest_mapping.get("name")

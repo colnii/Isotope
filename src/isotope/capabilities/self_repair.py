@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Mapping
 
+from ..features.supervisor.capability_gaps import read_capability_gap
 from ..features.supervisor.self_repair import launch_isotope_self_repair
 from ..platform.schemas.input_contract import missing_required_input_keys
 
@@ -30,7 +31,7 @@ def validate_self_repair_inputs(
             continue
         if not isinstance(input_mapping.get(name), str):
             raise ValueError(f"{name} must be a string")
-    for name in ("suggested_fix_summary", "target_name"):
+    for name in ("suggested_fix_summary", "target_name", "gap_id"):
         if name in input_mapping and not isinstance(input_mapping.get(name), str):
             raise ValueError(f"{name} must be a string")
     return dict(input_mapping)
@@ -48,6 +49,15 @@ def run_isotope_self_repair(
         inputs=inputs,
         missing_inputs=missing_inputs,
     )
+    capability_gap = None
+    gap_id = input_mapping.get("gap_id", "")
+    if gap_id:
+        capability_gap = read_capability_gap(
+            state_root=Path(input_mapping["state_root"]),
+            gap_id=gap_id,
+        )
+        if capability_gap is None:
+            raise ValueError(f"capability gap not found: {gap_id}")
     result = launch_isotope_self_repair(
         state_root=Path(input_mapping["state_root"]),
         cwd=Path(input_mapping["cwd"]),
@@ -55,6 +65,7 @@ def run_isotope_self_repair(
         failure_summary=input_mapping["failure_summary"],
         suggested_fix_summary=input_mapping.get("suggested_fix_summary", ""),
         target_name=input_mapping.get("target_name", "desktop-self-repair"),
+        capability_gap=capability_gap,
     )
     return {
         "kind": "capability_run_result",
