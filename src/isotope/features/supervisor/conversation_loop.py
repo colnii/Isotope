@@ -61,7 +61,7 @@ def run_supervisor_conversation_events(
     max_tokens: int = 512,
     history: list[dict[str, str]] | None = None,
     capacity_runner: CapabilityRunner | None = None,
-    max_turns: int = 3,
+    max_turns: int = 6,
     timeout_seconds: float | None = None,
 ) -> Iterator[SupervisorConversationEvent]:
     clean_message = _require_text(user_message, "user_message")

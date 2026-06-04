@@ -165,6 +165,14 @@ def _capability_result_observation(
         return None
     if capacity_id == "memory.query":
         return _memory_query_observation(capability_run)
+    if capacity_id == "code.search":
+        return _code_search_observation(capability_run)
+    if capacity_id == "code.read":
+        return _code_read_observation(capability_run)
+    if capacity_id == "code.apply_patch":
+        return _patch_result_observation(capability_run)
+    if capacity_id == "artifact.diff_summary":
+        return _artifact_summary_observation(capability_run)
     return None
 
 
@@ -222,6 +230,122 @@ def _safe_memory_query_result(result: dict[str, Any]) -> dict[str, Any] | None:
     if isinstance(quality, str):
         safe_result["quality"] = quality
     return safe_result
+
+
+def _code_search_observation(capability_run: dict[str, Any]) -> dict[str, Any] | None:
+    code_search = capability_run.get("code_search")
+    if not isinstance(code_search, dict):
+        return None
+    return {
+        "kind": "code_search",
+        "status": _string_value(code_search.get("status")),
+        "query": _string_value(code_search.get("query")),
+        "include_paths": _string_list_value(code_search.get("include_paths")),
+        "match_count": _int_value(code_search.get("match_count")),
+        "total_match_count": _int_value(code_search.get("total_match_count")),
+        "truncated": bool(code_search.get("truncated")),
+        "content_policy": _string_value(code_search.get("content_policy")),
+        "matches": [
+            safe_match
+            for match in _dict_list_value(code_search.get("matches"))
+            if (safe_match := _safe_code_search_match(match)) is not None
+        ],
+    }
+
+
+def _safe_code_search_match(match: dict[str, Any]) -> dict[str, Any] | None:
+    path = match.get("path")
+    line_number = match.get("line_number")
+    excerpt = match.get("excerpt")
+    if not isinstance(path, str) or not isinstance(line_number, int):
+        return None
+    if not isinstance(excerpt, str):
+        return None
+    return {
+        "path": path,
+        "line_number": line_number,
+        "excerpt": excerpt,
+        "truncated": bool(match.get("truncated")),
+        "code_ref": _string_dict_value(match.get("code_ref")),
+    }
+
+
+def _code_read_observation(capability_run: dict[str, Any]) -> dict[str, Any] | None:
+    code_read = capability_run.get("code_read")
+    if not isinstance(code_read, dict):
+        return None
+    return {
+        "kind": "code_read",
+        "status": _string_value(code_read.get("status")),
+        "path": _string_value(code_read.get("path")),
+        "line_count": _int_value(code_read.get("line_count")),
+        "excerpt": _string_value(code_read.get("excerpt")),
+        "truncated": bool(code_read.get("truncated")),
+        "code_ref": _string_dict_value(code_read.get("code_ref")),
+        "content_policy": _string_value(code_read.get("content_policy")),
+    }
+
+
+def _patch_result_observation(capability_run: dict[str, Any]) -> dict[str, Any] | None:
+    patch_result = capability_run.get("patch_result")
+    if not isinstance(patch_result, dict):
+        return None
+    return {
+        "kind": "patch_result",
+        "status": _string_value(patch_result.get("status")),
+        "changed_files": _string_list_value(patch_result.get("changed_files")),
+        "file_count": _int_value(patch_result.get("file_count")),
+        "hunk_count": _int_value(patch_result.get("hunk_count")),
+        "write_policy": _string_value(patch_result.get("write_policy")),
+        "content_policy": _string_value(patch_result.get("content_policy")),
+    }
+
+
+def _artifact_summary_observation(
+    capability_run: dict[str, Any],
+) -> dict[str, Any] | None:
+    artifact = capability_run.get("artifact")
+    if not isinstance(artifact, dict):
+        return None
+    return {
+        "kind": "artifact_summary",
+        "artifact_id": _string_value(artifact.get("artifact_id")),
+        "artifact_type": _string_value(artifact.get("artifact_type")),
+        "summary": _string_value(artifact.get("summary")),
+        "ref": _string_dict_value(artifact.get("ref")),
+        "artifact_write": _string_value(artifact.get("artifact_write")),
+        "content_policy": _string_value(artifact.get("content_policy")),
+    }
+
+
+def _string_value(value: Any) -> str:
+    return value if isinstance(value, str) else ""
+
+
+def _int_value(value: Any) -> int:
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def _string_list_value(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
+def _dict_list_value(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _string_dict_value(value: Any) -> dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        key: item
+        for key, item in value.items()
+        if isinstance(key, str) and isinstance(item, str)
+    }
 
 
 def _screen_observation_image_urls(

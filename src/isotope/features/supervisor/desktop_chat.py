@@ -92,6 +92,7 @@ def answer_desktop_chat(
 def stream_desktop_chat_events(
     *,
     state_root: Path | str,
+    cwd: Path | str | None = None,
     question: str,
     provider: DesktopChatProvider,
     max_tokens: int = 512,
@@ -108,7 +109,7 @@ def stream_desktop_chat_events(
     if use_conversation_loop:
         for event in run_supervisor_conversation_events(
             state_root=state_root,
-            cwd=Path.cwd(),
+            cwd=Path(cwd).expanduser() if cwd is not None else Path.cwd(),
             user_message=clean_question,
             provider=provider,
             max_tokens=max_tokens,

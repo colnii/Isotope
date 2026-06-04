@@ -382,6 +382,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             question = _required_string(payload.get("question"), "question")
             max_tokens = _positive_int(payload.get("max_tokens"), "max_tokens", default=512)
             history = desktop_chat_history(payload.get("history"))
+            workspace_cwd = _workspace_cwd(payload.get("workspace_cwd"))
         except ValueError as exc:
             self._send_json(
                 {
@@ -406,6 +407,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         try:
             for event in stream_desktop_chat_events(
                 state_root=self.server.codex_home,
+                cwd=workspace_cwd,
                 question=question,
                 provider=self.server.desktop_chat_provider_or_default(),
                 capacity_provider=self.server.desktop_chat_capacity_provider_or_default(),
@@ -727,6 +729,16 @@ def _optional_string(value: object) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return None
     return value.strip()
+
+
+def _workspace_cwd(value: object) -> Path:
+    if value is None:
+        return Path.cwd()
+    text = _required_string(value, "workspace_cwd")
+    path = Path(text).expanduser()
+    if not path.is_dir():
+        raise ValueError("workspace_cwd must be an existing directory")
+    return path
 
 
 def _positive_int(value: object, field: str, *, default: int) -> int:
