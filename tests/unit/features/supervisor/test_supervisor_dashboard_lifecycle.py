@@ -262,6 +262,55 @@ def test_dashboard_payload_projects_merge_lifecycle_execute_command() -> None:
     )
 
 
+def test_dashboard_payload_projects_worker_lifecycle_delete_blockers() -> None:
+    state_snapshot = _state_snapshot_with_lifecycle()
+    state_snapshot["worker_lifecycle_execution"] = {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "next_step": "cleanup_worktree",
+        "status": "blocked",
+        "delete_worktree_blockers": [
+            {
+                "name": "dirty-worker",
+                "target_name": "dirty-worker",
+                "record_id": "managed-dirty",
+                "archived": True,
+                "supervisor_protocol_status": "done",
+                "supervisor_worktree": True,
+                "integration_group": "needs_review",
+                "main_contains_worker": True,
+                "main_has_worker_patch": True,
+                "dirty": True,
+                "reason": "worker worktree is dirty",
+            }
+        ],
+    }
+
+    payload = dashboard_payload(
+        _report(),
+        state_snapshot=state_snapshot,
+        api=_StubDashboardApi(),
+    )
+
+    assert payload["worker_lifecycle_execution"]["action_count"] == 0
+    assert payload["worker_lifecycle_execution"]["delete_blockers"] == [
+        {
+            "target_name": "dirty-worker",
+            "record_id": "managed-dirty",
+            "archived": True,
+            "supervisor_protocol_status": "done",
+            "supervisor_worktree": True,
+            "integration_group": "needs_review",
+            "main_contains_worker": True,
+            "main_has_worker_patch": True,
+            "dirty": True,
+            "reason": "worker worktree is dirty",
+        }
+    ]
+    assert "execute_hint" not in payload["worker_lifecycle_execution"]
+    assert "execute_command" not in payload["worker_lifecycle_execution"]
+
+
 def test_dashboard_plain_prints_worker_lifecycle_delete_evidence(capsys) -> None:
     print_dashboard_plain(
         {
@@ -297,6 +346,42 @@ def test_dashboard_plain_prints_worker_lifecycle_delete_evidence(capsys) -> None
     assert (
         "delete_evidence=source-worker archived=true protocol=done "
         "worktree=true group=already_integrated integrated=true clean=true"
+    ) in text
+
+
+def test_dashboard_plain_prints_worker_lifecycle_delete_blockers(capsys) -> None:
+    print_dashboard_plain(
+        {
+            "generated_at": "2026-06-04T12:00:00Z",
+            "recommendation": {"label": "继续监控"},
+            "pending_decisions_count": 0,
+            "capability_calls_count": 0,
+            "groups": {"needs_attention": [], "done": [], "working": []},
+            "worker_lifecycle": {},
+            "worker_lifecycle_execution": {
+                "status": "blocked",
+                "kind": "cleanup_worktree",
+                "action_count": 0,
+                "execution_status": "planned",
+                "delete_blockers": [
+                    {
+                        "target_name": "dirty-worker",
+                        "reason": "worker worktree is dirty",
+                        "archived": True,
+                        "supervisor_protocol_status": "done",
+                        "supervisor_worktree": True,
+                        "dirty": True,
+                    }
+                ],
+            },
+        },
+        api=_StubDashboardApi(),
+    )
+
+    text = capsys.readouterr().out
+    assert (
+        "delete_blockers=dirty-worker reason=worker worktree is dirty "
+        "archived=true protocol=done worktree=true clean=false"
     ) in text
 
 

@@ -219,6 +219,54 @@ def test_lifecycle_execution_plan_deletes_guarded_worktree_candidates() -> None:
     }
 
 
+def test_lifecycle_execution_plan_reports_cleanup_worktree_blockers() -> None:
+    plan = build_worker_lifecycle_execution_plan(
+        worker_lifecycle_decision=_decision(
+            next_step="cleanup_worktree",
+            program_action="archive_integrated",
+        ),
+        delete_worktree_candidates=[],
+        delete_worktree_blockers=[
+            {
+                "name": "dirty-worker",
+                "target_name": "dirty-worker",
+                "record_id": "managed-dirty",
+                "archived": True,
+                "supervisor_protocol_status": "done",
+                "supervisor_worktree": True,
+                "reason": "worker worktree is dirty",
+            }
+        ],
+    )
+
+    assert plan is not None
+    assert plan.to_dict() == {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "next_step": "cleanup_worktree",
+        "status": "blocked",
+        "delete_worktree_blockers": [
+            {
+                "name": "dirty-worker",
+                "target_name": "dirty-worker",
+                "record_id": "managed-dirty",
+                "archived": True,
+                "supervisor_protocol_status": "done",
+                "supervisor_worktree": True,
+                "reason": "worker worktree is dirty",
+            }
+        ],
+    }
+    assert worker_lifecycle_execution_planned_executed(plan.to_dict()) == {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "skipped": True,
+        "reason": "worktree delete blockers require attention",
+        "count": 0,
+        "blockers": 1,
+    }
+
+
 def test_supervise_action_uses_lifecycle_execution_plan() -> None:
     payload: dict[str, object] = {}
     action = append_supervise_llm_action(
@@ -360,6 +408,59 @@ def test_supervise_planning_builds_cleanup_worktree_lifecycle_execution() -> Non
             ],
         }
     assert payload["worker_lifecycle_decision"]["next_step"] == "cleanup_worktree"
+    assert payload["worker_lifecycle_execution"] == planning.lifecycle_execution
+
+
+def test_supervise_planning_builds_cleanup_worktree_blocker_execution() -> None:
+    payload: dict[str, object] = {
+        "cleanup_archived": [
+            {
+                "kind": "managed_worker",
+                "name": "dirty-worker",
+                "record_id": "managed-dirty",
+            }
+        ]
+    }
+    planning = append_supervise_planning_payload(
+        argparse.Namespace(
+            command="loop",
+            codex_home="/tmp/codex-home",
+            llm_action=True,
+            llm_execute=False,
+            max_fanout_launches=5,
+        ),
+        payload,
+        report=object(),
+        active_goals=[],
+        goal_updates=[],
+        goal_replenishment=None,
+        worker_reviews=None,
+        api=_StubPlanningApi(
+            delete_worktree_blockers=[
+                {
+                    "name": "dirty-worker",
+                    "target_name": "dirty-worker",
+                    "record_id": "managed-dirty",
+                    "reason": "worker worktree is dirty",
+                }
+            ],
+        ),
+    )
+
+    assert planning.lifecycle_execution == {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "next_step": "cleanup_worktree",
+        "status": "blocked",
+        "delete_worktree_blockers": [
+            {
+                "name": "dirty-worker",
+                "target_name": "dirty-worker",
+                "record_id": "managed-dirty",
+                "reason": "worker worktree is dirty",
+            }
+        ],
+    }
     assert payload["worker_lifecycle_execution"] == planning.lifecycle_execution
 
 
@@ -629,6 +730,62 @@ def test_supervise_execution_does_not_delete_worktrees_with_archive_execute_flag
     assert api.deleted == []
 
 
+def test_supervise_execution_skips_cleanup_worktree_blockers_even_with_cleanup_flag() -> None:
+    api = _StubExecutionApi()
+    payload: dict[str, object] = {}
+    plan = build_worker_lifecycle_execution_plan(
+        worker_lifecycle_decision=_decision(
+            next_step="cleanup_worktree",
+            program_action="archive_integrated",
+        ),
+        delete_worktree_candidates=[],
+        delete_worktree_blockers=[
+            {
+                "name": "dirty-worker",
+                "target_name": "dirty-worker",
+                "record_id": "managed-dirty",
+                "reason": "worker worktree is dirty",
+            }
+        ],
+    )
+    assert plan is not None
+
+    executed = append_supervise_execution(
+        argparse.Namespace(
+            llm_execute=True,
+            auto_execute=False,
+            execute=False,
+            codex_home="/tmp/codex-home",
+            merge_dispatch_execute=False,
+            lifecycle_archive_execute=False,
+            lifecycle_cleanup_execute=True,
+        ),
+        payload,
+        report=object(),
+        action_report=object(),
+        active_goals=[],
+        goal_replenishment=None,
+        worker_reviews=None,
+        fanout_status=None,
+        fanout_paused=False,
+        worker_role_guard=None,
+        merge_dispatch=None,
+        fanout_plan=None,
+        lifecycle_execution=plan.to_dict(),
+        api=api,
+    )
+
+    assert executed == {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "skipped": True,
+        "reason": "worktree delete blockers require attention",
+        "count": 0,
+        "blockers": 1,
+    }
+    assert api.deleted == []
+
+
 def test_supervise_execution_uses_lifecycle_execution_plan() -> None:
     api = _StubExecutionApi()
     payload: dict[str, object] = {}
@@ -736,10 +893,12 @@ class _StubPlanningApi:
         integration_review: dict[str, object] | None = None,
         cleanup_candidates: list[dict[str, object]] | None = None,
         delete_worktree_candidates: list[dict[str, object]] | None = None,
+        delete_worktree_blockers: list[dict[str, object]] | None = None,
     ) -> None:
         self.integration_review = integration_review
         self.cleanup_candidates = cleanup_candidates or []
         self.delete_worktree_candidates = delete_worktree_candidates or []
+        self.delete_worktree_blockers = delete_worktree_blockers or []
 
     def _current_batch_payload(self, *args, **kwargs):
         return {"target_names": []}
@@ -773,6 +932,9 @@ class _StubPlanningApi:
 
     def _delete_worktree_candidate_payloads(self, args):
         return self.delete_worktree_candidates
+
+    def _delete_worktree_blocker_payloads(self, args):
+        return self.delete_worktree_blockers
 
 
 class _StubExecutionApi:

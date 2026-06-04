@@ -16,6 +16,7 @@ class WorkerLifecycleExecutionPlan:
     merge_dispatch: dict[str, Any] | None = None
     cleanup_candidates: tuple[dict[str, Any], ...] = ()
     delete_worktree_actions: tuple[dict[str, Any], ...] = ()
+    delete_worktree_blockers: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -34,6 +35,10 @@ class WorkerLifecycleExecutionPlan:
             payload["delete_worktree_actions"] = [
                 dict(action) for action in self.delete_worktree_actions
             ]
+        if self.delete_worktree_blockers:
+            payload["delete_worktree_blockers"] = [
+                dict(blocker) for blocker in self.delete_worktree_blockers
+            ]
         return payload
 
 
@@ -43,6 +48,7 @@ def build_worker_lifecycle_execution_plan(
     merge_dispatch: Mapping[str, Any] | None = None,
     cleanup_candidates: list[dict[str, Any]] | None = None,
     delete_worktree_candidates: list[dict[str, Any]] | None = None,
+    delete_worktree_blockers: list[dict[str, Any]] | None = None,
 ) -> WorkerLifecycleExecutionPlan | None:
     if not _is_program_resolved_lifecycle_decision(worker_lifecycle_decision):
         return None
@@ -54,7 +60,10 @@ def build_worker_lifecycle_execution_plan(
     if worker_lifecycle_decision.get("next_step") == "cleanup_worktree":
         if program_action != "archive_integrated":
             return None
-        return _cleanup_worktree_plan(delete_worktree_candidates)
+        return _cleanup_worktree_plan(
+            delete_worktree_candidates,
+            delete_worktree_blockers=delete_worktree_blockers,
+        )
     if worker_lifecycle_decision.get("next_step") != "launch_merge_worker":
         return None
     if program_action != "dispatch_merge":
@@ -134,6 +143,16 @@ def worker_lifecycle_execution_planned_executed(
             "count": len(_mapping_list(plan.get("cleanup_candidates"))),
         }
     if plan.get("kind") == "cleanup_worktree":
+        blockers = _mapping_list(plan.get("delete_worktree_blockers"))
+        if blockers and not _mapping_list(plan.get("delete_worktree_actions")):
+            return {
+                "kind": "cleanup_worktree",
+                "source": "worker_lifecycle",
+                "skipped": True,
+                "reason": "worktree delete blockers require attention",
+                "count": 0,
+                "blockers": len(blockers),
+            }
         return {
             "kind": "cleanup_worktree",
             "source": "worker_lifecycle",
@@ -209,6 +228,8 @@ def _archive_cleanup_plan(
 
 def _cleanup_worktree_plan(
     delete_worktree_candidates: list[dict[str, Any]] | None,
+    *,
+    delete_worktree_blockers: list[dict[str, Any]] | None = None,
 ) -> WorkerLifecycleExecutionPlan | None:
     actions = tuple(
         action
@@ -216,14 +237,16 @@ def _cleanup_worktree_plan(
         for action in (_delete_worktree_action(candidate),)
         if action is not None
     )
-    if not actions:
+    blockers = tuple(dict(item) for item in delete_worktree_blockers or [])
+    if not actions and not blockers:
         return None
     return WorkerLifecycleExecutionPlan(
         kind="cleanup_worktree",
         source="worker_lifecycle",
         next_step="cleanup_worktree",
-        status="ready_to_delete",
+        status="ready_to_delete" if actions else "blocked",
         delete_worktree_actions=actions,
+        delete_worktree_blockers=blockers,
     )
 
 

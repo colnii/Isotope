@@ -271,6 +271,8 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
       if (item.execution_reason) parts.push("reason=" + text(item.execution_reason));
       const evidence = workerLifecycleDeleteEvidenceText(item.delete_evidence);
       if (evidence) parts.push("evidence=" + evidence);
+      const blockers = workerLifecycleDeleteBlockerText(item.delete_blockers);
+      if (blockers) parts.push("blockers=" + blockers);
       return parts.join(" · ");
     }
 
@@ -286,6 +288,20 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
           + " worktree=" + boolText(item.supervisor_worktree)
           + " group=" + text(item.integration_group || "unknown")
           + " integrated=" + boolText(integrated)
+          + " clean=" + boolText(clean);
+      }).join("; ");
+    }
+
+    function workerLifecycleDeleteBlockerText(value) {
+      const items = Array.isArray(value) ? value : [];
+      if (!items.length) return "";
+      return items.map((item) => {
+        const clean = item.dirty === false;
+        return text(item.target_name || "unknown")
+          + " reason=" + text(item.reason || "unknown")
+          + " archived=" + boolText(item.archived)
+          + " protocol=" + text(item.supervisor_protocol_status || "unknown")
+          + " worktree=" + boolText(item.supervisor_worktree)
           + " clean=" + boolText(clean);
       }).join("; ");
     }

@@ -31,6 +31,7 @@ from .cleanup.cleanup_worktree import (
     branch_upstream as _branch_upstream,
     delete_integrated_supervisor_branch as _delete_integrated_supervisor_branch,
     delete_worktree_branch_name as _delete_worktree_branch_name,
+    delete_worktree_blocker_payloads as _delete_worktree_blocker_payloads,
     delete_worktree_candidate_payloads as _delete_worktree_candidate_payloads,
     delete_worktree_integration_summary as _delete_worktree_integration_summary,
     execute_delete_worktree_action as _execute_delete_worktree_action,

@@ -123,6 +123,11 @@ def worker_lifecycle_execution_projection_payload(
     )
     if delete_worktree_actions:
         payload["delete_worktree_actions"] = delete_worktree_actions
+    delete_worktree_blockers = _delete_worktree_blocker_payloads(
+        worker_lifecycle_execution.get("delete_worktree_blockers")
+    )
+    if delete_worktree_blockers:
+        payload["delete_worktree_blockers"] = delete_worktree_blockers
     merge_dispatch = _merge_dispatch_payload(
         worker_lifecycle_execution.get("merge_dispatch")
     )
@@ -367,6 +372,36 @@ def _delete_evidence_payload(value: Any) -> dict[str, Any]:
         "base_ref": _lifecycle_scalar(value.get("base_ref")),
     }
     return {key: item for key, item in evidence.items() if item is not None}
+
+
+def _delete_worktree_blocker_payloads(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    items: list[dict[str, Any]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        blocker = {
+            "name": _lifecycle_scalar(item.get("name")),
+            "target_name": _lifecycle_scalar(item.get("target_name")),
+            "record_id": _lifecycle_scalar(item.get("record_id")),
+            "archived": _lifecycle_bool(item.get("archived")),
+            "supervisor_protocol_status": _lifecycle_scalar(
+                item.get("supervisor_protocol_status")
+            ),
+            "supervisor_worktree": _lifecycle_bool(item.get("supervisor_worktree")),
+            "integration_group": _lifecycle_scalar(item.get("integration_group")),
+            "main_contains_worker": _lifecycle_bool(item.get("main_contains_worker")),
+            "main_has_worker_patch": _lifecycle_bool(
+                item.get("main_has_worker_patch")
+            ),
+            "dirty": _lifecycle_bool(item.get("dirty")),
+            "worker_commit": _lifecycle_scalar(item.get("worker_commit")),
+            "base_ref": _lifecycle_scalar(item.get("base_ref")),
+            "reason": _lifecycle_scalar(item.get("reason")),
+        }
+        items.append({key: value for key, value in blocker.items() if value is not None})
+    return items
 
 
 def _merge_dispatch_payload(value: Any) -> dict[str, Any]:

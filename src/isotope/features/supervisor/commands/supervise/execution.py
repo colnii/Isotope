@@ -168,6 +168,11 @@ def _worker_lifecycle_execution_executed(
             api=api,
         )
     if kind == "cleanup_worktree":
+        actions = _lifecycle_execution_items(
+            lifecycle_execution.get("delete_worktree_actions")
+        )
+        if not actions:
+            return worker_lifecycle_execution_planned_executed(lifecycle_execution)
         if not getattr(args, "lifecycle_cleanup_execute", False):
             return worker_lifecycle_execution_planned_executed(lifecycle_execution)
         return _worker_lifecycle_cleanup_worktree_executed(

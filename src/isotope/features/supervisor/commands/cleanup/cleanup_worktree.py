@@ -198,6 +198,98 @@ def delete_worktree_candidate_payloads(
     return candidates
 
 
+def delete_worktree_blocker_payloads(
+    args: argparse.Namespace,
+    *,
+    api: Any | None = None,
+) -> list[dict[str, Any]]:
+    if api is None:
+        from isotope.features.supervisor import runner as api
+
+    blockers: list[dict[str, Any]] = []
+    for record in _latest_records_by_identity(
+        api._latest_managed_record_events(Path(args.codex_home))
+    ):
+        payload = _delete_worktree_blocker_payload(record, api=api)
+        if payload is not None:
+            blockers.append(payload)
+    return blockers
+
+
+def _latest_records_by_identity(records: list[Any]) -> list[Any]:
+    latest: dict[tuple[str, str], Any] = {}
+    order: list[tuple[str, str]] = []
+    for record in records:
+        key = (str(record.record_id), str(record.name))
+        if key not in latest:
+            order.append(key)
+        latest[key] = record
+    return [latest[key] for key in order]
+
+
+def _delete_worktree_blocker_payload(record: Any, *, api: Any) -> dict[str, Any] | None:
+    worktree = supervisor_worktree_root_for_cwd(record.cwd)
+    payload: dict[str, Any] = {
+        "name": record.name,
+        "target_name": record.name,
+        "record_id": record.record_id,
+        "cwd": record.cwd,
+        "archived": record.status == "archived",
+        "supervisor_worktree": worktree is not None,
+    }
+    if record.status != "archived":
+        payload["reason"] = "managed worker is not archived"
+        return payload
+    if worktree is None:
+        payload["reason"] = "worktree is outside .worktrees/supervisor"
+        return payload
+    protocol = _supervisor_protocol_from_text(
+        _managed_process_log_excerpt(record.log_path) or ""
+    )
+    protocol_status = (protocol.get("status") or "").strip().lower()
+    payload["supervisor_protocol_status"] = protocol_status
+    if protocol_status != "done":
+        payload["reason"] = "managed worker is not done"
+        return payload
+    integration = api.review_managed_record_integration(
+        record,
+        run=api.subprocess.run,
+        run_test_gate=False,
+        run_candidate_validation=False,
+    )
+    payload.update(_delete_worktree_integration_evidence(integration))
+    if integration_review_allows_worktree_delete(integration):
+        return None
+    payload["reason"] = _delete_worktree_blocker_reason(integration)
+    return payload
+
+
+def _delete_worktree_integration_evidence(
+    integration: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "integration_group": integration.get("group"),
+        "main_contains_worker": integration.get("main_contains_worker"),
+        "main_has_worker_patch": integration.get("main_has_worker_patch"),
+        "dirty": integration.get("dirty"),
+        "worker_commit": integration.get("worker_commit"),
+        "base_ref": integration.get("base_ref"),
+    }
+
+
+def _delete_worktree_blocker_reason(integration: dict[str, Any]) -> str:
+    if integration.get("dirty") is True:
+        return "worker worktree is dirty"
+    if integration.get("group") not in {"already_integrated", "merge_workers"}:
+        return "worker is not integrated"
+    if (
+        integration.get("main_contains_worker") is not True
+        and integration.get("main_has_worker_patch") is not True
+    ):
+        return "worker changes are not in main"
+    return "worker is not eligible for worktree delete"
+
+
 def latest_managed_record_event(
     *,
     codex_home: Path,

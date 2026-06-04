@@ -99,6 +99,11 @@ def append_supervise_planning_payload(
         if lifecycle_can_consume_cleanup
         else None
     )
+    delete_worktree_blockers = (
+        api._delete_worktree_blocker_payloads(args)
+        if lifecycle_can_consume_cleanup
+        else None
+    )
     integration_review = (
         merge_dispatch.get("integration_review")
         if isinstance(merge_dispatch, dict)
@@ -134,6 +139,7 @@ def append_supervise_planning_payload(
         merge_dispatch=merge_dispatch,
         cleanup_candidates=cleanup_candidates,
         delete_worktree_candidates=delete_worktree_candidates,
+        delete_worktree_blockers=delete_worktree_blockers,
     )
     lifecycle_execution = (
         lifecycle_execution_plan.to_dict()
@@ -157,6 +163,7 @@ def append_supervise_planning_payload(
                 merge_dispatch=merge_dispatch,
                 cleanup_candidates=cleanup_candidates,
                 delete_worktree_candidates=delete_worktree_candidates,
+                delete_worktree_blockers=delete_worktree_blockers,
             )
             lifecycle_execution = (
                 lifecycle_execution_plan.to_dict()

@@ -160,6 +160,64 @@ def test_record_worker_lifecycle_decision_persists_execution_projection(tmp_path
     assert read_latest_worker_lifecycle_event(codex_home=tmp_path) == event
 
 
+def test_record_worker_lifecycle_decision_persists_delete_blocker_projection(
+    tmp_path,
+) -> None:
+    event = record_worker_lifecycle_decision(
+        codex_home=tmp_path,
+        worker_lifecycle_decision=_decision(),
+        worker_lifecycle_execution={
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "next_step": "cleanup_worktree",
+            "status": "blocked",
+            "delete_worktree_blockers": [
+                {
+                    "name": "dirty-worker",
+                    "target_name": "dirty-worker",
+                    "record_id": "managed-dirty",
+                    "cwd": "/repo/.worktrees/supervisor/dirty-worker",
+                    "archived": True,
+                    "supervisor_protocol_status": "done",
+                    "supervisor_worktree": True,
+                    "integration_group": "needs_review",
+                    "main_contains_worker": True,
+                    "main_has_worker_patch": True,
+                    "dirty": True,
+                    "worker_commit": "dirty111",
+                    "base_ref": "main",
+                    "reason": "worker worktree is dirty",
+                }
+            ],
+        },
+    )
+
+    assert event is not None
+    assert event["worker_lifecycle_execution"] == {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "next_step": "cleanup_worktree",
+        "status": "blocked",
+        "delete_worktree_blockers": [
+            {
+                "name": "dirty-worker",
+                "target_name": "dirty-worker",
+                "record_id": "managed-dirty",
+                "archived": True,
+                "supervisor_protocol_status": "done",
+                "supervisor_worktree": True,
+                "integration_group": "needs_review",
+                "main_contains_worker": True,
+                "main_has_worker_patch": True,
+                "dirty": True,
+                "worker_commit": "dirty111",
+                "base_ref": "main",
+                "reason": "worker worktree is dirty",
+            }
+        ],
+    }
+
+
 def test_read_latest_worker_lifecycle_skips_malformed_entries(tmp_path) -> None:
     path = default_worker_lifecycle_path(tmp_path)
     path.parent.mkdir(parents=True)

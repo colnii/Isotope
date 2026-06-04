@@ -876,6 +876,11 @@ def print_dashboard_worker_lifecycle_execution(execution: Any) -> None:
     )
     if evidence:
         print(f"  delete_evidence={evidence}")
+    blockers = _dashboard_lifecycle_delete_blocker_summary(
+        execution.get("delete_blockers")
+    )
+    if blockers:
+        print(f"  delete_blockers={blockers}")
 
 
 def dashboard_worker_lifecycle_execution_payload(
@@ -904,6 +909,7 @@ def dashboard_worker_lifecycle_execution_payload(
         "result_summary": _dashboard_lifecycle_result_summary(result),
         "result_actions": _dashboard_lifecycle_result_actions(result),
         "delete_evidence": _dashboard_lifecycle_delete_evidence(plan),
+        "delete_blockers": _dashboard_lifecycle_delete_blockers(plan),
         "execute_hint": _dashboard_lifecycle_execution_hint(plan, result),
         "execute_command": _dashboard_lifecycle_execution_command(plan, result),
     }
@@ -913,6 +919,12 @@ def dashboard_worker_lifecycle_execution_payload(
         payload.pop("result_actions")
     if not payload["delete_evidence"]:
         payload.pop("delete_evidence")
+    if not payload["delete_blockers"]:
+        payload.pop("delete_blockers")
+    if not payload["execute_hint"]:
+        payload.pop("execute_hint")
+    if not payload["execute_command"]:
+        payload.pop("execute_command")
     return payload
 
 
@@ -955,6 +967,34 @@ def _dashboard_lifecycle_delete_evidence(plan: dict[str, Any]) -> list[dict[str,
     return items
 
 
+def _dashboard_lifecycle_delete_blockers(plan: dict[str, Any]) -> list[dict[str, Any]]:
+    blockers = plan.get("delete_worktree_blockers")
+    if not isinstance(blockers, list):
+        return []
+    items: list[dict[str, Any]] = []
+    for blocker in blockers:
+        if not isinstance(blocker, dict):
+            continue
+        item = {
+            "target_name": _dashboard_text(blocker.get("target_name"), ""),
+            "record_id": _dashboard_text(blocker.get("record_id"), ""),
+            "archived": blocker.get("archived"),
+            "supervisor_protocol_status": _dashboard_text(
+                blocker.get("supervisor_protocol_status"), ""
+            ),
+            "supervisor_worktree": blocker.get("supervisor_worktree"),
+            "integration_group": _dashboard_text(
+                blocker.get("integration_group"), ""
+            ),
+            "main_contains_worker": blocker.get("main_contains_worker"),
+            "main_has_worker_patch": blocker.get("main_has_worker_patch"),
+            "dirty": blocker.get("dirty"),
+            "reason": _dashboard_text(blocker.get("reason"), ""),
+        }
+        items.append({key: value for key, value in item.items() if value != ""})
+    return items
+
+
 def _dashboard_lifecycle_execution_hint(
     plan: dict[str, Any],
     result: dict[str, Any] | None,
@@ -964,6 +1004,8 @@ def _dashboard_lifecycle_execution_hint(
     if kind == "archive_cleanup":
         return "--lifecycle-archive-execute"
     if kind == "cleanup_worktree":
+        if not isinstance(plan.get("delete_worktree_actions"), list):
+            return ""
         return "--lifecycle-cleanup-execute"
     if (
         kind == "merge_dispatch"
@@ -1149,6 +1191,26 @@ def _dashboard_lifecycle_delete_evidence_summary(value: Any) -> str:
         summaries.append(
             f"{target} archived={archived} protocol={protocol} "
             f"worktree={worktree} group={group} integrated={integrated} clean={clean}"
+        )
+    return "; ".join(summaries)
+
+
+def _dashboard_lifecycle_delete_blocker_summary(value: Any) -> str:
+    if not isinstance(value, list):
+        return ""
+    summaries: list[str] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        target = _dashboard_text(item.get("target_name"), "unknown")
+        reason = _dashboard_text(item.get("reason"), "unknown")
+        protocol = _dashboard_text(item.get("supervisor_protocol_status"), "unknown")
+        archived = _dashboard_bool_text(item.get("archived"))
+        worktree = _dashboard_bool_text(item.get("supervisor_worktree"))
+        clean = _dashboard_bool_text(item.get("dirty") is False)
+        summaries.append(
+            f"{target} reason={reason} archived={archived} "
+            f"protocol={protocol} worktree={worktree} clean={clean}"
         )
     return "; ".join(summaries)
 

@@ -13,6 +13,7 @@ import pytest
 from isotope.features.supervisor.flow import CodexSupervisorReport
 from isotope.features.supervisor.llm_action.llm_summary import generate_llm_action_decision
 from isotope.features.supervisor.runner import (
+    _delete_worktree_blocker_payloads,
     _delete_worktree_candidate_payloads,
     _execute_llm_action,
 )
@@ -300,6 +301,93 @@ def test_delete_worktree_candidates_include_archived_integrated_merge_worker(
             "worker_commit": "merge111",
             "base_ref": "main",
         }
+    ]
+
+
+def test_delete_worktree_blockers_explain_ineligible_archived_workers(
+    tmp_path,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    repo_root = tmp_path / "repo"
+    active_worktree = repo_root / ".worktrees" / "supervisor" / "active-worker"
+    dirty_worktree = repo_root / ".worktrees" / "supervisor" / "dirty-worker"
+    active_worktree.mkdir(parents=True)
+    dirty_worktree.mkdir(parents=True)
+    _write_managed_record_event(
+        codex_home,
+        record_id="managed-active",
+        name="active-worker",
+        cwd=active_worktree,
+        record_status="archived",
+        protocol_status="working",
+    )
+    _write_managed_record_event(
+        codex_home,
+        record_id="managed-dirty",
+        name="dirty-worker",
+        cwd=dirty_worktree,
+        record_status="archived",
+        protocol_status="done",
+    )
+
+    def stub_run(
+        command: list[str],
+        **kwargs: object,
+    ) -> subprocess.CompletedProcess[str]:
+        if command == ["git", "-C", str(dirty_worktree), "rev-parse", "--abbrev-ref", "HEAD"]:
+            return subprocess.CompletedProcess(command, 0, "supervisor/dirty-worker\n", "")
+        if command == ["git", "-C", str(dirty_worktree), "rev-parse", "HEAD"]:
+            return subprocess.CompletedProcess(command, 0, "dirty111\n", "")
+        if command == ["git", "-C", str(dirty_worktree), "rev-parse", "main"]:
+            return subprocess.CompletedProcess(command, 0, "main999\n", "")
+        if command == ["git", "-C", str(dirty_worktree), "rev-parse", "main^{tree}"]:
+            return subprocess.CompletedProcess(command, 0, "tree-main\n", "")
+        if command == ["git", "-C", str(dirty_worktree), "status", "--short"]:
+            return subprocess.CompletedProcess(command, 0, " M file.py\n", "")
+        if command == ["git", "-C", str(dirty_worktree), "merge-base", "--is-ancestor", "dirty111", "main"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command == ["git", "-C", str(dirty_worktree), "merge-base", "--is-ancestor", "main", "dirty111"]:
+            return subprocess.CompletedProcess(command, 1, "", "")
+        if command == ["git", "-C", str(dirty_worktree), "merge-tree", "--write-tree", "main", "dirty111"]:
+            return subprocess.CompletedProcess(command, 0, "tree-main\n", "")
+        raise AssertionError(f"unexpected command: {command}")
+
+    monkeypatch.setattr("isotope.features.supervisor.runner.subprocess.run", stub_run)
+    monkeypatch.setattr(
+        "isotope.features.supervisor.workers.integration_review.subprocess.run",
+        stub_run,
+    )
+
+    blockers = _delete_worktree_blocker_payloads(_runner_args(codex_home))
+
+    assert blockers == [
+        {
+            "name": "active-worker",
+            "target_name": "active-worker",
+            "record_id": "managed-active",
+            "cwd": str(active_worktree),
+            "archived": True,
+            "supervisor_protocol_status": "working",
+            "supervisor_worktree": True,
+            "reason": "managed worker is not done",
+        },
+        {
+            "name": "dirty-worker",
+            "target_name": "dirty-worker",
+            "record_id": "managed-dirty",
+            "cwd": str(dirty_worktree),
+            "archived": True,
+            "supervisor_protocol_status": "done",
+            "supervisor_worktree": True,
+            "integration_group": "needs_review",
+            "main_contains_worker": True,
+            "main_has_worker_patch": True,
+            "dirty": True,
+            "worker_commit": "dirty111",
+            "base_ref": "main",
+            "reason": "worker worktree is dirty",
+        },
     ]
 
 
