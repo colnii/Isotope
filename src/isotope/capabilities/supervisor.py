@@ -170,6 +170,7 @@ def run_supervisor_project_status(
         codex_home=Path(input_mapping[SUPERVISOR_STATE_ROOT_INPUT]),
         lightweight=True,
     )
+    self_repair_workers = _self_repair_workers_payload(worker_review)[:10]
     summary = {
         "snapshot_id": snapshot.get("snapshotId"),
         "generated_at": snapshot.get("generatedAt"),
@@ -180,7 +181,8 @@ def run_supervisor_project_status(
         "approvals": snapshot.get("approvals", [])[:10],
         "activities": snapshot.get("activities", [])[:20],
         "artifacts": snapshot.get("artifacts", [])[:10],
-        "self_repair_workers": _self_repair_workers_payload(worker_review)[:10],
+        "self_repair_workers": self_repair_workers,
+        "latest_self_repair": _latest_self_repair_payload(self_repair_workers),
     }
     return {
         "kind": "capability_run_result",
@@ -431,6 +433,49 @@ def _self_repair_workers_payload(payload: Mapping[str, Any]) -> list[dict[str, A
     ]
 
 
+def _latest_self_repair_payload(
+    workers: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if not workers:
+        return None
+    latest = max(workers, key=lambda worker: str(worker.get("started_at") or ""))
+    worktree = latest.get("worktree") if isinstance(latest.get("worktree"), Mapping) else {}
+    protocol = (
+        latest.get("supervisor_protocol")
+        if isinstance(latest.get("supervisor_protocol"), Mapping)
+        else {}
+    )
+    changes = latest.get("changes") if isinstance(latest.get("changes"), Mapping) else {}
+    decision = (
+        latest.get("next_decision")
+        if isinstance(latest.get("next_decision"), Mapping)
+        else {}
+    )
+    return {
+        "record_id": latest.get("record_id"),
+        "name": latest.get("name"),
+        "worker_role": latest.get("worker_role"),
+        "registry_status": latest.get("registry_status"),
+        "started_at": latest.get("started_at"),
+        "cwd": latest.get("cwd"),
+        "cwd_exists": latest.get("cwd_exists"),
+        "branch": worktree.get("branch") or worktree.get("inferred_branch"),
+        "protocol_status": protocol.get("status"),
+        "summary": protocol.get("summary"),
+        "next": protocol.get("next"),
+        "changes_status": changes.get("status"),
+        "changes_summary": changes.get("summary"),
+        "test_status": latest.get("test_status"),
+        "test_passed": latest.get("test_passed"),
+        "test_exit_code": latest.get("test_exit_code"),
+        "recommendation": decision.get("recommendation"),
+        "decision_summary": decision.get("summary"),
+        "merge_suitable": decision.get("merge_suitable"),
+        "continue_or_split_task": decision.get("continue_or_split_task"),
+        "risk_level": decision.get("risk_level"),
+    }
+
+
 def _worker_review_candidates_payload(raw: Any) -> dict[str, list[dict[str, Any]]]:
     if not isinstance(raw, Mapping):
         return {}
@@ -485,6 +530,7 @@ def _worker_review_item_payload(worker: Mapping[str, Any]) -> dict[str, Any]:
         "registry_status": worker.get("registry_status"),
         "cwd": worker.get("cwd"),
         "cwd_exists": worker.get("cwd_exists"),
+        "started_at": worker.get("started_at"),
         "worktree": {
             "exists": worktree.get("exists"),
             "branch": worktree.get("branch"),

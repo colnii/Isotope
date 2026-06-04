@@ -239,12 +239,25 @@ def _agent_loop_project_status_summary(
         return {}
     counts = project_status.get("counts")
     self_repair_workers = project_status.get("self_repair_workers")
+    latest_self_repair = project_status.get("latest_self_repair")
+    latest_mapping = (
+        latest_self_repair if isinstance(latest_self_repair, Mapping) else {}
+    )
     return {
         "agent_loop_project_status_status": capability_run.get("status"),
         "agent_loop_project_status_snapshot_id": project_status.get("snapshot_id"),
         "agent_loop_project_status_counts": dict(counts) if isinstance(counts, Mapping) else {},
         "agent_loop_project_status_self_repair_count": (
             len(self_repair_workers) if isinstance(self_repair_workers, list) else 0
+        ),
+        "agent_loop_project_status_latest_self_repair_name": (
+            latest_mapping.get("name")
+        ),
+        "agent_loop_project_status_latest_self_repair_status": (
+            latest_mapping.get("protocol_status")
+        ),
+        "agent_loop_project_status_latest_self_repair_merge_suitable": (
+            latest_mapping.get("merge_suitable")
         ),
     }
 

@@ -41,6 +41,12 @@ export function capacityCallSummary(call: DesktopCapacityCall): string {
       return [call.capacityId, ...resultParts].join(' · ');
     }
   }
+  if (call.capacityId === 'supervisor.project_status') {
+    const latestSelfRepair = projectStatusLatestSelfRepairSummary(call.resultSummary);
+    if (latestSelfRepair) {
+      return [capacityCallProductTitle(call), latestSelfRepair].join(' · ');
+    }
+  }
   const resultParts = Object.entries(call.resultSummary)
     .filter(([, value]) => value !== undefined && value !== null && value !== '')
     .slice(0, 3)
@@ -110,6 +116,21 @@ function formatSummaryValue(key: string, value: unknown): string {
   return formatInlineValue(value);
 }
 
+function projectStatusLatestSelfRepairSummary(resultSummary: Record<string, unknown>): string {
+  const name = stringValue(
+    resultSummary.agent_loop_project_status_latest_self_repair_name
+  );
+  if (!name) return '';
+  const status = stringValue(
+    resultSummary.agent_loop_project_status_latest_self_repair_status
+  );
+  const statusLabel = status ? (ACTION_STATUS_VALUES[status] ?? status) : '状态未知';
+  const mergeSuitable =
+    resultSummary.agent_loop_project_status_latest_self_repair_merge_suitable;
+  const mergeLabel = mergeSuitable === true ? '可合并' : '需复查';
+  return `最近自修复: ${name} / ${statusLabel} / ${mergeLabel}`;
+}
+
 function stringValue(value: unknown): string {
   return typeof value === 'string' && value.trim() ? value : '';
 }
@@ -155,6 +176,9 @@ const ACTION_STATUS_VALUES: Record<string, string> = {
   executed: '已执行',
   completed: '已完成',
   launched: '已启动',
+  done: '已完成',
+  working: '进行中',
+  needs_user: '需确认',
   ok: '已完成',
   blocked: '受阻',
   error: '错误'

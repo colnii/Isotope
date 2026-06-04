@@ -450,6 +450,7 @@ def _project_status_observation(capability_run: dict[str, Any]) -> dict[str, Any
                 summary.get("self_repair_workers"),
                 limit=10,
             ),
+            "latest_self_repair": _safe_mapping(summary.get("latest_self_repair")),
         },
     }
 

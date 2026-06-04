@@ -70,6 +70,20 @@ describe('capacityCallView', () => {
     expect(
       capacityCallSummary({
         ...call,
+        capacityId: 'supervisor.project_status',
+        title: 'Supervisor Project Status',
+        resultSummary: {
+          agent_loop_project_status_status: 'completed',
+          agent_loop_project_status_self_repair_count: 1,
+          agent_loop_project_status_latest_self_repair_name: 'desktop-self-repair',
+          agent_loop_project_status_latest_self_repair_status: 'done',
+          agent_loop_project_status_latest_self_repair_merge_suitable: true
+        }
+      })
+    ).toBe('查看项目态势 · 最近自修复: desktop-self-repair / 已完成 / 可合并');
+    expect(
+      capacityCallSummary({
+        ...call,
         capacityId: 'isotope.self_repair',
         title: 'Isotope Self Repair',
         resultSummary: {

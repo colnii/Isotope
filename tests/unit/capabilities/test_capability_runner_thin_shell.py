@@ -352,6 +352,101 @@ def test_project_status_capability_includes_self_repair_worker_status(tmp_path):
     assert "prompt" not in rendered
 
 
+def test_project_status_capability_includes_latest_self_repair_summary(tmp_path):
+    old_workspace = tmp_path / "repo" / ".worktrees" / "supervisor" / "old-repair"
+    new_workspace = tmp_path / "repo" / ".worktrees" / "supervisor" / "new-repair"
+    old_workspace.mkdir(parents=True)
+    new_workspace.mkdir(parents=True)
+    old_log_path = tmp_path / "supervisor" / "logs" / "old-repair.log"
+    new_log_path = tmp_path / "supervisor" / "logs" / "new-repair.log"
+    old_log_path.parent.mkdir(parents=True)
+    old_log_path.write_text(
+        "\n".join(
+            [
+                "SUPERVISOR_STATUS: working",
+                "SUPERVISOR_SUMMARY: 旧自修复仍在排查。",
+                "SUPERVISOR_NEXT: 继续读取上下文。",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    new_log_path.write_text(
+        "\n".join(
+            [
+                "SUPERVISOR_STATUS: done",
+                "SUPERVISOR_SUMMARY: 已补齐最新自修复结果摘要。",
+                "SUPERVISOR_NEXT: 等待主线合并。",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    append_managed_record(
+        default_registry_path(tmp_path),
+        ManagedCodexRecord(
+            record_id="managed-old-repair",
+            name="old-repair",
+            cwd=str(old_workspace),
+            prompt="old private self-repair prompt",
+            command=("codex", "exec", "-C", str(old_workspace), "prompt"),
+            pid=0,
+            started_at="2026-06-04T00:00:00+00:00",
+            log_path=str(old_log_path),
+            status="launched",
+            backend="process",
+            worker_role="self_repair",
+        ),
+    )
+    append_managed_record(
+        default_registry_path(tmp_path),
+        ManagedCodexRecord(
+            record_id="managed-new-repair",
+            name="new-repair",
+            cwd=str(new_workspace),
+            prompt="new private self-repair prompt",
+            command=("codex", "exec", "-C", str(new_workspace), "prompt"),
+            pid=0,
+            started_at="2026-06-04T01:00:00+00:00",
+            log_path=str(new_log_path),
+            status="launched",
+            backend="process",
+            worker_role="self_repair",
+        ),
+    )
+
+    result = _runner().run_capability(
+        "supervisor.project_status",
+        inputs={"state_root": str(tmp_path)},
+    )
+
+    latest = result["project_state_summary"]["latest_self_repair"]
+    assert latest == {
+        "record_id": "managed-new-repair",
+        "name": "new-repair",
+        "worker_role": "self_repair",
+        "registry_status": "launched",
+        "started_at": "2026-06-04T01:00:00+00:00",
+        "cwd": str(new_workspace),
+        "cwd_exists": True,
+        "branch": "supervisor/new-repair",
+        "protocol_status": "done",
+        "summary": "已补齐最新自修复结果摘要。",
+        "next": "等待主线合并。",
+        "changes_status": "unknown",
+        "changes_summary": "loop 快速状态未读取 diff",
+        "test_status": "skipped",
+        "test_passed": None,
+        "test_exit_code": None,
+        "recommendation": "review_then_merge_candidate",
+        "decision_summary": "worker 已完成且有本地改动；建议先复查 diff 并跑验证，通过后再人工合并。",
+        "merge_suitable": True,
+        "continue_or_split_task": False,
+        "risk_level": "medium",
+    }
+    rendered = json.dumps(result, ensure_ascii=False)
+    assert "new private self-repair prompt" not in rendered
+    assert "old private self-repair prompt" not in rendered
+
+
 def test_runner_discovers_isotope_self_repair_from_default_catalog():
     runner = _runner()
 
@@ -2625,6 +2720,7 @@ def test_worker_review_capability_runs_existing_lightweight_review(tmp_path):
             "registry_status": "launched",
             "cwd": str(workspace),
             "cwd_exists": True,
+            "started_at": "2026-05-27T00:00:00+00:00",
             "worktree": {
                 "exists": True,
                 "branch": "supervisor/feature-a",
