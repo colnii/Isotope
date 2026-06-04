@@ -68,7 +68,7 @@ def test_conversation_loop_accepts_plain_text_as_direct_answer(tmp_path) -> None
     assert "raw_response" not in rendered
 
 
-def test_conversation_loop_manifest_exposes_research_provider_gate_contract(
+def test_conversation_loop_manifest_keeps_research_provider_policy_internal(
     tmp_path,
 ) -> None:
     provider = RecordingConversationProvider(["你好，我在。"])
@@ -85,12 +85,15 @@ def test_conversation_loop_manifest_exposes_research_provider_gate_contract(
     system_prompt = provider.calls[0]["messages"][0]["content"]
 
     assert '"capability_id": "research.search"' in system_prompt
-    assert '"provider"' in system_prompt
-    assert '"enum": ["codex", "tavily"]' in system_prompt
-    assert '"provider_gate"' in system_prompt
-    assert '"enum": ["codex_research", "tavily_research"]' in system_prompt
-    assert '"allow_network"' in system_prompt
-    assert "外部 URL 或普通网页搜索优先用 `provider=tavily" in system_prompt
+    research_manifest = system_prompt.split('"capability_id": "research.search"', 1)[1]
+    research_manifest = research_manifest.split('"capability_id": "research.promote"', 1)[
+        0
+    ]
+    assert '"query"' in research_manifest
+    assert '"provider"' not in research_manifest
+    assert '"provider_gate"' not in research_manifest
+    assert '"allow_network"' not in research_manifest
+    assert "provider=tavily" not in system_prompt
 
 
 def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) -> None:
@@ -229,7 +232,7 @@ def test_conversation_loop_filters_model_supplied_inputs_to_capability_contract(
     assert events[2].payload == {"text": "research.search 已执行。"}
 
 
-def test_conversation_loop_drops_tavily_network_flag_from_codex_research(
+def test_conversation_loop_uses_internal_research_provider_policy(
     tmp_path,
     monkeypatch,
 ) -> None:
@@ -295,13 +298,13 @@ def test_conversation_loop_drops_tavily_network_flag_from_codex_research(
                         "provider_gate": "codex_research",
                         "allow_network": True,
                     },
-                    "rationale": "需要真实 provider。",
+                    "rationale": "需要 research.search。",
                 }
             ),
             json.dumps(
                 {
                     "kind": "direct_answer",
-                    "answer": "research.search 已尝试真实 provider。",
+                    "answer": "research.search 已执行。",
                     "rationale": "基于 capability observation 回答。",
                 }
             ),
@@ -319,12 +322,7 @@ def test_conversation_loop_drops_tavily_network_flag_from_codex_research(
     )
 
     inputs = events[0].payload["input_summary"]
-    assert inputs == {
-        "provider": "codex",
-        "provider_gate": "codex_research",
-        "query": "https://example.com/research",
-        "root": str(tmp_path),
-    }
+    assert inputs == {"query": "https://example.com/research", "root": str(tmp_path)}
     assert events[0].event == "capacity_start"
     assert events[1].event == "capacity_result"
     assert events[1].payload["result_summary"]["agent_loop_research_provider"] == (

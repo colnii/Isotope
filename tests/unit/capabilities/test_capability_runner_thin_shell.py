@@ -244,18 +244,10 @@ def test_runner_discovers_research_search_from_default_catalog():
     assert description["input_contract"]["required"] == [
         "root",
         "query",
-        "provider",
-        "provider_gate",
     ]
-    assert description["input_contract"]["properties"]["provider"]["enum"] == [
-        "codex",
-        "tavily",
-    ]
-    assert "default" not in description["input_contract"]["properties"]["provider"]
-    assert "provider_gate" in description["input_contract"]["properties"]
-    assert "allow_network" in description["input_contract"]["properties"]
+    assert set(description["input_contract"]["properties"]) == {"root", "query"}
     assert "reuses_research_flow" in description["safety_boundaries"]
-    assert "explicit_provider_gate" in description["safety_boundaries"]
+    assert "runtime_provider_policy" in description["safety_boundaries"]
 
 
 def test_runner_discovers_research_promote_from_default_catalog():
@@ -1761,20 +1753,18 @@ def test_memory_promotion_preview_plan_rejects_invalid_inputs(field_name, bad_va
         _runner().plan_capability_run("memory.promotion.preview", inputs=inputs)
 
 
-@pytest.mark.parametrize("provider", ["codex", "tavily"])
-def test_research_search_plan_reports_missing_provider_gate(provider):
+def test_research_search_plan_is_launchable_with_runtime_provider_policy():
     plan = _runner().plan_capability_run(
         "research.search",
         inputs={
             "root": "/tmp/isotope-runtime",
             "query": "capacity research integration",
-            "provider": provider,
         },
     )
 
-    assert plan["can_launch"] is False
-    assert plan["status"] == "missing_inputs"
-    assert plan["missing_inputs"] == ["provider_gate"]
+    assert plan["can_launch"] is True
+    assert plan["status"] == "launchable"
+    assert plan["missing_inputs"] == []
 
 
 def test_worker_review_plan_rejects_non_string_state_root():
@@ -2581,7 +2571,7 @@ def test_screen_observe_capability_reports_backend_failure_without_artifacts(
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
-def test_research_search_capability_runs_default_codex_research_flow(
+def test_research_search_uses_runtime_provider_policy_by_default(
     tmp_path, monkeypatch
 ):
     from isotope.capabilities import research as research_capability
@@ -2675,7 +2665,7 @@ def test_research_search_capability_runs_default_codex_research_flow(
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
-def test_research_search_tavily_gate_uses_research_flow_artifacts(
+def test_research_search_private_tavily_policy_uses_research_flow_artifacts(
     tmp_path, monkeypatch
 ):
     from isotope.capabilities import research as research_capability
@@ -2728,13 +2718,11 @@ def test_research_search_tavily_gate_uses_research_flow_artifacts(
         build_provider,
     )
 
-    result = _runner().run_capability(
-        "research.search",
+    result = research_capability.run_research_search(
         inputs={
             "root": str(tmp_path),
             "query": "capacity research integration",
             "provider": "tavily",
-            "provider_gate": "tavily_research",
             "allow_network": True,
             "tavily_max_results": 3,
         },
@@ -2807,13 +2795,11 @@ def test_research_search_tavily_exact_url_returns_extract_summary(
         lambda provider_id, **kwargs: ExactUrlTavilyProvider(),
     )
 
-    result = _runner().run_capability(
-        "research.search",
+    result = research_capability.run_research_search(
         inputs={
             "root": str(tmp_path),
             "query": "https://example.com/exact-url",
             "provider": "tavily",
-            "provider_gate": "tavily_research",
             "allow_network": True,
         },
     )
@@ -2834,7 +2820,7 @@ def test_research_search_tavily_exact_url_returns_extract_summary(
     assert "raw_content" not in json.dumps(result, ensure_ascii=False)
 
 
-def test_research_search_codex_gate_uses_research_flow_artifacts(
+def test_research_search_default_policy_uses_research_flow_artifacts(
     tmp_path, monkeypatch
 ):
     from isotope.capabilities import research as research_capability
@@ -2892,8 +2878,6 @@ def test_research_search_codex_gate_uses_research_flow_artifacts(
         inputs={
             "root": str(tmp_path),
             "query": "capacity research integration",
-            "provider": "codex",
-            "provider_gate": "codex_research",
         },
     )
 

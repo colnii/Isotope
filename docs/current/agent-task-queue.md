@@ -123,9 +123,9 @@
   和 inspect 都已有 CLI / Supervisor 测试。后续不要另开孤立搜索系统，先复用
   这些 artifact-backed entrypoints。
 - `research.search` 已进入 capability runner / capacity path：`isotope-capability`
-  可 search/plan/run，运行时复用现有 `ResearchFlow`；`codex` / `tavily`
-  需要显式 `provider_gate`，Tavily 网络执行还需要
-  `allow_network=true`；经 capacity agent loop 执行后，`agent_loop_summary` / plain 输出只显示 status、provider、
+  可 search/plan/run，运行时复用现有 `ResearchFlow`；模型只提供 query，
+  capacity path 注入 root，provider / gate / network 策略由 runtime policy
+  内部决定；经 capacity agent loop 执行后，`agent_loop_summary` / plain 输出只显示 status、provider、
   source_count 和 artifact_count，不返回 report 正文或 raw transcript。
 - `research.promote` 已进入 capability runner / capacity path：`isotope-capability`
   可 search/plan/run，运行时复用 existing research promote payload builder 和
@@ -215,9 +215,8 @@
   `content_policy` 这类低敏 recall 元数据，但不会嵌入 query results、source
   refs、provenance 或 raw content。
 - `research.search` 已接入同一 capability runner；capacity path 会给它补
-  `root` default，但 `query/provider/provider_gate` 仍必须来自目标或模型参数。
-  Tavily 网络执行还需要
-  `allow_network=true`。
+  `root` default，模型只需要提供 `query`；provider / gate / network 策略
+  不进入模型可见 input contract。
 - `research.promote` 已接入同一 capability runner；capacity path 会给它补
   `root` default，但 `run_id/artifact_id/agent_id/thread_id` 仍必须来自目标或
   模型参数。当前只生成 proposal summary，不执行 write_memory。
