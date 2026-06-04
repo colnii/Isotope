@@ -94,14 +94,31 @@ def _decision(
     summary: Mapping[str, Any],
     execution: Any | None = None,
 ) -> dict[str, Any]:
+    stage, next_step = _stage_and_next_step(action, source=source)
     return {
         "kind": "worker_lifecycle_decision",
         "action": action,
+        "stage": stage,
+        "next_step": next_step,
         "reason": reason,
         "source": source,
         "summary": dict(summary),
         "execution": execution,
     }
+
+
+def _stage_and_next_step(action: str, *, source: str) -> tuple[str, str]:
+    if action == "dispatch_merge":
+        return "ready_to_merge", "launch_merge_worker"
+    if action == "archive_integrated":
+        if source == "cleanup":
+            return "archived", "cleanup_worktree"
+        return "integrated", "archive_worker"
+    if action == "cleanup_worktree":
+        return "worktree_cleaned", "monitor"
+    if action == "needs_human":
+        return "blocked", "request_human_review"
+    return "monitoring", "monitor"
 
 
 def _integration_summary(payload: Mapping[str, Any] | None) -> dict[str, int]:

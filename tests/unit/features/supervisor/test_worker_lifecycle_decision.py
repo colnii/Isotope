@@ -18,6 +18,8 @@ def test_lifecycle_decision_dispatches_merge_for_ready_workers() -> None:
     assert decision["action"] == "dispatch_merge"
     assert decision["source"] == "integration_review"
     assert decision["reason"] == "ready_to_integrate workers require merge dispatch"
+    assert decision["stage"] == "ready_to_merge"
+    assert decision["next_step"] == "launch_merge_worker"
     assert decision["summary"]["ready_to_integrate"] == 2
     assert decision["summary"]["merge_dispatch_status"] == "ready_to_launch"
 
@@ -63,6 +65,8 @@ def test_lifecycle_decision_records_archive_execution() -> None:
     assert decision["action"] == "archive_integrated"
     assert decision["source"] == "cleanup"
     assert decision["reason"] == "integrated workers archived"
+    assert decision["stage"] == "archived"
+    assert decision["next_step"] == "cleanup_worktree"
     assert decision["summary"]["cleanup_archived"] == 1
     assert decision["execution"] == [
         {
@@ -88,6 +92,8 @@ def test_lifecycle_decision_records_worktree_cleanup_execution() -> None:
     assert decision["action"] == "cleanup_worktree"
     assert decision["source"] == "cleanup"
     assert decision["reason"] == "archived worker worktrees deleted"
+    assert decision["stage"] == "worktree_cleaned"
+    assert decision["next_step"] == "monitor"
     assert decision["summary"]["cleanup_deleted_worktrees"] == 1
     assert decision["execution"] == [
         {
