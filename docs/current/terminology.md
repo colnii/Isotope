@@ -231,6 +231,7 @@
 | `ArtifactStore` | 产物存储，负责保存和读取 artifact 元数据与内容 | 工作区资源 | `src/isotope/workspace/artifacts.py` |
 | `ResourceRef` | 资源引用，指向产物等对象而不是直接暴露全文 | 平台数据 | `src/isotope/platform/schemas/refs.py` |
 | `RetrievalService` | 检索服务，按权限读取产物摘要或内容 | RAG/检索 | `src/isotope/rag/retrieval.py` |
+| `hybrid retrieval` | 通用 RAG 检索基建，先用 BM25 稀疏检索，配置 dense backend 时再融合向量检索；第一外部后端目标是 LanceDB，失败时降级 BM25 | RAG/检索 | `src/isotope/rag/hybrid.py`, `src/isotope/rag/lancedb_store.py` |
 | `ExternalIngestionService` | 外部输入接入，把结构化原始输入保存为 artifact-only 产物 | RAG/接入 | `src/isotope/rag/ingestion.py` |
 | `checkpoint` | 检查点，用于恢复运行状态 | 状态恢复 | `src/isotope/platform/state/checkpoint_store.py` |
 | `event log` | 事件日志，记录系统发生过的事实 | 状态恢复 | `src/isotope/platform/state/event_store.py` |

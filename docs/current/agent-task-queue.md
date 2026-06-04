@@ -67,10 +67,13 @@
   raw prompt/messages/raw response 不出 provider/planner 边界。每个 planner tick
   现在会默认注入 `default_context.memory`，复用 agent-loop memory query 的
   summary / refs / provenance / quality preview；这只是 runtime 构造上下文，
-  不写 event、不读取 full content、不打开 embedding/ranking。当前实现用
-  当前 run goal 查询当前 run memory 和同一 session 内显式晋升的 session
-  memory；其他对话、跨 session/global recall、超长上下文自动整理晋升和
-  自动 promotion policy 仍是后续任务。
+  不写 event、不读取 full content。`default_context.memory` 现在通过通用
+  hybrid retrieval helper 查询低敏 `MemoryRecord` preview 字段；未配置
+  LanceDB 或 dense 查询失败时继续走 BM25。`controlled_expand` 仍然是唯一
+  读取 `MemoryRecord.content` 的授权路径。当前实现用当前 run goal 查询当前
+  run memory 和同一 session 内显式晋升的 session memory；其他对话、跨
+  session/global recall、超长上下文自动整理晋升和自动 promotion policy 仍是
+  后续任务。
 - Agent loop agent-to-agent conversation arbiter 已补第一片：
   `AgentConversationMessage` 表达单个 agent 的候选发言，
   `arbitrate_agent_conversation_turn(...)` 按 interrupt、priority、state lock
