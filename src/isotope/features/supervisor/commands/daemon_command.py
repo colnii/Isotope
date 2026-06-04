@@ -257,7 +257,7 @@ def recent_llm_action_from_log(text: str) -> dict[str, str] | None:
     lines = text.splitlines()
     recent: dict[str, str] | None = None
     for index, raw_line in enumerate(lines):
-        if raw_line.strip() != "[LLM 白名单动作]":
+        if raw_line.strip() not in {"[LLM 白名单动作]", "[程序路由动作]"}:
             continue
         for action_line in lines[index + 1 :]:
             line = action_line.strip()

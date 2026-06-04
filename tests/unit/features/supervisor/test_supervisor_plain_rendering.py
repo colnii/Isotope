@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from isotope.features.supervisor.commands.plain_rendering import print_supervise_plain
+from isotope.features.supervisor.commands.plain_rendering import (
+    print_advice_llm_action_plain,
+    print_supervise_plain,
+)
 
 
 class _StubApi:
@@ -73,9 +76,46 @@ def test_supervise_plain_prints_lifecycle_action_route(capsys):
     print_supervise_plain(payload, report=object(), api=_StubApi())
 
     text = capsys.readouterr().out
+    assert "[程序路由动作]" in text
+    assert "[LLM 白名单动作]" not in text
     assert "cleanup_worktree / recommended_next_step=delete_ready" in text
-    assert "LLM 动作来源：worker_lifecycle_execution" in text
+    assert "动作来源：worker_lifecycle_execution" in text
     assert (
-        "LLM 路由：program-owned lifecycle execution recommended delete_ready"
+        "路由原因：program-owned lifecycle execution recommended delete_ready"
+        in text
+    )
+
+
+def test_advice_plain_labels_model_action_as_llm(capsys):
+    print_advice_llm_action_plain(
+        {
+            "kind": "monitor",
+            "reason": "still running",
+        }
+    )
+
+    text = capsys.readouterr().out
+    assert "LLM 动作：monitor" in text
+    assert "LLM 原因：still running" in text
+
+
+def test_advice_plain_labels_routed_action_as_program(capsys):
+    print_advice_llm_action_plain(
+        {
+            "kind": "cleanup_worktree",
+            "decision_source": "worker_lifecycle_execution",
+            "routing_reason": (
+                "program-owned lifecycle execution recommended delete_ready"
+            ),
+            "recommended_next_step": "delete_ready",
+        }
+    )
+
+    text = capsys.readouterr().out
+    assert "程序路由动作：cleanup_worktree" in text
+    assert "程序路由原因：recommended_next_step=delete_ready" in text
+    assert "动作来源：worker_lifecycle_execution" in text
+    assert (
+        "路由原因：program-owned lifecycle execution recommended delete_ready"
         in text
     )

@@ -64,11 +64,11 @@ def print_supervise_plain(
         print(llm_summary)
     if llm_action := payload.get("llm_action"):
         print()
-        print("[LLM 白名单动作]")
+        print(f"[{llm_action_section_title(llm_action)}]")
         print_llm_action_plain(llm_action, api=api)
     if llm_followup_action := payload.get("llm_followup_action"):
         print()
-        print("[LLM 同轮后续动作]")
+        print(f"[{llm_action_section_title(llm_followup_action, followup=True)}]")
         print_llm_action_plain(llm_followup_action, api=api)
     if auto_action := payload.get("auto_action"):
         print()
@@ -132,10 +132,7 @@ def print_advice(args: Any, *, api: Any | None = None) -> None:
     if recommendation["target_session_id"]:
         print(f"目标：{recommendation['target_session_id']}")
     if llm_action := payload.get("llm_action"):
-        print(f"LLM 动作：{llm_action['kind']}")
-        print(f"LLM 原因：{llm_action_detail(llm_action)}")
-        print_llm_action_route_plain(llm_action)
-        print_ask_user_action_plain(llm_action)
+        print_advice_llm_action_plain(llm_action)
     if command_suggestion is None:
         print("命令：暂无可安全生成的命令草案。")
     else:
@@ -245,6 +242,22 @@ def llm_action_detail(action: dict[str, Any]) -> str:
     return "no reason provided"
 
 
+def is_program_routed_action(action: dict[str, Any]) -> bool:
+    return isinstance(action.get("decision_source"), str) or isinstance(
+        action.get("routing_reason"), str
+    )
+
+
+def llm_action_section_title(
+    action: dict[str, Any],
+    *,
+    followup: bool = False,
+) -> str:
+    if is_program_routed_action(action):
+        return "程序同轮后续动作" if followup else "程序路由动作"
+    return "LLM 同轮后续动作" if followup else "LLM 白名单动作"
+
+
 def print_llm_action_plain(
     action: dict[str, Any],
     *,
@@ -258,10 +271,21 @@ def print_llm_action_plain(
 def print_llm_action_route_plain(action: dict[str, Any]) -> None:
     decision_source = action.get("decision_source")
     if isinstance(decision_source, str) and decision_source:
-        print(f"LLM 动作来源：{decision_source}")
+        print(f"动作来源：{decision_source}")
     routing_reason = action.get("routing_reason")
     if isinstance(routing_reason, str) and routing_reason:
-        print(f"LLM 路由：{routing_reason}")
+        print(f"路由原因：{routing_reason}")
+
+
+def print_advice_llm_action_plain(action: dict[str, Any]) -> None:
+    if is_program_routed_action(action):
+        print(f"程序路由动作：{action['kind']}")
+        print(f"程序路由原因：{llm_action_detail(action)}")
+    else:
+        print(f"LLM 动作：{action['kind']}")
+        print(f"LLM 原因：{llm_action_detail(action)}")
+    print_llm_action_route_plain(action)
+    print_ask_user_action_plain(action)
 
 
 def executed_activity_detail(executed: dict[str, Any], detail: str) -> str:
