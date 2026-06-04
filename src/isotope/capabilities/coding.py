@@ -1,8 +1,7 @@
-"""Native coding capability previews.
+"""Native coding capability planning.
 
-This module defines the first native coding capability contract. It is a
-preview-only boundary: it does not mutate workspaces, run commands, apply
-patches, call providers, or delegate to Codex.
+This module prepares native coding work for the existing isolated workspace
+execution and reviewed apply chain.
 """
 
 from __future__ import annotations
@@ -11,7 +10,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
-CODING_TASK_PREVIEW_CAPABILITY = "coding_task.preview"
+CODING_TASK_PLAN_CAPABILITY = "coding_task.plan"
 
 _ARRAY_INPUTS = ("allowed_paths", "forbidden_paths", "verification_commands")
 _NATIVE_CODING_REQUIREMENTS = [
@@ -22,11 +21,10 @@ _NATIVE_CODING_REQUIREMENTS = [
     "artifact_backed_diff_and_changed_files",
     "optional_vcs_adapter",
 ]
-_BLOCKED_CAPABILITIES: list[str] = []
 
 
 def is_coding_capability(capability_id: str) -> bool:
-    return capability_id == CODING_TASK_PREVIEW_CAPABILITY
+    return capability_id == CODING_TASK_PLAN_CAPABILITY
 
 
 def validate_coding_inputs(
@@ -50,31 +48,33 @@ def validate_coding_inputs(
     return input_mapping
 
 
-def run_coding_task_preview(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
+def run_coding_task_plan(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
     missing_inputs = _missing_required(inputs)
     if missing_inputs:
         raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
     input_mapping = validate_coding_inputs(
-        capability_id=CODING_TASK_PREVIEW_CAPABILITY,
+        capability_id=CODING_TASK_PLAN_CAPABILITY,
         inputs=inputs,
         missing_inputs=missing_inputs,
     )
     cwd = Path(input_mapping["cwd"]).expanduser()
     return {
         "kind": "capability_run_result",
-        "capability_id": CODING_TASK_PREVIEW_CAPABILITY,
+        "capability_id": CODING_TASK_PLAN_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_preview",
-        "preview": {
+        "runner_kind": "native_coding_plan",
+        "plan": {
             "goal": input_mapping["goal"],
             "cwd_status": "exists" if cwd.exists() else "missing",
-            "execution_mode": "proposal_plan",
+            "execution_mode": "isolated_workspace_execution",
             "allowed_path_count": len(input_mapping["allowed_paths"]),
             "forbidden_path_count": len(input_mapping["forbidden_paths"]),
             "verification_command_count": len(input_mapping["verification_commands"]),
-            "native_coding_requirements": list(_NATIVE_CODING_REQUIREMENTS),
-            "blocked_capabilities": list(_BLOCKED_CAPABILITIES),
-            "next_slice": "supervisor_desktop_native_coding_integration",
+            "execution_requirements": list(_NATIVE_CODING_REQUIREMENTS),
+            "next_capabilities": [
+                "coding_task.execute",
+                "coding_task.apply_reviewed_diff",
+            ],
         },
     }
 
@@ -102,8 +102,8 @@ def _string_list_input(value: Any, field_name: str) -> list[str]:
 
 
 __all__ = [
-    "CODING_TASK_PREVIEW_CAPABILITY",
+    "CODING_TASK_PLAN_CAPABILITY",
     "is_coding_capability",
-    "run_coding_task_preview",
+    "run_coding_task_plan",
     "validate_coding_inputs",
 ]

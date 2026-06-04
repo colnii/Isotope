@@ -484,7 +484,7 @@ def _format_workbench_trace(result: dict[str, Any]) -> str:
 def _format_workbench_ask_trace(result: dict[str, Any]) -> str:
     counts = result["context_counts"]
     steps = [
-        "创建 project/task/file 低敏摘要",
+        "创建 project/task/file 工作台上下文",
         f"question: {result['question']}",
         f"answer: {result['answer']}",
         f"provider: {result['provider']}/{result['model']}",

@@ -50,6 +50,8 @@ def test_workbench_ask_demo_trace_is_human_readable():
 
     assert result.returncode == 0, result.stderr
     assert "scenario: workbench-ask" in result.stdout
+    assert "创建 project/task/file 工作台上下文" in result.stdout
+    assert "低敏摘要" not in result.stdout
     assert "question: 秋招作品集下一步做什么？" in result.stdout
     assert "answer: 建议先把作品集项目拆成一个可展示任务。" in result.stdout
     assert "context: projects=1 tasks=1 files=1 search_results=3" in result.stdout

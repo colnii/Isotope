@@ -321,18 +321,18 @@ class CapabilityCatalog:
                     tags=("external", "snapshot", "review"),
                 ),
                 Capability(
-                    capability_id="coding_task.preview",
-                    title="Native Coding Task Preview",
+                    capability_id="coding_task.plan",
+                    title="Native Coding Task Plan",
                     description=(
-                        "Preview a native coding task contract and report the "
-                        "missing execution substrate without delegating to Codex."
+                        "Prepare a native coding task for isolated workspace "
+                        "execution and reviewed apply handoff."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
                     domain_tags=(
                         "native",
                         "coding",
-                        "preview",
+                        "plan",
                         "workspace",
                         "policy",
                     ),
@@ -348,7 +348,7 @@ class CapabilityCatalog:
                             "cwd": {
                                 "type": "string",
                                 "x-system-input": True,
-                                "description": "Workspace directory to preview.",
+                                "description": "Workspace directory to plan against.",
                             },
                             "goal": {
                                 "type": "string",
@@ -379,18 +379,16 @@ class CapabilityCatalog:
                         "fields": [
                             "status",
                             "runner_kind",
-                            "preview",
-                            "native_coding_requirements",
-                            "blocked_capabilities",
+                            "plan",
+                            "execution_requirements",
+                            "next_capabilities",
                         ],
                     },
                     safety_boundaries=(
-                        "no_codex_delegation",
-                        "proposal_plan_no_workspace_write",
-                        "no_patch_apply",
-                        "no_test_execution",
-                        "no_vcs_mutation",
-                        "public_result_metadata",
+                        "isolated_workspace_execution_path",
+                        "reviewed_apply_handoff",
+                        "allowlisted_verification_commands",
+                        "artifact_backed_diff",
                     ),
                     default_enabled=True,
                     network_required=False,

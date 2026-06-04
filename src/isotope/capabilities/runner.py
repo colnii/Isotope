@@ -19,9 +19,9 @@ from .artifact_outputs import (
 )
 from .catalog import CapabilityCatalog
 from .coding import (
-    CODING_TASK_PREVIEW_CAPABILITY,
+    CODING_TASK_PLAN_CAPABILITY,
     is_coding_capability,
-    run_coding_task_preview,
+    run_coding_task_plan,
     validate_coding_inputs,
 )
 from .coding_apply import (
@@ -582,8 +582,8 @@ class CapabilityRunner:
             return run_supervisor_worker_review(inputs=input_mapping)
         if capability_id == SUPERVISOR_GOAL_PLAN_CAPABILITY:
             return run_supervisor_goal_plan(inputs=input_mapping)
-        if capability_id == CODING_TASK_PREVIEW_CAPABILITY:
-            return run_coding_task_preview(inputs=input_mapping)
+        if capability_id == CODING_TASK_PLAN_CAPABILITY:
+            return run_coding_task_plan(inputs=input_mapping)
         if capability_id == CODING_TASK_EXECUTE_CAPABILITY:
             return run_coding_task_execute(inputs=input_mapping)
         if capability_id == CODING_TASK_APPLY_REVIEWED_DIFF_CAPABILITY:
@@ -746,7 +746,7 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
     if is_supervisor_goal_plan_capability(str(capability.get("capability_id", ""))):
         return "supervisor_goal_plan"
     if is_coding_capability(str(capability.get("capability_id", ""))):
-        return "deterministic_preview"
+        return "native_coding_plan"
     if is_coding_execute_capability(str(capability.get("capability_id", ""))):
         return "deterministic_local"
     if is_coding_apply_capability(str(capability.get("capability_id", ""))):

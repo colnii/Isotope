@@ -133,7 +133,7 @@ def test_default_builtins_expose_active_product_candidate_set():
         "code.read",
         "code.search",
         "coding_task.execute",
-        "coding_task.preview",
+        "coding_task.plan",
         "external.snapshot.review",
         "memory.promotion.preview",
         "memory.query",

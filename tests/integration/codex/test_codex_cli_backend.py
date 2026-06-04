@@ -49,14 +49,14 @@ def _proposal() -> ActionProposal:
     )
 
 
-def _decision(proposal: ActionProposal) -> PolicyDecision:
+def _decision(proposal: ActionProposal, *, workspace_mode: str = "shared_ro") -> PolicyDecision:
     return PolicyDecision(
         decision_id="dec_codex_cli",
         proposal_id=proposal.proposal_id,
         outcome="approved",
         grants={
             "tools": ["codex_task"],
-            "workspace": {"mode": "shared_ro"},
+            "workspace": {"mode": workspace_mode},
             "budget": {"seconds": 8},
             "codex_task": {"adapter_required": True},
         },
@@ -66,16 +66,24 @@ def _decision(proposal: ActionProposal) -> PolicyDecision:
     )
 
 
-def _request(tmp_path, *, workspace_mode: str = "shared_ro") -> codex_task.CodexTaskRequest:
+def _request(
+    tmp_path,
+    *,
+    workspace_mode: str = "shared_ro",
+    grant_workspace_mode: str | None = None,
+) -> codex_task.CodexTaskRequest:
     proposal = _proposal()
     return codex_task.build_codex_task_request(
         proposal=proposal,
-        decision=_decision(proposal),
+        decision=_decision(
+            proposal,
+            workspace_mode=grant_workspace_mode or workspace_mode,
+        ),
         execution_id="exec_codex_cli",
         workspace_binding={
             "workspace_id": "workspace_codex_cli",
             "mode": workspace_mode,
-            "root_ref": "workspace://run_codex_cli/shared_ro",
+            "root_ref": f"workspace://run_codex_cli/{workspace_mode}",
         },
         basis_event_ids=["evt_started"],
     )
@@ -93,14 +101,12 @@ def test_codex_cli_backend_invokes_codex_exec_with_stdin_and_isotope_limits(tmp_
             executable="/opt/codex/bin/codex",
             workspace_root=str(workspace_root),
             codex_home=str(codex_home),
-            sandbox="read-only",
-            approval_policy="never",
             max_output_bytes=4096,
         ),
         process_runner=runner,
     )
 
-    result = backend.run(_request(tmp_path))
+    result = backend.run(_request(tmp_path, workspace_mode="workspace_write"))
 
     assert result.status == "completed"
     assert result.reason_code == "codex_cli_completed"
@@ -118,13 +124,13 @@ def test_codex_cli_backend_invokes_codex_exec_with_stdin_and_isotope_limits(tmp_
     assert argv == [
         "/opt/codex/bin/codex",
         "--ask-for-approval",
-        "never",
+        "on-request",
         "exec",
         "--json",
         "--color",
         "never",
         "--sandbox",
-        "read-only",
+        "workspace-write",
         "--cd",
         str(workspace_root.resolve()),
         "--ephemeral",
@@ -301,16 +307,28 @@ def test_codex_cli_backend_requires_discovered_executable(tmp_path):
     assert exc_info.value.structured_details["executable"] == "codex"
 
 
-def test_codex_cli_backend_rejects_unsafe_codex_sandbox(tmp_path):
-    with pytest.raises(ValueError, match="read-only"):
+def test_codex_cli_backend_accepts_writable_codex_execution_modes(tmp_path):
+    config = codex_cli.CodexCliBackendConfig(
+        executable="/opt/codex/bin/codex",
+        workspace_root=str(tmp_path),
+        sandbox="danger-full-access",
+        approval_policy="never",
+    )
+
+    assert config.sandbox == "danger-full-access"
+    assert config.approval_policy == "never"
+
+
+def test_codex_cli_backend_rejects_unknown_codex_sandbox(tmp_path):
+    with pytest.raises(ValueError, match="unsupported codex cli sandbox"):
         codex_cli.CodexCliBackendConfig(
             executable="/opt/codex/bin/codex",
             workspace_root=str(tmp_path),
-            sandbox="danger-full-access",
+            sandbox="unknown",
         )
 
 
-def test_codex_cli_backend_requires_shared_read_snapshot_workspace(tmp_path):
+def test_codex_cli_backend_requires_granted_workspace_mode(tmp_path):
     runner = RecordingProcessRunner(StubCompletedProcess())
     backend = codex_cli.CodexCliBackend(
         codex_cli.CodexCliBackendConfig(
@@ -321,7 +339,13 @@ def test_codex_cli_backend_requires_shared_read_snapshot_workspace(tmp_path):
     )
 
     with pytest.raises(codex_task.CodexTaskProtocolError) as exc_info:
-        backend.run(_request(tmp_path, workspace_mode="workspace_write"))
+        backend.run(
+            _request(
+                tmp_path,
+                workspace_mode="workspace_write",
+                grant_workspace_mode="shared_ro",
+            )
+        )
 
     assert exc_info.value.error_reason_code == "codex_cli_workspace_not_granted"
     assert runner.calls == []

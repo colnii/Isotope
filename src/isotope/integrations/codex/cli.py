@@ -31,8 +31,14 @@ from .cli_supervisor import (
 from .cli_validation import non_empty_string
 
 
-ALLOWED_CODEX_CLI_SANDBOXES = {"read-only"}
-ALLOWED_CODEX_CLI_APPROVAL_POLICIES = {"never"}
+ALLOWED_CODEX_CLI_SANDBOXES = {"read-only", "workspace-write", "danger-full-access"}
+ALLOWED_CODEX_CLI_APPROVAL_POLICIES = {
+    "never",
+    "on-failure",
+    "on-request",
+    "untrusted",
+}
+ALLOWED_CODEX_CLI_WORKSPACE_MODES = {"shared_ro", "workspace_write", "isolated_rw"}
 DEFAULT_CODEX_CLI_MAX_OUTPUT_BYTES = 65536
 CODEX_CLI_PROXY_ENV_NAMES = (
     "HTTP_PROXY",
@@ -51,8 +57,8 @@ class CodexCliBackendConfig:
     workspace_root: str
     executable: str = "codex"
     codex_home: str | None = None
-    sandbox: str = "read-only"
-    approval_policy: str = "never"
+    sandbox: str = "workspace-write"
+    approval_policy: str = "on-request"
     max_output_bytes: int = DEFAULT_CODEX_CLI_MAX_OUTPUT_BYTES
     ephemeral: bool = True
     ignore_user_config: bool = False
@@ -67,9 +73,15 @@ class CodexCliBackendConfig:
         if self.codex_home is not None:
             non_empty_string("codex_home", self.codex_home)
         if self.sandbox not in ALLOWED_CODEX_CLI_SANDBOXES:
-            raise ValueError("codex cli sandbox must be read-only in this first slice")
+            raise ValueError(
+                "unsupported codex cli sandbox: "
+                + ", ".join(sorted(ALLOWED_CODEX_CLI_SANDBOXES))
+            )
         if self.approval_policy not in ALLOWED_CODEX_CLI_APPROVAL_POLICIES:
-            raise ValueError("codex cli approval_policy must be never in this first slice")
+            raise ValueError(
+                "unsupported codex cli approval_policy: "
+                + ", ".join(sorted(ALLOWED_CODEX_CLI_APPROVAL_POLICIES))
+            )
         if not isinstance(self.max_output_bytes, int) or self.max_output_bytes <= 0:
             raise ValueError("max_output_bytes must be a positive integer")
         if not isinstance(self.ephemeral, bool):
@@ -190,14 +202,14 @@ class CodexCliBackend:
         )
 
     def _validate_request_scope(self, request: CodexTaskRequest) -> None:
-        if request.workspace_binding.get("mode") != "shared_ro":
+        binding_mode = request.workspace_binding.get("mode")
+        grant_mode = request.grants.get("workspace", {}).get("mode")
+        if (
+            binding_mode not in ALLOWED_CODEX_CLI_WORKSPACE_MODES
+            or grant_mode != binding_mode
+        ):
             raise CodexTaskProtocolError(
-                "codex cli backend requires shared_ro workspace binding",
-                reason_code="codex_cli_workspace_not_granted",
-            )
-        if request.grants.get("workspace", {}).get("mode") != "shared_ro":
-            raise CodexTaskProtocolError(
-                "codex cli backend requires shared_ro workspace grant",
+                "codex cli backend requires a granted workspace binding",
                 reason_code="codex_cli_workspace_not_granted",
             )
 

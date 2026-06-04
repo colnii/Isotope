@@ -199,6 +199,21 @@ LLM_PROMPT_FORBIDDEN_TERMS = [
     "preview-only",
 ]
 
+ENTRYPOINT_CONTRACT_FILES = [
+    "src/isotope/capabilities/coding.py",
+    "src/isotope/integrations/codex/cli.py",
+    "src/isotope/demo/demo_trace_format.py",
+]
+
+ENTRYPOINT_CONTRACT_FORBIDDEN_TERMS = [
+    "preview-only",
+    "coding_task.preview",
+    "deterministic_preview",
+    "read-only in this first slice",
+    "approval_policy must be never in this first slice",
+    "低敏摘要",
+]
+
 
 def _markdown_prose_lines(text: str) -> list[tuple[int, str]]:
     prose_lines = []
@@ -220,6 +235,17 @@ def test_model_facing_surfaces_do_not_train_conservative_semantics():
         for pattern in FORBIDDEN_PATTERNS:
             if re.search(pattern, text, re.IGNORECASE):
                 violations.append(f"{relative_path}: {pattern}")
+
+    assert violations == []
+
+
+def test_entrypoint_contracts_do_not_keep_disabled_shell_language():
+    violations = []
+    for relative_path in ENTRYPOINT_CONTRACT_FILES:
+        text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for term in ENTRYPOINT_CONTRACT_FORBIDDEN_TERMS:
+            if term in text:
+                violations.append(f"{relative_path}: {term}")
 
     assert violations == []
 
