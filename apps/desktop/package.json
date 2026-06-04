@@ -12,6 +12,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run --passWithNoTests",
     "test:tauri-cdp": "node ./scripts/tauri-cdp-smoke.mjs",
+    "test:tauri-screen": "node ./scripts/tauri-screen-artifact-smoke.mjs",
     "tauri": "tauri"
   },
   "dependencies": {

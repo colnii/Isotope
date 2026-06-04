@@ -85,7 +85,18 @@
   async function openArtifactFolder(artifactId: string) {
     try {
       const artifact = await loadScreenArtifact(artifactId);
-      await windowClient.openPath(artifact.file.directory);
+      const result = await windowClient.openPath(artifact.file.directory);
+      if (import.meta.env.DEV) {
+        (
+          globalThis as typeof globalThis & {
+            __isotopeLastOpenPathResult?: { command: 'open_path'; path: string; status: string };
+          }
+        ).__isotopeLastOpenPathResult = {
+          command: 'open_path',
+          path: result.path,
+          status: result.status
+        };
+      }
     } catch {
       // Error is rendered inside the card.
     }
