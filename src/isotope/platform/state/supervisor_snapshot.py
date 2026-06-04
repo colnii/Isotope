@@ -20,6 +20,8 @@ class SupervisorStateSnapshot:
     notifications: dict[str, Any] = field(default_factory=dict)
     memory: dict[str, Any] = field(default_factory=dict)
     artifacts: dict[str, Any] = field(default_factory=dict)
+    agent_groups: dict[str, Any] = field(default_factory=dict)
+    worker_lifecycle: dict[str, Any] | None = None
     status: str = "ok"
 
     def __post_init__(self) -> None:
@@ -36,6 +38,13 @@ class SupervisorStateSnapshot:
             raise TypeError("memory must be a dict")
         if not isinstance(self.artifacts, dict):
             raise TypeError("artifacts must be a dict")
+        if not isinstance(self.agent_groups, dict):
+            raise TypeError("agent_groups must be a dict")
+        if self.worker_lifecycle is not None and not isinstance(
+            self.worker_lifecycle,
+            dict,
+        ):
+            raise TypeError("worker_lifecycle must be a dict")
 
     @classmethod
     def empty(cls, *, codex_home: Path | str) -> SupervisorStateSnapshot:
@@ -53,6 +62,7 @@ class SupervisorStateSnapshot:
                 "unread_notifications": 0,
                 "memory_records": 0,
                 "artifact_summaries": 0,
+                "agent_groups": 0,
             },
             notifications={"total": 0, "unread": 0, "recent": []},
             memory={
@@ -61,10 +71,11 @@ class SupervisorStateSnapshot:
                 "recent": [],
             },
             artifacts={"total": 0, "recent": []},
+            agent_groups={"total": 0, "recent": []},
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "status": self.status,
             "kind": "supervisor_state_snapshot",
             "schema_version": 1,
@@ -77,7 +88,11 @@ class SupervisorStateSnapshot:
             "notifications": dict(self.notifications),
             "memory": dict(self.memory),
             "artifacts": dict(self.artifacts),
+            "agent_groups": dict(self.agent_groups),
         }
+        if self.worker_lifecycle is not None:
+            payload["worker_lifecycle"] = dict(self.worker_lifecycle)
+        return payload
 
 
 def _required_text(value: Any, field_name: str) -> str:

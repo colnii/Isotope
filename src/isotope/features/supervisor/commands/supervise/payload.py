@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from isotope.features.supervisor.state.worker_lifecycle import (
+    record_worker_lifecycle_decision,
+)
+
 
 @dataclass
 class SuperviseBasePayload:
@@ -135,8 +139,32 @@ def append_supervise_final_payload(
         from isotope.features.supervisor import runner as api
 
     payload["decision_requests"] = api._decision_request_dicts(args)
+    _record_supervise_worker_lifecycle(args, payload, api=api)
     if getattr(args, "command", None) == "loop":
         payload["lifecycle_trace"] = api._lifecycle_trace_payload(
             args,
             lightweight=True,
         )
+
+
+def _record_supervise_worker_lifecycle(
+    args: Any,
+    payload: dict[str, Any],
+    *,
+    api: Any,
+) -> None:
+    decision = payload.get("worker_lifecycle_decision")
+    codex_home = getattr(args, "codex_home", None)
+    if not isinstance(decision, dict) or codex_home is None:
+        return
+    record_worker_lifecycle_decision(
+        codex_home=Path(codex_home),
+        worker_lifecycle_decision=decision,
+    )
+    state_snapshot = api.build_supervisor_state_snapshot(
+        codex_home=Path(codex_home)
+    )
+    payload["state_snapshot"] = state_snapshot
+    lifecycle = state_snapshot.get("worker_lifecycle")
+    if isinstance(lifecycle, dict):
+        payload["worker_lifecycle"] = lifecycle

@@ -7,7 +7,8 @@ from typing import Any
 
 STATE_SNAPSHOT_SOURCE_LABEL = (
     "goal queue / decision requests / lane state / worker events / "
-    "notifications / memory records / artifact summaries"
+    "notifications / memory records / artifact summaries / "
+    "agent groups / worker lifecycle"
 )
 DEGRADED_SNAPSHOT_SCHEMA_LABEL = "degraded snapshot schema"
 

@@ -899,7 +899,8 @@ def test_codex_supervisor_runner_dashboard_json_includes_notifications(
         "schema_reason": None,
         "source_label": (
             "goal queue / decision requests / lane state / "
-            "worker events / notifications / memory records / artifact summaries"
+            "worker events / notifications / memory records / artifact summaries / "
+            "agent groups / worker lifecycle"
         ),
     }
     assert payload["notifications"][2] == {
@@ -971,7 +972,8 @@ def test_codex_supervisor_dashboard_fallback_snapshot_keeps_schema_meta():
         "schema_reason": None,
         "source_label": (
             "goal queue / decision requests / lane state / "
-            "worker events / notifications / memory records / artifact summaries"
+            "worker events / notifications / memory records / artifact summaries / "
+            "agent groups / worker lifecycle"
         ),
     }
 
@@ -1010,7 +1012,8 @@ def test_codex_supervisor_dashboard_snapshot_meta_marks_legacy_snapshot_degraded
         "schema_reason": "missing kind",
         "source_label": (
             "goal queue / decision requests / lane state / "
-            "worker events / notifications / memory records / artifact summaries"
+            "worker events / notifications / memory records / artifact summaries / "
+            "agent groups / worker lifecycle"
         ),
     }
 
@@ -2882,7 +2885,8 @@ def test_codex_supervisor_web_dashboard_payload_builder_keeps_page_fields(tmp_pa
         "schema_reason": None,
         "source_label": (
             "goal queue / decision requests / lane state / "
-            "worker events / notifications / memory records / artifact summaries"
+            "worker events / notifications / memory records / artifact summaries / "
+            "agent groups / worker lifecycle"
         ),
     }
     assert payload["state_snapshot"]["summary"] == {
@@ -2897,6 +2901,7 @@ def test_codex_supervisor_web_dashboard_payload_builder_keeps_page_fields(tmp_pa
         "unread_notifications": 0,
         "memory_records": 0,
         "artifact_summaries": 0,
+        "agent_groups": 0,
     }
     assert payload["current"]["counts"] == {
         "active_goals": 0,
@@ -2950,7 +2955,8 @@ def test_codex_supervisor_web_dashboard_payload_builder_keeps_degraded_snapshot_
         "schema_reason": "missing kind",
         "source_label": (
             "goal queue / decision requests / lane state / "
-            "worker events / notifications / memory records / artifact summaries"
+            "worker events / notifications / memory records / artifact summaries / "
+            "agent groups / worker lifecycle"
         ),
     }
     assert payload["workspace_cwd"] == "/tmp/isotope-workspace"
@@ -13968,6 +13974,7 @@ def test_codex_supervisor_runner_up_starts_daemon_with_strong_worker_defaults(
                 "unread_notifications": 0,
                 "memory_records": 0,
                 "artifact_summaries": 0,
+                "agent_groups": 0,
             },
             "active_goals": [],
             "active_decisions": [],
@@ -13980,6 +13987,7 @@ def test_codex_supervisor_runner_up_starts_daemon_with_strong_worker_defaults(
                 "recent": [],
             },
             "artifacts": {"total": 0, "recent": []},
+            "agent_groups": {"total": 0, "recent": []},
         },
         "night_summary": {
             "active_goals": 0,

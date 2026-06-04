@@ -13,6 +13,9 @@ from isotope.features.supervisor.planner.goal_queue import (
 import isotope.features.supervisor.planner.goal_queue as feature_goal_queue
 import isotope.features.supervisor.state.lane_state as feature_lane_state
 from isotope.features.supervisor.state.lane_state import record_lane_failure
+from isotope.features.supervisor.state.worker_lifecycle import (
+    record_worker_lifecycle_decision,
+)
 from isotope.features.supervisor.runner import main as supervisor_main
 import isotope.features.supervisor.state.projection as feature_projection
 from isotope.platform.state.active_goal import SupervisorActiveGoal
@@ -35,6 +38,52 @@ def test_supervisor_state_projection_uses_platform_snapshot_schema(tmp_path):
     snapshot = build_supervisor_state_snapshot(codex_home=tmp_path)
 
     assert snapshot == SupervisorStateSnapshot.empty(codex_home=tmp_path).to_dict()
+
+
+def test_supervisor_state_snapshot_includes_latest_worker_lifecycle(tmp_path):
+    record_worker_lifecycle_decision(
+        codex_home=tmp_path,
+        worker_lifecycle_decision={
+            "stage": "ready_to_merge",
+            "next_step": "launch_merge_worker",
+            "policy": {
+                "policy_status": "program_resolved",
+                "program_action": "dispatch_merge",
+                "remaining_step": "launch_merge_worker",
+                "blocked_reason": None,
+            },
+            "timeline": [
+                {
+                    "stage": "ready_to_merge",
+                    "action": "dispatch_merge",
+                    "source": "integration_review",
+                    "status": "pending",
+                    "executed": False,
+                }
+            ],
+        },
+    )
+
+    snapshot = build_supervisor_state_snapshot(codex_home=tmp_path)
+
+    assert snapshot["worker_lifecycle"] == {
+        "status": "ok",
+        "stage": "ready_to_merge",
+        "next_step": "launch_merge_worker",
+        "policy_status": "program_resolved",
+        "program_action": "dispatch_merge",
+        "remaining_step": "launch_merge_worker",
+        "blocked_reason": None,
+        "timeline": [
+            {
+                "stage": "ready_to_merge",
+                "action": "dispatch_merge",
+                "source": "integration_review",
+                "status": "pending",
+                "executed": False,
+            }
+        ],
+    }
 
 
 def test_supervisor_goal_status_uses_platform_schema():
@@ -251,6 +300,7 @@ def test_supervisor_state_snapshot_empty_root_is_read_snapshot(tmp_path):
             "unread_notifications": 0,
             "memory_records": 0,
             "artifact_summaries": 0,
+            "agent_groups": 0,
         },
         "active_goals": [],
         "active_decisions": [],
@@ -263,6 +313,7 @@ def test_supervisor_state_snapshot_empty_root_is_read_snapshot(tmp_path):
             "recent": [],
         },
         "artifacts": {"total": 0, "recent": []},
+        "agent_groups": {"total": 0, "recent": []},
     }
     assert list(tmp_path.rglob("*")) == []
 
@@ -331,6 +382,7 @@ def test_supervisor_state_snapshot_projects_existing_public_metadata_state(tmp_p
         "unread_notifications": 2,
         "memory_records": 1,
         "artifact_summaries": 0,
+        "agent_groups": 0,
     }
     assert snapshot["active_decisions"] == [
         {
@@ -541,7 +593,8 @@ def test_supervisor_state_command_plain_prints_compact_summary(tmp_path, capsys)
     assert "状态快照：supervisor_state_snapshot v1" in text
     assert (
         "来源账本：goal queue / decision requests / lane state / "
-        "worker events / notifications / memory records / artifact summaries"
+        "worker events / notifications / memory records / artifact summaries / "
+        "agent groups / worker lifecycle"
     ) in text
     assert "active goals：0" in text
     assert "decisions：1" in text

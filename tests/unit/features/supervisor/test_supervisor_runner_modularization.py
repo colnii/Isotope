@@ -1068,6 +1068,72 @@ def test_supervise_payload_omits_lifecycle_trace_outside_loop():
     assert payload == {"decision_requests": []}
 
 
+def test_supervise_final_payload_records_worker_lifecycle_state(tmp_path):
+    payload_module = importlib.import_module(
+        "isotope.features.supervisor.commands.supervise.payload"
+    )
+
+    class StubApi:
+        def _decision_request_dicts(self, args):
+            return []
+
+        def build_supervisor_state_snapshot(self, *, codex_home):
+            from isotope.features.supervisor.state.projection import (
+                build_supervisor_state_snapshot,
+            )
+
+            return build_supervisor_state_snapshot(codex_home=codex_home)
+
+    payload: dict[str, object] = {
+        "worker_lifecycle_decision": {
+            "stage": "archived",
+            "next_step": "cleanup_worktree",
+            "policy": {
+                "policy_status": "program_resolved",
+                "program_action": "archive_integrated",
+                "remaining_step": "cleanup_worktree",
+                "blocked_reason": None,
+            },
+            "timeline": [
+                {
+                    "stage": "archived",
+                    "action": "archive_integrated",
+                    "source": "cleanup",
+                    "status": "executed",
+                    "executed": True,
+                }
+            ],
+        }
+    }
+
+    payload_module.append_supervise_final_payload(
+        argparse.Namespace(command="supervise", codex_home=str(tmp_path)),
+        payload,
+        api=StubApi(),
+    )
+
+    assert payload["worker_lifecycle"] == {
+        "status": "ok",
+        "stage": "archived",
+        "next_step": "cleanup_worktree",
+        "policy_status": "program_resolved",
+        "program_action": "archive_integrated",
+        "remaining_step": "cleanup_worktree",
+        "blocked_reason": None,
+        "timeline": [
+            {
+                "stage": "archived",
+                "action": "archive_integrated",
+                "source": "cleanup",
+                "status": "executed",
+                "executed": True,
+            }
+        ],
+    }
+    assert payload["state_snapshot"]["worker_lifecycle"] == payload["worker_lifecycle"]
+    assert (tmp_path / "supervisor" / "worker_lifecycle.jsonl").is_file()
+
+
 def test_supervisor_runner_delegates_supervise_action_selection():
     action_module = importlib.import_module(
         "isotope.features.supervisor.commands.supervise.action"
