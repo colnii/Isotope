@@ -16,6 +16,8 @@ def record_worker_lifecycle_decision(
     *,
     codex_home: Path | str,
     worker_lifecycle_decision: dict[str, Any],
+    worker_lifecycle_execution: dict[str, Any] | None = None,
+    worker_lifecycle_execution_result: dict[str, Any] | None = None,
     now: Callable[[], datetime] | None = None,
 ) -> dict[str, Any] | None:
     projection = worker_lifecycle_projection_payload(
@@ -23,25 +25,54 @@ def record_worker_lifecycle_decision(
     )
     if projection.get("status") != "ok":
         return None
-    if read_latest_worker_lifecycle(codex_home=codex_home) == projection:
+    projected_event = {
+        "worker_lifecycle": projection,
+        "worker_lifecycle_execution": worker_lifecycle_execution_projection_payload(
+            worker_lifecycle_execution
+        ),
+        "worker_lifecycle_execution_result": worker_lifecycle_execution_result_payload(
+            worker_lifecycle_execution_result
+        ),
+    }
+    projected_event = {
+        key: value
+        for key, value in projected_event.items()
+        if isinstance(value, dict) and value.get("status") != "absent"
+    }
+    latest_event = read_latest_worker_lifecycle_event(codex_home=codex_home)
+    if (
+        isinstance(latest_event, dict)
+        and _event_projection_payload(latest_event) == projected_event
+    ):
         return None
     event = {
         "event": "worker_lifecycle_projection",
         "created_at": _ensure_aware_utc((now or _utc_now)()).isoformat(),
-        "worker_lifecycle": projection,
+        **projected_event,
     }
     _append_worker_lifecycle_event(default_worker_lifecycle_path(codex_home), event)
     return event
 
 
 def read_latest_worker_lifecycle(*, codex_home: Path | str) -> dict[str, Any] | None:
+    latest = read_latest_worker_lifecycle_event(codex_home=codex_home)
+    if not isinstance(latest, dict):
+        return None
+    lifecycle = latest.get("worker_lifecycle")
+    return dict(lifecycle) if isinstance(lifecycle, dict) else None
+
+
+def read_latest_worker_lifecycle_event(
+    *,
+    codex_home: Path | str,
+) -> dict[str, Any] | None:
     latest: dict[str, Any] | None = None
     for event in _read_worker_lifecycle_events(default_worker_lifecycle_path(codex_home)):
         if event.get("event") != "worker_lifecycle_projection":
             continue
         lifecycle = event.get("worker_lifecycle")
         if isinstance(lifecycle, dict):
-            latest = dict(lifecycle)
+            latest = dict(event)
     return latest
 
 
@@ -68,6 +99,49 @@ def worker_lifecycle_projection_payload(
         "remaining_step": _lifecycle_scalar(policy.get("remaining_step")),
         "blocked_reason": _lifecycle_scalar(policy.get("blocked_reason")),
         "timeline": _worker_lifecycle_timeline_payload(decision.get("timeline")),
+    }
+
+
+def worker_lifecycle_execution_projection_payload(
+    worker_lifecycle_execution: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(worker_lifecycle_execution, dict):
+        return {"status": "absent"}
+    payload = {
+        "kind": _lifecycle_scalar(worker_lifecycle_execution.get("kind")),
+        "source": _lifecycle_scalar(worker_lifecycle_execution.get("source")),
+        "next_step": _lifecycle_scalar(worker_lifecycle_execution.get("next_step")),
+        "status": _lifecycle_scalar(worker_lifecycle_execution.get("status")),
+    }
+    cleanup_candidates = _cleanup_candidate_payloads(
+        worker_lifecycle_execution.get("cleanup_candidates")
+    )
+    if cleanup_candidates:
+        payload["cleanup_candidates"] = cleanup_candidates
+    delete_worktree_actions = _delete_worktree_action_payloads(
+        worker_lifecycle_execution.get("delete_worktree_actions")
+    )
+    if delete_worktree_actions:
+        payload["delete_worktree_actions"] = delete_worktree_actions
+    merge_dispatch = _merge_dispatch_payload(
+        worker_lifecycle_execution.get("merge_dispatch")
+    )
+    if merge_dispatch:
+        payload["merge_dispatch"] = merge_dispatch
+    return payload
+
+
+def worker_lifecycle_execution_result_payload(
+    worker_lifecycle_execution_result: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(worker_lifecycle_execution_result, dict):
+        return {"status": "absent"}
+    return {
+        "kind": _lifecycle_scalar(worker_lifecycle_execution_result.get("kind")),
+        "source": _lifecycle_scalar(worker_lifecycle_execution_result.get("source")),
+        "skipped": worker_lifecycle_execution_result.get("skipped") is True,
+        "reason": _lifecycle_scalar(worker_lifecycle_execution_result.get("reason")),
+        "count": _lifecycle_scalar(worker_lifecycle_execution_result.get("count")),
     }
 
 
@@ -141,6 +215,65 @@ def _worker_lifecycle_timeline_payload(timeline: Any) -> list[dict[str, Any]]:
             }
         )
     return items
+
+
+def _cleanup_candidate_payloads(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    items: list[dict[str, Any]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        candidate = {
+            "kind": _lifecycle_scalar(item.get("kind")),
+            "name": _lifecycle_scalar(item.get("name")),
+            "record_id": _lifecycle_scalar(item.get("record_id")),
+        }
+        items.append(
+            {key: value for key, value in candidate.items() if value is not None}
+        )
+    return items
+
+
+def _delete_worktree_action_payloads(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    items: list[dict[str, Any]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        action = {
+            "kind": _lifecycle_scalar(item.get("kind")),
+            "target_name": _lifecycle_scalar(item.get("target_name")),
+            "record_id": _lifecycle_scalar(item.get("record_id")),
+            "base_ref": _lifecycle_scalar(item.get("base_ref")),
+            "source": _lifecycle_scalar(item.get("source")),
+        }
+        items.append(
+            {key: value for key, value in action.items() if value is not None}
+        )
+    return items
+
+
+def _merge_dispatch_payload(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    launch_spec = value.get("launch_spec")
+    launch_spec = launch_spec if isinstance(launch_spec, dict) else {}
+    payload = {
+        "status": _lifecycle_scalar(value.get("status")),
+        "target_name": _lifecycle_scalar(launch_spec.get("target_name")),
+        "source": _lifecycle_scalar(launch_spec.get("source")),
+    }
+    return {key: value for key, value in payload.items() if value is not None}
+
+
+def _event_projection_payload(event: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: dict(value)
+        for key, value in event.items()
+        if key.startswith("worker_lifecycle") and isinstance(value, dict)
+    }
 
 
 def _lifecycle_scalar(value: Any) -> str | bool | int | float | None:

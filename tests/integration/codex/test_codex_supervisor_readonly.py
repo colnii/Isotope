@@ -876,6 +876,29 @@ def test_codex_supervisor_runner_dashboard_json_reads_persisted_worker_lifecycle
                 }
             ],
         },
+        worker_lifecycle_execution={
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "next_step": "cleanup_worktree",
+            "status": "ready_to_delete",
+            "delete_worktree_actions": [
+                {
+                    "kind": "delete_worktree",
+                    "target_name": "source-worker",
+                    "record_id": "managed-source",
+                    "confirm_delete_worktree": True,
+                    "base_ref": "main",
+                    "source": "worker_lifecycle",
+                }
+            ],
+        },
+        worker_lifecycle_execution_result={
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "skipped": True,
+            "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+            "count": 1,
+        },
     )
 
     exit_code = supervisor_main(
@@ -894,7 +917,18 @@ def test_codex_supervisor_runner_dashboard_json_reads_persisted_worker_lifecycle
     assert payload["worker_lifecycle"]["stage"] == "archived"
     assert payload["worker_lifecycle"]["next_step"] == "cleanup_worktree"
     assert payload["worker_lifecycle"]["policy_status"] == "program_resolved"
+    assert payload["worker_lifecycle_execution"] == {
+        "status": "ready_to_delete",
+        "kind": "cleanup_worktree",
+        "next_step": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "action_count": 1,
+        "execution_status": "skipped",
+        "execution_reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+        "execute_hint": "--lifecycle-cleanup-execute",
+    }
     assert payload["state_snapshot"]["worker_lifecycle"] == payload["worker_lifecycle"]
+    assert payload["state_snapshot"]["worker_lifecycle_execution"]["kind"] == "cleanup_worktree"
 
 
 def test_codex_supervisor_runner_dashboard_json_includes_notifications(

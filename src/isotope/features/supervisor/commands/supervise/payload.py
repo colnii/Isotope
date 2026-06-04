@@ -160,6 +160,14 @@ def _record_supervise_worker_lifecycle(
     record_worker_lifecycle_decision(
         codex_home=Path(codex_home),
         worker_lifecycle_decision=decision,
+        worker_lifecycle_execution=(
+            payload.get("worker_lifecycle_execution")
+            if isinstance(payload.get("worker_lifecycle_execution"), dict)
+            else None
+        ),
+        worker_lifecycle_execution_result=(
+            payload.get("executed") if isinstance(payload.get("executed"), dict) else None
+        ),
     )
     state_snapshot = api.build_supervisor_state_snapshot(
         codex_home=Path(codex_home)
@@ -168,3 +176,9 @@ def _record_supervise_worker_lifecycle(
     lifecycle = state_snapshot.get("worker_lifecycle")
     if isinstance(lifecycle, dict):
         payload["worker_lifecycle"] = lifecycle
+    lifecycle_execution = state_snapshot.get("worker_lifecycle_execution")
+    if isinstance(lifecycle_execution, dict):
+        payload["worker_lifecycle_execution"] = lifecycle_execution
+    lifecycle_execution_result = state_snapshot.get("worker_lifecycle_execution_result")
+    if isinstance(lifecycle_execution_result, dict):
+        payload["worker_lifecycle_execution_result"] = lifecycle_execution_result

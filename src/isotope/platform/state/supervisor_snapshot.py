@@ -22,6 +22,8 @@ class SupervisorStateSnapshot:
     artifacts: dict[str, Any] = field(default_factory=dict)
     agent_groups: dict[str, Any] = field(default_factory=dict)
     worker_lifecycle: dict[str, Any] | None = None
+    worker_lifecycle_execution: dict[str, Any] | None = None
+    worker_lifecycle_execution_result: dict[str, Any] | None = None
     status: str = "ok"
 
     def __post_init__(self) -> None:
@@ -45,6 +47,16 @@ class SupervisorStateSnapshot:
             dict,
         ):
             raise TypeError("worker_lifecycle must be a dict")
+        if self.worker_lifecycle_execution is not None and not isinstance(
+            self.worker_lifecycle_execution,
+            dict,
+        ):
+            raise TypeError("worker_lifecycle_execution must be a dict")
+        if self.worker_lifecycle_execution_result is not None and not isinstance(
+            self.worker_lifecycle_execution_result,
+            dict,
+        ):
+            raise TypeError("worker_lifecycle_execution_result must be a dict")
 
     @classmethod
     def empty(cls, *, codex_home: Path | str) -> SupervisorStateSnapshot:
@@ -92,6 +104,14 @@ class SupervisorStateSnapshot:
         }
         if self.worker_lifecycle is not None:
             payload["worker_lifecycle"] = dict(self.worker_lifecycle)
+        if self.worker_lifecycle_execution is not None:
+            payload["worker_lifecycle_execution"] = dict(
+                self.worker_lifecycle_execution
+            )
+        if self.worker_lifecycle_execution_result is not None:
+            payload["worker_lifecycle_execution_result"] = dict(
+                self.worker_lifecycle_execution_result
+            )
         return payload
 
 

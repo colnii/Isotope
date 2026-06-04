@@ -8,6 +8,8 @@ from typing import Any
 
 from isotope.features.supervisor.state.projection import (
     build_supervisor_state_snapshot,
+)
+from isotope.features.supervisor.state.worker_lifecycle import (
     worker_lifecycle_projection_payload,
 )
 from isotope.platform.ids import new_id

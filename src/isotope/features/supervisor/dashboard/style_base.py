@@ -111,11 +111,27 @@ DASHBOARD_STYLE_BASE = r'''    :root {
       overflow-wrap: anywhere;
     }
     .worker-lifecycle-detail,
+    .worker-lifecycle-execution,
     .worker-lifecycle-timeline {
       margin-top: 8px;
       color: var(--muted);
       font-size: 12px;
       overflow-wrap: anywhere;
+    }
+    .worker-lifecycle-execution {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 8px;
+    }
+    .worker-lifecycle-execution[data-state="executed"] {
+      border-left: 4px solid var(--ok);
+    }
+    .worker-lifecycle-execution[data-state="skipped"] {
+      border-left: 4px solid var(--attention);
+    }
+    .worker-lifecycle-execution[data-state="planned"] {
+      border-left: 4px solid var(--working);
     }
     .operator-focus {
       margin-bottom: 18px;

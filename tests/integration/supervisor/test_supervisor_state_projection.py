@@ -86,6 +86,66 @@ def test_supervisor_state_snapshot_includes_latest_worker_lifecycle(tmp_path):
     }
 
 
+def test_supervisor_state_snapshot_includes_latest_lifecycle_execution(tmp_path):
+    record_worker_lifecycle_decision(
+        codex_home=tmp_path,
+        worker_lifecycle_decision={
+            "stage": "archived",
+            "next_step": "cleanup_worktree",
+            "policy": {
+                "policy_status": "program_resolved",
+                "program_action": "archive_integrated",
+                "remaining_step": "cleanup_worktree",
+                "blocked_reason": None,
+            },
+            "timeline": [],
+        },
+        worker_lifecycle_execution={
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "next_step": "cleanup_worktree",
+            "status": "ready_to_delete",
+            "delete_worktree_actions": [
+                {
+                    "kind": "delete_worktree",
+                    "target_name": "source-worker",
+                    "record_id": "managed-source",
+                    "confirm_delete_worktree": True,
+                    "base_ref": "main",
+                    "source": "worker_lifecycle",
+                }
+            ],
+        },
+        worker_lifecycle_execution_result={
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "skipped": True,
+            "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+            "count": 1,
+        },
+    )
+
+    snapshot = build_supervisor_state_snapshot(codex_home=tmp_path)
+
+    assert snapshot["worker_lifecycle_execution"]["kind"] == "cleanup_worktree"
+    assert snapshot["worker_lifecycle_execution"]["delete_worktree_actions"] == [
+        {
+            "kind": "delete_worktree",
+            "target_name": "source-worker",
+            "record_id": "managed-source",
+            "base_ref": "main",
+            "source": "worker_lifecycle",
+        }
+    ]
+    assert snapshot["worker_lifecycle_execution_result"] == {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "skipped": True,
+        "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+        "count": 1,
+    }
+
+
 def test_supervisor_goal_status_uses_platform_schema():
     assert feature_goal_queue.SupervisorGoalStatus is SupervisorGoalStatus
 

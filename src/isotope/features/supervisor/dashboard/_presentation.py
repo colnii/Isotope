@@ -18,6 +18,8 @@ from isotope.platform.state.multi_worker import (
 )
 from isotope.features.supervisor.state.projection import (
     build_supervisor_state_snapshot,
+)
+from isotope.features.supervisor.state.worker_lifecycle import (
     worker_lifecycle_projection_payload,
 )
 
@@ -107,6 +109,9 @@ def dashboard_payload(
         "worker_lifecycle": worker_lifecycle_projection_payload(
             worker_lifecycle_decision=worker_lifecycle_decision,
             state_snapshot=snapshot,
+        ),
+        "worker_lifecycle_execution": dashboard_worker_lifecycle_execution_payload(
+            snapshot
         ),
         "state_snapshot_meta": dashboard_state_snapshot_meta(snapshot),
         "state_snapshot": snapshot,
@@ -805,6 +810,9 @@ def print_dashboard_plain(payload: dict[str, Any], *, api: Any | None = None) ->
     print_dashboard_dependency_batch(payload)
     print_dashboard_capacity_summaries(payload)
     print_dashboard_worker_lifecycle(payload.get("worker_lifecycle"))
+    print_dashboard_worker_lifecycle_execution(
+        payload.get("worker_lifecycle_execution")
+    )
     for group_key, label in api.DASHBOARD_GROUP_LABELS.items():
         items = payload["groups"][group_key]
         print(f"{label}：{len(items)}")
@@ -839,6 +847,77 @@ def print_dashboard_worker_lifecycle(worker_lifecycle: Any) -> None:
     )
     if timeline:
         print(f"  timeline: {timeline}")
+
+
+def print_dashboard_worker_lifecycle_execution(execution: Any) -> None:
+    if not isinstance(execution, dict) or execution.get("status") == "absent":
+        return
+    print(
+        "  execution="
+        f"{_dashboard_text(execution.get('kind'), 'unknown')} "
+        f"status={_dashboard_text(execution.get('execution_status'), 'planned')} "
+        f"actions={_dashboard_text(execution.get('action_count'), 0)}"
+    )
+    reason = _dashboard_text(execution.get("execution_reason"), "")
+    hint = _dashboard_text(execution.get("execute_hint"), "")
+    if reason:
+        print(f"  execution_reason={reason}")
+    if hint:
+        print(f"  execute_hint={hint}")
+
+
+def dashboard_worker_lifecycle_execution_payload(
+    state_snapshot: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(state_snapshot, dict):
+        return {"status": "absent"}
+    plan = state_snapshot.get("worker_lifecycle_execution")
+    if not isinstance(plan, dict):
+        return {"status": "absent"}
+    result = state_snapshot.get("worker_lifecycle_execution_result")
+    result = result if isinstance(result, dict) else None
+    execution_status = "planned"
+    if result is not None:
+        execution_status = "skipped" if result.get("skipped") is True else "executed"
+    return {
+        "status": _dashboard_text(plan.get("status"), "planned"),
+        "kind": _dashboard_text(plan.get("kind"), "unknown"),
+        "next_step": _dashboard_text(plan.get("next_step"), "unknown"),
+        "source": _dashboard_text(plan.get("source"), "unknown"),
+        "action_count": _dashboard_lifecycle_execution_action_count(plan),
+        "execution_status": execution_status,
+        "execution_reason": (
+            _dashboard_text(result.get("reason"), "") if result is not None else ""
+        ),
+        "execute_hint": _dashboard_lifecycle_execution_hint(plan, result),
+    }
+
+
+def _dashboard_lifecycle_execution_action_count(plan: dict[str, Any]) -> int:
+    if isinstance(plan.get("delete_worktree_actions"), list):
+        return len(plan["delete_worktree_actions"])
+    if isinstance(plan.get("cleanup_candidates"), list):
+        return len(plan["cleanup_candidates"])
+    if isinstance(plan.get("merge_dispatch"), dict):
+        return 1
+    return 0
+
+
+def _dashboard_lifecycle_execution_hint(
+    plan: dict[str, Any],
+    result: dict[str, Any] | None,
+) -> str:
+    kind = plan.get("kind")
+    reason = result.get("reason") if isinstance(result, dict) else None
+    if kind in {"archive_cleanup", "cleanup_worktree"}:
+        return "--lifecycle-cleanup-execute"
+    if (
+        kind == "merge_dispatch"
+        and isinstance(reason, str)
+        and "merge dispatch" in reason
+    ):
+        return "--merge-dispatch-execute"
+    return ""
 
 
 def _dashboard_worker_lifecycle_timeline_summary(timeline: Any) -> str:

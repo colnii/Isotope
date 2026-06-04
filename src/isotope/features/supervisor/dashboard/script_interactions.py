@@ -338,6 +338,7 @@ DASHBOARD_SCRIPT_INTERACTIONS = r'''    async function copyResumeCommand(item, b
       document.getElementById("snapshot-meta").textContent = snapshotMetaText;
       document.getElementById("recommendation").textContent = payload.recommendation.label;
       renderWorkerLifecycle(payload.worker_lifecycle || {});
+      renderWorkerLifecycleExecution(payload.worker_lifecycle_execution || {});
       renderOperatorFocus(payload);
       renderControlCenter(payload);
       renderGoalQueue(payload.current || {});

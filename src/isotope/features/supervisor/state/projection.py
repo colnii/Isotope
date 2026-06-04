@@ -27,8 +27,8 @@ from ..planner.goal_queue import (
 )
 from ..state.lane_state import LaneState, default_lane_state_path, read_lane_states
 from ..state.worker_lifecycle import (
+    read_latest_worker_lifecycle_event,
     read_latest_worker_lifecycle,
-    worker_lifecycle_projection_payload,
 )
 
 
@@ -62,7 +62,20 @@ def build_supervisor_state_snapshot(
     memory = _memory_payload(codex_home_path, limit=worker_event_limit)
     artifacts = _artifact_payload(codex_home_path, limit=worker_event_limit)
     agent_groups = _agent_group_payload(codex_home_path, limit=worker_event_limit)
+    worker_lifecycle_event = read_latest_worker_lifecycle_event(
+        codex_home=codex_home_path
+    )
     worker_lifecycle = read_latest_worker_lifecycle(codex_home=codex_home_path)
+    worker_lifecycle_execution = (
+        worker_lifecycle_event.get("worker_lifecycle_execution")
+        if isinstance(worker_lifecycle_event, dict)
+        else None
+    )
+    worker_lifecycle_execution_result = (
+        worker_lifecycle_event.get("worker_lifecycle_execution_result")
+        if isinstance(worker_lifecycle_event, dict)
+        else None
+    )
     worker_event_summary = worker_events.get("summary", {})
     total_worker_events = (
         worker_event_summary.get("total", 0)
@@ -97,6 +110,16 @@ def build_supervisor_state_snapshot(
         artifacts=artifacts,
         agent_groups=agent_groups,
         worker_lifecycle=worker_lifecycle,
+        worker_lifecycle_execution=(
+            dict(worker_lifecycle_execution)
+            if isinstance(worker_lifecycle_execution, dict)
+            else None
+        ),
+        worker_lifecycle_execution_result=(
+            dict(worker_lifecycle_execution_result)
+            if isinstance(worker_lifecycle_execution_result, dict)
+            else None
+        ),
     ).to_dict()
     return snapshot
 

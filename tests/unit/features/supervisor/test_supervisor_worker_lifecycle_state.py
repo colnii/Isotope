@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from isotope.features.supervisor.state.worker_lifecycle import (
     default_worker_lifecycle_path,
+    read_latest_worker_lifecycle_event,
     read_latest_worker_lifecycle,
     record_worker_lifecycle_decision,
     worker_lifecycle_projection_payload,
@@ -61,6 +62,62 @@ def test_record_worker_lifecycle_decision_appends_and_deduplicates(tmp_path) -> 
     assert len(lines) == 1
     assert json.loads(lines[0]) == first
     assert read_latest_worker_lifecycle(codex_home=tmp_path) == first["worker_lifecycle"]
+
+
+def test_record_worker_lifecycle_decision_persists_execution_projection(tmp_path) -> None:
+    event = record_worker_lifecycle_decision(
+        codex_home=tmp_path,
+        worker_lifecycle_decision=_decision(),
+        worker_lifecycle_execution={
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "next_step": "cleanup_worktree",
+            "status": "ready_to_delete",
+            "delete_worktree_actions": [
+                {
+                    "kind": "delete_worktree",
+                    "target_name": "source-worker",
+                    "record_id": "managed-source",
+                    "confirm_delete_worktree": True,
+                    "base_ref": "main",
+                    "source": "worker_lifecycle",
+                    "command": "private command is not projected",
+                }
+            ],
+        },
+        worker_lifecycle_execution_result={
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "skipped": True,
+            "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+            "count": 1,
+        },
+    )
+
+    assert event is not None
+    assert event["worker_lifecycle_execution"] == {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "next_step": "cleanup_worktree",
+        "status": "ready_to_delete",
+        "delete_worktree_actions": [
+            {
+                "kind": "delete_worktree",
+                "target_name": "source-worker",
+                "record_id": "managed-source",
+                "base_ref": "main",
+                "source": "worker_lifecycle",
+            }
+        ],
+    }
+    assert event["worker_lifecycle_execution_result"] == {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "skipped": True,
+        "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+        "count": 1,
+    }
+    assert read_latest_worker_lifecycle_event(codex_home=tmp_path) == event
 
 
 def test_read_latest_worker_lifecycle_skips_malformed_entries(tmp_path) -> None:

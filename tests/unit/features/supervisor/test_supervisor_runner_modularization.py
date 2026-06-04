@@ -1103,7 +1103,30 @@ def test_supervise_final_payload_records_worker_lifecycle_state(tmp_path):
                     "executed": True,
                 }
             ],
-        }
+        },
+        "worker_lifecycle_execution": {
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "next_step": "cleanup_worktree",
+            "status": "ready_to_delete",
+            "delete_worktree_actions": [
+                {
+                    "kind": "delete_worktree",
+                    "target_name": "source-worker",
+                    "record_id": "managed-source",
+                    "confirm_delete_worktree": True,
+                    "base_ref": "main",
+                    "source": "worker_lifecycle",
+                }
+            ],
+        },
+        "executed": {
+            "kind": "cleanup_worktree",
+            "source": "worker_lifecycle",
+            "skipped": True,
+            "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+            "count": 1,
+        },
     }
 
     payload_module.append_supervise_final_payload(
@@ -1131,6 +1154,8 @@ def test_supervise_final_payload_records_worker_lifecycle_state(tmp_path):
         ],
     }
     assert payload["state_snapshot"]["worker_lifecycle"] == payload["worker_lifecycle"]
+    assert payload["state_snapshot"]["worker_lifecycle_execution"]["kind"] == "cleanup_worktree"
+    assert payload["state_snapshot"]["worker_lifecycle_execution_result"]["skipped"] is True
     assert (tmp_path / "supervisor" / "worker_lifecycle.jsonl").is_file()
 
 

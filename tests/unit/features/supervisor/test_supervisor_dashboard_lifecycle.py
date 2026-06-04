@@ -146,6 +146,50 @@ def test_dashboard_payload_projects_persisted_worker_lifecycle_from_snapshot() -
     assert payload["worker_lifecycle"] == state_snapshot["worker_lifecycle"]
 
 
+def test_dashboard_payload_projects_worker_lifecycle_execution_from_snapshot() -> None:
+    state_snapshot = _state_snapshot_with_lifecycle()
+    state_snapshot["worker_lifecycle_execution"] = {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "next_step": "cleanup_worktree",
+        "status": "ready_to_delete",
+        "delete_worktree_actions": [
+            {
+                "kind": "delete_worktree",
+                "target_name": "source-worker",
+                "record_id": "managed-source",
+                "confirm_delete_worktree": True,
+                "base_ref": "main",
+                "source": "worker_lifecycle",
+            }
+        ],
+    }
+    state_snapshot["worker_lifecycle_execution_result"] = {
+        "kind": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "skipped": True,
+        "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+        "count": 1,
+    }
+
+    payload = dashboard_payload(
+        _report(),
+        state_snapshot=state_snapshot,
+        api=_StubDashboardApi(),
+    )
+
+    assert payload["worker_lifecycle_execution"] == {
+        "status": "ready_to_delete",
+        "kind": "cleanup_worktree",
+        "next_step": "cleanup_worktree",
+        "source": "worker_lifecycle",
+        "action_count": 1,
+        "execution_status": "skipped",
+        "execution_reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+        "execute_hint": "--lifecycle-cleanup-execute",
+    }
+
+
 def test_dashboard_plain_prints_worker_lifecycle(capsys) -> None:
     payload = dashboard_payload(
         _report(),
@@ -161,8 +205,45 @@ def test_dashboard_plain_prints_worker_lifecycle(capsys) -> None:
     assert "timeline: integrated/archive_integrated observed; archived/archive_integrated executed" in text
 
 
+def test_dashboard_plain_prints_worker_lifecycle_execution(capsys) -> None:
+    payload = dashboard_payload(
+        _report(),
+        state_snapshot={
+            **_state_snapshot_with_lifecycle(),
+            "worker_lifecycle_execution": {
+                "kind": "archive_cleanup",
+                "source": "worker_lifecycle",
+                "next_step": "archive_worker",
+                "status": "ready_to_archive",
+                "cleanup_candidates": [
+                    {
+                        "kind": "managed_worker",
+                        "name": "source-worker",
+                        "record_id": "managed-source",
+                    }
+                ],
+            },
+            "worker_lifecycle_execution_result": {
+                "kind": "archive_cleanup",
+                "source": "worker_lifecycle",
+                "skipped": True,
+                "reason": "lifecycle cleanup execution requires --lifecycle-cleanup-execute",
+                "count": 1,
+            },
+        },
+        api=_StubDashboardApi(),
+    )
+
+    print_dashboard_plain(payload, api=_StubDashboardApi())
+
+    text = capsys.readouterr().out
+    assert "execution=archive_cleanup status=skipped actions=1" in text
+    assert "execute_hint=--lifecycle-cleanup-execute" in text
+
+
 def test_dashboard_html_includes_worker_lifecycle_card() -> None:
     html = dashboard_page_html()
 
     assert 'id="worker-lifecycle-card"' in html
+    assert 'id="worker-lifecycle-execution"' in html
     assert "renderWorkerLifecycle" in html

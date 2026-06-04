@@ -222,6 +222,33 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
         : "暂无 timeline";
     }
 
+    function renderWorkerLifecycleExecution(execution) {
+      const item = execution && typeof execution === "object"
+        ? execution
+        : { status: "absent" };
+      const panel = document.getElementById("worker-lifecycle-execution");
+      const status = item.status === "absent"
+        ? "absent"
+        : (item.execution_status || "planned");
+      panel.dataset.state = status;
+      document.getElementById("worker-lifecycle-execution-kind").textContent = item.status === "absent"
+        ? "暂无"
+        : text(item.kind);
+      document.getElementById("worker-lifecycle-execution-detail").textContent = item.status === "absent"
+        ? "暂无执行计划"
+        : workerLifecycleExecutionText(item);
+    }
+
+    function workerLifecycleExecutionText(item) {
+      const parts = [
+        "status=" + text(item.execution_status || "planned"),
+        "actions=" + text(item.action_count),
+      ];
+      if (item.execute_hint) parts.push("hint=" + text(item.execute_hint));
+      if (item.execution_reason) parts.push("reason=" + text(item.execution_reason));
+      return parts.join(" · ");
+    }
+
     function workerLifecycleTimelineText(timeline) {
       const items = Array.isArray(timeline) ? timeline : [];
       if (!items.length) return "暂无 timeline";
