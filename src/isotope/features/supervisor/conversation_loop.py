@@ -587,6 +587,7 @@ def _capacity_display_inputs(capacity_id: str, inputs: dict[str, Any]) -> dict[s
         return display
     if capacity_id in {"supervisor.project_status", "isotope.self_repair"}:
         display.pop("state_root", None)
+        display.pop("cwd", None)
         return display
     if capacity_id != "coding_task.execute":
         return display
