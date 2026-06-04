@@ -146,6 +146,7 @@ def generate_llm_action_decision(
     worker_reviews: dict[str, Any] | None = None,
     delete_worktree_candidates: list[dict[str, Any]] | None = None,
     capacity_decisions: list[dict[str, Any]] | None = None,
+    worker_lifecycle_decision: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     action_command_suggestions = _active_goal_scoped_command_suggestions(
         command_suggestions,
@@ -176,6 +177,7 @@ def generate_llm_action_decision(
             worker_reviews,
             delete_worktree_candidates,
             capacity_decisions,
+            worker_lifecycle_decision,
         )
     )
     payload = _normalize_llm_action_payload(_extract_json_object(raw))

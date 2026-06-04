@@ -6712,6 +6712,62 @@ def test_codex_supervisor_runner_decide_action_passes_capacity_decisions(monkeyp
     assert captured["capacity_decisions"] == [decision]
 
 
+def test_codex_supervisor_runner_decide_action_passes_worker_lifecycle_decision(
+    monkeypatch,
+):
+    report = CodexSupervisorReport(generated_at=NOW.isoformat(), sessions=())
+    lifecycle_decision = {
+        "kind": "worker_lifecycle_decision",
+        "action": "archive_integrated",
+        "stage": "archived",
+        "next_step": "cleanup_worktree",
+        "source": "cleanup",
+        "execution": [{"kind": "merge_worker", "record_id": "managed-merge"}],
+    }
+    captured: dict[str, object] = {}
+
+    def stub_generate(*args: object, **kwargs: object) -> dict[str, object]:
+        captured["worker_lifecycle_decision"] = kwargs.get(
+            "worker_lifecycle_decision"
+        )
+        return {
+            "kind": "monitor",
+            "target_name": None,
+            "reason": "只检查 lifecycle 透传。",
+            "command_suggestion": None,
+        }
+
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.resolve_summary_provider_from_env",
+        lambda agent_name: object(),
+    )
+    monkeypatch.setattr(
+        "isotope.features.supervisor.runner.generate_llm_action_decision",
+        stub_generate,
+    )
+
+    result = supervisor_runner._decide_action_with_llm(
+        argparse.Namespace(),
+        report,
+        {
+            "command_suggestions": [
+                {
+                    "kind": "request_context",
+                    "cwd": EXISTING_WORKSPACE,
+                    "query": "worker lifecycle",
+                    "command": (
+                        "isotope-supervisor context --query worker-lifecycle"
+                    ),
+                }
+            ],
+            "worker_lifecycle_decision": lifecycle_decision,
+        },
+    )
+
+    assert result["kind"] == "monitor"
+    assert captured["worker_lifecycle_decision"] == lifecycle_decision
+
+
 def test_codex_supervisor_loop_payload_produces_capacity_decisions_for_llm(
     tmp_path,
     monkeypatch,

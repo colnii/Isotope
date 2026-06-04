@@ -30,6 +30,7 @@ def build_llm_action_messages(
     worker_reviews: dict[str, Any] | None = None,
     delete_worktree_candidates: list[dict[str, Any]] | None = None,
     capacity_decisions: list[dict[str, Any]] | None = None,
+    worker_lifecycle_decision: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     """Build the prompt for guarded LLM planning."""
     from . import llm_summary as _summary
@@ -110,6 +111,9 @@ def build_llm_action_messages(
                     "blocked_context_priority": blocked_context_priority,
                     "capacity_decisions": capacity_decisions or [],
                     "delete_worktree_candidates": delete_worktree_candidates or [],
+                    "worker_lifecycle_contract": _worker_lifecycle_contract(
+                        worker_lifecycle_decision
+                    ),
                     "generated_at": report.generated_at,
                     "recommendation": report.recommendation.to_dict(),
                     "worker_reviews": _worker_review_context_payload(worker_reviews),
@@ -117,3 +121,19 @@ def build_llm_action_messages(
             ),
         },
     ]
+
+
+def _worker_lifecycle_contract(
+    decision: dict[str, Any] | None,
+) -> dict[str, Any]:
+    return {
+        "kind": "worker_lifecycle_contract",
+        "decision": decision,
+        "rules": [
+            "Treat worker_lifecycle_decision as program-owned lifecycle state.",
+            "Do not repeat actions already present in execution.",
+            "If next_step is launch_merge_worker, prefer the existing merge dispatch path.",
+            "If next_step is archive_worker or cleanup_worktree, prefer monitor unless a matching guarded cleanup candidate is present.",
+            "Use LLM actions only for gaps, human decisions, or explicitly allowed follow-up actions.",
+        ],
+    }

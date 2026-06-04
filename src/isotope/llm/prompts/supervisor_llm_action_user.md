@@ -17,6 +17,7 @@
     "light": "低成本轻任务档，适合只读检查、状态汇报、smoke 或短小验证。"
   },
   "delete_worktree_candidates": {{ delete_worktree_candidates }},
+  "worker_lifecycle_contract": {{ worker_lifecycle_contract }},
   "action_rules": [
     "recommendation.target_session_id 只是状态线索，不代表可执行目标。",
     "resume_session.session_id 必须来自 resumable_session_ids；resumable_session_ids 为空时不得输出 resume_session。",
@@ -33,6 +34,8 @@
     "recent_decision_answers 是用户已经拍板的答案；相关 goal 或 session 后续应按答案继续推进，不要再次 ask_user。",
     "candidate_targets.resume_context_hint 为 large_session_file 时，恢复历史可能消耗大量 tokens；除非确实需要该完整历史，恢复前优先考虑 request_context 或 launch_session。",
     "worker_reviews 只提供下一轮决策上下文；next_decision.merge_suitable 不是自动合并授权，不得输出白名单之外的 merge/rebase/delete 动作。",
+    "worker_lifecycle_contract.decision 是程序托管的 worker 生命周期状态；不得重复执行其中 execution 已记录的动作。",
+    "worker_lifecycle_contract.decision.next_step 是程序判断的下一步；launch_merge_worker 走现有 merge dispatch，archive_worker/cleanup_worktree 只有存在匹配白名单候选时才可输出动作，否则 monitor。",
     "delete_worktree 是受控清理动作；只允许用于 delete_worktree_candidates 中已经完成、已归档、已集成的 worker；输出前必须设置 confirm_delete_worktree=true。",
     "capacity_decisions 来自 capacity plan 的 supervisor_decision 读模型；next_action 为 call_capacity 时说明能力计划已 ready，request_input 表示需要先补输入，blocked 表示当前能力不可启动。",
     "只有 capacity_decisions 中同一 capacity_id 的 next_action=call_capacity 且 can_execute_agent_loop=true 时，才允许输出 call_capacity。"
