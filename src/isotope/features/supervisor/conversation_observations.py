@@ -75,6 +75,12 @@ def model_observation_from_agent_loop(
         "status": status,
         "result_summary": result_summary,
     }
+    result = _capability_result_observation(
+        capacity_id=capacity_id,
+        agent_loop=agent_loop,
+    )
+    if result is not None:
+        observation["result"] = result
     image_urls = _screen_observation_image_urls(agent_loop, state_root=state_root)
     if image_urls:
         observation["image_urls"] = image_urls
@@ -116,6 +122,75 @@ def _json_context_message(label: str, value: dict[str, Any]) -> str:
         ensure_ascii=False,
         sort_keys=True,
     )
+
+
+def _capability_result_observation(
+    *,
+    capacity_id: str,
+    agent_loop: dict[str, Any],
+) -> dict[str, Any] | None:
+    capability_run = _agent_loop_capability_run(agent_loop)
+    if not isinstance(capability_run, dict):
+        return None
+    if capacity_id == "memory.query":
+        return _memory_query_observation(capability_run)
+    return None
+
+
+def _memory_query_observation(capability_run: dict[str, Any]) -> dict[str, Any] | None:
+    memory_query = capability_run.get("memory_query")
+    if not isinstance(memory_query, dict):
+        return None
+    results = memory_query.get("results")
+    safe_results: list[dict[str, Any]] = []
+    if isinstance(results, list):
+        for result in results:
+            if not isinstance(result, dict):
+                continue
+            safe_result = _safe_memory_query_result(result)
+            if safe_result is not None:
+                safe_results.append(safe_result)
+    return {
+        "kind": "memory_query",
+        "status": (
+            memory_query.get("status")
+            if isinstance(memory_query.get("status"), str)
+            else ""
+        ),
+        "content_policy": (
+            memory_query.get("content_policy")
+            if isinstance(memory_query.get("content_policy"), str)
+            else ""
+        ),
+        "result_count": len(results) if isinstance(results, list) else 0,
+        "results": safe_results,
+    }
+
+
+def _safe_memory_query_result(result: dict[str, Any]) -> dict[str, Any] | None:
+    record_id = result.get("record_id")
+    summary = result.get("summary")
+    if not isinstance(record_id, str) or not isinstance(summary, str):
+        return None
+    safe_result: dict[str, Any] = {
+        "record_id": record_id,
+        "summary": summary,
+    }
+    scope = result.get("scope")
+    if isinstance(scope, str):
+        safe_result["scope"] = scope
+    source_refs = result.get("source_refs")
+    if isinstance(source_refs, list):
+        safe_result["source_refs"] = [
+            ref for ref in source_refs if isinstance(ref, dict)
+        ]
+    provenance = result.get("provenance")
+    if isinstance(provenance, dict):
+        safe_result["provenance"] = dict(provenance)
+    quality = result.get("quality")
+    if isinstance(quality, str):
+        safe_result["quality"] = quality
+    return safe_result
 
 
 def _screen_observation_image_urls(
