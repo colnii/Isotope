@@ -1821,8 +1821,8 @@ class CapabilityCatalog:
                     safety_boundaries=(
                         "reuses_goal_planner",
                         "write_requires_explicit_flag",
-                        "goal_queue_write_only_when_requested",
-                        "low_sensitive_summary_only",
+                        "goal_write_only_when_requested",
+                        "planning_result_fields",
                     ),
                     default_enabled=True,
                     network_required=False,
