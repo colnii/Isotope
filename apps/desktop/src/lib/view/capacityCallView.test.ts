@@ -6,6 +6,7 @@ import {
   capacityCallSummary,
   capacityDetailLabel,
   formatCapacityDetailContent,
+  researchSourcePreviewsForDetailSection,
   screenArtifactsForCapacityCall,
   screenArtifactActions
 } from './capacityCallView';
@@ -168,6 +169,40 @@ describe('capacityCallView', () => {
         content: 'human text'
       })
     ).toBe('human text');
+  });
+
+  test('extracts research source previews for product detail rendering', () => {
+    const previews = researchSourcePreviewsForDetailSection({
+      label: 'Result',
+      kind: 'json',
+      content: {
+        agent_loop_research_source_previews: [
+          {
+            provider_rank: 2,
+            source_id: 'src_002',
+            title: 'OpenAI Developer Community',
+            url: 'https://community.openai.com',
+            snippet: 'June 4, 2026. Latest developer discussion.',
+            why_used: 'Tavily search result rank 2, score 0.84'
+          },
+          {
+            source_id: 'src_missing_url',
+            title: 'No URL'
+          }
+        ]
+      }
+    });
+
+    expect(previews).toEqual([
+      {
+        providerRank: 2,
+        sourceId: 'src_002',
+        title: 'OpenAI Developer Community',
+        url: 'https://community.openai.com',
+        snippet: 'June 4, 2026. Latest developer discussion.',
+        whyUsed: 'Tavily search result rank 2, score 0.84'
+      }
+    ]);
   });
 
   test('extracts screen screenshot artifacts for original-image actions', () => {

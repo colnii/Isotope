@@ -6,6 +6,15 @@ export type ScreenCapacityArtifact = {
   summary: string;
 };
 
+export type ResearchSourcePreview = {
+  providerRank?: number;
+  sourceId: string;
+  title: string;
+  url: string;
+  snippet: string;
+  whyUsed: string;
+};
+
 export type ScreenArtifactAction = 'view-original' | 'open-folder' | 'download';
 
 export function capacityCallStatusLabel(call: DesktopCapacityCall): string {
@@ -72,6 +81,31 @@ export function formatCapacityDetailContent(section: DesktopCapacityDetailSectio
       : formatInlineValue(section.content);
   }
   return JSON.stringify(section.content, null, 2);
+}
+
+export function researchSourcePreviewsForDetailSection(
+  section: DesktopCapacityDetailSection
+): ResearchSourcePreview[] {
+  if (!isRecord(section.content)) return [];
+  const previews = section.content.agent_loop_research_source_previews;
+  if (!Array.isArray(previews)) return [];
+  return previews.flatMap((preview) => {
+    if (!isRecord(preview)) return [];
+    const title = stringValue(preview.title);
+    const url = stringValue(preview.url);
+    if (!title || !url) return [];
+    const providerRank = preview.provider_rank;
+    return [
+      {
+        providerRank: typeof providerRank === 'number' ? providerRank : undefined,
+        sourceId: stringValue(preview.source_id),
+        title,
+        url,
+        snippet: stringValue(preview.snippet),
+        whyUsed: stringValue(preview.why_used)
+      }
+    ];
+  });
 }
 
 export function screenArtifactsForCapacityCall(call: DesktopCapacityCall): ScreenCapacityArtifact[] {
