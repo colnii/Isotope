@@ -13,7 +13,10 @@ from isotope.features.supervisor.desktop_chat import (
     stream_desktop_chat,
     stream_desktop_chat_events,
 )
-from isotope.features.supervisor.planner.goal_queue import record_supervisor_goal
+from isotope.features.supervisor.planner.goal_queue import (
+    read_active_supervisor_goals,
+    record_supervisor_goal,
+)
 from isotope.features.supervisor.web import create_dashboard_server
 from isotope.llm.provider import LLMResponse, LLMStreamChunk
 
@@ -535,6 +538,80 @@ def test_desktop_chat_endpoint_can_call_goal_plan_capacity(
     assert events[2]["data"]["status"] == "ok"
     assert events[3]["data"]["text"] == "已通过目标规划 capacity 生成候选目标。"
     assert len(provider.calls) == 2
+
+
+def test_desktop_chat_endpoint_writes_goal_plan_when_user_explicitly_requests_queue(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from isotope.capabilities import supervisor_goal_plan
+
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    _write_goal_planning_docs(workspace)
+    question = "帮我规划下一步目标，并写入目标队列"
+    state_root = tmp_path / "state"
+    monkeypatch.chdir(workspace)
+    monkeypatch.setattr(
+        supervisor_goal_plan,
+        "resolve_summary_provider_from_env",
+        lambda **_: DesktopChatGoalPlanProvider(question),
+    )
+    provider = MultiResponseDesktopChatProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "supervisor.goal_plan",
+                    "arguments": {"goal": question},
+                    "rationale": "用户要求目标规划并入队。",
+                },
+                ensure_ascii=False,
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "已写入目标队列。",
+                },
+                ensure_ascii=False,
+            ),
+        ]
+    )
+    server = create_dashboard_server(
+        codex_home=state_root,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+        desktop_chat_provider=provider,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "POST",
+            "/desktop/chat",
+            body=json.dumps({"question": question}),
+            headers={"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        body = response.read().decode("utf-8")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert response.status == 200
+    events = _parse_sse(body)
+    assert events[1]["data"]["input_summary"]["write"] is True
+    assert events[2]["data"]["status"] == "ok"
+    assert events[3]["data"]["text"] == "已写入目标队列。"
+    active_goals = read_active_supervisor_goals(codex_home=state_root)
+    assert len(active_goals) == 1
+    assert active_goals[0].target_name == "desktop-chat-goal-plan"
 
 
 def test_desktop_chat_stream_projects_research_search_artifacts(

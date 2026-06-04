@@ -115,6 +115,7 @@ def run_supervisor_conversation_events(
                 state_root=Path(state_root).expanduser(),
                 context=context,
                 provider=provider,
+                user_message=clean_message,
                 timeout_seconds=timeout_seconds,
             ):
                 yield event
@@ -329,6 +330,7 @@ def _run_capability_decision(
     state_root: Path,
     context: dict[str, Any],
     provider: SupervisorConversationProvider,
+    user_message: str,
     timeout_seconds: float | None,
 ) -> Iterator[SupervisorConversationEvent]:
     capacity_id = _require_text(decision.get("capacity_id"), "capacity_id")
@@ -339,6 +341,7 @@ def _run_capability_decision(
         capacity_id,
         arguments=arguments,
         context=context,
+        user_message=user_message,
     )
     display_inputs = _capacity_display_inputs(capacity_id, inputs)
     title = _capability_title(capacity_id, context=context)
@@ -502,6 +505,7 @@ def _capability_inputs_from_decision(
     *,
     arguments: dict[str, Any],
     context: dict[str, Any],
+    user_message: str = "",
 ) -> dict[str, Any]:
     allowed_inputs = _capability_input_names(capacity_id)
     if not allowed_inputs:
@@ -516,8 +520,60 @@ def _capability_inputs_from_decision(
         for key, value in system_context.items():
             if key in allowed_inputs:
                 inputs[key] = value
+    inputs = _apply_conversation_goal_plan_write_guardrail(
+        capacity_id,
+        inputs=inputs,
+        user_message=user_message,
+    )
     inputs = _normalize_conversation_capability_inputs(capacity_id, inputs)
     return inputs
+
+
+def _apply_conversation_goal_plan_write_guardrail(
+    capacity_id: str,
+    *,
+    inputs: dict[str, Any],
+    user_message: str,
+) -> dict[str, Any]:
+    if capacity_id != "supervisor.goal_plan":
+        return inputs
+    if "write" in inputs:
+        return inputs
+    if not _explicit_goal_plan_write_requested(user_message):
+        return inputs
+    normalized = dict(inputs)
+    normalized["write"] = True
+    return normalized
+
+
+def _explicit_goal_plan_write_requested(user_message: str) -> bool:
+    text = user_message.strip()
+    if not text:
+        return False
+    negative_markers = (
+        "不要写",
+        "别写",
+        "不用写",
+        "不写入",
+        "不要入队",
+        "别入队",
+        "不用入队",
+        "只预览",
+        "先预览",
+        "预览",
+    )
+    if any(marker in text for marker in negative_markers):
+        return False
+    write_markers = (
+        "写入目标队列",
+        "写到目标队列",
+        "加入目标队列",
+        "加到目标队列",
+        "放入目标队列",
+        "入队",
+        "创建目标",
+    )
+    return any(marker in text for marker in write_markers)
 
 
 def _normalize_conversation_capability_inputs(
