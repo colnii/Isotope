@@ -5,6 +5,7 @@
     DesktopScreenArtifactContent
   } from '../../client/agentClient';
   import {
+    capacityCallProductTitle,
     capacityCallStatusLabel,
     capacityCallSummary,
     screenArtifactsForCapacityCall
@@ -25,6 +26,7 @@
   let selectedScreenArtifact = $state<DesktopScreenArtifactContent | null>(null);
 
   const statusLabel = $derived(capacityCallStatusLabel(call));
+  const productTitle = $derived(capacityCallProductTitle(call));
   const summary = $derived(capacityCallSummary(call));
   const screenArtifacts = $derived(screenArtifactsForCapacityCall(call));
   const statusClass = $derived(
@@ -114,14 +116,14 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<section class="border border-isotope-line bg-white text-isotope-text shadow-sm" aria-label={`capacity 调用 ${call.capacityId}`}>
+<section class="border border-isotope-line bg-white text-isotope-text shadow-sm" aria-label={`能力动作 ${productTitle}`}>
   <div class="flex items-start justify-between gap-3 px-3 py-2">
     <div class="min-w-0">
       <div class="flex flex-wrap items-center gap-2">
-        <span class="text-xs font-semibold uppercase text-isotope-muted">capacity</span>
+        <span class="text-xs font-semibold uppercase text-isotope-muted">action</span>
         <span class={`border px-1.5 py-0.5 text-[11px] font-semibold uppercase ${statusClass}`}>{statusLabel}</span>
       </div>
-      <div class="mt-1 truncate text-sm font-semibold">{call.title}</div>
+      <div class="mt-1 truncate text-sm font-semibold">{productTitle}</div>
       <div class="mt-1 break-words text-xs leading-5 text-isotope-muted">{summary}</div>
     </div>
     <div class="flex shrink-0 items-center gap-1">
@@ -129,7 +131,7 @@
         class="grid h-7 w-7 place-items-center border border-isotope-line bg-isotope-panel text-xs"
         type="button"
         title={expanded ? '收起' : '展开'}
-        aria-label={expanded ? '收起 capacity 详情' : '展开 capacity 详情'}
+        aria-label={expanded ? '收起动作详情' : '展开动作详情'}
         onclick={toggleExpanded}
       >
         {expanded ? '-' : '+'}
@@ -138,7 +140,7 @@
         class="grid h-7 w-7 place-items-center border border-isotope-line bg-isotope-panel text-xs"
         type="button"
         title="全屏"
-        aria-label="全屏查看 capacity 详情"
+        aria-label="全屏查看动作详情"
         onclick={openFullscreen}
       >
         []
@@ -200,18 +202,18 @@
 </section>
 
 {#if fullscreen}
-  <div class="fixed inset-0 z-50 bg-isotope-text/35 p-4" role="dialog" aria-modal="true" aria-label={`capacity 详情 ${call.capacityId}`}>
+  <div class="fixed inset-0 z-50 bg-isotope-text/35 p-4" role="dialog" aria-modal="true" aria-label={`动作详情 ${productTitle}`}>
     <section class="mx-auto flex h-full max-w-5xl flex-col border border-isotope-line bg-white shadow-xl">
       <header class="flex items-start justify-between gap-3 border-b border-isotope-line px-4 py-3">
         <div class="min-w-0">
-          <div class="text-xs font-semibold uppercase text-isotope-muted">capacity 详情</div>
-          <h2 class="mt-1 truncate text-lg font-semibold">{call.title}</h2>
+          <div class="text-xs font-semibold uppercase text-isotope-muted">action detail</div>
+          <h2 class="mt-1 truncate text-lg font-semibold">{productTitle}</h2>
           <p class="mt-1 text-sm text-isotope-muted">{summary}</p>
         </div>
         <button
           class="grid h-8 w-8 place-items-center border border-isotope-line bg-isotope-panel text-sm"
           type="button"
-          aria-label="关闭全屏 capacity 详情"
+          aria-label="关闭全屏动作详情"
           onclick={closeFullscreen}
         >
           x

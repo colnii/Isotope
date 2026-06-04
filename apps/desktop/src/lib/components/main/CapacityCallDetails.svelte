@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { DesktopCapacityDetailSection } from '../../client/agentClient';
-  import { formatCapacityDetailContent } from '../../view/capacityCallView';
+  import { capacityDetailLabel, formatCapacityDetailContent } from '../../view/capacityCallView';
 
   let { details, fullscreen = false } = $props<{
     details: DesktopCapacityDetailSection[];
@@ -10,14 +10,14 @@
 
 {#if details.length === 0}
   <p class="border border-isotope-line bg-isotope-panel px-3 py-2 text-sm text-isotope-muted">
-    本次 capacity 调用没有返回详情载荷。
+    本次动作没有返回详情载荷。
   </p>
 {:else}
   <div class="space-y-3">
     {#each details as section}
       <section class="border border-isotope-line bg-isotope-panel">
         <div class="border-b border-isotope-line px-3 py-2 text-xs font-semibold uppercase text-isotope-muted">
-          {section.label}
+          {capacityDetailLabel(section.label)}
         </div>
         <pre
           class={[

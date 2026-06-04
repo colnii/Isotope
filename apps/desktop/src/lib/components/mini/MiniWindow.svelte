@@ -70,7 +70,7 @@
       <div class="border border-isotope-line bg-isotope-bg px-3 py-2">
         <div class="text-xs font-semibold uppercase text-isotope-muted">AI</div>
         <p class="mt-1 text-sm leading-5 text-isotope-text">
-          向 Isotope 提问；使用 capacity 时，调用过程会显示在主对话中。
+          向 Isotope 提问；执行动作时，过程会显示在主对话中。
         </p>
       </div>
     {:else}
@@ -85,7 +85,7 @@
             </p>
             {#if message.capacityCalls?.length}
               <div class="mt-2 text-xs text-isotope-muted">
-                {message.capacityCalls.length} 次 capacity 调用
+                {message.capacityCalls.length} 次动作
               </div>
             {/if}
           </article>

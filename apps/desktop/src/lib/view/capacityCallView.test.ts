@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest';
 import type { DesktopCapacityCall } from '../client/agentClient';
 import {
+  capacityCallProductTitle,
   capacityCallStatusLabel,
   capacityCallSummary,
+  capacityDetailLabel,
   formatCapacityDetailContent,
   screenArtifactsForCapacityCall,
   screenArtifactActions
@@ -34,8 +36,55 @@ describe('capacityCallView', () => {
   });
 
   test('summarizes capacity identity and result fields', () => {
-    expect(capacityCallSummary(call)).toBe('memory.query · result_count: 2');
-    expect(capacityCallSummary({ ...call, resultSummary: {} })).toBe('memory.query');
+    expect(capacityCallSummary(call)).toBe('查询记忆 · 结果: 2');
+    expect(capacityCallSummary({ ...call, resultSummary: {} })).toBe('查询记忆');
+  });
+
+  test('uses product titles for desktop actions', () => {
+    expect(capacityCallProductTitle(call)).toBe('查询记忆');
+    expect(
+      capacityCallProductTitle({
+        ...call,
+        capacityId: 'supervisor.project_status',
+        title: 'Supervisor Project Status'
+      })
+    ).toBe('查看项目态势');
+    expect(
+      capacityCallProductTitle({
+        ...call,
+        capacityId: 'isotope.self_repair',
+        title: 'Isotope Self Repair'
+      })
+    ).toBe('启动 Isotope 自修复');
+  });
+
+  test('summarizes project status and self-repair actions in product language', () => {
+    expect(
+      capacityCallSummary({
+        ...call,
+        capacityId: 'supervisor.project_status',
+        title: 'Supervisor Project Status',
+        resultSummary: { agent_loop_project_status_status: 'completed' }
+      })
+    ).toBe('查看项目态势 · 状态: 已完成');
+    expect(
+      capacityCallSummary({
+        ...call,
+        capacityId: 'isotope.self_repair',
+        title: 'Isotope Self Repair',
+        resultSummary: {
+          agent_loop_self_repair_status: 'launched',
+          agent_loop_self_repair_managed_name: 'desktop-self-repair'
+        }
+      })
+    ).toBe('启动 Isotope 自修复 · 状态: 已启动 · worker: desktop-self-repair');
+  });
+
+  test('localizes detail section labels', () => {
+    expect(capacityDetailLabel('Inputs')).toBe('输入');
+    expect(capacityDetailLabel('Result summary')).toBe('结果摘要');
+    expect(capacityDetailLabel('Screen artifacts')).toBe('屏幕产物');
+    expect(capacityDetailLabel('Custom')).toBe('Custom');
   });
 
   test('summarizes research search cards by report summary first', () => {

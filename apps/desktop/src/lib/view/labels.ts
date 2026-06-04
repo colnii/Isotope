@@ -16,7 +16,7 @@ export function activityKindLabel(kind: ActivityNodeKind | string): string {
     case 'goal':
       return '目标';
     case 'capability_run':
-      return 'capacity 调用';
+      return '能力动作';
     case 'tool_call':
       return '工具调用';
     case 'artifact':
