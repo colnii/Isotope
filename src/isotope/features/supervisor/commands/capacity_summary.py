@@ -52,6 +52,8 @@ def agent_loop_json_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         summary.update(_agent_loop_memory_query_summary(capability_run))
         summary.update(_agent_loop_research_search_summary(capability_run))
         summary.update(_agent_loop_research_promotion_summary(capability_run))
+        summary.update(_agent_loop_project_status_summary(capability_run))
+        summary.update(_agent_loop_self_repair_summary(capability_run))
     return summary
 
 
@@ -196,5 +198,48 @@ def _agent_loop_research_promotion_summary(
         "agent_loop_research_promotion_memory_write": promotion.get("memory_write"),
         "agent_loop_research_promotion_quality_gate_status": promotion.get(
             "quality_gate_status"
+        ),
+    }
+
+
+def _agent_loop_project_status_summary(
+    capability_run: Mapping[str, Any],
+) -> dict[str, Any]:
+    if capability_run.get("capability_id") != "supervisor.project_status":
+        return {}
+    project_status = capability_run.get("project_state_summary")
+    if not isinstance(project_status, Mapping):
+        return {}
+    counts = project_status.get("counts")
+    return {
+        "agent_loop_project_status_status": capability_run.get("status"),
+        "agent_loop_project_status_snapshot_id": project_status.get("snapshot_id"),
+        "agent_loop_project_status_counts": dict(counts) if isinstance(counts, Mapping) else {},
+    }
+
+
+def _agent_loop_self_repair_summary(
+    capability_run: Mapping[str, Any],
+) -> dict[str, Any]:
+    if capability_run.get("capability_id") != "isotope.self_repair":
+        return {}
+    self_repair = capability_run.get("self_repair")
+    if not isinstance(self_repair, Mapping):
+        return {}
+    managed = self_repair.get("managed")
+    worktree = self_repair.get("worktree")
+    return {
+        "agent_loop_self_repair_status": self_repair.get("status"),
+        "agent_loop_self_repair_managed_name": (
+            managed.get("name") if isinstance(managed, Mapping) else None
+        ),
+        "agent_loop_self_repair_worker_role": (
+            managed.get("worker_role") if isinstance(managed, Mapping) else None
+        ),
+        "agent_loop_self_repair_worktree_enabled": (
+            worktree.get("enabled") if isinstance(worktree, Mapping) else None
+        ),
+        "agent_loop_self_repair_worktree_branch": (
+            worktree.get("branch") if isinstance(worktree, Mapping) else None
         ),
     }

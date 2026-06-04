@@ -173,6 +173,10 @@ def _capability_result_observation(
         return _patch_result_observation(capability_run)
     if capacity_id == "artifact.diff_summary":
         return _artifact_summary_observation(capability_run)
+    if capacity_id == "supervisor.project_status":
+        return _project_status_observation(capability_run)
+    if capacity_id == "isotope.self_repair":
+        return _self_repair_observation(capability_run)
     return None
 
 
@@ -346,6 +350,78 @@ def _string_dict_value(value: Any) -> dict[str, str]:
         for key, item in value.items()
         if isinstance(key, str) and isinstance(item, str)
     }
+
+
+def _project_status_observation(capability_run: dict[str, Any]) -> dict[str, Any] | None:
+    summary = capability_run.get("project_state_summary")
+    if not isinstance(summary, dict):
+        return None
+    return {
+        "kind": "project_state_summary",
+        "status": capability_run.get("status"),
+        "project_state_summary": {
+            "snapshot_id": summary.get("snapshot_id"),
+            "generated_at": summary.get("generated_at"),
+            "source": summary.get("source"),
+            "active_goal": summary.get("active_goal"),
+            "active_agent": summary.get("active_agent"),
+            "counts": _safe_mapping(summary.get("counts")),
+            "approvals": _safe_mapping_list(summary.get("approvals"), limit=10),
+            "activities": _safe_mapping_list(summary.get("activities"), limit=20),
+            "artifacts": _safe_mapping_list(summary.get("artifacts"), limit=10),
+        },
+    }
+
+
+def _self_repair_observation(capability_run: dict[str, Any]) -> dict[str, Any] | None:
+    self_repair = capability_run.get("self_repair")
+    if not isinstance(self_repair, dict):
+        return None
+    managed = self_repair.get("managed")
+    worktree = self_repair.get("worktree")
+    return {
+        "kind": "self_repair",
+        "status": self_repair.get("status"),
+        "runner_kind": capability_run.get("runner_kind"),
+        "managed": _self_repair_managed_observation(managed),
+        "worktree": _self_repair_worktree_observation(worktree),
+    }
+
+
+def _self_repair_managed_observation(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        "name": value.get("name"),
+        "record_id": value.get("record_id"),
+        "pid": value.get("pid"),
+        "backend": value.get("backend"),
+        "worker_role": value.get("worker_role"),
+        "cwd": value.get("cwd"),
+        "log_path": value.get("log_path"),
+    }
+
+
+def _self_repair_worktree_observation(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        "enabled": value.get("enabled"),
+        "source_cwd": value.get("source_cwd"),
+        "cwd": value.get("cwd"),
+        "worktree_root": value.get("worktree_root"),
+        "branch": value.get("branch"),
+    }
+
+
+def _safe_mapping(value: Any) -> dict[str, Any]:
+    return dict(value) if isinstance(value, dict) else {}
+
+
+def _safe_mapping_list(value: Any, *, limit: int) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [dict(item) for item in value[:limit] if isinstance(item, dict)]
 
 
 def _screen_observation_image_urls(

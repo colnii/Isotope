@@ -557,6 +557,59 @@ def test_desktop_chat_stream_projects_research_search_artifacts(
     assert events[2].payload["text"] == "已完成搜索并写入 research artifacts。"
 
 
+def test_desktop_chat_stream_can_answer_from_project_status_capacity(
+    tmp_path,
+) -> None:
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    record_supervisor_goal(
+        codex_home=tmp_path,
+        goal="把 Desktop chat 打成黄金路径",
+        cwd=workspace,
+        target_name="desktop-chat",
+    )
+    provider = MultiResponseDesktopChatProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "supervisor.project_status",
+                    "arguments": {},
+                    "rationale": "需要读取当前项目态势。",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "Desktop chat golden path 正在推进。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        stream_desktop_chat_events(
+            state_root=tmp_path,
+            question="项目现在什么状态？",
+            provider=provider,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[0].payload["capacity_id"] == "supervisor.project_status"
+    assert events[1].payload["result_summary"]["agent_loop_project_status_status"] == (
+        "completed"
+    )
+    second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
+    assert "project_state_summary" in second_prompt
+    assert "把 Desktop chat 打成黄金路径" in second_prompt
+    assert events[2].payload["text"] == "Desktop chat golden path 正在推进。"
+
+
 def test_desktop_chat_stream_uses_conversation_loop_for_streaming_capable_provider(
     tmp_path,
 ) -> None:

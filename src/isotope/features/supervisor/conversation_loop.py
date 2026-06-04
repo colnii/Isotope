@@ -569,9 +569,12 @@ def _capacity_display_inputs(capacity_id: str, inputs: dict[str, Any]) -> dict[s
             for key, value in inputs.items()
             if key not in {"root", "cwd", "run_id", "execution_id", "workspace_id"}
         }
-    if capacity_id != "coding_task.execute":
-        return dict(inputs)
     display = dict(inputs)
+    if capacity_id in {"supervisor.project_status", "isotope.self_repair"}:
+        display.pop("state_root", None)
+        return display
+    if capacity_id != "coding_task.execute":
+        return display
     patch = display.get("patch")
     if isinstance(patch, str):
         display["patch"] = {
