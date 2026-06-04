@@ -6,6 +6,7 @@ from isotope.features.supervisor.lifecycle.executor import (
     build_worker_lifecycle_execution_plan,
     worker_lifecycle_execution_action,
     worker_lifecycle_execution_planned_executed,
+    worker_lifecycle_execution_recommended_next_step,
     worker_lifecycle_execution_summary,
 )
 from isotope.features.supervisor.commands.supervise.action import (
@@ -80,6 +81,35 @@ def test_lifecycle_execution_summary_counts_queue_and_result_actions() -> None:
         plan,
         {"result_actions": [{"target_name": "projected-worker"}]},
     )["result_actions"] == 1
+
+
+def test_lifecycle_execution_recommended_next_step_is_program_readable() -> None:
+    assert worker_lifecycle_execution_recommended_next_step(None) == "monitor"
+    assert (
+        worker_lifecycle_execution_recommended_next_step(
+            {"cleanup_candidates": [{"name": "archivable-worker"}]}
+        )
+        == "archive_ready"
+    )
+    assert (
+        worker_lifecycle_execution_recommended_next_step(
+            {"delete_worktree_actions": [{"target_name": "delete-ready-worker"}]}
+        )
+        == "delete_ready"
+    )
+    assert (
+        worker_lifecycle_execution_recommended_next_step(
+            {"delete_worktree_blockers": [{"target_name": "dirty-worker"}]}
+        )
+        == "delete_blocked"
+    )
+    assert (
+        worker_lifecycle_execution_recommended_next_step(
+            {"delete_worktree_actions": [{"target_name": "deleted-worker"}]},
+            {"deleted": [{"target_name": "deleted-worker"}]},
+        )
+        == "monitor"
+    )
 
 
 def test_lifecycle_execution_plan_monitors_existing_merge_worker() -> None:

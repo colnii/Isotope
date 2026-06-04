@@ -6,7 +6,10 @@ from typing import Any
 
 from isotope.llm.prompts import load_system_prompt, render_json_prompt_template
 
-from ..lifecycle import worker_lifecycle_execution_summary
+from ..lifecycle import (
+    worker_lifecycle_execution_recommended_next_step,
+    worker_lifecycle_execution_summary,
+)
 from ..flow import CodexSupervisorReport
 
 LLM_ACTION_ALLOWED_KINDS = (
@@ -174,6 +177,10 @@ def _worker_lifecycle_execution_contract(
         "next_step": _contract_scalar(execution.get("next_step")),
         "status": _contract_scalar(execution.get("status")),
         "summary": worker_lifecycle_execution_summary(
+            execution,
+            worker_lifecycle_execution_result,
+        ),
+        "recommended_next_step": worker_lifecycle_execution_recommended_next_step(
             execution,
             worker_lifecycle_execution_result,
         ),

@@ -101,6 +101,7 @@ def test_llm_action_prompt_builder_exposes_worker_lifecycle_contract():
             "delete_blocked": 1,
             "result_actions": 0,
         },
+        "recommended_next_step": "delete_blocked",
         "result": {
             "kind": "cleanup_worktree",
             "source": "worker_lifecycle",

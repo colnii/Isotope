@@ -66,6 +66,27 @@ def worker_lifecycle_execution_summary(
     }
 
 
+def worker_lifecycle_execution_recommended_next_step(
+    plan: Mapping[str, Any] | None,
+    result: Mapping[str, Any] | None = None,
+) -> str:
+    summary = worker_lifecycle_execution_summary(plan, result)
+    if summary["result_actions"] > 0:
+        return "monitor"
+    if summary["delete_ready"] > 0:
+        return "delete_ready"
+    if summary["delete_blocked"] > 0:
+        return "delete_blocked"
+    if summary["archivable"] > 0:
+        return "archive_ready"
+    if isinstance(plan, Mapping) and plan.get("kind") == "merge_dispatch":
+        if plan.get("status") == "ready_to_launch":
+            return "merge_dispatch_ready"
+        if plan.get("status") == "worker_already_running":
+            return "monitor"
+    return "monitor"
+
+
 def build_worker_lifecycle_execution_plan(
     *,
     worker_lifecycle_decision: Mapping[str, Any] | None,

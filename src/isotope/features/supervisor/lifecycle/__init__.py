@@ -7,6 +7,7 @@ from .executor import (
     worker_lifecycle_execution_action,
     worker_lifecycle_execution_launch_spec,
     worker_lifecycle_execution_planned_executed,
+    worker_lifecycle_execution_recommended_next_step,
     worker_lifecycle_execution_summary,
 )
 
@@ -17,5 +18,6 @@ __all__ = [
     "worker_lifecycle_execution_action",
     "worker_lifecycle_execution_launch_spec",
     "worker_lifecycle_execution_planned_executed",
+    "worker_lifecycle_execution_recommended_next_step",
     "worker_lifecycle_execution_summary",
 ]

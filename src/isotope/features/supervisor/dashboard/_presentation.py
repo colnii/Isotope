@@ -8,7 +8,10 @@ from pathlib import Path
 from typing import Any
 
 from isotope.features.notifications.flow import NotificationFlow
-from isotope.features.supervisor.lifecycle import worker_lifecycle_execution_summary
+from isotope.features.supervisor.lifecycle import (
+    worker_lifecycle_execution_recommended_next_step,
+    worker_lifecycle_execution_summary,
+)
 from isotope.features.supervisor.state.current_batch import build_current_batch_view
 from isotope.features.supervisor.state.snapshot_display import (
     STATE_SNAPSHOT_SOURCE_LABEL,
@@ -877,6 +880,14 @@ def print_dashboard_worker_lifecycle_execution(execution: Any) -> None:
     )
     if summary:
         print(f"  summary: {summary}")
+    recommended = _dashboard_text(
+        execution.get("recommended_next_step"),
+        "",
+    ) or _dashboard_lifecycle_recommended_next_step_text(
+        _dashboard_lifecycle_summary_from_execution(execution)
+    )
+    if recommended:
+        print(f"  recommended_next_step={recommended}")
     evidence = _dashboard_lifecycle_delete_evidence_summary(
         execution.get("delete_evidence")
     )
@@ -916,6 +927,10 @@ def dashboard_worker_lifecycle_execution_payload(
             _dashboard_text(result.get("reason"), "") if result is not None else ""
         ),
         "summary": worker_lifecycle_execution_summary(plan, result),
+        "recommended_next_step": worker_lifecycle_execution_recommended_next_step(
+            plan,
+            result,
+        ),
         "result_summary": _dashboard_lifecycle_result_summary(result),
         "result_actions": result_actions,
         "delete_evidence": delete_evidence,
@@ -1240,6 +1255,18 @@ def _dashboard_lifecycle_summary_text(summary: dict[str, int]) -> str:
         f"delete_blocked={summary['delete_blocked']} "
         f"result_actions={summary['result_actions']}"
     )
+
+
+def _dashboard_lifecycle_recommended_next_step_text(summary: dict[str, int]) -> str:
+    if summary.get("result_actions", 0) > 0:
+        return "monitor"
+    if summary.get("delete_ready", 0) > 0:
+        return "delete_ready"
+    if summary.get("delete_blocked", 0) > 0:
+        return "delete_blocked"
+    if summary.get("archivable", 0) > 0:
+        return "archive_ready"
+    return ""
 
 
 def _dashboard_lifecycle_delete_blocker_summary(value: Any) -> str:

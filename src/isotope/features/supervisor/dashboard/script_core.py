@@ -271,6 +271,9 @@ DASHBOARD_SCRIPT_CORE = r'''    const groups = ["needs_attention", "done", "work
       if (item.execution_reason) parts.push("reason=" + text(item.execution_reason));
       const summary = workerLifecycleExecutionSummaryText(item.summary);
       if (summary) parts.push("summary=" + summary);
+      if (item.recommended_next_step) {
+        parts.push("recommended_next_step=" + text(item.recommended_next_step));
+      }
       const evidence = workerLifecycleDeleteEvidenceText(item.delete_evidence);
       if (evidence) parts.push("evidence=" + evidence);
       const blockers = workerLifecycleDeleteBlockerText(item.delete_blockers);
