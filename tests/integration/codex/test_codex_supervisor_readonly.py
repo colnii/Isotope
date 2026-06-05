@@ -10552,7 +10552,8 @@ def test_codex_supervisor_runner_supervise_request_context_replans_same_iteratio
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["supervisor_action"]["kind"] == "request_context"
+    assert payload["llm_action"] == payload["supervisor_action"]
     _codex_operation_context_result(payload["executed"])
     assert payload["llm_followup_action"]["kind"] == "send_status"
     assert payload["followup_executed"]["kind"] == "send_status"
@@ -10634,7 +10635,8 @@ def test_codex_supervisor_runner_supervise_respects_max_context_requests(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["supervisor_action"]["kind"] == "request_context"
+    assert payload["llm_action"] == payload["supervisor_action"]
     _codex_operation_context_result(payload["executed"])
     assert payload["llm_followup_action"]["kind"] == "request_context"
     assert payload["followup_executed"] == {
@@ -10818,7 +10820,8 @@ def test_codex_supervisor_runner_supervise_context_followup_can_ask_user_after_g
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["supervisor_action"]["kind"] == "request_context"
+    assert payload["llm_action"] == payload["supervisor_action"]
     _codex_operation_context_result(payload["executed"])
     assert payload["llm_followup_action"]["kind"] == "ask_user"
     followup = payload["followup_executed"]
