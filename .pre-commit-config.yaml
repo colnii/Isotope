@@ -1,0 +1,13 @@
+# pre-commit hooks for isotope
+# Install:  pip install pre-commit && pre-commit install
+# Skip:     SKIP=check-file-size git commit, or git commit --no-verify
+repos:
+  - repo: local
+    hooks:
+      - id: check-file-size
+        name: check file size (max 2000 lines, warn at 500)
+        entry: python scripts/check_file_size.py
+        language: python
+        types: [python]
+        args: [--max-lines=2000, --warn-lines=500]
+        pass_filenames: true

@@ -66,4 +66,8 @@ commits unless a maintainer explicitly asks for one. Stage only files related to
 the current task. Before committing, inspect the staged diff and run the minimum
 relevant verification.
 
+**Pre-commit hook active.** `.git/hooks/pre-commit` checks staged `.py` files:
+rejects files over 2000 lines; warns at 500 lines. Bypass with `git commit
+--no-verify`. The hook uses `.venv/bin/python` when available, or `python3`.
+
 For normal scoped changes, finish with verification, commit, and push.
