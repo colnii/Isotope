@@ -352,10 +352,7 @@ def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(
     assert activity["recent_supervisor_action"]["reason"] == (
         "ready_to_integrate workers require merge dispatch"
     )
-    assert activity["recent_llm_action"]["kind"] == "merge_dispatch"
-    assert activity["recent_llm_action"]["reason"] == (
-        "ready_to_integrate workers require merge dispatch"
-    )
+    assert activity["recent_llm_action"] == activity["recent_supervisor_action"]
     assert activity["recent_execution"] == {
         "status": "skipped",
         "detail": "merge_dispatch / merge dispatch launch adapter required",

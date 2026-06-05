@@ -17787,10 +17787,6 @@ def test_codex_supervisor_runner_daemon_status_includes_recent_activity(
         "kind": "launch_session",
         "reason": "同名任务仍在冷却。",
     }
-    assert activity["recent_llm_action"] == {
-        "kind": "launch_session",
-        "reason": "同名任务仍在冷却。",
-    }
     assert activity["recent_llm_action"] == activity["recent_supervisor_action"]
     assert activity["recent_execution"] == {
         "status": "skipped",
@@ -18140,10 +18136,10 @@ def test_codex_supervisor_runner_up_reports_existing_daemon_activity(
         "kind": "launch_session",
         "reason": "最近启动了托管 worker。",
     }
-    assert payload["daemon"]["activity"]["recent_llm_action"] == {
-        "kind": "launch_session",
-        "reason": "最近启动了托管 worker。",
-    }
+    assert (
+        payload["daemon"]["activity"]["recent_llm_action"]
+        == payload["daemon"]["activity"]["recent_supervisor_action"]
+    )
     assert payload["daemon"]["activity"]["recent_worker"]["model"] == "gpt-5.5"
     assert payload["daemon"]["activity"]["recent_worker"]["status"] == "done"
 
