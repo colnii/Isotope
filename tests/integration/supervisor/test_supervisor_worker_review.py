@@ -108,7 +108,7 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
     ]
     assert item["validation_commands"][0] == f"git -C {workspace} status --short --branch"
     assert "pytest tests -q" in item["validation_commands"][2]
-    assert "不自动合并" in item["merge_hint"]
+    assert "进入复查合并路径" in item["merge_hint"]
     assert item["reviewer"]["needed"] is True
     assert item["reviewer"]["cwd"] == str(workspace)
     assert item["reviewer"]["branch"] == "supervisor/feature-a-12345678"
@@ -116,8 +116,8 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
     assert item["reviewer"]["change_summary"] == "2 个路径有改动"
     assert item["reviewer"]["validation_commands"] == item["validation_commands"]
     assert item["reviewer"]["must_check_risks"] == [
-        "只复查 diff、测试和 worker 汇报，不自动启动新 worker。",
-        "不自动合并、不删除 worktree、不重写分支。",
+        "复查 diff、测试和 worker 汇报是否支持进入集成路径。",
+        "合并、worktree 清理和分支整理交给主控集成入口。",
         "确认改动是否越过原目标范围，尤其是未跟踪文件和 Supervisor 入口行为。",
         "验证命令失败时先记录证据，避免用合并掩盖失败。",
     ]
@@ -128,6 +128,16 @@ def test_supervisor_worker_review_collects_completed_worker_with_changes(
     assert "branch：supervisor/feature-a-12345678" in item["reviewer"]["prompt"]
     assert "建议验证命令：" in item["reviewer"]["prompt"]
     assert "必须检查的风险：" in item["reviewer"]["prompt"]
+    combined = repr(payload) + "\n" + item["reviewer"]["prompt"]
+    for term in (
+        "只汇总",
+        "只复查",
+        "不自动",
+        "不删除",
+        "不重写",
+        "只审查",
+    ):
+        assert term not in combined
     assert item["next_decision"] == {
         "recommendation": "review_then_merge_candidate",
         "summary": "worker 已完成且有本地改动；建议先复查 diff 并跑验证，通过后再人工合并。",

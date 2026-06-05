@@ -28,7 +28,7 @@ def collect_worker_reviews(
     run: RunCommand = subprocess.run,
     process_checker: ProcessChecker | None = None,
 ) -> dict[str, Any]:
-    """Build a no-side-effect review payload for Supervisor-managed workers."""
+    """Build worker review evidence for Supervisor-managed workers."""
     records = read_managed_records(default_registry_path(codex_home))
     review_records = (
         records[-LIGHTWEIGHT_WORKER_LIMIT:]
@@ -64,7 +64,7 @@ def collect_worker_reviews(
         "safety": {
             "auto_merge": False,
             "delete_branch": False,
-            "note": "只汇总审查信息，不自动合并、不删除 worktree 或分支。",
+            "note": "汇总 worker 证据并给出下一步执行路径；合并、清理和分支整理交给对应入口。",
         },
     }
 
@@ -341,8 +341,8 @@ def _reviewer_suggestion(
     goal = record.prompt or record.name
     branch_text = branch or "未知"
     risks = [
-        "只复查 diff、测试和 worker 汇报，不自动启动新 worker。",
-        "不自动合并、不删除 worktree、不重写分支。",
+        "复查 diff、测试和 worker 汇报是否支持进入集成路径。",
+        "合并、worktree 清理和分支整理交给主控集成入口。",
         "确认改动是否越过原目标范围，尤其是未跟踪文件和 Supervisor 入口行为。",
         "验证命令失败时先记录证据，避免用合并掩盖失败。",
     ]
@@ -579,7 +579,7 @@ def _reviewer_prompt(
         if item.get("path")
     ]
     lines = [
-        "请作为 fresh Codex 复查这个 worker 的结果，只审查和汇报，不自动启动、不自动合并、不删除 worktree。",
+        "请作为 fresh Codex 复查这个 worker 的结果，输出可用于主控集成入口的审查结论。",
         "",
         f"目标：{goal}",
         f"cwd：{cwd}",
@@ -611,8 +611,8 @@ def _merge_hint(
         return "无本地改动；主控 Codex 可检查状态协议和日志后归档，不需要合并。"
     branch_text = branch or "<worker-branch>"
     return (
-        "不自动合并；主控 Codex/人工应先审查 diff、运行建议验证命令，"
-        f"确认后再从集成工作区处理 {branch_text}。"
+        "进入复查合并路径；主控 Codex/人工审查 diff、运行建议验证命令，"
+        f"确认后从集成工作区处理 {branch_text}。"
     )
 
 
