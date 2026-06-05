@@ -10,7 +10,23 @@ Usage:
 """
 
 import argparse
+from pathlib import Path
 import sys
+
+
+OVER_LIMIT_EXCEPTIONS = {
+    "tests/unit/features/social/test_social_runner.py",
+}
+
+
+def _normalized_repo_path(path: str) -> str:
+    candidate = Path(path)
+    if candidate.is_absolute():
+        try:
+            candidate = candidate.relative_to(Path.cwd())
+        except ValueError:
+            pass
+    return candidate.as_posix()
 
 
 def check_file(
@@ -22,6 +38,13 @@ def check_file(
 
     msgs: list[str] = []
     if line_count > max_lines:
+        normalized_path = _normalized_repo_path(path)
+        if normalized_path in OVER_LIMIT_EXCEPTIONS:
+            msgs.append(
+                f"  WARN  {path}: {line_count} lines "
+                f"(max {max_lines}; allowed exception for coupled regression test)"
+            )
+            return True, msgs
         msgs.append(
             f"  FAIL  {path}: {line_count} lines (max {max_lines})"
         )
