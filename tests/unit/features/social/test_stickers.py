@@ -8,6 +8,9 @@ import pytest
 from isotope.features.social import (
     CharacterCard,
     MediaRef,
+    SocialMessagePart,
+    SocialSendChunk,
+    SocialSendFeedback,
     SocialTarget,
     StickerLibrary,
     StickerLibraryEntry,
@@ -16,10 +19,11 @@ from isotope.features.social import (
 from tests.unit.features.social.test_character_card import _card_dict
 
 
-def _card() -> CharacterCard:
+def _card(*, sticker_frequency: float = 0.35) -> CharacterCard:
     data = _card_dict()
     data["stickers"]["style_tags"] = ["review", "helpful"]
     data["stickers"]["emotion_map"]["positive"] = ["ship"]
+    data["stickers"]["use_frequency"] = sticker_frequency
     return CharacterCard.from_dict(data)
 
 
@@ -86,6 +90,51 @@ def test_sticker_library_selects_by_emotion_scene_and_role_preferences() -> None
         "favorite_pack:engineering",
         "style_tag:review",
     )
+
+
+def test_sticker_library_respects_zero_use_frequency() -> None:
+    selected = _library().select(
+        StickerSelectionRequest(
+            group_id="12345",
+            emotion="positive",
+            scene_tags=("review",),
+            character_stickers=_card(sticker_frequency=0.0).stickers,
+        )
+    )
+
+    assert selected is None
+
+
+def test_sticker_library_does_not_repeat_recent_successful_sticker() -> None:
+    selected = _library().select(
+        StickerSelectionRequest(
+            group_id="12345",
+            emotion="positive",
+            scene_tags=("review",),
+            character_stickers=_card().stickers,
+            recent_send_feedback=(
+                SocialSendFeedback(
+                    status="sent",
+                    sent_message_ids=("sent_sticker",),
+                    chunks=(
+                        SocialSendChunk(
+                            message_id="sent_sticker",
+                            parts=(
+                                SocialMessagePart(
+                                    kind="sticker",
+                                    media_ref="qq-image://ship-it",
+                                    platform_data={"sticker_id": "ship-it"},
+                                ),
+                            ),
+                            rendered_preview="[sticker: qq-image://ship-it]",
+                        ),
+                    ),
+                ),
+            ),
+        )
+    )
+
+    assert selected is None
 
 
 def test_sticker_library_rejects_blocked_group() -> None:

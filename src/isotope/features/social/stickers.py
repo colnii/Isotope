@@ -15,6 +15,7 @@ from .messages import (
     _string_tuple,
 )
 from .replies import SocialReplyAction, SocialTarget
+from .send_feedback import SocialSendFeedback
 
 
 @dataclass(frozen=True)
@@ -84,6 +85,7 @@ class StickerSelectionRequest:
     scene_tags: tuple[str, ...]
     character_stickers: StickerPreferences
     allow_sticker_only: bool = False
+    recent_send_feedback: tuple[SocialSendFeedback, ...] = ()
 
     def __post_init__(self) -> None:
         _required_string_value(self.group_id, "group_id")
@@ -93,6 +95,11 @@ class StickerSelectionRequest:
             raise ValueError("character_stickers must be StickerPreferences")
         if not isinstance(self.allow_sticker_only, bool):
             raise ValueError("allow_sticker_only must be a bool")
+        if not isinstance(self.recent_send_feedback, tuple):
+            raise ValueError("recent_send_feedback must be a tuple")
+        for item in self.recent_send_feedback:
+            if not isinstance(item, SocialSendFeedback):
+                raise ValueError("recent_send_feedback items must be SocialSendFeedback")
 
 
 @dataclass(frozen=True)
@@ -170,9 +177,16 @@ class StickerLibrary:
             raise ValueError("request must be a StickerSelectionRequest")
         if not request.character_stickers.enabled:
             return None
+        if request.character_stickers.use_frequency <= 0:
+            return None
+        recent_sticker_ids = recent_successful_sticker_ids(request.recent_send_feedback)
+        if recent_sticker_ids:
+            return None
         candidates: list[tuple[int, StickerLibraryEntry, tuple[str, ...]]] = []
         for entry in self.entries:
             if _is_blocked(entry, request):
+                continue
+            if entry.sticker_id in recent_sticker_ids:
                 continue
             score, reasons = _score_entry(entry, request)
             if score > 0 and _has_request_match(reasons):
@@ -191,6 +205,27 @@ class StickerLibrary:
                 and request.character_stickers.allow_sticker_only_reply
             ),
         )
+
+
+def recent_successful_sticker_ids(
+    feedback_items: tuple[SocialSendFeedback, ...],
+) -> tuple[str, ...]:
+    if not isinstance(feedback_items, tuple):
+        raise ValueError("feedback_items must be a tuple")
+    sticker_ids: list[str] = []
+    for feedback in feedback_items:
+        if not isinstance(feedback, SocialSendFeedback):
+            raise ValueError("feedback_items items must be SocialSendFeedback")
+        if feedback.status not in {"sent", "partial"} or not feedback.sent_message_ids:
+            continue
+        for chunk in feedback.chunks:
+            for part in chunk.parts:
+                if part.kind != "sticker":
+                    continue
+                _append_unique_sticker_id(sticker_ids, part.platform_data.get("sticker_id"))
+                if not sticker_ids:
+                    _append_unique_sticker_id(sticker_ids, part.media_ref)
+    return tuple(sticker_ids)
 
 
 def _is_blocked(
@@ -272,3 +307,11 @@ def _string_tuple_from_list(value: object, field_name: str) -> tuple[str, ...]:
             raise ValueError(f"{field_name} items must be non-empty strings")
         result.append(item.strip())
     return tuple(result)
+
+
+def _append_unique_sticker_id(target: list[str], value: object) -> None:
+    if not isinstance(value, str) or not value.strip():
+        return
+    sticker_id = value.strip()
+    if sticker_id not in target:
+        target.append(sticker_id)

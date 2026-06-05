@@ -411,6 +411,13 @@ and group allow/block rules. Example output entry:
 A sticker should match emotion or scene tags first; role preferences only rank
 already relevant stickers.
 
+Role-card `stickers.use_frequency` is the first switch for sticker candidates.
+Set it to `0.0` when the role should answer with text only. Any value above
+`0.0` allows sticker candidates after emotion or scene tags match. The bot also
+checks recent successful sends: after it sends a sticker, the next matching turn
+falls back to text instead of proposing another sticker, and the same
+`sticker_id` is not repeated from recent send feedback.
+
 Use replay expectations to prove the pack behaves as intended:
 
 ```json

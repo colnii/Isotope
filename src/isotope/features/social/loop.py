@@ -12,7 +12,7 @@ from .decision import SocialDecisionRequest, SocialDecisionTurn
 from .messages import SocialMessagePart
 from .reply_provider import DeterministicSocialReplyProvider, SocialReplyProvider
 from .replies import SocialReplyAction
-from .stickers import StickerSelectionRequest
+from .stickers import StickerSelectionRequest, recent_successful_sticker_ids
 
 
 @dataclass(frozen=True)
@@ -82,6 +82,8 @@ def _recent_send_suppression_reason(
 ) -> str | None:
     for feedback in request.recent_send_feedback:
         if feedback.status in {"sent", "partial"} and feedback.sent_message_ids:
+            if recent_successful_sticker_ids((feedback,)):
+                continue
             return f"recent_send_feedback:{feedback.status}"
     return None
 
@@ -152,6 +154,7 @@ def _sticker_candidate(
             scene_tags=request.sticker_scene_tags,
             character_stickers=character_card.stickers,
             allow_sticker_only=request.allow_sticker_only,
+            recent_send_feedback=request.recent_send_feedback,
         )
     )
     if selected is None:

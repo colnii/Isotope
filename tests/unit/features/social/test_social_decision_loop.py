@@ -9,6 +9,7 @@ from isotope.features.social import (
     SocialMessage,
     SocialMessagePart,
     SocialReplyDraft,
+    SocialSendChunk,
     SocialSendFeedback,
     SocialSender,
     SocialTarget,
@@ -186,12 +187,65 @@ def test_decision_loop_send_feedback_suppresses_immediate_repeat() -> None:
             context=_context(_message(text="@bot 再说一句", mentions=("bot_qq",))),
             target=_target(),
             bot_user_id="bot_qq",
-            recent_send_feedback=(SocialSendFeedback(status="sent", sent_message_ids=("sent1",)),),
+            recent_send_feedback=(
+                SocialSendFeedback(
+                    status="sent",
+                    sent_message_ids=("sent1",),
+                    chunks=(
+                        SocialSendChunk(
+                            message_id="sent1",
+                            parts=(SocialMessagePart(kind="text", text="刚回过了。"),),
+                            rendered_preview="刚回过了。",
+                        ),
+                    ),
+                ),
+            ),
         )
     )
 
     assert [item.kind for item in turn.selected] == ["silent"]
     assert turn.selected[0].reason == "recent_send_feedback:sent"
+
+
+def test_decision_loop_falls_back_to_text_after_recent_sticker_send() -> None:
+    provider = RecordingReplyProvider("这次我用文字说，避免表情包刷屏。")
+
+    turn = SocialDecisionLoop(reply_provider=provider).decide(
+        SocialDecisionRequest(
+            context=_context(_message(text="@bot 这 PR 过了", mentions=("bot_qq",))),
+            target=_target(),
+            bot_user_id="bot_qq",
+            sticker_library=_library(),
+            sticker_emotion="positive",
+            sticker_scene_tags=("review",),
+            allow_sticker_only=True,
+            recent_send_feedback=(
+                SocialSendFeedback(
+                    status="sent",
+                    sent_message_ids=("sent_sticker",),
+                    chunks=(
+                        SocialSendChunk(
+                            message_id="sent_sticker",
+                            parts=(
+                                SocialMessagePart(
+                                    kind="sticker",
+                                    media_ref="qq-image://ship-it",
+                                    platform_data={"sticker_id": "ship-it"},
+                                ),
+                            ),
+                            rendered_preview="[sticker: qq-image://ship-it]",
+                        ),
+                    ),
+                ),
+            ),
+        )
+    )
+
+    assert [item.kind for item in turn.selected] == ["respond"]
+    assert turn.selected[0].candidate_id == "reply_text"
+    assert turn.selected[0].reply_action is not None
+    assert turn.selected[0].reply_action.parts[0].kind == "text"
+    assert turn.selected[0].reply_action.parts[0].text == "这次我用文字说，避免表情包刷屏。"
 
 
 def test_decision_loop_dry_run_returns_proposals_without_selecting_send() -> None:
