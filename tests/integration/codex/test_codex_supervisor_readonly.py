@@ -8024,7 +8024,7 @@ def test_codex_supervisor_generate_llm_action_decision_falls_back_without_target
     }
 
 
-def test_codex_supervisor_runner_advise_can_add_llm_action(
+def test_codex_supervisor_runner_advise_can_add_supervisor_action(
     tmp_path,
     capsys,
     monkeypatch,
@@ -8072,7 +8072,7 @@ def test_codex_supervisor_runner_advise_can_add_llm_action(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "send_status",
             "target_name": "lane-a",
             "reason": "先看进度。",
@@ -8082,11 +8082,11 @@ def test_codex_supervisor_runner_advise_can_add_llm_action(
                 "label": "让托管 Codex 汇报状态",
             },
     }
-    assert payload["supervisor_action"] == payload["llm_action"]
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert captured["agent_name"] == "supervisor"
 
 
-def test_codex_supervisor_runner_llm_action_becomes_primary_command_suggestion(
+def test_codex_supervisor_runner_supervisor_action_becomes_primary_command_suggestion(
     tmp_path,
     capsys,
     monkeypatch,
@@ -8157,13 +8157,17 @@ def test_codex_supervisor_runner_llm_action_becomes_primary_command_suggestion(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "request_context"
-    assert payload["command_suggestion"] == payload["llm_action"]["command_suggestion"]
+    assert payload["supervisor_action"]["kind"] == "request_context"
+    assert (
+        payload["command_suggestion"]
+        == payload["supervisor_action"]["command_suggestion"]
+    )
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["command_suggestion"]["kind"] == "request_context"
     assert payload["rule_command_suggestion"]["kind"] == "resume_session"
 
 
-def test_codex_supervisor_runner_supervise_llm_action_passes_worker_reviews(
+def test_codex_supervisor_runner_supervise_supervisor_action_passes_worker_reviews(
     tmp_path,
     capsys,
     monkeypatch,
@@ -8253,11 +8257,12 @@ def test_codex_supervisor_runner_supervise_llm_action_passes_worker_reviews(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["worker_reviews"] == worker_reviews
-    assert payload["llm_action"]["kind"] == "request_context"
-    assert payload["llm_action"]["query"] == "worker-a diff review next_decision"
+    assert payload["supervisor_action"]["kind"] == "request_context"
+    assert payload["supervisor_action"]["query"] == "worker-a diff review next_decision"
+    assert payload["llm_action"] == payload["supervisor_action"]
 
 
-def test_codex_supervisor_runner_llm_action_scopes_to_workspace_root(
+def test_codex_supervisor_runner_supervisor_action_scopes_to_workspace_root(
     tmp_path,
     capsys,
     monkeypatch,
@@ -8325,7 +8330,8 @@ def test_codex_supervisor_runner_llm_action_scopes_to_workspace_root(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "monitor"
+    assert payload["supervisor_action"]["kind"] == "monitor"
+    assert payload["llm_action"] == payload["supervisor_action"]
     suggestion_text = json.dumps(payload["command_suggestions"], ensure_ascii=False)
     assert "external-session" not in suggestion_text
     assert "isotope-session" in suggestion_text
