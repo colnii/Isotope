@@ -56,10 +56,15 @@ def check_qq_startup_gate(config: QQStartupGateConfig) -> QQStartupGateResult:
     pack_dir = config.pack_dir
     config_path = pack_dir / "config.json"
     config_payload = _load_json_object(config_path) if config_path.exists() else {}
+    replay_report_payload = _optional_replay_report_payload(config.replay_report)
     checks = (
         _check_beta_pack(pack_dir),
         _check_profile_assets(config_payload, base_dir=pack_dir),
-        _check_sticker_assets(config_payload, base_dir=pack_dir),
+        _check_sticker_assets(
+            config_payload,
+            base_dir=pack_dir,
+            replay_report_payload=replay_report_payload,
+        ),
         _check_llm_reply_provider(config_payload),
         _check_replay_report(
             config.replay_report,
@@ -114,7 +119,12 @@ def _check_profile_assets(payload: dict[str, Any], *, base_dir: Path) -> dict[st
     }
 
 
-def _check_sticker_assets(payload: dict[str, Any], *, base_dir: Path) -> dict[str, Any]:
+def _check_sticker_assets(
+    payload: dict[str, Any],
+    *,
+    base_dir: Path,
+    replay_report_payload: dict[str, Any] | None,
+) -> dict[str, Any]:
     sticker_library_path = _asset_path(payload, "sticker_library_path", base_dir=base_dir)
     if sticker_library_path is None:
         return {
@@ -122,6 +132,10 @@ def _check_sticker_assets(payload: dict[str, Any], *, base_dir: Path) -> dict[st
             "ok": False,
             "entry_count": 0,
             "media_entry_count": 0,
+            "sticker_ids": [],
+            "required_sticker_ids": [],
+            "missing_required_sticker_ids": [],
+            "missing_local_paths": [],
             "errors": ["sticker_library_path is required; run qq apply-profile first"],
         }
     try:
@@ -132,21 +146,45 @@ def _check_sticker_assets(payload: dict[str, Any], *, base_dir: Path) -> dict[st
             "ok": False,
             "entry_count": 0,
             "media_entry_count": 0,
+            "sticker_ids": [],
+            "required_sticker_ids": [],
+            "missing_required_sticker_ids": [],
+            "missing_local_paths": [],
             "errors": [str(exc)],
         }
+    sticker_ids = [entry.sticker_id for entry in library.entries]
     media_entries = [
         entry
         for entry in library.entries
         if entry.media.kind == "sticker" and bool(entry.media.media_ref.strip())
     ]
     errors = []
+    missing_local_paths = _missing_local_paths(
+        library=library,
+        sticker_library_path=sticker_library_path,
+    )
+    required_sticker_ids = _required_sticker_ids(replay_report_payload)
+    missing_required_sticker_ids = [
+        sticker_id for sticker_id in required_sticker_ids if sticker_id not in sticker_ids
+    ]
     if not media_entries:
         errors.append("sticker-library must contain at least one sticker media entry")
+    for local_path in missing_local_paths:
+        errors.append(f"sticker local_path does not exist: {local_path}")
+    if missing_required_sticker_ids:
+        errors.append(
+            "replay required sticker ids missing from sticker-library: "
+            + ", ".join(missing_required_sticker_ids)
+        )
     return {
         "name": "sticker_assets",
         "ok": not errors,
         "entry_count": len(library.entries),
         "media_entry_count": len(media_entries),
+        "sticker_ids": sticker_ids,
+        "required_sticker_ids": required_sticker_ids,
+        "missing_required_sticker_ids": missing_required_sticker_ids,
+        "missing_local_paths": missing_local_paths,
         "errors": errors,
     }
 
@@ -234,6 +272,54 @@ def _asset_path(payload: dict[str, Any], key: str, *, base_dir: Path) -> Path | 
     if path.is_absolute():
         return path
     return base_dir / path
+
+
+def _optional_replay_report_payload(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    try:
+        return _load_json_object(path)
+    except (FileNotFoundError, ValueError, json.JSONDecodeError):
+        return None
+
+
+def _missing_local_paths(
+    *,
+    library: StickerLibrary,
+    sticker_library_path: Path,
+) -> list[str]:
+    missing: list[str] = []
+    for entry in library.entries:
+        local_path = entry.media.local_path
+        if not local_path:
+            continue
+        path = Path(local_path)
+        if not path.is_absolute():
+            path = sticker_library_path.parent / path
+        if not path.exists() or not path.is_file():
+            missing.append(local_path)
+    return missing
+
+
+def _required_sticker_ids(replay_report_payload: dict[str, Any] | None) -> list[str]:
+    if not isinstance(replay_report_payload, dict):
+        return []
+    expectations = replay_report_payload.get("expectations", [])
+    if not isinstance(expectations, list):
+        return []
+    result: list[str] = []
+    for item in expectations:
+        if not isinstance(item, dict) or item.get("name") != "require_sticker_candidate_ids":
+            continue
+        expected = item.get("expected", [])
+        if not isinstance(expected, list):
+            continue
+        for sticker_id in expected:
+            if isinstance(sticker_id, str) and sticker_id.strip():
+                normalized = sticker_id.strip()
+                if normalized not in result:
+                    result.append(normalized)
+    return result
 
 
 def _load_json_object(path: Path) -> dict[str, Any]:

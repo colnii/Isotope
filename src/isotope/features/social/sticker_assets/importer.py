@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -85,6 +86,7 @@ def _sticker_library_payload(
         media_ref = _optional_text(item.get("media_ref"), "media_ref") or (
             f"file://{relative_file}"
         )
+        local_path = os.path.relpath(file_path, start=config.output.parent)
         entries.append(
             {
                 "sticker_id": sticker_id,
@@ -94,7 +96,7 @@ def _sticker_library_payload(
                     "media_ref": media_ref,
                     "kind": "sticker",
                     "source": "local_sticker_import",
-                    "local_path": str(relative_file),
+                    "local_path": local_path,
                 },
                 "tags": _string_list(item.get("tags"), "tags"),
                 "meaning": _required_manifest_text(item.get("meaning"), "meaning"),

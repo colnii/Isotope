@@ -62,8 +62,11 @@ The profile directory contains `role-card.json` and `sticker-library.json`.
 `import-stickers` can replace `sticker-library.json` from a local
 `manifest.json`; each manifest item needs `sticker_id`, `file`, `tags`, and
 `meaning`, and may include `media_ref`. The importer checks files before
-writing output and records `local_path` in each media entry. `apply-profile`
-updates `.isotope/qq-beta/config.json` to read those files and writes
+writing output and records `local_path` in each media entry relative to
+`sticker-library.json`. `startup-check` blocks if `missing_local_paths` is not
+empty, or if replay `required_sticker_ids` produce
+`missing_required_sticker_ids`. `apply-profile` updates
+`.isotope/qq-beta/config.json` to read those files and writes
 `.isotope/qq-beta/config.before-profile.json` as the previous config.
 
 After any profile or config edit, run diagnostics before touching OneBot:

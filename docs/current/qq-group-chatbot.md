@@ -379,10 +379,15 @@ isotope-social qq import-stickers \
 
 The importer checks every manifest file path before writing output. If
 `media_ref` is omitted, it writes `file://<file>`. It also records `local_path`
-so the operator can trace the generated entry back to the local asset. The
-output is a normal `sticker-library.json`, so `apply-profile`,
-`inspect stickers`, `startup-check`, and replay use the same path as a
-hand-written library.
+relative to `sticker-library.json` so startup-check can verify the asset still
+exists after import. The output is a normal `sticker-library.json`, so
+`apply-profile`, `inspect stickers`, `startup-check`, and replay use the same
+path as a hand-written library.
+
+`startup-check` reports sticker `sticker_ids`, replay
+`required_sticker_ids`, `missing_required_sticker_ids`, and
+`missing_local_paths`. Treat missing local files or missing replay-required
+sticker IDs as blockers before any live dry-run.
 
 Sticker entries need stable IDs, pack IDs, media refs, tags, meaning, source,
 and group allow/block rules. Example output entry:

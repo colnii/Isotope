@@ -2194,7 +2194,10 @@ def test_social_runner_qq_import_stickers_writes_valid_profile_library(
     assert stickers.entries[0].sticker_id == "ship-it"
     assert stickers.entries[0].pack_id == "engineering"
     assert stickers.entries[0].media.media_ref == "file://ship.png"
-    assert stickers.entries[0].media.local_path == "ship.png"
+    assert stickers.entries[0].media.local_path == os.path.relpath(
+        source_dir / "ship.png",
+        start=profile_dir,
+    )
     assert stickers.entries[0].allowed_groups == ("99999",)
 
     assert main(
@@ -2255,6 +2258,73 @@ def test_social_runner_qq_import_stickers_rejects_missing_files(
     payload = json.loads(capsys.readouterr().out)
     assert "sticker file does not exist" in payload["error"]["message"]
     assert not output.exists()
+
+
+def test_social_runner_qq_startup_check_blocks_missing_sticker_local_path(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    beta_dir, report_path = _prepare_profiled_replay_pack(tmp_path, capsys)
+    config = _read_json(beta_dir / "config.json")
+    sticker_library_path = beta_dir / config["sticker_library_path"]
+    stickers = _read_json(sticker_library_path)
+    stickers["entries"][0]["media"]["local_path"] = "missing-sticker.png"
+    _write_json(sticker_library_path, stickers)
+
+    code = main(
+        [
+            "qq",
+            "startup-check",
+            "--pack-dir",
+            str(beta_dir),
+            "--replay-report",
+            str(report_path),
+            "--json",
+        ]
+    )
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    failed = [check for check in payload["checks"] if not check["ok"]]
+    assert [check["name"] for check in failed] == ["sticker_assets"]
+    assert "sticker local_path does not exist" in failed[0]["errors"][0]
+    assert failed[0]["missing_local_paths"] == ["missing-sticker.png"]
+
+
+def test_social_runner_qq_startup_check_blocks_replay_required_sticker_missing_from_library(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    beta_dir, report_path = _prepare_profiled_replay_pack(tmp_path, capsys)
+    config = _read_json(beta_dir / "config.json")
+    sticker_library_path = beta_dir / config["sticker_library_path"]
+    stickers = _read_json(sticker_library_path)
+    stickers["entries"] = [
+        entry for entry in stickers["entries"] if entry["sticker_id"] != "ship-it"
+    ]
+    _write_json(sticker_library_path, stickers)
+
+    code = main(
+        [
+            "qq",
+            "startup-check",
+            "--pack-dir",
+            str(beta_dir),
+            "--replay-report",
+            str(report_path),
+            "--json",
+        ]
+    )
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    failed = [check for check in payload["checks"] if not check["ok"]]
+    assert [check["name"] for check in failed] == ["sticker_assets"]
+    assert failed[0]["required_sticker_ids"] == ["ship-it"]
+    assert failed[0]["missing_required_sticker_ids"] == ["ship-it"]
+    assert "replay required sticker ids missing from sticker-library" in (
+        failed[0]["errors"][0]
+    )
 
 
 def test_social_runner_qq_startup_check_passes_after_profile_and_replay(
