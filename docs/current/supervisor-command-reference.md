@@ -181,11 +181,11 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   `research promote` 复用同一 helper。该入口生成提案，memory 写入走 approval，
   raw transcript 正文走 inspect。
 - `research providers` 列出 provider registry；当前 `codex` 可运行，
-  `tavily` 也可运行但默认 preflight；只有显式 `--tavily-enable-network` 才会请求
-  Tavily `/search`。Tavily key 可来自 `--tavily-api-key`、`TAVILY_API_KEY`，或
-  git-ignored 的 `src/isotope/features/research/research_tavily.toml`；缺 key 或未开
-  网络时会复用 `ResearchFlow` 写 `research.provider_trace`。`searxng` / `browser`
-  仍是 planned provider，选择时会 fail closed。
+  `tavily` 在带 `--tavily-enable-network` 且 key 齐备时请求 Tavily `/search`。
+  Tavily key 可来自 `--tavily-api-key`、`TAVILY_API_KEY`，或
+  git-ignored 的 `src/isotope/features/research/research_tavily.toml`；key 或网络
+  参数缺失时会复用 `ResearchFlow` 写 `research.provider_trace`。`searxng` /
+  `browser` 接入实现后走同一 provider trace 和 artifact 路径。
 - raw web text 后续要进入 durable memory 时，必须先经过 artifact / provenance /
   retrieval 和显式 promotion policy，不得绕过 Research flow 直接写 memory。
 

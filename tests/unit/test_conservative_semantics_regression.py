@@ -155,6 +155,7 @@ CURRENT_ENTRY_NEGATIVE_ACTION_PATTERNS = [
     "不写",
     "不直接",
     "不生成",
+    "不" + "执行",
     "不会",
     "不打开",
     "不启动",
@@ -164,6 +165,18 @@ CURRENT_ENTRY_NEGATIVE_ACTION_PATTERNS = [
     "不自动",
     "不清理",
     "暂不",
+]
+
+CURRENT_ENTRY_DEFERRED_EXECUTION_PATTERNS = [
+    "默认" + "只" + "生成",
+    "当前" + "只" + "生成",
+    "显式开关后才走",
+    "低风险" + "能力",
+    "默认 " + "preflight",
+    "pre" + "flight",
+    "defer" + "red",
+    "planned " + "provider",
+    "fail " + "closed",
 ]
 
 SUPERPOWERS_SPEC_FORBIDDEN_PATTERNS = [
@@ -266,6 +279,17 @@ def test_current_entry_docs_use_positive_execution_path_language():
     for relative_path in CURRENT_ENTRY_FILES:
         text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
         for pattern in CURRENT_ENTRY_NEGATIVE_ACTION_PATTERNS:
+            if pattern in text:
+                violations.append(f"{relative_path}: {pattern}")
+
+    assert violations == []
+
+
+def test_current_entry_docs_do_not_describe_capacity_as_deferred_execution():
+    violations = []
+    for relative_path in CURRENT_ENTRY_FILES:
+        text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for pattern in CURRENT_ENTRY_DEFERRED_EXECUTION_PATTERNS:
             if pattern in text:
                 violations.append(f"{relative_path}: {pattern}")
 

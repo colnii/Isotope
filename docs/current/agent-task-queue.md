@@ -40,8 +40,8 @@
 - status docs placement 已记录：[当前状态](./status.md)、`v0.2-roadmap`、
   v0.2 closure、tag delta 和 docs inventory 继续按现有入口组织；原因见
   [status docs placement review](../archive/reviews/status-docs-placement-review.md)。
-- track / checkpoint / memory placement 已记录：继续暂停这三类目录迁移；原因见
-  [deferred docs placement review](../archive/reviews/deferred-docs-placement-review.md)。
+- track / checkpoint / memory placement 已记录：这三类目录迁移维持现有归档位置；
+  原因见 archive reviews 中的 docs placement review。
 - 旧文档整理收束审计已完成：旧文档线可以停止，下一步回 Supervisor 前先做
   工作区、冲突和分支归属审计；原因见
   [old docs closure audit](../archive/reviews/old-docs-closure-audit.md)。
@@ -151,10 +151,11 @@
   它从当前 `state_root` 的 `memory/*.json` 搜索 summary / refs / provenance preview，
   模型只提供面向产品的 recall 输入，raw memory content 走 controlled expand。
   `memory.query` 保留为需要显式 `run_id` 的 agent-loop 内部精确查询能力。
-- `memory.promotion` 已有 proposal boundary 第一片：只把 structured artifact
-  metadata 或 accepted external observation metadata 整理为待批准的
-  `write_memory` `ActionProposal`；raw text / raw content 会 fail closed，且
-  helper 产出 proposal；store 写入、event append 和 promotion policy 由外层流程负责。
+- `memory.promotion` 已有 proposal path：将 structured artifact metadata
+  或 accepted external observation metadata 整理为待批准的
+  `write_memory` `ActionProposal`；raw text / raw content 留在 artifact / observation
+  展开路径，helper 产出 proposal；store 写入、event append 和 promotion policy
+  由外层流程负责。
 - `memory.promotion.preview` 已进入 capability runner：`isotope-capability` 可
   search/plan/run，运行时复用 `memory.promotion` proposal boundary，只返回结构化
   proposal preview，memory 写入和 event append 走 approval/action 路径。
@@ -228,7 +229,8 @@
   不进入模型可见 input contract。
 - `research.promote` 已接入同一 capability runner；capacity path 会给它补
   `root` default，但 `run_id/artifact_id/agent_id/thread_id` 仍必须来自目标或
-  模型参数。当前只生成 proposal summary，不执行 write_memory。
+  模型参数。metadata 齐备时生成 `write_memory` proposal，memory 写入交给
+  approval / action 路径。
 
 后续：
 
@@ -270,9 +272,9 @@
   `codex`、`tavily`、`searxng`、`browser`；`codex` / `tavily`
   implemented，SearXNG / browser 仍走 provider trace；这些路径统一经过
   `ResearchFlow` 和 artifact/provenance 边界。
-- Tavily provider 的 config/preflight 小片已完成：key 可来自显式
+- Tavily provider 的配置读取小片已完成：key 可来自显式
   `--tavily-api-key`、`TAVILY_API_KEY` 或 git-ignored 的
-  `src/isotope/features/research/research_tavily.toml`；缺配置或网络执行暂缓会写入
+  `src/isotope/features/research/research_tavily.toml`；配置或网络参数缺失时会写入
   `research.provider_trace`。
 - Tavily provider 的真实 API execution 小片已完成：必须显式
   `--tavily-enable-network`，并把 Tavily `/search` 响应归一化为 source-backed
