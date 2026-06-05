@@ -5,6 +5,9 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
+from isotope.features.supervisor.commands.supervisor_action import (
+    supervisor_action_from_payload,
+)
 from isotope.features.supervisor.llm_action.llm_summary import _command_targets_name
 
 
@@ -18,7 +21,7 @@ def execute_llm_action(
     if api is None:
         from isotope.features.supervisor import runner as api
 
-    action = payload["llm_action"]
+    action = supervisor_action_from_payload(payload)
     kind = action["kind"]
     if kind == "monitor":
         return {
