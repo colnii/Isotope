@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from isotope.features.supervisor.commands.supervisor_action import (
+    set_supervisor_action_payload,
+)
+
 
 def print_supervise_plain(
     payload: dict[str, Any],
@@ -110,11 +114,12 @@ def print_advice(args: Any, *, api: Any | None = None) -> None:
         )
         payload["recent_decision_answers"] = api._decision_answer_dicts(args)
         payload["worker_reviews"] = api._worker_review_context(args)
-        payload["llm_action"] = api._decide_action_with_llm(
+        action = api._decide_action_with_llm(
             args,
             action_report,
             payload,
         )
+        set_supervisor_action_payload(payload, action)
         api._promote_llm_command_suggestion(payload)
     if args.llm_execute:
         payload["executed"] = api._execute_llm_action(args, action_report, payload)

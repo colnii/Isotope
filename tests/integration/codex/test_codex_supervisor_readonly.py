@@ -8082,6 +8082,7 @@ def test_codex_supervisor_runner_advise_can_add_llm_action(
                 "label": "让托管 Codex 汇报状态",
             },
     }
+    assert payload["supervisor_action"] == payload["llm_action"]
     assert captured["agent_name"] == "supervisor"
 
 

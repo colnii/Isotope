@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from isotope.features.supervisor.commands.supervisor_action import (
+    set_supervisor_action_payload,
+)
 from isotope.features.supervisor.lifecycle import worker_lifecycle_execution_action
 
 
@@ -50,9 +53,9 @@ def append_supervise_llm_action(
         action = api._idle_loop_llm_action()
     else:
         action = api._decide_action_with_llm(args, action_report, payload)
-        payload["llm_action"] = action
+        set_supervisor_action_payload(payload, action)
         api._promote_llm_command_suggestion(payload)
         return action
 
-    payload["llm_action"] = action
+    set_supervisor_action_payload(payload, action)
     return action

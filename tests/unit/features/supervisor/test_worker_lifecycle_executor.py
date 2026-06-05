@@ -390,6 +390,7 @@ def test_supervise_action_uses_lifecycle_execution_plan() -> None:
         "source": "integration_review",
     }
     assert payload["llm_action"] == action
+    assert payload["supervisor_action"] == action
 
 
 def test_supervise_action_routes_delete_blockers_without_llm() -> None:
@@ -438,6 +439,7 @@ def test_supervise_action_routes_delete_blockers_without_llm() -> None:
         "command_suggestion": None,
     }
     assert payload["llm_action"] == action
+    assert payload["supervisor_action"] == action
 
 
 def test_supervise_planning_builds_archive_worker_lifecycle_execution() -> None:
