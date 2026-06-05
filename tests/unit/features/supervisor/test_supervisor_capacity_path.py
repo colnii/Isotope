@@ -35,6 +35,27 @@ class DeterministicCapacityProvider:
         )
 
 
+def test_capacity_plan_safety_note_describes_execution_path_without_disabled_language():
+    safety = capacity_command._capacity_plan_safety(execute_agent_loop=True)
+
+    note = safety["note"]
+    forbidden_terms = [
+        "只" + "生成",
+        "停在 " + "plan",
+        "低风险" + "能力",
+        "plan" + "_only",
+        "默认" + "不开",
+        "不" + "默认",
+    ]
+
+    assert safety["default_mode"] == "decision_path"
+    assert safety["execute_agent_loop"] is True
+    assert "agent loop" in note
+    assert "request_input" in note
+    for term in forbidden_terms:
+        assert term not in note
+
+
 FORBIDDEN_AGENT_LOOP_RESULT_KEYS = {
     "action_result",
     "capability_run",
@@ -158,11 +179,11 @@ def test_capacity_provider_uses_codex_pool_entry_without_api_key(tmp_path):
 def test_supervisor_capacity_plan_uses_capacity_calling_graph_and_capability_runner(tmp_path):
     provider = DeterministicCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
-        '"rationale":"low risk review"}'
+        '"rationale":"ready review"}'
     )
 
     result = capacity_command.build_supervisor_capacity_plan(
-        goal="检查低敏 artifact review 能力是否可用",
+        goal="检查 artifact review 能力是否可用",
         provider=provider,
         state_root=tmp_path / "state",
         execute_agent_loop=False,
@@ -285,10 +306,10 @@ def test_supervisor_capacity_plan_offers_goal_plan_capability(tmp_path):
     assert result["agent_loop"] is None
 
 
-def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path):
+def test_supervisor_capacity_plan_can_execute_agent_loop_step(tmp_path):
     provider = DeterministicCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
-        '"rationale":"low risk review"}'
+        '"rationale":"ready review"}'
     )
 
     result = capacity_command.build_supervisor_capacity_plan(
@@ -337,7 +358,7 @@ def test_supervisor_capacity_plan_can_execute_low_risk_agent_loop_step(tmp_path)
 def test_supervisor_capacity_plan_exposes_public_metadata_agent_loop_json_result(tmp_path):
     provider = DeterministicCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
-        '"rationale":"low risk review"}'
+        '"rationale":"ready review"}'
     )
 
     result = capacity_command.build_supervisor_capacity_plan(
@@ -368,11 +389,11 @@ def test_supervisor_capacity_plan_exposes_public_metadata_agent_loop_json_result
 def test_supervisor_capacity_plan_reports_ready_supervisor_decision(tmp_path):
     provider = DeterministicCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
-        '"rationale":"low risk review"}'
+        '"rationale":"ready review"}'
     )
 
     result = capacity_command.build_supervisor_capacity_plan(
-        goal="检查低敏 artifact review 能力是否可用",
+        goal="检查 artifact review 能力是否可用",
         provider=provider,
         state_root=tmp_path / "state",
         execute_agent_loop=False,
@@ -389,10 +410,10 @@ def test_supervisor_capacity_plan_reports_ready_supervisor_decision(tmp_path):
     }
 
 
-def test_supervisor_capacity_plan_only_offers_readiness_check_launchable_capabilities(tmp_path):
+def test_supervisor_capacity_plan_offers_readiness_check_launchable_capabilities(tmp_path):
     provider = DeterministicCapacityProvider(
         '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
-        '"rationale":"low risk review"}'
+        '"rationale":"ready review"}'
     )
     runner_with_unavailable_capabilities = CapabilityRunner(
         catalog=CapabilityCatalog(
@@ -439,7 +460,7 @@ def test_supervisor_capacity_plan_only_offers_readiness_check_launchable_capabil
     )
 
     capacity_command.build_supervisor_capacity_plan(
-        goal="检查低敏 artifact review 能力是否可用",
+        goal="检查 artifact review 能力是否可用",
         provider=provider,
         runner=runner_with_unavailable_capabilities,
         state_root=tmp_path / "state",
@@ -1220,7 +1241,7 @@ def test_supervisor_capacity_command_handler_is_thin_and_runner_delegates():
         args,
         provider=DeterministicCapacityProvider(
             '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
-            '"rationale":"low risk review"}'
+            '"rationale":"ready review"}'
         ),
     ) == 0
 
@@ -1434,7 +1455,7 @@ def test_supervisor_capacity_plain_output_includes_agent_loop_handoff(tmp_path, 
         args,
         provider=DeterministicCapacityProvider(
             '{"capacity_id":"artifact.review","arguments":{},"confidence":0.91,'
-            '"rationale":"low risk review"}'
+            '"rationale":"ready review"}'
         ),
     ) == 0
 

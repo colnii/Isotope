@@ -843,9 +843,9 @@ def _safe_input_defaults(input_defaults: Mapping[str, Any] | None) -> dict[str, 
 
 def _capacity_plan_safety(*, execute_agent_loop: bool) -> dict[str, Any]:
     return {
-        "default_mode": "plan_only",
+        "default_mode": "decision_path",
         "execute_agent_loop": execute_agent_loop,
-        "note": "默认只生成能力调用计划；缺少输入时停在 plan 层；显式开启 execute_agent_loop 才运行 allowlist 低风险能力。",
+        "note": "按能力契约生成调用决策；输入齐备且执行路径开启时进入 agent loop，缺少输入时返回 request_input。",
     }
 
 
