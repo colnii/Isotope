@@ -146,14 +146,14 @@ class CapabilityCatalog:
     @classmethod
     def default(cls) -> "CapabilityCatalog":
         from .extensions import extension_capability_definitions
-        from ._cap_artifact import artifact_capability_definitions
-        from ._cap_coding import coding_capability_definitions
-        from ._cap_workspace import workspace_capability_definitions
-        from ._cap_core import core_capability_definitions
-        from ._cap_memory import memory_capability_definitions
-        from ._cap_screen import screen_capability_definitions
-        from ._cap_research import research_capability_definitions
-        from ._cap_supervisor import supervisor_capability_definitions
+        from ._defs.artifact import artifact_capability_definitions
+        from ._defs.coding import coding_capability_definitions
+        from ._defs.workspace import workspace_capability_definitions
+        from ._defs.core import core_capability_definitions
+        from ._defs.memory import memory_capability_definitions
+        from ._defs.screen import screen_capability_definitions
+        from ._defs.research import research_capability_definitions
+        from ._defs.supervisor import supervisor_capability_definitions
         import itertools
 
         return cls(

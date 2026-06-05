@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Any
-from ._cap_common import builtin_capability
+from .common import builtin_capability
 
 
 def screen_capability_definitions(capability_type: type[Any]) -> list[Any]:

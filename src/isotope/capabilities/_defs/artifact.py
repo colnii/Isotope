@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any
-from ._cap_common import builtin_capability
-from .extensions import extension_capability_definitions
+from .common import builtin_capability
+from ..extensions import extension_capability_definitions
 
 
 def artifact_capability_definitions(capability_type: type[Any]) -> list[Any]:
