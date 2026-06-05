@@ -88,6 +88,8 @@ def test_qq_group_chatbot_runbooks_cover_beta_operations() -> None:
         "min_sticker_candidates",
         "require_sticker_candidate_ids",
         "forbid_sticker_candidate_ids",
+        "require_sticker_block_reasons",
+        "forbid_sticker_block_reasons",
         "max_selected_sticker_actions",
         "sticker_candidate_ids",
         "selected_sticker_action_count",

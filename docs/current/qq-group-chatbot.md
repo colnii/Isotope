@@ -432,11 +432,16 @@ Use replay expectations to prove the pack behaves as intended:
 {
   "require_sticker_candidate_ids": ["ship-it"],
   "forbid_sticker_candidate_ids": ["wrong-tone"],
+  "require_sticker_block_reasons": [],
+  "forbid_sticker_block_reasons": ["use_frequency_zero"],
   "max_selected_sticker_actions": 0
 }
 ```
 
 `require_sticker_candidate_ids` means the listed stickers must appear as
 proposed candidates. `forbid_sticker_candidate_ids` means the listed stickers
-must not appear. `max_selected_sticker_actions` should stay `0` in replay
-because replay is a dry-run and must not choose a send action.
+must not appear. `require_sticker_block_reasons` means the listed missing-sticker
+reasons must appear in `sticker_candidate_block_reason_counts`.
+`forbid_sticker_block_reasons` means the listed reasons must not appear.
+`max_selected_sticker_actions` should stay `0` in replay because replay is a
+dry-run and must not choose a send action.

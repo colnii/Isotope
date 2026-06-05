@@ -2596,6 +2596,8 @@ def test_social_runner_qq_init_replay_writes_editable_event_file(
         "min_sticker_candidates": 1,
         "require_sticker_candidate_ids": ["ship-it"],
         "forbid_sticker_candidate_ids": [],
+        "require_sticker_block_reasons": [],
+        "forbid_sticker_block_reasons": [],
         "max_selected_sticker_actions": 0,
         "max_send_feedback": 0,
         "max_sent_group_messages": 0,
@@ -2708,6 +2710,8 @@ def test_social_runner_qq_replay_writes_decision_report(
         "min_sticker_candidates",
         "require_sticker_candidate_ids",
         "forbid_sticker_candidate_ids",
+        "require_sticker_block_reasons",
+        "forbid_sticker_block_reasons",
         "max_selected_sticker_actions",
         "max_send_feedback",
         "max_sent_group_messages",
@@ -2813,6 +2817,8 @@ def test_social_runner_qq_replay_reports_sticker_block_reasons(
                 "require_processed_events": 1,
                 "min_proposed_actions": 1,
                 "min_sticker_candidates": 0,
+                "require_sticker_block_reasons": ["use_frequency_zero"],
+                "forbid_sticker_block_reasons": ["recent_sticker_feedback"],
                 "max_send_feedback": 0,
                 "require_all_dry_run": True,
             },
@@ -2839,6 +2845,25 @@ def test_social_runner_qq_replay_reports_sticker_block_reasons(
 
     report = _read_json(report_path)
     assert report["passed"] is True
+    assert [
+        item
+        for item in report["expectations"]
+        if item["name"]
+        in {"require_sticker_block_reasons", "forbid_sticker_block_reasons"}
+    ] == [
+        {
+            "name": "require_sticker_block_reasons",
+            "ok": True,
+            "expected": ["use_frequency_zero"],
+            "actual": ["use_frequency_zero"],
+        },
+        {
+            "name": "forbid_sticker_block_reasons",
+            "ok": True,
+            "expected": ["recent_sticker_feedback"],
+            "actual": ["use_frequency_zero"],
+        },
+    ]
     assert report["summary"]["sticker_candidate_count"] == 0
     assert report["summary"]["sticker_candidate_block_reason_counts"] == {
         "use_frequency_zero": 1
@@ -2847,6 +2872,76 @@ def test_social_runner_qq_replay_reports_sticker_block_reasons(
     assert proposed["candidate_id"] == "reply_text"
     assert proposed["metadata"]["sticker_selection"]["blocked_reasons"] == [
         "use_frequency_zero"
+    ]
+
+
+def test_social_runner_qq_replay_reports_failed_sticker_block_reason_expectations(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    config_payload = _config()
+    config_payload["role_card"]["stickers"]["use_frequency"] = 0.0
+    config = _write_json(tmp_path / "config.json", config_payload)
+    replay = _write_json(
+        tmp_path / "replay.json",
+        {
+            "events": [_event()],
+            "runtime": {
+                "wake_keywords": ["看看"],
+                "autonomy_score": 1.0,
+                "sticker_emotion": "positive",
+                "sticker_scene_tags": ["review"],
+                "allow_sticker_only": True,
+            },
+            "expectations": {
+                "require_processed_events": 1,
+                "min_proposed_actions": 1,
+                "require_sticker_block_reasons": ["no_matching_sticker"],
+                "forbid_sticker_block_reasons": ["use_frequency_zero"],
+                "require_all_dry_run": True,
+            },
+        },
+    )
+    report_path = tmp_path / "report.json"
+
+    assert main(
+        [
+            "qq",
+            "replay",
+            "--config-json",
+            str(config),
+            "--state-root",
+            str(tmp_path / "state"),
+            "--replay-json",
+            str(replay),
+            "--output",
+            str(report_path),
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    report = _read_json(report_path)
+    failed = [
+        item
+        for item in report["expectations"]
+        if item["name"]
+        in {"require_sticker_block_reasons", "forbid_sticker_block_reasons"}
+    ]
+    assert report["passed"] is False
+    assert failed == [
+        {
+            "name": "require_sticker_block_reasons",
+            "ok": False,
+            "expected": ["no_matching_sticker"],
+            "actual": ["use_frequency_zero"],
+        },
+        {
+            "name": "forbid_sticker_block_reasons",
+            "ok": False,
+            "expected": ["use_frequency_zero"],
+            "actual": ["use_frequency_zero"],
+        },
     ]
 
 

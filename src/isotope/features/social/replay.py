@@ -22,6 +22,8 @@ DEFAULT_REPLAY_EXPECTATIONS = {
     "min_sticker_candidates": 1,
     "require_sticker_candidate_ids": ["ship-it"],
     "forbid_sticker_candidate_ids": [],
+    "require_sticker_block_reasons": [],
+    "forbid_sticker_block_reasons": [],
     "max_selected_sticker_actions": 0,
     "max_send_feedback": 0,
     "max_sent_group_messages": 0,
@@ -34,6 +36,8 @@ EXPECTATION_NAMES = (
     "min_sticker_candidates",
     "require_sticker_candidate_ids",
     "forbid_sticker_candidate_ids",
+    "require_sticker_block_reasons",
+    "forbid_sticker_block_reasons",
     "max_selected_sticker_actions",
     "max_send_feedback",
     "max_sent_group_messages",
@@ -348,6 +352,8 @@ def _expectation_actual(
         return summary["sticker_candidate_count"]
     if name in {"require_sticker_candidate_ids", "forbid_sticker_candidate_ids"}:
         return list(summary["sticker_candidate_ids"])
+    if name in {"require_sticker_block_reasons", "forbid_sticker_block_reasons"}:
+        return list(summary["sticker_candidate_block_reason_counts"])
     if name == "max_selected_sticker_actions":
         return summary["selected_sticker_action_count"]
     if name == "max_send_feedback":
@@ -370,6 +376,12 @@ def _expectation_ok(name: str, *, expected: object, actual: object) -> bool:
     if name == "forbid_sticker_candidate_ids":
         actual_ids = set(_string_list_value(actual, "actual"))
         return all(item not in actual_ids for item in _string_list_value(expected, name))
+    if name == "require_sticker_block_reasons":
+        actual_reasons = set(_string_list_value(actual, "actual"))
+        return all(item in actual_reasons for item in _string_list_value(expected, name))
+    if name == "forbid_sticker_block_reasons":
+        actual_reasons = set(_string_list_value(actual, "actual"))
+        return all(item not in actual_reasons for item in _string_list_value(expected, name))
     if name == "max_selected_sticker_actions":
         return _int_value(actual, "actual") <= _int_value(expected, name)
     if name in {"max_send_feedback", "max_sent_group_messages"}:
