@@ -24,7 +24,11 @@ from .qq_operations_commands import (
     handle_inspect,
     handle_pause_resume,
 )
-from .qq_profile_commands import handle_apply_profile, handle_init_profile
+from .qq_profile_commands import (
+    handle_apply_profile,
+    handle_import_stickers,
+    handle_init_profile,
+)
 from .qq_replay_commands import handle_init_replay
 from .qq_runtime_commands import handle_live_run, handle_replay, handle_run
 
@@ -36,6 +40,7 @@ def qq_handlers() -> dict[str, Callable[[argparse.Namespace], dict[str, Any]]]:
         "init_beta": handle_init_beta,
         "init_profile": handle_init_profile,
         "apply_profile": handle_apply_profile,
+        "import_stickers": handle_import_stickers,
         "init_replay": handle_init_replay,
         "replay": handle_replay,
         "beta_check": handle_beta_check,

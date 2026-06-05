@@ -96,6 +96,16 @@ def register_qq_commands(subparsers: argparse._SubParsersAction) -> None:
     apply_profile.add_argument("--profile-dir", required=True, help="Profile pack directory.")
     apply_profile.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    import_stickers = qq_subparsers.add_parser(
+        "import-stickers",
+        help="Import local QQ sticker assets into sticker-library.json.",
+    )
+    import_stickers.add_argument("--source-dir", required=True, help="Sticker asset directory.")
+    import_stickers.add_argument("--output", required=True, help="sticker-library.json to write.")
+    import_stickers.add_argument("--group", required=True, help="Controlled QQ group id.")
+    import_stickers.add_argument("--pack-id", required=True, help="Sticker pack id.")
+    import_stickers.add_argument("--json", action="store_true", help="Print JSON output.")
+
     init_replay = qq_subparsers.add_parser(
         "init-replay",
         help="Create an editable QQ replay event file.",

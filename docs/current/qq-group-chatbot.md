@@ -73,6 +73,10 @@ Generate editable role and sticker files before the first real session:
 ```bash
 isotope-social qq init-profile --output-dir .isotope/qq-profile \
   --group <controlled_group_id> --name 群聊工程猫 --json
+isotope-social qq import-stickers \
+  --source-dir ./qq-sticker-assets \
+  --output .isotope/qq-profile/sticker-library.json \
+  --group <controlled_group_id> --pack-id engineering --json
 isotope-social qq apply-profile --pack-dir .isotope/qq-beta \
   --profile-dir .isotope/qq-profile --json
 ```
@@ -347,8 +351,41 @@ like a generic assistant, change the card and add a fake-platform regression.
 
 ## Sticker Pack Setup
 
+Sticker entries can be imported from a local asset directory. Put image files
+next to a `manifest.json` file:
+
+```json
+{
+  "stickers": [
+    {
+      "sticker_id": "ship-it",
+      "file": "ship.png",
+      "tags": ["ship", "review"],
+      "meaning": "代码通过时使用",
+      "media_ref": "file://ship.png"
+    }
+  ]
+}
+```
+
+Then write the profile sticker library:
+
+```bash
+isotope-social qq import-stickers \
+  --source-dir ./qq-sticker-assets \
+  --output .isotope/qq-profile/sticker-library.json \
+  --group <controlled_group_id> --pack-id engineering --json
+```
+
+The importer checks every manifest file path before writing output. If
+`media_ref` is omitted, it writes `file://<file>`. It also records `local_path`
+so the operator can trace the generated entry back to the local asset. The
+output is a normal `sticker-library.json`, so `apply-profile`,
+`inspect stickers`, `startup-check`, and replay use the same path as a
+hand-written library.
+
 Sticker entries need stable IDs, pack IDs, media refs, tags, meaning, source,
-and group allow/block rules. Example:
+and group allow/block rules. Example output entry:
 
 ```json
 {

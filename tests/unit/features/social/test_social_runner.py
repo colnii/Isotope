@@ -2107,6 +2107,156 @@ def test_social_runner_qq_apply_profile_updates_beta_config_and_beta_check(
     assert check_payload["ok"] is True
 
 
+def test_social_runner_qq_import_stickers_writes_valid_profile_library(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    beta_dir = tmp_path / "qq-beta"
+    profile_dir = tmp_path / "qq-profile"
+    source_dir = tmp_path / "sticker-assets"
+    source_dir.mkdir()
+    (source_dir / "ship.png").write_bytes(b"fake sticker image")
+    _write_json(
+        source_dir / "manifest.json",
+        {
+            "stickers": [
+                {
+                    "sticker_id": "ship-it",
+                    "file": "ship.png",
+                    "tags": ["ship", "review"],
+                    "meaning": "代码通过时使用",
+                    "source": "engineering_pack",
+                }
+            ]
+        },
+    )
+
+    assert main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(beta_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert main(
+        [
+            "qq",
+            "init-profile",
+            "--output-dir",
+            str(profile_dir),
+            "--group",
+            "99999",
+            "--name",
+            "群聊工程猫",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    output = profile_dir / "sticker-library.json"
+    code = main(
+        [
+            "qq",
+            "import-stickers",
+            "--source-dir",
+            str(source_dir),
+            "--output",
+            str(output),
+            "--group",
+            "99999",
+            "--pack-id",
+            "engineering",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "import-stickers"
+    assert payload["output"] == str(output)
+    assert payload["entry_count"] == 1
+    assert payload["sticker_ids"] == ["ship-it"]
+
+    library_payload = _read_json(output)
+    stickers = StickerLibrary.from_dict(library_payload)
+    assert stickers.entries[0].sticker_id == "ship-it"
+    assert stickers.entries[0].pack_id == "engineering"
+    assert stickers.entries[0].media.media_ref == "file://ship.png"
+    assert stickers.entries[0].media.local_path == "ship.png"
+    assert stickers.entries[0].allowed_groups == ("99999",)
+
+    assert main(
+        [
+            "qq",
+            "apply-profile",
+            "--pack-dir",
+            str(beta_dir),
+            "--profile-dir",
+            str(profile_dir),
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    assert main(["qq", "beta-check", "--pack-dir", str(beta_dir), "--json"]) == 0
+    check_payload = json.loads(capsys.readouterr().out)
+    assert check_payload["ok"] is True
+
+
+def test_social_runner_qq_import_stickers_rejects_missing_files(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    source_dir = tmp_path / "sticker-assets"
+    source_dir.mkdir()
+    _write_json(
+        source_dir / "manifest.json",
+        {
+            "stickers": [
+                {
+                    "sticker_id": "missing",
+                    "file": "missing.png",
+                    "tags": ["ship"],
+                    "meaning": "不存在的素材",
+                }
+            ]
+        },
+    )
+    output = tmp_path / "sticker-library.json"
+
+    code = main(
+        [
+            "qq",
+            "import-stickers",
+            "--source-dir",
+            str(source_dir),
+            "--output",
+            str(output),
+            "--group",
+            "99999",
+            "--pack-id",
+            "engineering",
+            "--json",
+        ]
+    )
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert "sticker file does not exist" in payload["error"]["message"]
+    assert not output.exists()
+
+
 def test_social_runner_qq_startup_check_passes_after_profile_and_replay(
     tmp_path: Path,
     capsys,

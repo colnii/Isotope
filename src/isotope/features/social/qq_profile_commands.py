@@ -12,6 +12,7 @@ from .profile_pack import (
     apply_qq_profile_pack,
     create_qq_profile_pack,
 )
+from .sticker_assets import QQStickerImportConfig, import_qq_sticker_assets
 
 
 def handle_init_profile(args: argparse.Namespace) -> dict[str, Any]:
@@ -37,4 +38,18 @@ def handle_apply_profile(args: argparse.Namespace) -> dict[str, Any]:
     )
     payload = result.to_public_dict()
     payload.update({"status": "ok", "command": "apply-profile"})
+    return payload
+
+
+def handle_import_stickers(args: argparse.Namespace) -> dict[str, Any]:
+    result = import_qq_sticker_assets(
+        QQStickerImportConfig(
+            source_dir=Path(args.source_dir),
+            output=Path(args.output),
+            group_id=args.group,
+            pack_id=args.pack_id,
+        )
+    )
+    payload = result.to_public_dict()
+    payload.update({"status": "ok", "command": "import-stickers"})
     return payload

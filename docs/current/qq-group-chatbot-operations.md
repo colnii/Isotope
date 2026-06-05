@@ -50,13 +50,21 @@ or running it:
 ```bash
 isotope-social qq init-profile --output-dir .isotope/qq-profile \
   --group <group_id> --name 群聊工程猫 --json
+isotope-social qq import-stickers \
+  --source-dir ./qq-sticker-assets \
+  --output .isotope/qq-profile/sticker-library.json \
+  --group <group_id> --pack-id engineering --json
 isotope-social qq apply-profile --pack-dir .isotope/qq-beta \
   --profile-dir .isotope/qq-profile --json
 ```
 
 The profile directory contains `role-card.json` and `sticker-library.json`.
-`apply-profile` updates `.isotope/qq-beta/config.json` to read those files and
-writes `.isotope/qq-beta/config.before-profile.json` as the previous config.
+`import-stickers` can replace `sticker-library.json` from a local
+`manifest.json`; each manifest item needs `sticker_id`, `file`, `tags`, and
+`meaning`, and may include `media_ref`. The importer checks files before
+writing output and records `local_path` in each media entry. `apply-profile`
+updates `.isotope/qq-beta/config.json` to read those files and writes
+`.isotope/qq-beta/config.before-profile.json` as the previous config.
 
 After any profile or config edit, run diagnostics before touching OneBot:
 
