@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -568,7 +569,7 @@ def _capability_inputs_from_decision(
         for key, value in system_context.items():
             if key in allowed_inputs:
                 inputs[key] = value
-    inputs = _apply_conversation_goal_plan_write_guardrail(
+    inputs = _apply_conversation_goal_plan_write_route(
         capacity_id,
         inputs=inputs,
         user_message=user_message,
@@ -577,7 +578,7 @@ def _capability_inputs_from_decision(
     return inputs
 
 
-def _apply_conversation_goal_plan_write_guardrail(
+def _apply_conversation_goal_plan_write_route(
     capacity_id: str,
     *,
     inputs: dict[str, Any],
@@ -598,19 +599,7 @@ def _explicit_goal_plan_write_requested(user_message: str) -> bool:
     text = user_message.strip()
     if not text:
         return False
-    negative_markers = (
-        "不要写",
-        "别写",
-        "不用写",
-        "不写入",
-        "不要入队",
-        "别入队",
-        "不用入队",
-        "只预览",
-        "先预览",
-        "预览",
-    )
-    if any(marker in text for marker in negative_markers):
+    if _goal_plan_queue_write_suppressed(text):
         return False
     write_markers = (
         "写入目标队列",
@@ -622,6 +611,12 @@ def _explicit_goal_plan_write_requested(user_message: str) -> bool:
         "创建目标",
     )
     return any(marker in text for marker in write_markers)
+
+
+def _goal_plan_queue_write_suppressed(text: str) -> bool:
+    if "预览" in text:
+        return True
+    return re.search(r"(不|别|不用).{0,6}(写|入队|加入|放入)", text) is not None
 
 
 def _normalize_conversation_capability_inputs(

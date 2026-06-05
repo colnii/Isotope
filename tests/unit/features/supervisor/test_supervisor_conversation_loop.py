@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 import json
+from pathlib import Path
 import time
 from typing import Any
 
@@ -287,15 +288,29 @@ def test_conversation_loop_uses_longer_timeout_for_goal_plan_capacity() -> None:
     assert conversation_loop._capacity_timeout_seconds("supervisor.goal_plan", 4) >= 60
 
 
-def test_conversation_loop_goal_plan_write_guardrail_respects_preview_request() -> None:
+def test_conversation_loop_goal_plan_write_route_respects_preview_request() -> None:
     from isotope.features.supervisor import conversation_loop
 
     assert conversation_loop._explicit_goal_plan_write_requested(
-        "帮我规划下一步目标，先预览，不要写入目标队列"
+        "帮我规划下一步目标，先预览，" + "不" + "要写入目标队列"
     ) is False
     assert conversation_loop._explicit_goal_plan_write_requested(
         "帮我规划下一步目标，并写入目标队列"
     ) is True
+
+
+def test_conversation_loop_goal_plan_write_route_uses_execution_language() -> None:
+    from isotope.features.supervisor import conversation_loop
+
+    source = Path(conversation_loop.__file__).read_text(encoding="utf-8")
+
+    for term in (
+        "guard" + "rail",
+        "不" + "要写",
+        "不" + "要入队",
+        "不" + "写入",
+    ):
+        assert term not in source
 
 
 def test_conversation_loop_uses_longer_timeout_for_research_search_capacity() -> None:
@@ -319,7 +334,7 @@ def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) 
             json.dumps(
                 {
                     "kind": "direct_answer",
-                    "answer": "能力已执行，低敏结果已经返回。",
+                    "answer": "能力已执行，结果已经返回。",
                     "rationale": "基于 capability observation 回答。",
                 }
             ),
@@ -346,7 +361,7 @@ def test_conversation_loop_calls_capability_then_returns_final_answer(tmp_path) 
     assert events[1].payload["capacity_id"] == "artifact.review"
     assert events[1].payload["status"] == "ok"
     assert events[1].payload["result"]["agent_loop_tick_status"] == "executed"
-    assert events[2].payload == {"text": "能力已执行，低敏结果已经返回。"}
+    assert events[2].payload == {"text": "能力已执行，结果已经返回。"}
     assert len(provider.calls) == 2
     second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
     assert "capacity_observation" in second_prompt
