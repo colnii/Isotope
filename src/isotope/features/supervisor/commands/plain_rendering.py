@@ -6,6 +6,8 @@ from typing import Any
 
 from isotope.features.supervisor.commands.supervisor_action import (
     set_supervisor_action_payload,
+    supervisor_action_from_payload,
+    supervisor_followup_action_from_payload,
 )
 
 
@@ -66,12 +68,14 @@ def print_supervise_plain(
         print()
         print("[LLM 摘要]")
         print(llm_summary)
-    if llm_action := payload.get("llm_action"):
+    if _has_supervisor_action(payload):
         print()
+        llm_action = supervisor_action_from_payload(payload)
         print(f"[{llm_action_section_title(llm_action)}]")
         print_llm_action_plain(llm_action, api=api)
-    if llm_followup_action := payload.get("llm_followup_action"):
+    if _has_supervisor_followup_action(payload):
         print()
+        llm_followup_action = supervisor_followup_action_from_payload(payload)
         print(f"[{llm_action_section_title(llm_followup_action, followup=True)}]")
         print_llm_action_plain(llm_followup_action, api=api)
     if auto_action := payload.get("auto_action"):
@@ -136,8 +140,8 @@ def print_advice(args: Any, *, api: Any | None = None) -> None:
     print(f"优先级：{recommendation['priority']}")
     if recommendation["target_session_id"]:
         print(f"目标：{recommendation['target_session_id']}")
-    if llm_action := payload.get("llm_action"):
-        print_advice_llm_action_plain(llm_action)
+    if _has_supervisor_action(payload):
+        print_advice_llm_action_plain(supervisor_action_from_payload(payload))
     if command_suggestion is None:
         print("命令：暂无可安全生成的命令草案。")
     else:
@@ -250,6 +254,18 @@ def llm_action_detail(action: dict[str, Any]) -> str:
 def is_program_routed_action(action: dict[str, Any]) -> bool:
     return isinstance(action.get("decision_source"), str) or isinstance(
         action.get("routing_reason"), str
+    )
+
+
+def _has_supervisor_action(payload: dict[str, Any]) -> bool:
+    return isinstance(payload.get("supervisor_action"), dict) or isinstance(
+        payload.get("llm_action"), dict
+    )
+
+
+def _has_supervisor_followup_action(payload: dict[str, Any]) -> bool:
+    return isinstance(payload.get("supervisor_followup_action"), dict) or isinstance(
+        payload.get("llm_followup_action"), dict
     )
 
 

@@ -86,6 +86,39 @@ def test_supervise_plain_prints_lifecycle_action_route(capsys):
     )
 
 
+def test_supervise_plain_prefers_supervisor_action_alias(capsys):
+    payload = {
+        "automation": {"ready": True, "reason": "ready"},
+        "recommendation": {"label": "继续监控", "action": "monitor"},
+        "llm_action": {"kind": "monitor", "reason": "legacy"},
+        "supervisor_action": {"kind": "send_status", "reason": "neutral"},
+    }
+
+    print_supervise_plain(payload, report=object(), api=_StubApi())
+
+    text = capsys.readouterr().out
+    assert "send_status / neutral" in text
+    assert "monitor / legacy" not in text
+
+
+def test_supervise_plain_prefers_supervisor_followup_action_alias(capsys):
+    payload = {
+        "automation": {"ready": True, "reason": "ready"},
+        "recommendation": {"label": "继续监控", "action": "monitor"},
+        "llm_followup_action": {"kind": "monitor", "reason": "legacy followup"},
+        "supervisor_followup_action": {
+            "kind": "send_status",
+            "reason": "neutral followup",
+        },
+    }
+
+    print_supervise_plain(payload, report=object(), api=_StubApi())
+
+    text = capsys.readouterr().out
+    assert "send_status / neutral followup" in text
+    assert "monitor / legacy followup" not in text
+
+
 def test_advice_plain_labels_model_action_as_llm(capsys):
     print_advice_llm_action_plain(
         {
