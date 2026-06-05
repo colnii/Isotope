@@ -10555,7 +10555,8 @@ def test_codex_supervisor_runner_supervise_request_context_replans_same_iteratio
     assert payload["supervisor_action"]["kind"] == "request_context"
     assert payload["llm_action"] == payload["supervisor_action"]
     _codex_operation_context_result(payload["executed"])
-    assert payload["llm_followup_action"]["kind"] == "send_status"
+    assert payload["supervisor_followup_action"]["kind"] == "send_status"
+    assert payload["llm_followup_action"] == payload["supervisor_followup_action"]
     assert payload["followup_executed"]["kind"] == "send_status"
     assert calls == _tmux_send_calls(STATUS_REQUEST_TEXT)
     assert provider.calls == 2
@@ -10638,7 +10639,8 @@ def test_codex_supervisor_runner_supervise_respects_max_context_requests(
     assert payload["supervisor_action"]["kind"] == "request_context"
     assert payload["llm_action"] == payload["supervisor_action"]
     _codex_operation_context_result(payload["executed"])
-    assert payload["llm_followup_action"]["kind"] == "request_context"
+    assert payload["supervisor_followup_action"]["kind"] == "request_context"
+    assert payload["llm_followup_action"] == payload["supervisor_followup_action"]
     assert payload["followup_executed"] == {
         "kind": "request_context",
         "skipped": True,
@@ -10823,7 +10825,8 @@ def test_codex_supervisor_runner_supervise_context_followup_can_ask_user_after_g
     assert payload["supervisor_action"]["kind"] == "request_context"
     assert payload["llm_action"] == payload["supervisor_action"]
     _codex_operation_context_result(payload["executed"])
-    assert payload["llm_followup_action"]["kind"] == "ask_user"
+    assert payload["supervisor_followup_action"]["kind"] == "ask_user"
+    assert payload["llm_followup_action"] == payload["supervisor_followup_action"]
     followup = payload["followup_executed"]
     assert followup["kind"] == "ask_user"
     assert followup["requires_user"] is True
