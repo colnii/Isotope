@@ -1092,7 +1092,7 @@ def test_supervisor_capacity_plan_summarizes_research_promote_agent_loop_result(
     assert promotion["status"] == "ok"
     assert promotion["proposal_id"] == "prop_capacity_research"
     assert promotion["action_type"] == "write_memory"
-    assert promotion["memory_write"] == "proposal_only"
+    assert promotion["memory_write"] == "write_memory_action_handoff"
     assert (
         result["agent_loop_result"]["agent_loop_research_promotion_status"] == "ok"
     )
@@ -1102,7 +1102,7 @@ def test_supervisor_capacity_plan_summarizes_research_promote_agent_loop_result(
     )
     assert (
         result["agent_loop_result"]["agent_loop_research_promotion_memory_write"]
-        == "proposal_only"
+        == "write_memory_action_handoff"
     )
     assert (
         result["agent_loop_result"][
