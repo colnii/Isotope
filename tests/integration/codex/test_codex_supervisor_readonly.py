@@ -15368,8 +15368,9 @@ def test_codex_supervisor_runner_loop_goal_can_launch_first_worker(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "launch_session"
-    assert payload["llm_action"]["prompt"] == goal
+    assert payload["supervisor_action"]["kind"] == "launch_session"
+    assert payload["supervisor_action"]["prompt"] == goal
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "launch_session"
     assert payload["executed"]["managed"]["name"] == "goal-worker"
     assert payload["executed"]["managed"]["pid"] == 45679
@@ -15487,8 +15488,9 @@ def test_codex_supervisor_runner_loop_uses_persisted_goal_queue(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["active_goals"] == add_payload["active_goals"]
-    assert payload["llm_action"]["kind"] == "launch_session"
-    assert payload["llm_action"]["target_name"] == "goal-supervisor"
+    assert payload["supervisor_action"]["kind"] == "launch_session"
+    assert payload["supervisor_action"]["target_name"] == "goal-supervisor"
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["managed"]["name"] == "goal-supervisor"
     assert payload["executed"]["worktree"]["cwd"] == str(workspace)
     assert captured["command"][9].startswith("WORK ORDER")
