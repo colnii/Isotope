@@ -854,8 +854,23 @@ def test_runner_discovers_memory_promotion_preview_from_default_catalog():
         "thread_id",
         "candidate",
     ]
-    assert "proposal_payload" in description["safety_boundaries"]
-    assert "no_memory_write" in description["safety_boundaries"]
+    assert "write_memory_action_payload" in description["safety_boundaries"]
+    assert "write_memory_action_handoff" in description["safety_boundaries"]
+
+
+def test_memory_promotion_manifest_uses_action_handoff_language():
+    description = _runner().describe_capability("memory.promotion.preview")
+    manifest_text = json.dumps(description, ensure_ascii=False)
+    forbidden_terms = [
+        "proposal" + "_payload",
+        "no" + "_memory" + "_write",
+        "proposal" + "_only",
+    ]
+
+    assert "memory_promotion_projection" in description["safety_boundaries"]
+    assert "write_memory_action_handoff" in description["safety_boundaries"]
+    for term in forbidden_terms:
+        assert term not in manifest_text
 
 
 def test_runner_discovers_screen_report_from_default_catalog():
@@ -948,7 +963,22 @@ def test_runner_discovers_research_promote_from_default_catalog():
         "session",
     ]
     assert "reuses_memory_promotion_boundary" in description["safety_boundaries"]
-    assert "proposal_only_no_memory_write" in description["safety_boundaries"]
+    assert "write_memory_action_handoff" in description["safety_boundaries"]
+
+
+def test_research_promote_manifest_uses_memory_handoff_language():
+    description = _runner().describe_capability("research.promote")
+    manifest_text = json.dumps(description, ensure_ascii=False)
+    forbidden_terms = [
+        "proposal" + "_only",
+        "no" + "_memory" + "_write",
+        "no" + "_proposal" + "_payload",
+    ]
+
+    assert "research_promotion_projection" in description["safety_boundaries"]
+    assert "write_memory_action_handoff" in description["safety_boundaries"]
+    for term in forbidden_terms:
+        assert term not in manifest_text
 
 
 def test_runner_discovers_coding_task_plan_from_default_catalog():
@@ -3985,7 +4015,7 @@ def test_research_promote_capability_builds_public_metadata_proposal_summary(tmp
         "requested_capabilities": {"tools": ["write_memory"]},
         "quality_gate_status": "promotable",
         "quality_gate_reasons": [],
-        "memory_write": "proposal_only",
+        "memory_write": "write_memory_action_handoff",
     }
     output = json.dumps(result, sort_keys=True)
     assert "raw report body" not in output

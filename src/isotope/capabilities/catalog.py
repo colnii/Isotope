@@ -1520,14 +1520,14 @@ class CapabilityCatalog:
                 ),
                 Capability(
                     capability_id="memory.promotion.preview",
-                    title="Memory Promotion Preview",
+                    title="Memory Promotion Handoff",
                     description=(
-                        "Build a public write_memory proposal preview from "
+                        "Build a public write_memory action handoff from "
                         "structured artifact or external observation metadata."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
-                    domain_tags=("memory", "promotion", "proposal", "preview"),
+                    domain_tags=("memory", "promotion", "write-memory", "handoff"),
                     input_contract={
                         "type": "object",
                         "required": [
@@ -1581,11 +1581,12 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "proposal_payload",
-                        "no_memory_write",
-                        "no_canonical_event_append",
+                        "write_memory_action_payload",
+                        "write_memory_action_handoff",
+                        "canonical_event_append_via_memory_action",
                         "structured_source_required",
-                        "no_raw_content",
+                        "source_ref_metadata_projection",
+                        "memory_promotion_projection",
                         "memory_record_refs_expandable",
                     ),
                     default_enabled=True,
@@ -1869,12 +1870,12 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "reuses_research_memory_promotion_payload",
+                        "reuses_research_memory_promotion_action",
                         "reuses_memory_promotion_boundary",
                         "research_report_artifact_only",
-                        "proposal_only_no_memory_write",
-                        "no_raw_transcript_read",
-                        "no_proposal_payload_content_return",
+                        "write_memory_action_handoff",
+                        "research_promotion_projection",
+                        "write_memory_public_result_metadata",
                         "public_result_metadata",
                     ),
                     default_enabled=True,

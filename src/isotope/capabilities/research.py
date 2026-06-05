@@ -137,8 +137,8 @@ def run_research_promote(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         raise ValueError("research promotion payload must include artifact and proposal")
     if not isinstance(quality_gate, Mapping):
         raise ValueError("research promotion payload must include quality_gate")
-    proposal_payload = proposal.get("payload")
-    proposal_payload = proposal_payload if isinstance(proposal_payload, Mapping) else {}
+    action_payload = proposal.get("payload")
+    action_payload = action_payload if isinstance(action_payload, Mapping) else {}
     return {
         "kind": "capability_run_result",
         "capability_id": RESEARCH_PROMOTE_CAPABILITY,
@@ -150,14 +150,14 @@ def run_research_promote(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
             "artifact_ref": artifact.get("ref"),
             "proposal_id": proposal.get("proposal_id"),
             "action_type": proposal.get("action_type"),
-            "scope": proposal_payload.get("scope"),
-            "quality": proposal_payload.get("quality"),
-            "summary": proposal_payload.get("summary"),
-            "source_refs": proposal_payload.get("source_refs"),
+            "scope": action_payload.get("scope"),
+            "quality": action_payload.get("quality"),
+            "summary": action_payload.get("summary"),
+            "source_refs": action_payload.get("source_refs"),
             "requested_capabilities": proposal.get("requested_capabilities"),
             "quality_gate_status": quality_gate.get("status"),
             "quality_gate_reasons": quality_gate.get("reasons"),
-            "memory_write": "proposal_only",
+            "memory_write": "write_memory_action_handoff",
         },
     }
 
