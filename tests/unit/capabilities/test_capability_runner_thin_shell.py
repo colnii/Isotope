@@ -263,8 +263,25 @@ def test_runner_discovers_supervisor_request_context_from_default_catalog():
     description = runner.describe_capability("supervisor.request_context")
     assert description["input_contract"]["required"] == ["state_root", "cwd", "query"]
     assert "codex_home" not in description["input_contract"]["properties"]
-    assert "workspace_read_snapshot" in description["safety_boundaries"]
+    assert "workspace_context_projection" in description["safety_boundaries"]
     assert "writes_existing_supervisor_context_store" in description["safety_boundaries"]
+
+
+def test_supervisor_request_context_manifest_uses_context_projection_language():
+    description = _runner().describe_capability("supervisor.request_context")
+    manifest_text = json.dumps(description, ensure_ascii=False)
+
+    forbidden_terms = [
+        "read" + "_snapshot",
+        "inspection " + "mode",
+        "只读" + "扫描",
+        "不" + "执行",
+    ]
+
+    assert "context" in description["description"].lower()
+    assert "workspace_context_projection" in description["safety_boundaries"]
+    for term in forbidden_terms:
+        assert term not in manifest_text
 
 
 def test_runner_discovers_supervisor_project_status_from_default_catalog():
@@ -2902,7 +2919,7 @@ def test_runner_run_rejects_input_with_wrong_contract_type_before_allowlist(tmp_
     assert not list(Path(tmp_path).rglob("*"))
 
 
-def test_request_context_capability_runs_existing_inspection_context_search(tmp_path):
+def test_request_context_capability_runs_existing_context_search(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "README.md").write_text(

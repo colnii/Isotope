@@ -2259,7 +2259,7 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "workspace_read_snapshot",
+                        "workspace_context_projection",
                         "writes_existing_supervisor_context_store",
                         "public_result_metadata",
                     ),

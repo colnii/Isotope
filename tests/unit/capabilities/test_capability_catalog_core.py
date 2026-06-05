@@ -259,5 +259,5 @@ def test_default_catalog_registers_supervisor_request_context_capability():
     assert capability["shelf"] == "product_candidate"
     assert capability["input_contract"]["required"] == ["state_root", "cwd", "query"]
     assert capability["input_contract"]["properties"]["max_results"]["type"] == "integer"
-    assert "workspace_read_snapshot" in capability["safety_boundaries"]
+    assert "workspace_context_projection" in capability["safety_boundaries"]
     assert "writes_existing_supervisor_context_store" in capability["safety_boundaries"]
