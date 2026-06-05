@@ -1269,8 +1269,8 @@ class CapabilityCatalog:
                     capability_id="vcs.status",
                     title="VCS Status",
                     description=(
-                        "Read git branch and porcelain status through fixed "
-                        "inspection subcommands."
+                        "Project git branch and porcelain status through fixed "
+                        "git subcommands."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -1279,7 +1279,7 @@ class CapabilityCatalog:
                         "git",
                         "status",
                         "native-coding",
-                        "inspection",
+                        "state-projection",
                     ),
                     input_contract={
                         "type": "object",
@@ -1313,7 +1313,7 @@ class CapabilityCatalog:
                     },
                     safety_boundaries=(
                         "fixed_git_subcommands_only",
-                        "read_snapshot_git_status",
+                        "git_status_projection",
                         "no_vcs_mutation",
                         "no_artifact_write",
                         "public_result_metadata",
@@ -1325,8 +1325,8 @@ class CapabilityCatalog:
                     capability_id="vcs.diff",
                     title="VCS Diff",
                     description=(
-                        "Read git diff stat and changed-file names through "
-                        "fixed inspection subcommands."
+                        "Project git diff stat and changed-file names through "
+                        "fixed git subcommands."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -1335,7 +1335,7 @@ class CapabilityCatalog:
                         "git",
                         "diff",
                         "native-coding",
-                        "inspection",
+                        "diff-projection",
                     ),
                     input_contract={
                         "type": "object",
@@ -1370,7 +1370,7 @@ class CapabilityCatalog:
                     },
                     safety_boundaries=(
                         "fixed_git_subcommands_only",
-                        "read_snapshot_git_diff",
+                        "git_diff_projection",
                         "diff_result_projection",
                         "no_vcs_mutation",
                         "no_artifact_write",

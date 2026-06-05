@@ -2337,7 +2337,31 @@ def test_runner_discovers_vcs_status_and_diff_from_default_catalog():
     assert status_description["input_contract"]["required"] == ["root", "cwd"]
     assert diff_description["input_contract"]["required"] == ["root", "cwd"]
     assert "fixed_git_subcommands_only" in status_description["safety_boundaries"]
+    assert "git_status_projection" in status_description["safety_boundaries"]
+    assert "git_diff_projection" in diff_description["safety_boundaries"]
     assert "diff_result_projection" in diff_description["safety_boundaries"]
+
+
+def test_vcs_status_and_diff_manifests_use_projection_language():
+    runner = _runner()
+    manifest_text = json.dumps(
+        {
+            "status": runner.describe_capability("vcs.status"),
+            "diff": runner.describe_capability("vcs.diff"),
+        },
+        ensure_ascii=False,
+    )
+    forbidden_terms = [
+        "read" + "_snapshot",
+        "inspec" + "tion",
+        "只读" + "扫描",
+        "不" + "执行",
+    ]
+
+    assert "git_status_projection" in manifest_text
+    assert "git_diff_projection" in manifest_text
+    for term in forbidden_terms:
+        assert term not in manifest_text
 
 
 def test_runner_reports_git_status_summary_without_artifact_write(tmp_path):
