@@ -20,10 +20,10 @@ from isotope.agents.scheduler.capacity_graph import (
 )
 from isotope.capabilities.runner import CapabilityRunner
 from isotope.capabilities.supervisor import SUPERVISOR_CODEX_OPERATION_CAPABILITY
-from isotope.features.supervisor.commands.capacity_rendering import (
+from isotope.features.supervisor.commands.capacity.capacity_rendering import (
     print_capacity_plan_plain,
 )
-from isotope.features.supervisor.commands.capacity_result import (
+from isotope.features.supervisor.commands.capacity.capacity_result import (
     agent_loop_handoff_result,
     agent_loop_json_result,
 )

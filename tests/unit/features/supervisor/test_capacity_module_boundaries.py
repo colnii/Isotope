@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from isotope.features.supervisor.commands import capacity_rendering, capacity_result
+from isotope.features.supervisor.commands import capacity as _capacity
+capacity_rendering = _capacity.capacity_rendering
+capacity_result = _capacity.capacity_result
 from isotope.features.supervisor.commands.handlers import capacity as capacity_command
 
 

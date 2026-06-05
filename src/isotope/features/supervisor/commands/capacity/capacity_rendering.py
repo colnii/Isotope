@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from isotope.features.supervisor.commands.capacity_result import agent_loop_json_result
+from isotope.features.supervisor.commands.capacity.capacity_result import agent_loop_json_result
 
 
 def print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:

@@ -102,7 +102,7 @@ from .llm.planner import (
     ContextRequiredSummaryProvider as _ContextRequiredSummaryProvider,
     decide_action_with_llm as _decide_action_with_llm,
 )
-from .failure_guard import (
+from .failure.failure_guard import (
     failure_decision_request_action as _failure_decision_request_action,
     failure_goal_id as _failure_goal_id,
     failure_lane_name as _failure_lane_name,
@@ -146,7 +146,7 @@ from .fanout import (
     paused_active_goals_fanout_plan as _paused_active_goals_fanout_plan,
     replenished_goal_plan_fanout_launch_plan as _replenished_goal_plan_fanout_launch_plan,
 )
-from .failure_lifecycle import (
+from .failure.failure_lifecycle import (
     active_worker_retry_decision_exists as _active_worker_retry_decision_exists,
     auto_retry_exited_process_workers as _auto_retry_exited_process_workers,
     ensure_worker_retry_decision_request as _ensure_worker_retry_decision_request,

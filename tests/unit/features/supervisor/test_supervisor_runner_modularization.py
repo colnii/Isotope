@@ -221,7 +221,7 @@ def test_supervisor_runner_delegates_context_request_followup_replan():
 
 def test_supervisor_runner_delegates_failure_guard_helpers():
     failure_module = importlib.import_module(
-        "isotope.features.supervisor.commands.failure_guard"
+        "isotope.features.supervisor.commands.failure.failure_guard"
     )
 
     assert runner._record_failure_event is failure_module.record_failure_event
@@ -476,7 +476,7 @@ def test_supervisor_runner_delegates_merge_promotion_orchestration_helpers():
 
 def test_supervisor_runner_delegates_worker_failure_lifecycle_helpers():
     failure_module = importlib.import_module(
-        "isotope.features.supervisor.commands.failure_lifecycle"
+        "isotope.features.supervisor.commands.failure.failure_lifecycle"
     )
 
     assert runner._sync_managed_worker_failures is failure_module.sync_managed_worker_failures
@@ -1266,7 +1266,7 @@ def test_llm_context_skips_followup_replan_for_non_context_execution():
 
 def test_failure_guard_records_failure_with_lane_and_goal(tmp_path):
     failure_module = importlib.import_module(
-        "isotope.features.supervisor.commands.failure_guard"
+        "isotope.features.supervisor.commands.failure.failure_guard"
     )
     args = argparse.Namespace(codex_home=tmp_path, name="worker-a")
     payload = {
