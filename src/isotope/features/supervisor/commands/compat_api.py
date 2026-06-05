@@ -327,6 +327,7 @@ from .daemon_command import (
     read_tail_text as _read_tail_text,
     recent_ci_from_log as _recent_ci_from_log,
     recent_execution_from_log as _recent_execution_from_log,
+    recent_llm_action_from_log as _recent_supervisor_action_from_log,
     recent_llm_action_from_log as _recent_llm_action_from_log,
     recent_worker_payload as _recent_worker_payload,
     run_daemon_watcher as _run_daemon_watcher,

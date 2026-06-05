@@ -1296,6 +1296,14 @@ def test_supervisor_runner_uses_compat_api_for_legacy_helpers():
     assert runner._handle_dashboard_command is compat_module._handle_dashboard_command
     assert runner._execute_llm_action is compat_module._execute_llm_action
     assert runner._decide_action_with_llm is compat_module._decide_action_with_llm
+    assert (
+        runner._recent_supervisor_action_from_log
+        is compat_module._recent_supervisor_action_from_log
+    )
+    assert (
+        runner._recent_llm_action_from_log
+        is compat_module._recent_supervisor_action_from_log
+    )
 
     source = inspect.getsource(runner)
     assert "from .commands.dispatch import" in source
