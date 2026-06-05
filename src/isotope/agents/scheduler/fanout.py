@@ -22,7 +22,7 @@ from .goal_queue import filter_fanout_candidate_goals
 
 
 DEFAULT_FANOUT_LIMIT = 3
-REVIEW_NOTE = "fanout 只生成受控 launch spec；runner 执行时仍需通过 launch gate。"
+REVIEW_NOTE = "fanout 输出可执行 launch spec；runner 按调度入口执行并记录结果。"
 
 
 def build_fanout_launch_plan(

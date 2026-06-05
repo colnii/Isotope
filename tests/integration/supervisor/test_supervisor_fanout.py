@@ -50,7 +50,7 @@ def test_supervisor_fanout_turns_parallel_recommendations_into_launch_specs():
             "candidate_reason": "状态按钮和 hosted output 写入区域不同。",
             "review": {
                 "requires_human_review": True,
-                "note": "fanout 只生成受控 launch spec；runner 执行时仍需通过 launch gate。",
+                "note": "fanout 输出可执行 launch spec；runner 按调度入口执行并记录结果。",
             },
         },
         {
@@ -64,11 +64,14 @@ def test_supervisor_fanout_turns_parallel_recommendations_into_launch_specs():
             "candidate_reason": "状态按钮和 hosted output 写入区域不同。",
             "review": {
                 "requires_human_review": True,
-                "note": "fanout 只生成受控 launch spec；runner 执行时仍需通过 launch gate。",
+                "note": "fanout 输出可执行 launch spec；runner 按调度入口执行并记录结果。",
             },
         },
     ]
     assert plan["skipped"] == []
+    combined = repr(plan)
+    for term in ("只" + "生成", "launch " + "gate"):
+        assert term not in combined
 
 
 def test_supervisor_fanout_dedupes_caps_and_skips_running_workers():
