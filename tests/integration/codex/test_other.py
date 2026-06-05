@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from helpers import (
+from .helpers import (
     CONTINUE_REQUEST_TEXT,
     EXISTING_WORKSPACE,
     NON_STALE_SECONDS,

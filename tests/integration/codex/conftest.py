@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pytest
 
 from isotope.features.supervisor import flow as supervisor_flow
-from helpers import NOW
+from .helpers import NOW
 
 
 @pytest.fixture(autouse=True)
