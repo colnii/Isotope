@@ -4,6 +4,7 @@ from isotope.features.supervisor.commands.daemon_command import (
     daemon_activity_payload,
     print_daemon_activity_plain,
     recent_llm_action_from_log,
+    recent_supervisor_action_from_log,
 )
 
 
@@ -17,24 +18,24 @@ class _StubApi:
         return {"status": "ok", "summary": {}}
 
 
-def test_recent_action_from_log_reads_legacy_llm_header() -> None:
-    assert recent_llm_action_from_log(
+def test_recent_supervisor_action_from_log_reads_legacy_llm_header() -> None:
+    assert recent_supervisor_action_from_log(
         "[LLM 白名单动作]\n"
         "monitor / still running\n"
         "已跳过：still running\n"
     ) == {"kind": "monitor", "reason": "still running"}
 
 
-def test_recent_action_from_log_reads_supervisor_header() -> None:
-    assert recent_llm_action_from_log(
+def test_recent_supervisor_action_from_log_reads_supervisor_header() -> None:
+    assert recent_supervisor_action_from_log(
         "[Supervisor 白名单动作]\n"
         "monitor / still running\n"
         "已跳过：still running\n"
     ) == {"kind": "monitor", "reason": "still running"}
 
 
-def test_recent_action_from_log_reads_program_route_header() -> None:
-    assert recent_llm_action_from_log(
+def test_recent_supervisor_action_from_log_reads_program_route_header() -> None:
+    assert recent_supervisor_action_from_log(
         "[程序路由动作]\n"
         "cleanup_worktree / recommended_next_step=delete_ready\n"
         "动作来源：worker_lifecycle_execution\n"
@@ -42,6 +43,16 @@ def test_recent_action_from_log_reads_program_route_header() -> None:
         "kind": "cleanup_worktree",
         "reason": "recommended_next_step=delete_ready",
     }
+
+
+def test_recent_llm_action_from_log_wraps_supervisor_parser() -> None:
+    text = (
+        "[Supervisor 白名单动作]\n"
+        "monitor / still running\n"
+        "已跳过：still running\n"
+    )
+
+    assert recent_llm_action_from_log(text) == recent_supervisor_action_from_log(text)
 
 
 def test_print_daemon_activity_labels_recent_action_as_supervisor(capsys) -> None:

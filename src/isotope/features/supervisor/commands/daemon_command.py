@@ -203,7 +203,7 @@ def daemon_activity_payload(
     )
     recent_ci = recent_ci_from_log(daemon_log)
     recent_execution = recent_execution_from_log(daemon_log)
-    recent_supervisor_action = recent_llm_action_from_log(daemon_log)
+    recent_supervisor_action = recent_supervisor_action_from_log(daemon_log)
     recent_worker = recent_worker_payload(codex_home, api=api)
     managed_workers = daemon_managed_worker_payloads(codex_home, api=api)
     integration_reviews = daemon_integration_reviews(codex_home, api=api)
@@ -261,7 +261,7 @@ def read_tail_text(path_text: str | None, *, max_bytes: int = 64 * 1024) -> str:
     return data.decode("utf-8", errors="ignore")
 
 
-def recent_llm_action_from_log(text: str) -> dict[str, str] | None:
+def recent_supervisor_action_from_log(text: str) -> dict[str, str] | None:
     lines = text.splitlines()
     recent: dict[str, str] | None = None
     action_headers = {
@@ -283,6 +283,10 @@ def recent_llm_action_from_log(text: str) -> dict[str, str] | None:
             recent = {"kind": kind.strip(), "reason": reason.strip()}
             break
     return recent
+
+
+def recent_llm_action_from_log(text: str) -> dict[str, str] | None:
+    return recent_supervisor_action_from_log(text)
 
 
 def recent_execution_from_log(text: str) -> dict[str, str] | None:
