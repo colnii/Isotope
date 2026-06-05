@@ -9220,8 +9220,9 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_resume_session(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "resume_session"
-    assert payload["llm_action"]["target_name"] == "resume-019e35a2"
+    assert payload["supervisor_action"]["kind"] == "resume_session"
+    assert payload["supervisor_action"]["target_name"] == "resume-019e35a2"
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "resume_session"
     assert payload["executed"]["managed"]["name"] == "resume-019e35a2"
     assert payload["executed"]["managed"]["pid"] == 34567
@@ -9425,7 +9426,8 @@ def test_codex_supervisor_runner_supervise_resume_skips_running_process_cwd(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "resume_session"
+    assert payload["supervisor_action"]["kind"] == "resume_session"
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "resume_session"
     assert payload["executed"]["skipped"] is True
     assert payload["executed"]["reason"] == "managed process already running"
@@ -9500,7 +9502,8 @@ def test_codex_supervisor_runner_supervise_resume_skips_missing_cwd(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "monitor"
+    assert payload["supervisor_action"]["kind"] == "monitor"
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "monitor"
     assert payload["executed"]["skipped"] is True
     assert all(
@@ -9557,10 +9560,11 @@ def test_codex_supervisor_runner_supervise_context_rejects_missing_cwd(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "monitor"
-    assert payload["llm_action"]["error"] == (
+    assert payload["supervisor_action"]["kind"] == "monitor"
+    assert payload["supervisor_action"]["error"] == (
         f"unknown workspace for LLM action: {missing_workspace}"
     )
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["skipped"] is True
     assert payload["executed"]["kind"] == "monitor"
 
