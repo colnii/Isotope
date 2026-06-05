@@ -17083,10 +17083,12 @@ def test_codex_supervisor_runner_loop_replans_blocked_goal_with_llm_context(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["active_goals"][0]["last_status"] == "blocked"
-    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["supervisor_action"]["kind"] == "request_context"
+    assert payload["llm_action"] == payload["supervisor_action"]
     context = _codex_operation_context_result(payload["executed"])
     assert context["query"] == "Supervisor 目标阻塞后如何继续推进"
-    assert payload["llm_followup_action"]["kind"] == "monitor"
+    assert payload["supervisor_followup_action"]["kind"] == "monitor"
+    assert payload["llm_followup_action"] == payload["supervisor_followup_action"]
 
 
 def test_codex_supervisor_runner_loop_records_goal_level_decision_request(
@@ -17220,9 +17222,11 @@ def test_codex_supervisor_runner_loop_records_goal_level_decision_request(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["supervisor_action"]["kind"] == "request_context"
+    assert payload["llm_action"] == payload["supervisor_action"]
     _codex_operation_context_result(payload["executed"])
-    assert payload["llm_followup_action"]["kind"] == "ask_user"
+    assert payload["supervisor_followup_action"]["kind"] == "ask_user"
+    assert payload["llm_followup_action"] == payload["supervisor_followup_action"]
     followup = payload["followup_executed"]
     assert followup["kind"] == "ask_user"
     assert followup["requires_user"] is True
