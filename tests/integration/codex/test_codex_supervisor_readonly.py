@@ -14643,10 +14643,13 @@ def test_codex_supervisor_runner_loop_defaults_to_llm_driver(
     lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
     assert len(lines) == 2
     payloads = [json.loads(line) for line in lines]
-    assert [payload["llm_action"]["kind"] for payload in payloads] == [
+    assert [payload["supervisor_action"]["kind"] for payload in payloads] == [
         "send_status",
         "send_status",
     ]
+    assert all(
+        payload["llm_action"] == payload["supervisor_action"] for payload in payloads
+    )
     assert [payload["executed"]["kind"] for payload in payloads] == [
         "send_status",
         "send_status",
@@ -14735,12 +14738,13 @@ def test_codex_supervisor_runner_loop_reports_process_backend_as_managed(
     assert payload["automation"]["managed_names"] == ["process-lane"]
     assert "tmux lane" not in payload["automation"]["reason"]
     assert "后台托管 Codex 进程" in payload["automation"]["reason"]
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "monitor",
         "target_name": None,
         "reason": "后台 process lane 正在运行，继续观察。",
         "command_suggestion": None,
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "reason": "后台 process lane 正在运行，继续观察。",
@@ -14816,12 +14820,13 @@ def test_codex_supervisor_runner_loop_does_not_reprompt_completed_process_worker
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "monitor",
         "target_name": None,
         "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
         "command_suggestion": None,
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "skipped": True,
