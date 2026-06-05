@@ -175,788 +175,6 @@ def _raw_tool_call_completion() -> dict[str, Any]:
     }
 
 
-def test_llm_provider_resolution_accepts_unified_env_without_deepseek_key():
-    calls: list[dict[str, Any]] = []
-
-    def transport(url: str, payload: dict[str, Any], headers: dict[str, str], timeout: int):
-        calls.append({"url": url, "payload": payload, "headers": headers, "timeout": timeout})
-        return _raw_tool_call_completion()
-
-    resolution = llm_provider.resolve_llm_tool_call_provider(
-        {
-            "ISOTOPE_LLM_PROVIDER": "deepseek",
-            "ISOTOPE_LLM_API_KEY": "UNIFIED_SECRET_SHOULD_NOT_LEAK",
-            "ISOTOPE_LLM_MODEL": "deepseek-unit",
-            "ISOTOPE_LLM_BASE_URL": "https://unit.deepseek.invalid",
-            "ISOTOPE_LLM_TIMEOUT_SECONDS": "9",
-        },
-        transport=transport,
-    )
-
-    assert resolution.status == "configured"
-    assert resolution.reason_code == "llm_provider_configured"
-    assert resolution.provider_name == "deepseek"
-    assert resolution.provider is not None
-    response = resolution.provider.select_tool(
-        [{"role": "user", "content": "choose a tool"}],
-        tools=[{"name": "codex_task", "input_schema": {"type": "object", "properties": {}}}],
-        max_tokens=33,
-    )
-
-    assert response.tool_call.call_id == "call_unified_env"
-    assert calls[0]["url"] == "https://unit.deepseek.invalid/chat/completions"
-    assert calls[0]["payload"]["model"] == "deepseek-unit"
-    assert calls[0]["payload"]["max_tokens"] == 33
-    assert calls[0]["headers"]["Authorization"] == "Bearer UNIFIED_SECRET_SHOULD_NOT_LEAK"
-    assert calls[0]["timeout"] == 9
-    assert "UNIFIED_SECRET_SHOULD_NOT_LEAK" not in repr(resolution)
-
-
-def test_llm_provider_resolution_reports_unsupported_provider_without_secret_leak():
-    resolution = llm_provider.resolve_llm_tool_call_provider(
-        {
-            "ISOTOPE_LLM_PROVIDER": "anthropic",
-            "ISOTOPE_LLM_API_KEY": "UNSUPPORTED_SECRET_SHOULD_NOT_LEAK",
-        }
-    )
-
-    assert resolution.status == "missing_configuration"
-    assert resolution.reason_code == "llm_provider_unsupported"
-    assert resolution.provider_name == "anthropic"
-    assert resolution.provider is None
-    assert "UNSUPPORTED_SECRET_SHOULD_NOT_LEAK" not in repr(resolution)
-
-
-def test_llm_tool_call_live_smoke_reports_unified_missing_configuration_without_side_effects(tmp_path):
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    app = _codex_http_app(tmp_path, runner)
-    run_id = _create_run(app)
-    before_events = _event_types(app, run_id)
-
-    result = llm_live_smoke.run_llm_tool_call_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.LLMToolCallLiveSmokeConfig(enabled=True),
-        environ={},
-    )
-
-    assert result == {
-        "status": "missing_configuration",
-        "reason_code": "llm_provider_not_configured",
-        "provider": "auto",
-        "tool_name": "codex_task",
-    }
-    assert "DEEPSEEK_API_KEY" not in repr(result)
-    assert _event_types(app, run_id) == before_events
-    assert runner.calls == []
-
-
-def test_llm_terminal_tool_live_smoke_offers_only_terminal_exec_and_runs_without_codex(tmp_path):
-    app = create_http_app(tmp_path)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(
-        LLMToolCallResponse(
-            provider="deepseek",
-            model="deepseek-v4-flash",
-            finish_reason="tool_calls",
-            usage={"prompt_tokens": 7, "completion_tokens": 3, "total_tokens": 10},
-            tool_call=LLMToolCall(
-                call_id="call_terminal_live_smoke",
-                tool_name="terminal_exec",
-                arguments={
-                    "argv": ["printf", "TERMINAL_LIVE_STDOUT_SHOULD_NOT_LEAK"],
-                    "summary": "terminal tool live smoke",
-                },
-            ),
-        )
-    )
-
-    result = llm_live_smoke.run_llm_terminal_tool_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.LLMTerminalToolLiveSmokeConfig(enabled=True, max_tokens=64),
-        provider=provider,
-    )
-
-    assert result["status"] == "completed"
-    assert result["reason_code"] == "llm_terminal_tool_live_smoke_completed"
-    assert result["provider"] == "deepseek"
-    assert result["model"] == "deepseek-v4-flash"
-    assert result["tool_name"] == "terminal_exec"
-    assert result["provider_tool_call_id"] == "call_terminal_live_smoke"
-    assert result["tool_result_status"] == "completed"
-    assert result["artifact_ref_present"] is True
-    assert result["codex_call_count"] == 0
-    assert [tool["name"] for tool in provider.calls[0]["tools"]] == ["terminal_exec"]
-    assert provider.calls[0]["max_tokens"] == 64
-    assert "approval.requested" not in _event_types(app, run_id)
-    assert "run.completed" in _event_types(app, run_id)
-    rendered = repr(result)
-    assert "TERMINAL_LIVE_STDOUT_SHOULD_NOT_LEAK" not in rendered
-    assert "codex_task" not in rendered
-    assert "Codex" not in rendered
-
-
-def test_llm_terminal_tool_smoke_cli_runs_deterministic_provider_without_codex(tmp_path, capsys):
-    exit_code = llm_live_smoke.main(
-        [
-            "terminal-tool",
-            "--deterministic-provider",
-            "--json",
-            "--root",
-            str(tmp_path),
-            "--max-tokens",
-            "64",
-        ],
-        environ={},
-    )
-
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert exit_code == 0
-    assert captured.err == ""
-    assert payload["command"] == "llm_terminal_tool_live_smoke"
-    assert payload["provider_call_count"] == 1
-    assert payload["codex_call_count"] == 0
-    assert payload["result"]["status"] == "completed"
-    assert payload["result"]["reason_code"] == "llm_terminal_tool_live_smoke_completed"
-    assert payload["result"]["tool_name"] == "terminal_exec"
-    assert payload["result"]["tool_result_status"] == "completed"
-    rendered = repr(payload)
-    assert "TERMINAL_TOOL_CLI_DETERMINISTIC_STDOUT_SHOULD_NOT_LEAK" not in rendered
-    assert "codex_task" not in rendered
-
-
-def test_llm_terminal_tool_smoke_cli_reports_missing_provider_without_side_effects(tmp_path, capsys):
-    exit_code = llm_live_smoke.main(
-        [
-            "terminal-tool",
-            "--json",
-            "--root",
-            str(tmp_path),
-        ],
-        environ={},
-    )
-
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert exit_code == 2
-    assert captured.err == ""
-    assert payload == {
-        "codex_call_count": 0,
-        "command": "llm_terminal_tool_live_smoke",
-        "provider_call_count": 0,
-        "result": {
-            "provider": "auto",
-            "reason_code": "llm_provider_not_configured",
-            "status": "missing_configuration",
-            "tool_name": "terminal_exec",
-        },
-    }
-    assert not (tmp_path / "runs").exists()
-
-
-def test_llm_terminal_tool_diagnosis_reports_ready_without_leaks(tmp_path):
-    app = create_http_app(tmp_path)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(
-        LLMToolCallResponse(
-            provider="deepseek",
-            model="deepseek-v4-flash",
-            finish_reason="tool_calls",
-            usage={"prompt_tokens": 7, "completion_tokens": 3, "total_tokens": 10},
-            tool_call=LLMToolCall(
-                call_id="call_terminal_diag_ready",
-                tool_name="terminal_exec",
-                arguments={
-                    "argv": ["printf", "TERMINAL_DIAG_STDOUT_SHOULD_NOT_LEAK"],
-                    "summary": "terminal tool diagnosis",
-                },
-            ),
-        )
-    )
-
-    result = llm_live_smoke.diagnose_llm_terminal_tool_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.LLMTerminalToolLiveSmokeConfig(enabled=True, max_tokens=64),
-        provider=provider,
-    )
-
-    assert result["status"] == "completed"
-    assert result["tool_name"] == "terminal_exec"
-    assert result["tool_result_status"] == "completed"
-    assert result["diagnosis"] == {
-        "category": "ready",
-        "provider_request_started": True,
-        "terminal_tool_selected": True,
-        "terminal_executed": True,
-        "terminal_completed": True,
-        "codex_started": False,
-        "summary": "provider selected terminal_exec and Isotope completed the terminal action",
-        "next_step": "use this as a dev-only readiness_check before application-layer terminal wiring",
-    }
-    assert result["readiness_check"] == {
-        "ready": True,
-        "gate": "passed",
-        "category": "ready",
-        "status": "completed",
-        "reason_code": "llm_terminal_tool_live_smoke_completed",
-        "summary": "provider selected terminal_exec and Isotope completed the terminal action",
-        "next_step": "use this as a dev-only readiness_check before application-layer terminal wiring",
-    }
-    rendered = repr(result)
-    assert "TERMINAL_DIAG_STDOUT_SHOULD_NOT_LEAK" not in rendered
-    assert "codex_task" not in rendered
-
-
-def test_llm_terminal_tool_smoke_cli_can_print_diagnosis(tmp_path, capsys):
-    exit_code = llm_live_smoke.main(
-        [
-            "terminal-tool",
-            "--deterministic-provider",
-            "--diagnose",
-            "--json",
-            "--root",
-            str(tmp_path),
-            "--max-tokens",
-            "64",
-        ],
-        environ={},
-    )
-
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert exit_code == 0
-    assert captured.err == ""
-    assert payload["command"] == "llm_terminal_tool_live_smoke"
-    assert payload["provider_call_count"] == 1
-    assert payload["codex_call_count"] == 0
-    assert payload["result"]["status"] == "completed"
-    assert payload["result"]["diagnosis"]["category"] == "ready"
-    assert payload["result"]["readiness_check"]["ready"] is True
-    assert "TERMINAL_TOOL_CLI_DETERMINISTIC_STDOUT_SHOULD_NOT_LEAK" not in repr(payload)
-
-
-def test_llm_terminal_tool_smoke_cli_diagnoses_missing_provider_without_side_effects(tmp_path, capsys):
-    exit_code = llm_live_smoke.main(
-        [
-            "terminal-tool",
-            "--diagnose",
-            "--json",
-            "--root",
-            str(tmp_path),
-        ],
-        environ={},
-    )
-
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert exit_code == 2
-    assert captured.err == ""
-    assert payload == {
-        "codex_call_count": 0,
-        "command": "llm_terminal_tool_live_smoke",
-        "provider_call_count": 0,
-        "result": {
-            "diagnosis": {
-                "category": "missing_configuration",
-                "codex_started": False,
-                "next_step": "configure ISOTOPE_LLM_PROVIDER and provider credentials before running terminal-tool smoke",
-                "provider_request_started": False,
-                "summary": "LLM provider is not configured",
-                "terminal_completed": False,
-                "terminal_executed": False,
-                "terminal_tool_selected": False,
-            },
-            "readiness_check": {
-                "category": "missing_configuration",
-                "gate": "blocked",
-                "next_step": "configure ISOTOPE_LLM_PROVIDER and provider credentials before running terminal-tool smoke",
-                "ready": False,
-                "reason_code": "llm_provider_not_configured",
-                "status": "missing_configuration",
-                "summary": "LLM provider is not configured",
-            },
-            "provider": "auto",
-            "reason_code": "llm_provider_not_configured",
-            "status": "missing_configuration",
-            "tool_name": "terminal_exec",
-        },
-    }
-    assert not (tmp_path / "runs").exists()
-
-
-def test_llm_terminal_tool_diagnosis_reports_unoffered_tool_without_action_side_effects(tmp_path):
-    app = create_http_app(tmp_path)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(_provider_response(call_id="call_terminal_diag_codex"))
-
-    result = llm_live_smoke.diagnose_llm_terminal_tool_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.LLMTerminalToolLiveSmokeConfig(enabled=True),
-        provider=provider,
-    )
-
-    assert result["status"] == "failed"
-    assert result["reason_code"] == "llm_provider_selected_unoffered_tool"
-    assert result["diagnosis"]["category"] == "provider_selected_unoffered_tool"
-    assert result["diagnosis"]["provider_request_started"] is True
-    assert result["diagnosis"]["terminal_tool_selected"] is False
-    assert result["diagnosis"]["terminal_executed"] is False
-    assert result["readiness_check"]["ready"] is False
-    assert "action.started" not in _event_types(app, run_id)
-    assert "codex_task" not in repr(result)
-
-
-def test_llm_terminal_tool_diagnosis_reports_invalid_terminal_arguments_without_action_side_effects(tmp_path):
-    app = create_http_app(tmp_path)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(
-        LLMToolCallResponse(
-            provider="deepseek",
-            model="deepseek-v4-flash",
-            finish_reason="tool_calls",
-            usage={"total_tokens": 11},
-            tool_call=LLMToolCall(
-                call_id="call_terminal_diag_invalid_argv",
-                tool_name="terminal_exec",
-                arguments={"argv": ["/bin/echo", "nope"], "summary": "invalid argv"},
-            ),
-        )
-    )
-
-    result = llm_live_smoke.diagnose_llm_terminal_tool_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.LLMTerminalToolLiveSmokeConfig(enabled=True),
-        provider=provider,
-    )
-
-    assert result["status"] == "failed"
-    assert result["reason_code"] == "invalid_model_tool_call"
-    assert result["diagnosis"]["category"] == "provider_tool_arguments_invalid"
-    assert result["diagnosis"]["terminal_tool_selected"] is True
-    assert result["diagnosis"]["terminal_executed"] is False
-    assert result["readiness_check"]["ready"] is False
-    assert "action.started" not in _event_types(app, run_id)
-    assert "/bin/echo" not in repr(result)
-
-
-def test_llm_terminal_tool_diagnosis_reports_pending_approval_without_execution(tmp_path):
-    app = create_http_app(tmp_path)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(
-        LLMToolCallResponse(
-            provider="deepseek",
-            model="deepseek-v4-flash",
-            finish_reason="tool_calls",
-            usage={"total_tokens": 11},
-            tool_call=LLMToolCall(
-                call_id="call_terminal_diag_policy_denied",
-                tool_name="terminal_exec",
-                arguments={
-                    "argv": ["bash", "-lc", "PENDING_APPROVAL_STDOUT_SHOULD_NOT_LEAK"],
-                    "summary": "terminal approval request",
-                },
-            ),
-        )
-    )
-
-    result = llm_live_smoke.diagnose_llm_terminal_tool_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.LLMTerminalToolLiveSmokeConfig(enabled=True),
-        provider=provider,
-    )
-
-    assert result["status"] == "completed"
-    assert result["tool_result_status"] == "pending_user_approval"
-    assert result["diagnosis"]["category"] == "terminal_approval_required"
-    assert result["diagnosis"]["terminal_tool_selected"] is True
-    assert result["diagnosis"]["terminal_executed"] is False
-    assert result["readiness_check"]["ready"] is False
-    assert "action.started" not in _event_types(app, run_id)
-    assert "approval.requested" in _event_types(app, run_id)
-    assert "PENDING_APPROVAL_STDOUT_SHOULD_NOT_LEAK" not in repr(result)
-
-
-def test_llm_terminal_tool_diagnosis_reports_terminal_execution_failure_without_output_leak(tmp_path):
-    app = create_http_app(tmp_path)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(
-        LLMToolCallResponse(
-            provider="deepseek",
-            model="deepseek-v4-flash",
-            finish_reason="tool_calls",
-            usage={"total_tokens": 11},
-            tool_call=LLMToolCall(
-                call_id="call_terminal_diag_failed_command",
-                tool_name="terminal_exec",
-                arguments={"argv": ["false"], "summary": "terminal failure"},
-            ),
-        )
-    )
-
-    result = llm_live_smoke.diagnose_llm_terminal_tool_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.LLMTerminalToolLiveSmokeConfig(enabled=True),
-        provider=provider,
-    )
-
-    assert result["status"] == "completed"
-    assert result["tool_result_status"] == "failed"
-    assert result["terminal_error_reason_code"] == "terminal_exit_nonzero"
-    assert result["diagnosis"]["category"] == "terminal_execution_failed"
-    assert result["diagnosis"]["terminal_tool_selected"] is True
-    assert result["diagnosis"]["terminal_executed"] is True
-    assert result["diagnosis"]["terminal_completed"] is False
-    assert result["readiness_check"]["ready"] is False
-    assert "action.started" in _event_types(app, run_id)
-    assert "action.failed" in _event_types(app, run_id)
-    assert "stdout" not in repr(result).lower()
-
-
-def test_llm_product_chat_live_smoke_is_skipped_by_default_without_side_effects(tmp_path):
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    provider = SequencedChatProvider([])
-    app = _product_chat_http_app(tmp_path, runner, provider)
-    before_sessions = list(app.server._sessions)
-
-    result = llm_live_smoke.run_llm_product_chat_live_smoke(app)
-
-    assert result == {
-        "status": "skipped",
-        "reason_code": "llm_product_chat_live_smoke_unavailable",
-        "provider": "auto",
-        "case_count": 0,
-        "cases": [],
-    }
-    assert list(app.server._sessions) == before_sessions
-    assert provider.calls == []
-    assert runner.calls == []
-
-
-def test_llm_product_chat_live_smoke_covers_final_tool_pause_and_resume_without_leaks(tmp_path):
-    runner = RecordingProcessRunner(
-        DeterministicCompletedProcess(stdout='{"event":"task_complete","secret":"PRODUCT_SMOKE_STDOUT_SHOULD_NOT_LEAK"}\n')
-    )
-    provider = SequencedChatProvider(
-        [
-            _final_answer_response("Direct product smoke answer."),
-            _provider_response(
-                "PRODUCT_SMOKE_TOOL_PROMPT_SHOULD_NOT_LEAK",
-                call_id="call_product_smoke_tool",
-                summary="product chat smoke tool call",
-            ),
-            _final_answer_response("Final product smoke answer."),
-        ]
-    )
-    app = _product_chat_http_app(tmp_path, runner, provider)
-
-    result = llm_live_smoke.run_llm_product_chat_live_smoke(
-        app,
-        config=llm_live_smoke.LLMProductChatLiveSmokeConfig(enabled=True, max_tokens=64),
-    )
-
-    assert result["status"] == "completed"
-    assert result["reason_code"] == "llm_product_chat_live_smoke_completed"
-    assert result["provider"] == "deepseek"
-    assert result["model"] == "deepseek-v4-flash"
-    assert result["case_count"] == 4
-    assert result["cases"] == [
-        {
-            "case": "direct_final_answer",
-            "http_status": 200,
-            "status": "completed",
-            "provider_status": "final_answer",
-            "turn_kind": "initial",
-            "artifact_ref_present": True,
-            "assistant_message_present": True,
-            "run_state_status": "completed",
-        },
-        {
-            "case": "tool_choice_pending_approval",
-            "http_status": 202,
-            "status": "pending_user_approval",
-            "provider_status": "tool_call_selected",
-            "turn_kind": "initial",
-            "tool_name": "codex_task",
-            "requires_approval": True,
-            "approval_id_present": True,
-            "run_state_status": "pending_user_approval",
-        },
-        {
-            "case": "approval_resolution",
-            "http_status": 200,
-            "status": "running",
-            "artifact_ref_present": True,
-            "run_state_status": "running",
-        },
-        {
-            "case": "resume_final_answer",
-            "http_status": 200,
-            "status": "completed",
-            "provider_status": "final_answer",
-            "turn_kind": "tool_result_followup",
-            "assistant_message_present": True,
-            "tool_result_artifact_ref_present": True,
-            "run_state_status": "completed",
-        },
-    ]
-    assert len(provider.calls) == 3
-    assert all(call["max_tokens"] == 64 for call in provider.calls)
-    assert len(runner.calls) == 1
-    rendered = repr(result)
-    assert "PRODUCT_SMOKE_TOOL_PROMPT_SHOULD_NOT_LEAK" not in rendered
-    assert "PRODUCT_SMOKE_STDOUT_SHOULD_NOT_LEAK" not in rendered
-    assert "ISOTOPE_LLM_PRODUCT_CHAT_SMOKE" not in rendered
-
-
-def test_llm_product_chat_diagnosis_reports_ready_without_leaks(tmp_path):
-    runner = RecordingProcessRunner(
-        DeterministicCompletedProcess(stdout='{"event":"task_complete","secret":"PRODUCT_DIAG_STDOUT_SHOULD_NOT_LEAK"}\n')
-    )
-    provider = SequencedChatProvider(
-        [
-            _final_answer_response("Direct product diagnostic answer."),
-            _provider_response(
-                "PRODUCT_DIAG_TOOL_PROMPT_SHOULD_NOT_LEAK",
-                call_id="call_product_diag_tool",
-                summary="product chat diagnostic tool call",
-            ),
-            _final_answer_response("Final product diagnostic answer."),
-        ]
-    )
-    app = _product_chat_http_app(tmp_path, runner, provider)
-
-    result = llm_live_smoke.diagnose_llm_product_chat_live_smoke(
-        app,
-        config=llm_live_smoke.LLMProductChatLiveSmokeConfig(enabled=True, max_tokens=64),
-    )
-
-    assert result["status"] == "completed"
-    assert result["diagnosis"] == {
-        "category": "ready",
-        "provider_request_started": True,
-        "direct_answer_completed": True,
-        "approval_requested": True,
-        "approval_resolved": True,
-        "resume_completed": True,
-        "summary": "product-chat smoke completed direct answer, approval pause, and resume final answer",
-        "next_step": "use this as a dev-only readiness_check before application-layer product chat wiring",
-    }
-    assert result["readiness_check"] == {
-        "ready": True,
-        "gate": "passed",
-        "category": "ready",
-        "status": "completed",
-        "reason_code": "llm_product_chat_live_smoke_completed",
-        "summary": "product-chat smoke completed direct answer, approval pause, and resume final answer",
-        "next_step": "use this as a dev-only readiness_check before application-layer product chat wiring",
-    }
-    assert len(provider.calls) == 3
-    assert len(runner.calls) == 1
-    rendered = repr(result)
-    assert "PRODUCT_DIAG_TOOL_PROMPT_SHOULD_NOT_LEAK" not in rendered
-    assert "PRODUCT_DIAG_STDOUT_SHOULD_NOT_LEAK" not in rendered
-
-
-def test_llm_product_chat_smoke_cli_runs_deterministic_provider_without_network(tmp_path, capsys):
-    exit_code = llm_live_smoke.main(
-        [
-            "product-chat",
-            "--deterministic-provider",
-            "--json",
-            "--root",
-            str(tmp_path),
-            "--max-tokens",
-            "64",
-        ],
-        environ={},
-    )
-
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert exit_code == 0
-    assert captured.err == ""
-    assert payload["command"] == "llm_product_chat_live_smoke"
-    assert payload["codex_runner"] == "deterministic_test"
-    assert payload["runner_call_count"] == 1
-    assert payload["result"]["status"] == "completed"
-    assert payload["result"]["reason_code"] == "llm_product_chat_live_smoke_completed"
-    assert payload["result"]["provider"] == "deepseek"
-    assert payload["result"]["case_count"] == 4
-    assert [case["case"] for case in payload["result"]["cases"]] == [
-        "direct_final_answer",
-        "tool_choice_pending_approval",
-        "approval_resolution",
-        "resume_final_answer",
-    ]
-    rendered = repr(payload)
-    assert "PRODUCT_CHAT_CLI_DETERMINISTIC_PROMPT_SHOULD_NOT_LEAK" not in rendered
-    assert "PRODUCT_CHAT_CLI_DETERMINISTIC_STDOUT_SHOULD_NOT_LEAK" not in rendered
-
-
-def test_llm_product_chat_smoke_cli_deterministic_provider_does_not_require_codex_executable(
-    tmp_path,
-    capsys,
-):
-    exit_code = llm_live_smoke.main(
-        [
-            "product-chat",
-            "--deterministic-provider",
-            "--json",
-            "--root",
-            str(tmp_path),
-            "--codex-executable",
-            "__missing_codex_for_deterministic_product_chat__",
-            "--max-tokens",
-            "64",
-        ],
-        environ={},
-    )
-
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert exit_code == 0
-    assert captured.err == ""
-    assert payload["result"]["status"] == "completed"
-    assert payload["runner_call_count"] == 1
-
-
-def test_llm_product_chat_smoke_cli_can_print_diagnosis(tmp_path, capsys):
-    exit_code = llm_live_smoke.main(
-        [
-            "product-chat",
-            "--deterministic-provider",
-            "--diagnose",
-            "--json",
-            "--root",
-            str(tmp_path),
-            "--max-tokens",
-            "64",
-        ],
-        environ={},
-    )
-
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert exit_code == 0
-    assert captured.err == ""
-    assert payload["result"]["status"] == "completed"
-    assert payload["result"]["diagnosis"]["category"] == "ready"
-    assert payload["result"]["readiness_check"]["ready"] is True
-    assert payload["result"]["diagnosis"]["approval_resolved"] is True
-    assert payload["runner_call_count"] == 1
-
-
-def test_llm_product_chat_smoke_cli_reports_missing_provider_without_side_effects(tmp_path, capsys):
-    exit_code = llm_live_smoke.main(
-        [
-            "product-chat",
-            "--json",
-            "--root",
-            str(tmp_path),
-        ],
-        environ={},
-    )
-
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert exit_code == 2
-    assert captured.err == ""
-    assert payload == {
-        "codex_runner": "deterministic_test",
-        "command": "llm_product_chat_live_smoke",
-        "result": {
-            "case_count": 0,
-            "cases": [],
-            "provider": "auto",
-            "reason_code": "llm_provider_not_configured",
-            "status": "missing_configuration",
-        },
-        "runner_call_count": 0,
-    }
-    assert not (tmp_path / "runs").exists()
-
-
-def test_llm_product_chat_smoke_cli_missing_provider_does_not_require_codex_executable(
-    tmp_path,
-    capsys,
-):
-    exit_code = llm_live_smoke.main(
-        [
-            "product-chat",
-            "--json",
-            "--root",
-            str(tmp_path),
-            "--codex-executable",
-            "__missing_codex_for_missing_product_chat__",
-        ],
-        environ={},
-    )
-
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert exit_code == 2
-    assert captured.err == ""
-    assert payload["result"]["status"] == "missing_configuration"
-    assert payload["runner_call_count"] == 0
-    assert not (tmp_path / "runs").exists()
-
-
-def test_llm_product_chat_smoke_cli_diagnoses_missing_provider_without_side_effects(tmp_path, capsys):
-    exit_code = llm_live_smoke.main(
-        [
-            "product-chat",
-            "--diagnose",
-            "--json",
-            "--root",
-            str(tmp_path),
-        ],
-        environ={},
-    )
-
-    captured = capsys.readouterr()
-    payload = json.loads(captured.out)
-    assert exit_code == 2
-    assert captured.err == ""
-    assert payload == {
-        "codex_runner": "deterministic_test",
-        "command": "llm_product_chat_live_smoke",
-        "result": {
-            "case_count": 0,
-            "cases": [],
-            "diagnosis": {
-                "approval_requested": False,
-                "approval_resolved": False,
-                "category": "missing_configuration",
-                "direct_answer_completed": False,
-                "next_step": "configure ISOTOPE_LLM_PROVIDER and provider credentials before running product-chat smoke",
-                "provider_request_started": False,
-                "resume_completed": False,
-                "summary": "LLM provider is not configured",
-            },
-            "readiness_check": {
-                "category": "missing_configuration",
-                "gate": "blocked",
-                "next_step": "configure ISOTOPE_LLM_PROVIDER and provider credentials before running product-chat smoke",
-                "ready": False,
-                "reason_code": "llm_provider_not_configured",
-                "status": "missing_configuration",
-                "summary": "LLM provider is not configured",
-            },
-            "provider": "auto",
-            "reason_code": "llm_provider_not_configured",
-            "status": "missing_configuration",
-        },
-        "runner_call_count": 0,
-    }
-    assert not (tmp_path / "runs").exists()
-
 
 def test_llm_product_chat_entry_cli_rejects_empty_message_without_readiness_check_side_effects(
     tmp_path,
@@ -1001,6 +219,7 @@ def test_llm_product_chat_entry_cli_rejects_empty_message_without_readiness_chec
     assert not (tmp_path / "runs").exists()
 
 
+
 def test_llm_product_chat_entry_cli_blocks_when_readiness_check_is_not_ready_without_side_effects(
     tmp_path,
     capsys,
@@ -1038,6 +257,7 @@ def test_llm_product_chat_entry_cli_blocks_when_readiness_check_is_not_ready_wit
     }
     assert "ENTRY_CLI_BLOCKED_MESSAGE_SHOULD_NOT_LEAK" not in repr(payload)
     assert not (tmp_path / "runs").exists()
+
 
 
 def test_llm_product_chat_entry_cli_runs_deterministic_provider_after_ready_readiness_check(
@@ -1085,6 +305,7 @@ def test_llm_product_chat_entry_cli_runs_deterministic_provider_after_ready_read
     assert "PRODUCT_CHAT_CLI_DETERMINISTIC_STDOUT_SHOULD_NOT_LEAK" not in rendered
 
 
+
 def test_llm_product_chat_entry_cli_deterministic_provider_does_not_require_codex_executable(
     tmp_path,
     capsys,
@@ -1114,6 +335,7 @@ def test_llm_product_chat_entry_cli_deterministic_provider_does_not_require_code
     assert payload["entry"]["status"] == "completed"
     assert payload["runner_call_count"] == 1
     assert "ENTRY_CLI_MISSING_CODEX_MESSAGE_SHOULD_NOT_LEAK" not in repr(payload)
+
 
 
 def test_llm_product_chat_entry_cli_pending_json_reports_safe_approval_next_step(
@@ -1175,6 +397,7 @@ def test_llm_product_chat_entry_cli_pending_json_reports_safe_approval_next_step
     assert "ENTRY_CLI_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK" not in rendered
 
 
+
 def test_llm_product_chat_entry_cli_deterministic_entry_pending_flag_writes_resume_state(
     tmp_path,
     capsys,
@@ -1214,6 +437,7 @@ def test_llm_product_chat_entry_cli_deterministic_entry_pending_flag_writes_resu
     rendered = repr(payload) + repr(state)
     assert "ENTRY_CLI_FLAG_PENDING_MESSAGE_SHOULD_NOT_LEAK" not in rendered
     assert "PRODUCT_CHAT_ENTRY_CLI_PENDING_PROMPT_SHOULD_NOT_LEAK" not in rendered
+
 
 
 def test_llm_product_chat_entry_cli_state_file_directory_reports_safe_save_error(
@@ -1263,6 +487,7 @@ def test_llm_product_chat_entry_cli_state_file_directory_reports_safe_save_error
     rendered = repr(payload)
     assert str(state_dir) not in rendered
     assert "ENTRY_CLI_STATE_SAVE_MESSAGE_SHOULD_NOT_LEAK" not in rendered
+
 
 
 def test_llm_product_chat_entry_cli_state_file_unwritable_parent_reports_safe_save_error(
@@ -1318,6 +543,7 @@ def test_llm_product_chat_entry_cli_state_file_unwritable_parent_reports_safe_sa
     assert "ENTRY_CLI_STATE_SAVE_PARENT_MESSAGE_SHOULD_NOT_LEAK" not in rendered
 
 
+
 def test_llm_product_chat_entry_cli_state_file_parent_not_directory_reports_safe_save_error(
     tmp_path,
     capsys,
@@ -1368,6 +594,7 @@ def test_llm_product_chat_entry_cli_state_file_parent_not_directory_reports_safe
     assert "ENTRY_CLI_STATE_PARENT_FILE_MESSAGE_SHOULD_NOT_LEAK" not in rendered
 
 
+
 def test_llm_product_chat_entry_cli_deterministic_entry_pending_requires_deterministic_provider(
     tmp_path,
     capsys,
@@ -1410,6 +637,7 @@ def test_llm_product_chat_entry_cli_deterministic_entry_pending_requires_determi
         "runner_call_count": 0,
     }
     assert "ENTRY_CLI_FLAG_REQUIRES_DETERMINISTIC_PROVIDER_SHOULD_NOT_LEAK" not in repr(payload)
+
 
 
 def test_llm_product_chat_entry_cli_root_file_reports_safe_error_without_readiness_check_side_effects(
@@ -1455,6 +683,7 @@ def test_llm_product_chat_entry_cli_root_file_reports_safe_error_without_readine
     assert str(root_file) not in rendered
     assert "ROOT_FILE_CONTENT_SHOULD_NOT_LEAK" not in rendered
     assert "ENTRY_ROOT_FILE_MESSAGE_SHOULD_NOT_LEAK" not in rendered
+
 
 
 def test_llm_product_chat_entry_cli_resume_state_rejects_new_entry_flags_without_leaks(
@@ -1503,6 +732,7 @@ def test_llm_product_chat_entry_cli_resume_state_rejects_new_entry_flags_without
         "runner_call_count": 0,
     }
     assert "ENTRY_CLI_RESUME_CONFLICT_MESSAGE_SHOULD_NOT_LEAK" not in repr(payload)
+
 
 
 def test_llm_product_chat_entry_cli_pending_plain_output_reports_approval_next_step(
@@ -1558,6 +788,7 @@ def test_llm_product_chat_entry_cli_pending_plain_output_reports_approval_next_s
     )
     assert "ENTRY_CLI_PENDING_PLAIN_MESSAGE_SHOULD_NOT_LEAK" not in captured.out
     assert "ENTRY_CLI_PLAIN_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK" not in captured.out
+
 
 
 def test_llm_product_chat_entry_cli_pending_json_writes_resume_state_without_leaks(
@@ -1624,6 +855,7 @@ def test_llm_product_chat_entry_cli_pending_json_writes_resume_state_without_lea
     assert "ENTRY_STATE_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK" not in rendered_payload
     assert "ENTRY_STATE_MESSAGE_SHOULD_NOT_LEAK" not in rendered_state
     assert "ENTRY_STATE_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK" not in rendered_state
+
 
 
 def test_llm_product_chat_entry_cli_resume_state_approves_and_returns_final_answer_without_leaks(
@@ -1723,6 +955,7 @@ def test_llm_product_chat_entry_cli_resume_state_approves_and_returns_final_answ
     assert "ENTRY_RESUME_FINAL_ANSWER_SHOULD_NOT_LEAK" not in rendered
 
 
+
 def test_llm_product_chat_entry_cli_resume_state_reports_already_resolved_approval(
     tmp_path,
     capsys,
@@ -1806,6 +1039,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_already_resolved_approv
     assert str(state_file) not in rendered
 
 
+
 def test_llm_product_chat_entry_cli_resume_state_reports_unwritable_mark_without_path_leak(
     tmp_path,
     capsys,
@@ -1870,6 +1104,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_unwritable_mark_without
     rendered = repr(payload)
     assert str(state_file) not in rendered
     assert "ENTRY_RESUME_MARK_MESSAGE_SHOULD_NOT_LEAK" not in rendered
+
 
 
 def test_llm_product_chat_entry_cli_resume_state_rejects_wrong_root_without_path_leak(
@@ -1938,6 +1173,7 @@ def test_llm_product_chat_entry_cli_resume_state_rejects_wrong_root_without_path
     assert "ENTRY_ROOT_MISMATCH_MESSAGE_SHOULD_NOT_LEAK" not in rendered
 
 
+
 def test_llm_product_chat_entry_cli_resume_state_root_file_reports_safe_error(
     tmp_path,
     capsys,
@@ -2003,6 +1239,7 @@ def test_llm_product_chat_entry_cli_resume_state_root_file_reports_safe_error(
     assert "ENTRY_RESUME_ROOT_FILE_MESSAGE_SHOULD_NOT_LEAK" not in rendered
 
 
+
 def test_llm_product_chat_entry_cli_resume_state_reports_missing_file_without_path_leak(
     tmp_path,
     capsys,
@@ -2040,6 +1277,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_missing_file_without_pa
         "status": "failed",
     }
     assert str(state_file) not in repr(payload)
+
 
 
 def test_llm_product_chat_entry_cli_resume_state_reports_malformed_json_without_leaks(
@@ -2082,6 +1320,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_malformed_json_without_
     assert "ENTRY_MALFORMED_STATE_CONTENT_SHOULD_NOT_LEAK" not in repr(payload)
 
 
+
 def test_llm_product_chat_entry_cli_resume_state_reports_directory_path_without_path_leak(
     tmp_path,
     capsys,
@@ -2120,6 +1359,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_directory_path_without_
         "status": "failed",
     }
     assert str(state_dir) not in repr(payload)
+
 
 
 def test_llm_product_chat_entry_cli_resume_state_reports_unreadable_file_without_path_leak(
@@ -2163,6 +1403,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_unreadable_file_without
         "status": "failed",
     }
     assert str(state_file) not in repr(payload)
+
 
 
 def test_llm_product_chat_entry_cli_resume_state_reports_mismatched_state_json(
@@ -2242,6 +1483,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_mismatched_state_json(
     assert "ENTRY_MISMATCH_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK" not in rendered
 
 
+
 def test_llm_product_chat_entry_cli_resume_state_reports_already_resumed_json(
     tmp_path,
     capsys,
@@ -2314,6 +1556,7 @@ def test_llm_product_chat_entry_cli_resume_state_reports_already_resumed_json(
     assert "ENTRY_ALREADY_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK" not in rendered
 
 
+
 def test_llm_product_chat_entry_cli_resume_state_plain_reports_missing_approval_context(
     tmp_path,
     capsys,
@@ -2380,6 +1623,7 @@ def test_llm_product_chat_entry_cli_resume_state_plain_reports_missing_approval_
     assert "ENTRY_MISSING_PENDING_TOOL_PROMPT_SHOULD_NOT_LEAK" not in captured.out
 
 
+
 def test_llm_product_chat_entry_cli_plain_output_is_public_metadata(tmp_path, capsys):
     exit_code = llm_live_smoke.main(
         [
@@ -2404,306 +1648,3 @@ def test_llm_product_chat_entry_cli_plain_output_is_public_metadata(tmp_path, ca
     assert "assistant_message_present: true" in captured.out
     assert "ENTRY_CLI_PLAIN_MESSAGE_SHOULD_NOT_LEAK" not in captured.out
     assert "PRODUCT_CHAT_ENTRY_CLI_FINAL_ANSWER_SHOULD_NOT_LEAK" not in captured.out
-
-
-def test_deepseek_tool_call_live_smoke_is_skipped_by_default(tmp_path):
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    app = _codex_http_app(tmp_path, runner)
-    run_id = _create_run(app)
-    before_events = _event_types(app, run_id)
-
-    result = llm_live_smoke.run_deepseek_tool_call_live_smoke(app, run_id)
-
-    assert result == {
-        "status": "skipped",
-        "reason_code": "deepseek_tool_call_live_smoke_unavailable",
-        "provider": "deepseek",
-        "tool_name": "codex_task",
-    }
-    assert _event_types(app, run_id) == before_events
-    assert runner.calls == []
-
-
-def test_deepseek_tool_call_live_smoke_reports_missing_key_without_side_effects(tmp_path, monkeypatch):
-    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    app = _codex_http_app(tmp_path, runner)
-    run_id = _create_run(app)
-    before_events = _event_types(app, run_id)
-
-    result = llm_live_smoke.run_deepseek_tool_call_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.DeepSeekToolCallLiveSmokeConfig(enabled=True),
-    )
-
-    assert result == {
-        "status": "missing_configuration",
-        "reason_code": "deepseek_api_key_missing",
-        "provider": "deepseek",
-        "tool_name": "codex_task",
-    }
-    assert _event_types(app, run_id) == before_events
-    assert runner.calls == []
-
-
-def test_deepseek_tool_call_live_smoke_submits_pending_approval_with_deterministic_provider(tmp_path):
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    app = _codex_http_app(tmp_path, runner)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(_provider_response())
-
-    result = llm_live_smoke.run_deepseek_tool_call_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.DeepSeekToolCallLiveSmokeConfig(enabled=True, max_tokens=64),
-        provider=provider,
-    )
-
-    assert result["status"] == "completed"
-    assert result["reason_code"] == "deepseek_tool_call_live_smoke_completed"
-    assert result["provider"] == "deepseek"
-    assert result["model"] == "deepseek-v4-flash"
-    assert result["finish_reason"] == "tool_calls"
-    assert result["tool_name"] == "codex_task"
-    assert result["tool_result_status"] == "pending_user_approval"
-    assert result["approval_id"].startswith("approval_")
-    assert result["usage"] == {"prompt_tokens": 9, "completion_tokens": 5, "total_tokens": 14}
-    assert [tool["name"] for tool in provider.calls[0]["tools"]] == ["codex_task"]
-    assert provider.calls[0]["max_tokens"] == 64
-    assert "approval.requested" in _event_types(app, run_id)
-    assert runner.calls == []
-
-
-def test_deepseek_tool_call_live_smoke_result_does_not_expose_prompt(tmp_path):
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    app = _codex_http_app(tmp_path, runner)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(_provider_response("LIVE_SMOKE_PROMPT_SHOULD_NOT_LEAK"))
-
-    result = llm_live_smoke.run_deepseek_tool_call_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.DeepSeekToolCallLiveSmokeConfig(enabled=True),
-        provider=provider,
-    )
-
-    assert "LIVE_SMOKE_PROMPT_SHOULD_NOT_LEAK" not in repr(result)
-    assert runner.calls == []
-
-
-def test_deepseek_tool_call_diagnosis_reports_ready_without_starting_codex(tmp_path):
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    app = _codex_http_app(tmp_path, runner)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(_provider_response())
-
-    result = llm_live_smoke.diagnose_deepseek_tool_call_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.DeepSeekToolCallLiveSmokeConfig(enabled=True),
-        provider=provider,
-    )
-
-    assert result["diagnosis"] == {
-        "category": "ready",
-        "provider_request_started": True,
-        "approval_requested": True,
-        "codex_started": False,
-        "summary": "DeepSeek selected codex_task and Isotope stopped at approval",
-        "next_step": "keep this as a dev-only readiness check until product route tests exist",
-    }
-    assert "LLM_LIVE_PROMPT_SHOULD_NOT_LEAK" not in repr(result)
-    assert runner.calls == []
-
-
-def test_deepseek_tool_call_diagnosis_reports_missing_key_without_side_effects(
-    tmp_path,
-    monkeypatch,
-):
-    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    app = _codex_http_app(tmp_path, runner)
-    run_id = _create_run(app)
-    before_events = _event_types(app, run_id)
-
-    result = llm_live_smoke.diagnose_deepseek_tool_call_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.DeepSeekToolCallLiveSmokeConfig(enabled=True),
-    )
-
-    assert result["diagnosis"] == {
-        "category": "missing_configuration",
-        "provider_request_started": False,
-        "approval_requested": False,
-        "codex_started": False,
-        "summary": "DEEPSEEK_API_KEY is not configured",
-        "next_step": "configure DeepSeek credentials before running the live provider smoke",
-    }
-    assert _event_types(app, run_id) == before_events
-    assert runner.calls == []
-
-
-def test_deepseek_tool_call_diagnosis_reports_provider_request_failure_without_secret_leak(
-    tmp_path,
-):
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    app = _codex_http_app(tmp_path, runner)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(RuntimeError("network failed: SECRET_PROVIDER_TEXT"))
-
-    result = llm_live_smoke.diagnose_deepseek_tool_call_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.DeepSeekToolCallLiveSmokeConfig(enabled=True),
-        provider=provider,
-    )
-
-    assert result["status"] == "failed"
-    assert result["reason_code"] == "llm_provider_request_failed"
-    assert result["diagnosis"]["category"] == "provider_request_failed"
-    assert result["diagnosis"]["provider_request_started"] is True
-    assert result["diagnosis"]["approval_requested"] is False
-    assert result["diagnosis"]["codex_started"] is False
-    assert "SECRET_PROVIDER_TEXT" not in repr(result)
-    assert provider.calls
-    assert runner.calls == []
-
-
-def test_deepseek_tool_call_diagnosis_reports_invalid_provider_response(tmp_path):
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    app = _codex_http_app(tmp_path, runner)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(ValueError("text response: SECRET_MODEL_TEXT"))
-
-    result = llm_live_smoke.diagnose_deepseek_tool_call_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.DeepSeekToolCallLiveSmokeConfig(enabled=True),
-        provider=provider,
-    )
-
-    assert result["reason_code"] == "llm_tool_call_invalid_response"
-    assert result["diagnosis"]["category"] == "provider_response_invalid"
-    assert result["diagnosis"]["provider_request_started"] is True
-    assert "SECRET_MODEL_TEXT" not in repr(result)
-    assert runner.calls == []
-
-
-def test_deepseek_tool_call_diagnosis_reports_unavailable_requested_tool(tmp_path):
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    app = _codex_http_app(tmp_path, runner)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(_provider_response())
-
-    result = llm_live_smoke.diagnose_deepseek_tool_call_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.DeepSeekToolCallLiveSmokeConfig(
-            enabled=True,
-            tool_name="missing_tool",
-        ),
-        provider=provider,
-    )
-
-    assert result["reason_code"] == "llm_tool_unavailable"
-    assert result["diagnosis"] == {
-        "category": "tool_unavailable",
-        "provider_request_started": False,
-        "approval_requested": False,
-        "codex_started": False,
-        "summary": "the requested tool is absent from the model-facing catalog",
-        "next_step": "wire the intended tool explicitly or keep the smoke limited to codex_task",
-    }
-    assert provider.calls == []
-    assert runner.calls == []
-
-
-def test_deepseek_tool_call_diagnosis_reports_provider_selected_unoffered_tool(tmp_path):
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    app = _codex_http_app(tmp_path, runner)
-    run_id = _create_run(app)
-    provider = RecordingToolProvider(
-        LLMToolCallResponse(
-            provider="deepseek",
-            model="deepseek-v4-flash",
-            finish_reason="tool_calls",
-            usage={"total_tokens": 11},
-            tool_call=LLMToolCall(
-                call_id="call_terminal_exec",
-                tool_name="terminal_exec",
-                arguments={"argv": ["python", "--version"]},
-            ),
-        )
-    )
-
-    result = llm_live_smoke.diagnose_deepseek_tool_call_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.DeepSeekToolCallLiveSmokeConfig(enabled=True),
-        provider=provider,
-    )
-
-    assert result["reason_code"] == "llm_provider_selected_unoffered_tool"
-    assert result["diagnosis"] == {
-        "category": "tool_unavailable",
-        "provider_request_started": True,
-        "approval_requested": False,
-        "codex_started": False,
-        "summary": "the provider selected a tool that was not offered in this smoke",
-        "next_step": "tighten the provider response or include the intended tool in the smoke config",
-    }
-    assert runner.calls == []
-
-
-@pytest.mark.skipif(
-    os.environ.get("ISOTOPE_RUN_LIVE_LLM_SMOKE") != "1"
-    or llm_provider.resolve_llm_tool_call_provider().status != "configured",
-    reason="live LLM provider smoke is opt-in and requires unified provider configuration",
-)
-def test_live_llm_tool_call_smoke_reaches_provider_without_starting_codex(tmp_path):
-    runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))
-    app = _codex_http_app(tmp_path, runner)
-    run_id = _create_run(app)
-
-    result = llm_live_smoke.run_llm_tool_call_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.LLMToolCallLiveSmokeConfig(enabled=True, max_tokens=128),
-    )
-
-    assert result["status"] in {"completed", "failed", "missing_configuration"}
-    assert "DEEPSEEK_API_KEY" not in repr(result)
-    assert llm_live_smoke.DEFAULT_DEEPSEEK_LIVE_SMOKE_PROMPT not in repr(result)
-    assert runner.calls == []
-    if result["status"] == "completed":
-        assert result["tool_name"] == "codex_task"
-        assert result["tool_result_status"] == "pending_user_approval"
-        assert "approval.requested" in _event_types(app, run_id)
-
-
-@pytest.mark.skipif(
-    os.environ.get("ISOTOPE_RUN_LIVE_LLM_TERMINAL_SMOKE") != "1"
-    or llm_provider.resolve_llm_tool_call_provider().status != "configured",
-    reason="live LLM terminal tool smoke is opt-in and requires unified provider configuration",
-)
-def test_live_llm_terminal_tool_smoke_reaches_provider_and_runs_terminal_only(tmp_path):
-    app = create_http_app(tmp_path)
-    run_id = _create_run(app)
-
-    result = llm_live_smoke.run_llm_terminal_tool_live_smoke(
-        app,
-        run_id,
-        config=llm_live_smoke.LLMTerminalToolLiveSmokeConfig(enabled=True, max_tokens=128),
-    )
-
-    assert result["status"] in {"completed", "failed", "missing_configuration"}
-    assert "DEEPSEEK_API_KEY" not in repr(result)
-    assert llm_live_smoke.DEFAULT_LLM_TERMINAL_TOOL_SMOKE_PROMPT not in repr(result)
-    assert "codex_task" not in repr(result)
-    if result["status"] == "completed":
-        assert result["tool_name"] == "terminal_exec"
-        assert result["tool_result_status"] == "completed"
-        assert "approval.requested" not in _event_types(app, run_id)
-        assert "run.completed" in _event_types(app, run_id)
