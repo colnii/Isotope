@@ -83,7 +83,7 @@ def collect_integration_reviews(
             "auto_merge": False,
             "push": False,
             "delete_branch": False,
-            "note": "扫描 managed worker、git 分支和提交包含关系；merge/push/delete 由后续工单执行。",
+            "note": "扫描 managed worker、git 分支和提交包含关系；合并、推送、清理由后续工单执行。",
         },
     }
 

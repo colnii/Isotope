@@ -729,8 +729,27 @@ def test_runner_discovers_supervisor_worker_review_from_default_catalog():
     description = runner.describe_capability("supervisor.worker_review")
     assert description["input_contract"]["required"] == ["state_root"]
     assert "codex_home" not in description["input_contract"]["properties"]
-    assert "workspace_read_snapshot" in description["safety_boundaries"]
-    assert "no_merge_or_cleanup" in description["safety_boundaries"]
+    assert "workspace_state_projection" in description["safety_boundaries"]
+    assert "worker_decision_handoff" in description["safety_boundaries"]
+    assert "worker_lifecycle_cleanup_handoff" in description["safety_boundaries"]
+
+
+def test_supervisor_worker_review_manifest_uses_decision_handoff_language():
+    description = _runner().describe_capability("supervisor.worker_review")
+    manifest_text = json.dumps(description, ensure_ascii=False)
+
+    forbidden_terms = [
+        "read" + "_snapshot",
+        "inspection " + "mode",
+        "no" + "_merge" + "_or" + "_cleanup",
+        "只读" + "扫描",
+        "不" + "执行",
+    ]
+
+    assert "worker decisions" in description["description"]
+    assert "worker_decision_handoff" in description["safety_boundaries"]
+    for term in forbidden_terms:
+        assert term not in manifest_text
 
 
 def test_memory_recall_capability_is_registered_as_inspection_product_candidate():
@@ -768,8 +787,27 @@ def test_runner_discovers_supervisor_integration_review_from_default_catalog():
     description = runner.describe_capability("supervisor.integration_review")
     assert description["input_contract"]["required"] == ["state_root"]
     assert "codex_home" not in description["input_contract"]["properties"]
-    assert "workspace_read_snapshot" in description["safety_boundaries"]
-    assert "no_merge_push_or_cleanup" in description["safety_boundaries"]
+    assert "workspace_state_projection" in description["safety_boundaries"]
+    assert "merge_dispatch_handoff" in description["safety_boundaries"]
+    assert "worker_lifecycle_cleanup_handoff" in description["safety_boundaries"]
+
+
+def test_supervisor_integration_review_manifest_uses_execution_handoff_language():
+    description = _runner().describe_capability("supervisor.integration_review")
+    manifest_text = json.dumps(description, ensure_ascii=False)
+
+    forbidden_terms = [
+        "read" + "_snapshot",
+        "inspection " + "mode",
+        "no" + "_merge" + "_push" + "_or" + "_cleanup",
+        "只读" + "扫描",
+        "不" + "执行",
+    ]
+
+    assert "merge readiness" in description["description"]
+    assert "merge_dispatch_handoff" in description["safety_boundaries"]
+    for term in forbidden_terms:
+        assert term not in manifest_text
 
 
 def test_runner_discovers_memory_query_from_default_catalog():
@@ -2986,7 +3024,7 @@ def test_worker_review_capability_runs_existing_lightweight_review(tmp_path):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
-def test_integration_review_capability_runs_existing_inspection_review(monkeypatch):
+def test_integration_review_capability_runs_existing_review_collection(monkeypatch):
     supervisor_module = importlib.import_module("isotope.capabilities.supervisor")
     calls = []
 
@@ -3062,7 +3100,7 @@ def test_integration_review_capability_runs_existing_inspection_review(monkeypat
                 "auto_merge": False,
                 "push": False,
                 "delete_branch": False,
-                "note": "只读扫描 managed worker、git 分支和提交包含关系，不执行 merge/push/delete。",
+                "note": "扫描 managed worker、git 分支和提交包含关系；合并、推送、清理由后续工单执行。",
             },
         }
 

@@ -2075,8 +2075,8 @@ class CapabilityCatalog:
                     capability_id="supervisor.integration_review",
                     title="Supervisor Integration Review",
                     description=(
-                        "Run existing integration-review collection in lightweight "
-                        "inspection mode for Supervisor merge readiness decisions."
+                        "Run existing integration-review collection for Supervisor "
+                        "merge readiness decisions and execution handoff."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -2086,7 +2086,7 @@ class CapabilityCatalog:
                         "integration",
                         "review",
                         "merge",
-                        "read_snapshot",
+                        "state_projection",
                     ),
                     input_contract={
                         "type": "object",
@@ -2103,7 +2103,7 @@ class CapabilityCatalog:
                             },
                             "include_unfinished": {
                                 "type": "boolean",
-                                "description": "Include unfinished workers in the inspection review.",
+                                "description": "Include unfinished workers in the integration review.",
                                 "default": False,
                             },
                             "include_missing_worktrees": {
@@ -2134,11 +2134,11 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "workspace_read_snapshot",
-                        "managed_registry_read_snapshot",
-                        "git_read_snapshot",
-                        "lightweight_integration_review",
-                        "no_merge_push_or_cleanup",
+                        "workspace_state_projection",
+                        "managed_registry_projection",
+                        "git_integration_evidence",
+                        "merge_dispatch_handoff",
+                        "worker_lifecycle_cleanup_handoff",
                         "public_result_metadata",
                     ),
                     default_enabled=True,
@@ -2270,8 +2270,8 @@ class CapabilityCatalog:
                     capability_id="supervisor.worker_review",
                     title="Supervisor Worker Review",
                     description=(
-                        "Run existing worker-review collection in lightweight "
-                        "inspection mode for Supervisor worker decisions."
+                        "Run existing worker-review collection for Supervisor worker "
+                        "decisions and lifecycle handoff."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -2280,7 +2280,7 @@ class CapabilityCatalog:
                         "worker",
                         "worker-review",
                         "review",
-                        "read_snapshot",
+                        "state_projection",
                     ),
                     input_contract={
                         "type": "object",
@@ -2303,10 +2303,10 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "workspace_read_snapshot",
-                        "managed_registry_read_snapshot",
-                        "lightweight_worker_review",
-                        "no_merge_or_cleanup",
+                        "workspace_state_projection",
+                        "managed_registry_projection",
+                        "worker_decision_handoff",
+                        "worker_lifecycle_cleanup_handoff",
                         "public_result_metadata",
                     ),
                     default_enabled=True,
