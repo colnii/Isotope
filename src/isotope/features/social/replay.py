@@ -20,10 +20,25 @@ DEFAULT_REPLAY_EXPECTATIONS = {
     "require_processed_events": 2,
     "min_proposed_actions": 1,
     "min_sticker_candidates": 1,
+    "require_sticker_candidate_ids": ["ship-it"],
+    "forbid_sticker_candidate_ids": [],
+    "max_selected_sticker_actions": 0,
     "max_send_feedback": 0,
     "max_sent_group_messages": 0,
     "require_all_dry_run": True,
 }
+
+EXPECTATION_NAMES = (
+    "require_processed_events",
+    "min_proposed_actions",
+    "min_sticker_candidates",
+    "require_sticker_candidate_ids",
+    "forbid_sticker_candidate_ids",
+    "max_selected_sticker_actions",
+    "max_send_feedback",
+    "max_sent_group_messages",
+    "require_all_dry_run",
+)
 
 
 @dataclass(frozen=True)
@@ -140,14 +155,7 @@ def evaluate_expectations(
     if not isinstance(expectations, dict):
         raise ValueError("expectations must be a JSON object")
     results: list[dict[str, Any]] = []
-    for name in (
-        "require_processed_events",
-        "min_proposed_actions",
-        "min_sticker_candidates",
-        "max_send_feedback",
-        "max_sent_group_messages",
-        "require_all_dry_run",
-    ):
+    for name in EXPECTATION_NAMES:
         if name not in expectations:
             continue
         expected = expectations[name]
@@ -218,6 +226,9 @@ def _summary(
     proposed = 0
     selected = 0
     sticker_candidates = 0
+    sticker_candidate_ids: list[str] = []
+    selected_sticker_ids: list[str] = []
+    selected_sticker_action_count = 0
     blocked = 0
     send_feedback = 0
     for turn in turns:
@@ -230,9 +241,18 @@ def _summary(
         selected_items = decision.get("selected", [])
         if isinstance(proposed_items, list):
             proposed += len(proposed_items)
-            sticker_candidates += sum(1 for item in proposed_items if _is_sticker_candidate(item))
+            for item in proposed_items:
+                sticker_ids = _sticker_ids_from_candidate(item)
+                if sticker_ids:
+                    sticker_candidates += 1
+                    _append_unique(sticker_candidate_ids, sticker_ids)
         if isinstance(selected_items, list):
             selected += len(selected_items)
+            for item in selected_items:
+                sticker_ids = _sticker_ids_from_candidate(item)
+                if sticker_ids:
+                    selected_sticker_action_count += 1
+                    _append_unique(selected_sticker_ids, sticker_ids)
         feedback_items = turn.get("send_feedback", [])
         if isinstance(feedback_items, list):
             send_feedback += len(feedback_items)
@@ -242,6 +262,9 @@ def _summary(
         "proposed_action_count": proposed,
         "selected_action_count": selected,
         "sticker_candidate_count": sticker_candidates,
+        "sticker_candidate_ids": sticker_candidate_ids,
+        "selected_sticker_ids": selected_sticker_ids,
+        "selected_sticker_action_count": selected_sticker_action_count,
         "blocked_turn_count": blocked,
         "send_feedback_count": send_feedback,
         "sent_group_message_count": len(sent_group_messages),
@@ -249,16 +272,41 @@ def _summary(
     }
 
 
-def _is_sticker_candidate(item: object) -> bool:
+def _sticker_ids_from_candidate(item: object) -> tuple[str, ...]:
     if not isinstance(item, dict):
-        return False
+        return ()
+    result: list[str] = []
+    metadata = item.get("metadata", {})
+    if isinstance(metadata, dict):
+        selection = metadata.get("sticker_selection")
+        if isinstance(selection, dict):
+            entry = selection.get("entry", {})
+            if isinstance(entry, dict):
+                _append_sticker_id(result, entry.get("sticker_id"))
     action = item.get("reply_action")
     if not isinstance(action, dict):
-        return False
+        return tuple(result)
     parts = action.get("parts", [])
     if not isinstance(parts, list):
-        return False
-    return any(isinstance(part, dict) and part.get("kind") == "sticker" for part in parts)
+        return tuple(result)
+    for part in parts:
+        if not isinstance(part, dict) or part.get("kind") != "sticker":
+            continue
+        platform_data = part.get("platform_data", {})
+        if isinstance(platform_data, dict):
+            _append_sticker_id(result, platform_data.get("sticker_id"))
+    return tuple(result)
+
+
+def _append_unique(target: list[str], items: tuple[str, ...]) -> None:
+    for item in items:
+        if item not in target:
+            target.append(item)
+
+
+def _append_sticker_id(target: list[str], value: object) -> None:
+    if isinstance(value, str) and value.strip() and value.strip() not in target:
+        target.append(value.strip())
 
 
 def _expectation_actual(
@@ -273,6 +321,10 @@ def _expectation_actual(
         return summary["proposed_action_count"]
     if name == "min_sticker_candidates":
         return summary["sticker_candidate_count"]
+    if name in {"require_sticker_candidate_ids", "forbid_sticker_candidate_ids"}:
+        return list(summary["sticker_candidate_ids"])
+    if name == "max_selected_sticker_actions":
+        return summary["selected_sticker_action_count"]
     if name == "max_send_feedback":
         return summary["send_feedback_count"]
     if name == "max_sent_group_messages":
@@ -287,6 +339,14 @@ def _expectation_ok(name: str, *, expected: object, actual: object) -> bool:
         return _int_value(actual, "actual") == _int_value(expected, name)
     if name in {"min_proposed_actions", "min_sticker_candidates"}:
         return _int_value(actual, "actual") >= _int_value(expected, name)
+    if name == "require_sticker_candidate_ids":
+        actual_ids = set(_string_list_value(actual, "actual"))
+        return all(item in actual_ids for item in _string_list_value(expected, name))
+    if name == "forbid_sticker_candidate_ids":
+        actual_ids = set(_string_list_value(actual, "actual"))
+        return all(item not in actual_ids for item in _string_list_value(expected, name))
+    if name == "max_selected_sticker_actions":
+        return _int_value(actual, "actual") <= _int_value(expected, name)
     if name in {"max_send_feedback", "max_sent_group_messages"}:
         return _int_value(actual, "actual") <= _int_value(expected, name)
     if name == "require_all_dry_run":
@@ -349,3 +409,14 @@ def _int_value(value: object, field_name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ValueError(f"{field_name} must be an integer")
     return value
+
+
+def _string_list_value(value: object, field_name: str) -> list[str]:
+    if not isinstance(value, list):
+        raise ValueError(f"{field_name} must be a list")
+    result: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError(f"{field_name} items must be non-empty strings")
+        result.append(item.strip())
+    return result

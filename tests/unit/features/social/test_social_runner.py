@@ -2374,6 +2374,9 @@ def test_social_runner_qq_init_replay_writes_editable_event_file(
         "require_processed_events": 2,
         "min_proposed_actions": 1,
         "min_sticker_candidates": 1,
+        "require_sticker_candidate_ids": ["ship-it"],
+        "forbid_sticker_candidate_ids": [],
+        "max_selected_sticker_actions": 0,
         "max_send_feedback": 0,
         "max_sent_group_messages": 0,
         "require_all_dry_run": True,
@@ -2483,6 +2486,9 @@ def test_social_runner_qq_replay_writes_decision_report(
         "require_processed_events",
         "min_proposed_actions",
         "min_sticker_candidates",
+        "require_sticker_candidate_ids",
+        "forbid_sticker_candidate_ids",
+        "max_selected_sticker_actions",
         "max_send_feedback",
         "max_sent_group_messages",
         "require_all_dry_run",
@@ -2492,6 +2498,9 @@ def test_social_runner_qq_replay_writes_decision_report(
     assert report["summary"]["processed_events"] == 2
     assert report["summary"]["proposed_action_count"] >= 1
     assert report["summary"]["sticker_candidate_count"] >= 1
+    assert report["summary"]["sticker_candidate_ids"] == ["ship-it"]
+    assert report["summary"]["selected_sticker_ids"] == []
+    assert report["summary"]["selected_sticker_action_count"] == 0
     assert report["summary"]["send_feedback_count"] == 0
     assert report["turns"][0]["decision"]["dry_run"] is True
     assert report["sent_group_messages"] == []
@@ -2518,6 +2527,8 @@ def test_social_runner_qq_replay_reports_failed_expectations(
             "expectations": {
                 "require_processed_events": 2,
                 "min_sticker_candidates": 99,
+                "require_sticker_candidate_ids": ["missing-sticker"],
+                "forbid_sticker_candidate_ids": ["ship-it"],
                 "max_send_feedback": 0,
                 "require_all_dry_run": True,
             },
@@ -2548,9 +2559,15 @@ def test_social_runner_qq_replay_reports_failed_expectations(
     assert [item["name"] for item in failed] == [
         "require_processed_events",
         "min_sticker_candidates",
+        "require_sticker_candidate_ids",
+        "forbid_sticker_candidate_ids",
     ]
     assert failed[0]["expected"] == 2
     assert failed[0]["actual"] == 1
+    assert failed[2]["expected"] == ["missing-sticker"]
+    assert failed[2]["actual"] == ["ship-it"]
+    assert failed[3]["expected"] == ["ship-it"]
+    assert failed[3]["actual"] == ["ship-it"]
 
 
 def test_social_runner_entry_point_is_registered() -> None:

@@ -131,9 +131,15 @@ does not send QQ messages.
 
 Replay files include an `expectations` object. The generated defaults require
 two processed events, at least one proposed action, at least one sticker
-candidate through `min_sticker_candidates`, no send feedback, no sent group
-messages, and `require_all_dry_run`. Treat `passed: false` in
-`replay-report.json` or CLI JSON as a blocker before live dry-run.
+candidate through `min_sticker_candidates`, the concrete sticker candidate
+`ship-it` through `require_sticker_candidate_ids`, no forbidden sticker
+candidates through `forbid_sticker_candidate_ids`, no selected sticker action
+through `max_selected_sticker_actions`, no send feedback, no sent group
+messages, and `require_all_dry_run`. The replay summary exposes
+`sticker_candidate_ids`, `selected_sticker_ids`, and
+`selected_sticker_action_count` so the operator can inspect actual sticker IDs,
+not only counts. Treat `passed: false` in `replay-report.json` or CLI JSON as a
+blocker before live dry-run.
 
 Run the startup gate after replay and before generated live scripts:
 
@@ -362,3 +368,18 @@ and group allow/block rules. Example:
 
 A sticker should match emotion or scene tags first; role preferences only rank
 already relevant stickers.
+
+Use replay expectations to prove the pack behaves as intended:
+
+```json
+{
+  "require_sticker_candidate_ids": ["ship-it"],
+  "forbid_sticker_candidate_ids": ["wrong-tone"],
+  "max_selected_sticker_actions": 0
+}
+```
+
+`require_sticker_candidate_ids` means the listed stickers must appear as
+proposed candidates. `forbid_sticker_candidate_ids` means the listed stickers
+must not appear. `max_selected_sticker_actions` should stay `0` in replay
+because replay is a dry-run and must not choose a send action.

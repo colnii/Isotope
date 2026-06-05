@@ -103,9 +103,12 @@ Open `replay-report.json` and check whether the role sounds like the intended
 group member, whether sticker candidates match the scene, and whether the bot
 stays silent when it should. Replay is dry-run and must not send QQ messages.
 The generated replay file has an `expectations` section with rules such as
-`min_sticker_candidates`, `max_send_feedback`, and `require_all_dry_run`.
-`qq replay` writes `passed` plus each rule result. Do not continue to live
-dry-run while `passed` is `false`.
+`min_sticker_candidates`, `require_sticker_candidate_ids`,
+`forbid_sticker_candidate_ids`, `max_selected_sticker_actions`,
+`max_send_feedback`, and `require_all_dry_run`. `qq replay` writes `passed`
+plus each rule result. The report summary also includes `sticker_candidate_ids`
+and `selected_sticker_action_count`; check these concrete IDs before trusting a
+sticker pack. Do not continue to live dry-run while `passed` is `false`.
 
 Run the startup gate after replay:
 
