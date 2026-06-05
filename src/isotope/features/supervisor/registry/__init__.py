@@ -14,6 +14,7 @@ from .records import (
     read_managed_records,
 )
 from .lifecycle import (
+    adopt_codex_session,
     adopt_tmux_session,
     launch_managed_codex,
     resume_managed_codex,
@@ -29,6 +30,7 @@ __all__ = (
     "ManagedCodexRecord",
     "ManagedSendResult",
     "TmuxBellHookRepair",
+    "adopt_codex_session",
     "adopt_tmux_session",
     "append_managed_record",
     "archive_managed_codex",

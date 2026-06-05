@@ -313,19 +313,33 @@ def run_cli_impl(
                 print(f"日志：{record.log_path}")
             return 0
         if args.command == "adopt":
-            record = api.adopt_tmux_session(
-                codex_home=api.Path(args.codex_home),
-                cwd=api.Path(args.cwd),
-                name=args.name,
-                tmux_session=args.tmux_session,
-                prompt=args.prompt,
-                run=api.subprocess.run,
-            )
+            if args.session_id:
+                record = api.adopt_codex_session(
+                    codex_home=api.Path(args.codex_home),
+                    cwd=api.Path(args.cwd) if args.cwd else None,
+                    name=args.name,
+                    session_id=args.session_id,
+                    prompt=args.prompt,
+                )
+            else:
+                if not args.cwd:
+                    raise ValueError("--cwd is required for --tmux-session adoption")
+                record = api.adopt_tmux_session(
+                    codex_home=api.Path(args.codex_home),
+                    cwd=api.Path(args.cwd),
+                    name=args.name,
+                    tmux_session=args.tmux_session,
+                    prompt=args.prompt,
+                    run=api.subprocess.run,
+                )
             if args.json:
                 api._print_json({"status": "ok", "managed": record.to_dict()})
             else:
-                print(f"已接管 tmux 会话：{record.name}")
-                print(f"tmux：{record.tmux_session}")
+                print(f"已接管 Codex 会话：{record.name}")
+                if record.tmux_session:
+                    print(f"tmux：{record.tmux_session}")
+                if record.resume_session_id:
+                    print(f"session：{record.resume_session_id}")
             return 0
         if args.command == "discover":
             payload = api._discover_payload(args)

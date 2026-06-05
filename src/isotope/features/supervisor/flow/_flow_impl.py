@@ -20,6 +20,7 @@ from isotope.integrations.codex.session_reader import (
 from ..notifications.bell_events import default_bell_events_path, read_latest_bell_events
 from ..state.lane_state import read_lane_states
 from ..registry import ManagedCodexRecord, default_registry_path, read_managed_records
+from ..registry.session_lookup import find_codex_session_snapshot
 
 
 STATUS_LABELS = {
@@ -290,6 +291,8 @@ class CodexSupervisorFlow:
                 tmux_bell_checker=self.tmux_bell_checker,
                 tmux_bell_hook_checker=self.tmux_bell_hook_checker,
                 tmux_pane_reader=self.tmux_pane_reader,
+                stale_after_seconds=stale_after_seconds,
+                active_within_seconds=active_within_seconds,
             )
             for record in read_managed_records(self.registry_path)
         )
@@ -476,6 +479,8 @@ def _managed_summary(
     tmux_bell_checker: Callable[[str], bool],
     tmux_bell_hook_checker: Callable[[str], bool | None],
     tmux_pane_reader: Callable[[str], str | None],
+    stale_after_seconds: int,
+    active_within_seconds: int,
 ) -> CodexSessionSummary:
     started_at = _parse_timestamp(record.started_at) or now
     age_seconds = max(0, int((now - started_at).total_seconds()))
@@ -485,7 +490,47 @@ def _managed_summary(
     supervisor_summary: str | None = None
     supervisor_next: str | None = None
     managed_failure = _managed_failure_payload(record, registry_path=registry_path)
-    if record.backend == "tmux":
+    if record.backend == "codex_session":
+        codex_home = registry_path.parent.parent
+        snapshot = (
+            find_codex_session_snapshot(
+                codex_home=codex_home,
+                session_id=record.resume_session_id or "",
+            )
+            if record.resume_session_id
+            else None
+        )
+        adopted = (
+            _read_session_summary(
+                snapshot.source_path,
+                now=now,
+                stale_after_seconds=stale_after_seconds,
+                active_within_seconds=active_within_seconds,
+                branch_resolver=branch_resolver,
+            )
+            if snapshot is not None
+            else None
+        )
+        managed_bell = False
+        managed_bell_event_at = None
+        managed_bell_hook_installed = None
+        if adopted is not None:
+            status = adopted.status
+            reason = adopted.reason
+            status_evidence = adopted.status_evidence
+            managed_terminal_excerpt = adopted.last_assistant_message
+            supervisor_status = adopted.supervisor_status
+            supervisor_summary = adopted.supervisor_summary
+            supervisor_next = adopted.supervisor_next
+        else:
+            status = "stale"
+            reason = "Supervisor 已接管 Codex session，但本地会话文件不可用"
+            status_evidence = {
+                "source": "adopted_codex_session",
+                "label": "接管会话记录",
+                "detail": record.resume_session_id or record.record_id,
+            }
+    elif record.backend == "tmux":
         is_running = bool(record.tmux_session and tmux_session_checker(record.tmux_session))
         if is_running and record.tmux_session:
             managed_terminal_excerpt = _terminal_tail_excerpt(

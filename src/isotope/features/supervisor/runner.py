@@ -109,6 +109,7 @@ from .notifications.notifications import (
     notify_worker_integration_review_passed,
 )
 from .registry import (
+    adopt_codex_session,
     adopt_tmux_session,
     archive_managed_codex,
     default_registry_path,

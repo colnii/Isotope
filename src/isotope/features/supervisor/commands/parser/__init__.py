@@ -758,15 +758,20 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     )
     resume_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     adopt_parser = subparsers.add_parser(
-        "adopt", help="Register an existing tmux session as a managed Codex lane."
+        "adopt", help="Register an existing Codex session as a managed lane."
     )
     _add_state_root_arg(adopt_parser)
-    adopt_parser.add_argument("--cwd", required=True, help="Workspace directory.")
+    adopt_parser.add_argument(
+        "--cwd",
+        help="Workspace directory. Optional for --session-id when session metadata has cwd.",
+    )
     adopt_parser.add_argument("--name", required=True, help="Managed lane name.")
-    adopt_parser.add_argument("--tmux-session", required=True, help="Existing tmux session.")
+    adopt_target = adopt_parser.add_mutually_exclusive_group(required=True)
+    adopt_target.add_argument("--tmux-session", help="Existing tmux session.")
+    adopt_target.add_argument("--session-id", help="Existing Codex session id.")
     adopt_parser.add_argument(
         "--prompt",
-        default="接管已有 tmux 会话",
+        default="接管已有 Codex 会话",
         help="Short note stored in the managed registry.",
     )
     adopt_parser.add_argument("--json", action="store_true", help="Print JSON output.")

@@ -28,6 +28,7 @@ from ..registry.records import (
     default_log_dir,
     default_registry_path,
 )
+from ..registry.session_lookup import find_codex_session_snapshot
 
 def launch_managed_codex(
     *,
@@ -279,3 +280,56 @@ def adopt_tmux_session(
     append_managed_record(default_registry_path(codex_home), record)
     return record
 
+
+def adopt_codex_session(
+    *,
+    codex_home: Path | str,
+    name: str,
+    session_id: str,
+    cwd: Path | str | None = None,
+    prompt: str = "接管已有 Codex 会话",
+    worker_role: str = "worker",
+    now: Callable[[], datetime] | None = None,
+) -> ManagedCodexRecord:
+    name_text = name.strip()
+    session_text = session_id.strip()
+    prompt_text = prompt.strip()
+    if not name_text:
+        raise ValueError("name must not be empty")
+    if not session_text:
+        raise ValueError("session_id must not be empty")
+    if not prompt_text:
+        raise ValueError("prompt must not be empty")
+    worker_role_text = _worker_role(worker_role)
+
+    snapshot = find_codex_session_snapshot(codex_home=codex_home, session_id=session_text)
+    if snapshot is None:
+        raise ValueError(f"Codex session not found: {session_text}")
+    workspace_text = str(cwd).strip() if cwd is not None else snapshot.cwd.strip()
+    if not workspace_text:
+        raise ValueError("cwd is required when the Codex session has no cwd metadata")
+    workspace = Path(workspace_text).expanduser()
+    if not workspace.is_dir():
+        raise ValueError(f"cwd must be an existing directory: {workspace}")
+
+    started_at = _ensure_aware_utc((now or _utc_now)()).isoformat()
+    record_id = "managed-" + uuid.uuid4().hex[:12]
+    log_dir = default_log_dir(codex_home)
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"{record_id}.log"
+    record = ManagedCodexRecord(
+        record_id=record_id,
+        name=name_text,
+        cwd=str(workspace),
+        prompt=prompt_text,
+        command=("codex", "resume", session_text),
+        pid=0,
+        started_at=started_at,
+        log_path=str(log_path),
+        status="adopted",
+        backend="codex_session",
+        resume_session_id=session_text,
+        worker_role=worker_role_text,
+    )
+    append_managed_record(default_registry_path(codex_home), record)
+    return record

@@ -41,3 +41,17 @@
   `web/routes/` first; if handler methods continue growing, split desktop chat
   streaming, approval resolution, decision answers, and managed-command POST
   handlers into route objects or mixins with explicit handler I/O boundaries.
+
+## Supervisor CLI Parser And Flow Projection
+
+- New debt recorded on 2026-06-05: Codex session adoption added a minimal
+  parser branch in `src/isotope/features/supervisor/commands/parser/__init__.py`
+  and a minimal managed-session projection branch in
+  `src/isotope/features/supervisor/flow/_flow_impl.py`. Both files were already
+  over the comfortable size threshold, and the pre-commit hook now warns for
+  both.
+- Remaining debt: move lifecycle command parser registration for `launch`,
+  `resume`, `adopt`, `send`, and `archive` into a focused parser module; move
+  managed-session projection for `process`, `tmux`, and `codex_session`
+  backends into a focused flow projection module. Keep future session adoption
+  behavior in smaller modules first instead of growing these two files.

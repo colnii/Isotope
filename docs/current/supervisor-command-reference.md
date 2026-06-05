@@ -74,6 +74,23 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 .venv/bin/isotope-supervisor web --host 127.0.0.1 --port 8765
 ```
 
+### 接管已有 Codex 会话
+
+已有普通 Codex 会话可以按 session id 登记成 Supervisor managed lane：
+
+```bash
+.venv/bin/isotope-supervisor adopt --name research --session-id <session-id>
+```
+
+这只登记会话身份和 lane 元数据，不向原 TUI 窗口发送输入。后续接力推进时用
+`resume` 启动受 Supervisor 托管的新进程：
+
+```bash
+.venv/bin/isotope-supervisor resume --name research --session-id <session-id> --prompt "继续推进并按 Supervisor 协议汇报"
+```
+
+`send` 仍只适用于 `--tmux-session` 接管的 lane。
+
 ### 查看和拍板
 
 ```bash
