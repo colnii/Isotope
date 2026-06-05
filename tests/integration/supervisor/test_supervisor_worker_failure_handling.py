@@ -217,6 +217,7 @@ def test_supervisor_daemon_status_suppresses_live_activity_when_stopped(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     activity = payload["daemon"]["activity"]
+    assert activity["recent_supervisor_action"] is None
     assert activity["recent_llm_action"] is None
     assert activity["recent_execution"] is None
     assert activity["recent_worker"] is None

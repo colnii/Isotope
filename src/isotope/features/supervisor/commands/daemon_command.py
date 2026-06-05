@@ -176,6 +176,7 @@ def daemon_activity_payload(
     active_goals = list(state_snapshot["active_goals"])
     if daemon.get("status") != "running":
         activity: dict[str, Any] = {
+            "recent_supervisor_action": None,
             "recent_llm_action": None,
             "recent_ci": None,
             "recent_execution": None,
@@ -202,11 +203,13 @@ def daemon_activity_payload(
     )
     recent_ci = recent_ci_from_log(daemon_log)
     recent_execution = recent_execution_from_log(daemon_log)
+    recent_supervisor_action = recent_llm_action_from_log(daemon_log)
     recent_worker = recent_worker_payload(codex_home, api=api)
     managed_workers = daemon_managed_worker_payloads(codex_home, api=api)
     integration_reviews = daemon_integration_reviews(codex_home, api=api)
     activity = {
-        "recent_llm_action": recent_llm_action_from_log(daemon_log),
+        "recent_supervisor_action": recent_supervisor_action,
+        "recent_llm_action": recent_supervisor_action,
         "recent_ci": recent_ci,
         "recent_execution": recent_execution,
         "recent_worker": recent_worker,
@@ -562,7 +565,9 @@ def print_daemon_activity_plain(activity: Any) -> None:
     if not isinstance(activity, dict):
         return
     snapshot_label = state_snapshot_schema_display(activity.get("state_snapshot"))
-    action = activity.get("recent_llm_action")
+    action = activity.get("recent_supervisor_action") or activity.get(
+        "recent_llm_action"
+    )
     ci = activity.get("recent_ci")
     execution = activity.get("recent_execution")
     worker = activity.get("recent_worker")

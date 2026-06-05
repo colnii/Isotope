@@ -348,6 +348,10 @@ def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     activity = payload["daemon"]["activity"]
+    assert activity["recent_supervisor_action"]["kind"] == "merge_dispatch"
+    assert activity["recent_supervisor_action"]["reason"] == (
+        "ready_to_integrate workers require merge dispatch"
+    )
     assert activity["recent_llm_action"]["kind"] == "merge_dispatch"
     assert activity["recent_llm_action"]["reason"] == (
         "ready_to_integrate workers require merge dispatch"

@@ -14436,6 +14436,7 @@ def test_codex_supervisor_runner_up_starts_daemon_with_strong_worker_defaults(
         'model_reasoning_effort="high"',
     ]
     assert payload["daemon"]["activity"] == {
+        "recent_supervisor_action": None,
         "recent_llm_action": None,
         "recent_ci": None,
         "recent_execution": None,
@@ -17782,10 +17783,15 @@ def test_codex_supervisor_runner_daemon_status_includes_recent_activity(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     activity = payload["daemon"]["activity"]
+    assert activity["recent_supervisor_action"] == {
+        "kind": "launch_session",
+        "reason": "同名任务仍在冷却。",
+    }
     assert activity["recent_llm_action"] == {
         "kind": "launch_session",
         "reason": "同名任务仍在冷却。",
     }
+    assert activity["recent_llm_action"] == activity["recent_supervisor_action"]
     assert activity["recent_execution"] == {
         "status": "skipped",
         "detail": "launch prompt cooldown active",
@@ -18130,6 +18136,10 @@ def test_codex_supervisor_runner_up_reports_existing_daemon_activity(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["daemon"]["action"] == "already_running"
+    assert payload["daemon"]["activity"]["recent_supervisor_action"] == {
+        "kind": "launch_session",
+        "reason": "最近启动了托管 worker。",
+    }
     assert payload["daemon"]["activity"]["recent_llm_action"] == {
         "kind": "launch_session",
         "reason": "最近启动了托管 worker。",
