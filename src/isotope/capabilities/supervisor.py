@@ -7,6 +7,17 @@ from typing import Any, Mapping
 
 from ..features.supervisor.capability_gaps import read_open_capability_gaps
 from ..features.supervisor.notifications.context import request_project_context
+from ..features.supervisor.registry import (
+    adopt_codex_session,
+    default_registry_path,
+    read_managed_records,
+    resume_managed_codex,
+)
+from ..features.supervisor.registry.records import ManagedCodexRecord
+from ..features.supervisor.registry.session_matcher import (
+    SessionMatchCandidate,
+    match_codex_sessions_by_description,
+)
 from ..features.supervisor.workers.integration_review import (
     GROUPS as INTEGRATION_REVIEW_GROUPS,
     collect_integration_reviews,
@@ -27,6 +38,7 @@ SUPERVISOR_CODEX_OPERATIONS = (
     "integration_review",
     "launch_worker",
     "resume_worker",
+    "adopt_resume_by_description",
 )
 
 SUPERVISOR_STATE_ROOT_INPUT = "state_root"
@@ -100,6 +112,10 @@ def run_supervisor_codex_operation(
         operation_result = run_supervisor_worker_review(inputs=operation_inputs)
     elif operation == "integration_review":
         operation_result = run_supervisor_integration_review(inputs=operation_inputs)
+    elif operation == "adopt_resume_by_description":
+        operation_result = run_supervisor_adopt_resume_by_description(
+            inputs=operation_inputs,
+        )
     else:
         operation_result = {
             "kind": "capability_run_result",
@@ -117,6 +133,82 @@ def run_supervisor_codex_operation(
         "operation": operation,
         "operation_result": operation_result,
     }
+
+
+def run_supervisor_adopt_resume_by_description(
+    *, inputs: Mapping[str, Any] | None
+) -> dict[str, Any]:
+    inputs = normalize_supervisor_state_root_inputs(inputs)
+    required_inputs = [SUPERVISOR_STATE_ROOT_INPUT, "description"]
+    missing_inputs = _missing_inputs(required_inputs, inputs)
+    if missing_inputs:
+        raise ValueError("missing required capability inputs: " + ", ".join(missing_inputs))
+    state_root = _required_string(inputs, SUPERVISOR_STATE_ROOT_INPUT)
+    description = _required_string(inputs, "description")
+    prompt = _optional_string(inputs.get("prompt")) or (
+        "继续推进用户描述匹配到的 Codex 会话，并按 Supervisor 协议汇报。"
+    )
+    target_name = _optional_string(inputs.get("target_name"))
+
+    match = match_codex_sessions_by_description(
+        codex_home=state_root,
+        description=description,
+    )
+    if match.status != "clear" or match.selected is None:
+        return {
+            "kind": "capability_run_result",
+            "capability_id": SUPERVISOR_CODEX_OPERATION_CAPABILITY,
+            "status": match.status,
+            "matched_session_id": None,
+            "match": match.to_dict(),
+            "candidates": [candidate.to_dict() for candidate in match.candidates],
+        }
+
+    selected = match.selected
+    adopted = _adopted_record_for_session(
+        codex_home=state_root,
+        selected=selected,
+        target_name=target_name,
+    )
+    resumed = resume_managed_codex(
+        codex_home=state_root,
+        cwd=selected.cwd,
+        name=adopted.name,
+        prompt=prompt,
+        session_id=selected.session_id,
+    )
+    return {
+        "kind": "capability_run_result",
+        "capability_id": SUPERVISOR_CODEX_OPERATION_CAPABILITY,
+        "status": "resumed",
+        "matched_session_id": selected.session_id,
+        "match": match.to_dict(),
+        "adopted": adopted.to_dict(),
+        "resumed": resumed.to_dict(),
+    }
+
+
+def _adopted_record_for_session(
+    *,
+    codex_home: str,
+    selected: SessionMatchCandidate,
+    target_name: str | None,
+) -> ManagedCodexRecord:
+    records = read_managed_records(default_registry_path(codex_home))
+    for record in reversed(records):
+        if record.resume_session_id == selected.session_id:
+            return record
+    return adopt_codex_session(
+        codex_home=codex_home,
+        cwd=selected.cwd,
+        name=target_name or _default_adopted_lane_name(selected),
+        session_id=selected.session_id,
+        prompt="按用户描述自动接管已有 Codex 会话",
+    )
+
+
+def _default_adopted_lane_name(selected: SessionMatchCandidate) -> str:
+    return "resume-" + selected.session_id.split("-", 1)[0]
 
 
 def run_supervisor_request_context(
@@ -257,6 +349,17 @@ def _missing_inputs(
     required_inputs: list[str], inputs: Mapping[str, Any] | None
 ) -> list[str]:
     return missing_required_input_keys(inputs, required_inputs)
+
+
+def _required_string(inputs: Mapping[str, Any], name: str) -> str:
+    value = inputs.get(name)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{name} must be a non-empty string")
+    return value.strip()
+
+
+def _optional_string(value: Any) -> str | None:
+    return value.strip() if isinstance(value, str) and value.strip() else None
 
 
 def normalize_supervisor_state_root_inputs(

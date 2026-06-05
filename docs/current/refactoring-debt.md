@@ -55,3 +55,15 @@
   managed-session projection for `process`, `tmux`, and `codex_session`
   backends into a focused flow projection module. Keep future session adoption
   behavior in smaller modules first instead of growing these two files.
+
+## Supervisor Capability Catalog And Dispatcher
+
+- New debt recorded on 2026-06-05: description-driven Codex session resume added
+  one operation branch in `src/isotope/capabilities/supervisor.py` and one
+  metadata branch in `src/isotope/capabilities/catalog.py`. The matcher itself
+  lives in a focused registry module, but these two capability entry files were
+  already above the comfortable size threshold.
+- Remaining debt: split supervisor Codex operation dispatch into focused
+  operation modules, and move capability schema construction for supervisor
+  tools out of the monolithic catalog once the next supervisor capability
+  change needs more than a small enum/input addition.

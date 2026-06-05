@@ -1909,6 +1909,7 @@ class CapabilityCatalog:
                                     "integration_review",
                                     "launch_worker",
                                     "resume_worker",
+                                    "adopt_resume_by_description",
                                 ],
                                 "description": "Supervisor operation to dispatch.",
                             },
@@ -1936,6 +1937,17 @@ class CapabilityCatalog:
                             "session_id": {
                                 "type": "string",
                                 "description": "Managed worker session id for resume_worker.",
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": (
+                                    "Natural-language description used by "
+                                    "adopt_resume_by_description to match a local Codex session."
+                                ),
+                            },
+                            "prompt": {
+                                "type": "string",
+                                "description": "Prompt sent to the managed resume worker.",
                             },
                         },
                     },

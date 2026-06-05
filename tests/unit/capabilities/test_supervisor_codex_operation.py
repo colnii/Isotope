@@ -20,6 +20,7 @@ def test_supervisor_codex_operation_is_listed_as_unified_capacity():
         "integration_review",
         "launch_worker",
         "resume_worker",
+        "adopt_resume_by_description",
     ]
     assert "single_supervisor_operation_capacity" in description["safety_boundaries"]
 

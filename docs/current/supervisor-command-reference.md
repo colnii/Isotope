@@ -91,6 +91,26 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 
 `send` 仍只适用于 `--tmux-session` 接管的 lane。
 
+### 通过描述接力 Codex 会话
+
+桌面聊天和其他 AI-facing capability（给模型调用的能力入口）可以不要求用户
+手动提供 session id。模型只需要调用 `supervisor.codex_operation`，把
+`operation` 设为 `adopt_resume_by_description`，并提供 `description`：
+
+```json
+{
+  "operation": "adopt_resume_by_description",
+  "state_root": "/home/lumber/.codex",
+  "description": "继续 ai4s 复赛多 agent 科研实践那个会话",
+  "prompt": "继续推进用户刚才描述的工作，并汇报当前进展"
+}
+```
+
+Supervisor 会在本地 Codex session 历史中做描述匹配。只有匹配足够明确时，
+它才会把该 session 登记成 managed lane 并用 `codex resume <session-id>`
+启动受托管的新进程；如果候选接近或找不到，会返回 `ambiguous` 或 `no_match`
+以及候选列表，让模型向用户确认，而不是误接管。
+
 ### 查看和拍板
 
 ```bash
