@@ -867,8 +867,22 @@ def test_runner_discovers_screen_report_from_default_catalog():
     assert "screen.report" in _ids(search["capabilities"])
     description = runner.describe_capability("screen.report")
     assert description["input_contract"]["required"] == ["root", "run_id"]
-    assert "screen_artifact_read_snapshot" in description["safety_boundaries"]
+    assert "screen_artifact_projection" in description["safety_boundaries"]
     assert "public_result_metadata" in description["safety_boundaries"]
+
+
+def test_screen_report_manifest_uses_projection_language():
+    description = _runner().describe_capability("screen.report")
+    manifest_text = json.dumps(description, ensure_ascii=False)
+    forbidden_terms = [
+        "read" + "_snapshot",
+        "只读" + "扫描",
+        "不" + "执行",
+    ]
+
+    assert "screen_artifact_projection" in description["safety_boundaries"]
+    for term in forbidden_terms:
+        assert term not in manifest_text
 
 
 def test_runner_discovers_screen_observe_from_default_catalog():

@@ -1596,7 +1596,7 @@ class CapabilityCatalog:
                     title="Screen Observe",
                     description=(
                         "Run a policy-gated local screen observation and return "
-                        "the shared shared screen report."
+                        "the shared screen report."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -1707,7 +1707,7 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "screen_artifact_read_snapshot",
+                        "screen_artifact_projection",
                         "public_result_metadata",
                         "no_screenshot_content",
                         "no_input_execution",
