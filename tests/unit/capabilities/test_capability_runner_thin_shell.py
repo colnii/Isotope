@@ -2063,7 +2063,25 @@ def test_runner_discovers_code_read_and_search_from_default_catalog():
     assert search_description["input_contract"]["required"] == ["root", "cwd", "query"]
     assert "relative_paths_only" in read_description["safety_boundaries"]
     assert "limited_excerpts_only" in read_description["safety_boundaries"]
-    assert "no_filesystem_write" in search_description["safety_boundaries"]
+    assert "workspace_code_projection" in search_description["safety_boundaries"]
+
+
+def test_code_access_manifests_use_projection_language():
+    descriptions = {
+        "read": _runner().describe_capability("code.read"),
+        "search": _runner().describe_capability("code.search"),
+    }
+    manifest_text = json.dumps(descriptions, ensure_ascii=False)
+    forbidden_terms = [
+        "no" + "_filesystem" + "_write",
+        "no" + "_command" + "_execution",
+    ]
+
+    for description in descriptions.values():
+        assert "workspace_code_projection" in description["safety_boundaries"]
+        assert "code_excerpt_projection" in description["safety_boundaries"]
+    for term in forbidden_terms:
+        assert term not in manifest_text
 
 
 def test_coding_related_capabilities_mark_routing_inputs_as_system_only():
