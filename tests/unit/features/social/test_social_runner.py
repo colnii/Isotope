@@ -2719,6 +2719,7 @@ def test_social_runner_qq_replay_writes_decision_report(
     assert report["summary"]["proposed_action_count"] >= 1
     assert report["summary"]["sticker_candidate_count"] >= 1
     assert report["summary"]["sticker_candidate_ids"] == ["ship-it"]
+    assert report["summary"]["sticker_candidate_block_reason_counts"] == {}
     assert report["summary"]["selected_sticker_ids"] == []
     assert report["summary"]["selected_sticker_action_count"] == 0
     assert report["summary"]["send_feedback_count"] == 0
@@ -2788,6 +2789,65 @@ def test_social_runner_qq_replay_reports_failed_expectations(
     assert failed[2]["actual"] == ["ship-it"]
     assert failed[3]["expected"] == ["ship-it"]
     assert failed[3]["actual"] == ["ship-it"]
+
+
+def test_social_runner_qq_replay_reports_sticker_block_reasons(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    config_payload = _config()
+    config_payload["role_card"]["stickers"]["use_frequency"] = 0.0
+    config = _write_json(tmp_path / "config.json", config_payload)
+    replay = _write_json(
+        tmp_path / "replay.json",
+        {
+            "events": [_event()],
+            "runtime": {
+                "wake_keywords": ["看看"],
+                "autonomy_score": 1.0,
+                "sticker_emotion": "positive",
+                "sticker_scene_tags": ["review"],
+                "allow_sticker_only": True,
+            },
+            "expectations": {
+                "require_processed_events": 1,
+                "min_proposed_actions": 1,
+                "min_sticker_candidates": 0,
+                "max_send_feedback": 0,
+                "require_all_dry_run": True,
+            },
+        },
+    )
+    report_path = tmp_path / "report.json"
+
+    assert main(
+        [
+            "qq",
+            "replay",
+            "--config-json",
+            str(config),
+            "--state-root",
+            str(tmp_path / "state"),
+            "--replay-json",
+            str(replay),
+            "--output",
+            str(report_path),
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    report = _read_json(report_path)
+    assert report["passed"] is True
+    assert report["summary"]["sticker_candidate_count"] == 0
+    assert report["summary"]["sticker_candidate_block_reason_counts"] == {
+        "use_frequency_zero": 1
+    }
+    proposed = report["turns"][0]["decision"]["proposed"][0]
+    assert proposed["candidate_id"] == "reply_text"
+    assert proposed["metadata"]["sticker_selection"]["blocked_reasons"] == [
+        "use_frequency_zero"
+    ]
 
 
 def test_social_runner_entry_point_is_registered() -> None:

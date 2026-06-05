@@ -57,6 +57,7 @@ from .send_feedback import (
 from .stickers import (
     StickerLibrary,
     StickerLibraryEntry,
+    StickerSelectionOutcome,
     StickerSelectionRequest,
     StickerSelectionResult,
 )
@@ -113,6 +114,7 @@ __all__ = [
     "StickerPreferences",
     "StickerLibrary",
     "StickerLibraryEntry",
+    "StickerSelectionOutcome",
     "StickerSelectionRequest",
     "StickerSelectionResult",
     "ToolPolicy",

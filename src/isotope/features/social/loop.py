@@ -112,11 +112,18 @@ def _reply_candidates(
     reason: str,
     reply_provider: SocialReplyProvider | None = None,
 ) -> tuple[SocialActionCandidate, ...]:
-    sticker_candidate = _sticker_candidate(request, character_card, reason)
+    sticker_candidate, sticker_selection = _sticker_candidate(
+        request,
+        character_card,
+        reason,
+    )
     if sticker_candidate is not None:
         return (sticker_candidate,)
     provider = reply_provider or DeterministicSocialReplyProvider()
     draft = provider.generate_reply(request, wake_reason=reason)
+    metadata: dict[str, Any] = {"reply_provider": dict(draft.metadata)}
+    if sticker_selection is not None:
+        metadata["sticker_selection"] = sticker_selection
     return (
         SocialActionCandidate(
             candidate_id="reply_text",
@@ -134,7 +141,7 @@ def _reply_candidates(
                     ),
                 ),
             ),
-            metadata={"reply_provider": dict(draft.metadata)},
+            metadata=metadata,
         ),
     )
 
@@ -143,11 +150,11 @@ def _sticker_candidate(
     request: SocialDecisionRequest,
     character_card: CharacterCard,
     reason: str,
-) -> SocialActionCandidate | None:
+) -> tuple[SocialActionCandidate | None, dict[str, Any] | None]:
     if request.sticker_library is None:
-        return None
+        return None, None
     group_id = _group_id_from_context(request.context)
-    selected = request.sticker_library.select(
+    outcome = request.sticker_library.select_with_explanation(
         StickerSelectionRequest(
             group_id=group_id,
             emotion=request.sticker_emotion,
@@ -157,19 +164,24 @@ def _sticker_candidate(
             recent_send_feedback=request.recent_send_feedback,
         )
     )
+    selected = outcome.selected
+    public_outcome = outcome.to_public_dict()
     if selected is None:
-        return None
-    return SocialActionCandidate(
-        candidate_id="reply_sticker",
-        agent_id=character_card.identity.name,
-        kind="respond",
-        reason=reason,
-        confidence=0.9,
-        reply_action=selected.to_reply_action(
-            action_id="reply_sticker",
-            target=request.target,
+        return None, public_outcome
+    return (
+        SocialActionCandidate(
+            candidate_id="reply_sticker",
+            agent_id=character_card.identity.name,
+            kind="respond",
+            reason=reason,
+            confidence=0.9,
+            reply_action=selected.to_reply_action(
+                action_id="reply_sticker",
+                target=request.target,
+            ),
+            metadata={"sticker_selection": selected.to_public_dict()},
         ),
-        metadata={"sticker_selection": selected.to_public_dict()},
+        public_outcome,
     )
 
 

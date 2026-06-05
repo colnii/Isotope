@@ -228,6 +228,7 @@ def _summary(
     sticker_candidates = 0
     sticker_candidate_ids: list[str] = []
     selected_sticker_ids: list[str] = []
+    sticker_block_reason_counts: dict[str, int] = {}
     selected_sticker_action_count = 0
     blocked = 0
     send_feedback = 0
@@ -246,6 +247,10 @@ def _summary(
                 if sticker_ids:
                     sticker_candidates += 1
                     _append_unique(sticker_candidate_ids, sticker_ids)
+                for reason in _sticker_block_reasons_from_candidate(item):
+                    sticker_block_reason_counts[reason] = (
+                        sticker_block_reason_counts.get(reason, 0) + 1
+                    )
         if isinstance(selected_items, list):
             selected += len(selected_items)
             for item in selected_items:
@@ -263,6 +268,7 @@ def _summary(
         "selected_action_count": selected,
         "sticker_candidate_count": sticker_candidates,
         "sticker_candidate_ids": sticker_candidate_ids,
+        "sticker_candidate_block_reason_counts": sticker_block_reason_counts,
         "selected_sticker_ids": selected_sticker_ids,
         "selected_sticker_action_count": selected_sticker_action_count,
         "blocked_turn_count": blocked,
@@ -295,6 +301,25 @@ def _sticker_ids_from_candidate(item: object) -> tuple[str, ...]:
         platform_data = part.get("platform_data", {})
         if isinstance(platform_data, dict):
             _append_sticker_id(result, platform_data.get("sticker_id"))
+    return tuple(result)
+
+
+def _sticker_block_reasons_from_candidate(item: object) -> tuple[str, ...]:
+    if not isinstance(item, dict):
+        return ()
+    metadata = item.get("metadata", {})
+    if not isinstance(metadata, dict):
+        return ()
+    selection = metadata.get("sticker_selection")
+    if not isinstance(selection, dict) or selection.get("selected") is True:
+        return ()
+    reasons = selection.get("blocked_reasons", [])
+    if not isinstance(reasons, list):
+        return ()
+    result: list[str] = []
+    for reason in reasons:
+        if isinstance(reason, str) and reason.strip():
+            _append_unique(result, (reason.strip(),))
     return tuple(result)
 
 

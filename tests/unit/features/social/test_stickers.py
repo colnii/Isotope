@@ -105,6 +105,21 @@ def test_sticker_library_respects_zero_use_frequency() -> None:
     assert selected is None
 
 
+def test_sticker_library_explains_zero_use_frequency() -> None:
+    outcome = _library().select_with_explanation(
+        StickerSelectionRequest(
+            group_id="12345",
+            emotion="positive",
+            scene_tags=("review",),
+            character_stickers=_card(sticker_frequency=0.0).stickers,
+        )
+    )
+
+    assert outcome.selected is None
+    assert outcome.blocked_reasons == ("use_frequency_zero",)
+    assert outcome.to_public_dict()["blocked_reasons"] == ["use_frequency_zero"]
+
+
 def test_sticker_library_does_not_repeat_recent_successful_sticker() -> None:
     selected = _library().select(
         StickerSelectionRequest(

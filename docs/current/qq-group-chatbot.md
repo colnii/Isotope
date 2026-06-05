@@ -418,6 +418,14 @@ checks recent successful sends: after it sends a sticker, the next matching turn
 falls back to text instead of proposing another sticker, and the same
 `sticker_id` is not repeated from recent send feedback.
 
+Replay reports also explain missing sticker candidates. Check
+`summary.sticker_candidate_block_reason_counts` for counts by reason, and each
+proposed text candidate's `metadata.sticker_selection.blocked_reasons` for the
+turn-level reason. Common reasons are `use_frequency_zero` for text-only sticker
+settings, `recent_sticker_feedback` when the bot just sent a sticker, and
+`no_matching_sticker` when the current group, emotion, and scene tags did not
+match any sticker.
+
 Use replay expectations to prove the pack behaves as intended:
 
 ```json

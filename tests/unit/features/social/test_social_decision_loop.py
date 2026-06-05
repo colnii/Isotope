@@ -246,6 +246,13 @@ def test_decision_loop_falls_back_to_text_after_recent_sticker_send() -> None:
     assert turn.selected[0].reply_action is not None
     assert turn.selected[0].reply_action.parts[0].kind == "text"
     assert turn.selected[0].reply_action.parts[0].text == "这次我用文字说，避免表情包刷屏。"
+    assert turn.selected[0].metadata["sticker_selection"]["selected"] is False
+    assert turn.selected[0].metadata["sticker_selection"]["blocked_reasons"] == [
+        "recent_sticker_feedback"
+    ]
+    assert turn.selected[0].metadata["sticker_selection"]["recent_sticker_ids"] == [
+        "ship-it"
+    ]
 
 
 def test_decision_loop_dry_run_returns_proposals_without_selecting_send() -> None:

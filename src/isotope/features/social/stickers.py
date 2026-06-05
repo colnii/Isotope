@@ -150,6 +150,51 @@ class StickerSelectionResult:
 
 
 @dataclass(frozen=True)
+class StickerSelectionOutcome:
+    selected: StickerSelectionResult | None
+    blocked_reasons: tuple[str, ...] = ()
+    recent_sticker_ids: tuple[str, ...] = ()
+    emotion: str = ""
+    scene_tags: tuple[str, ...] = ()
+    candidate_count: int = 0
+
+    def __post_init__(self) -> None:
+        if self.selected is not None and not isinstance(
+            self.selected,
+            StickerSelectionResult,
+        ):
+            raise ValueError("sticker outcome selected must be StickerSelectionResult")
+        _string_tuple(self.blocked_reasons, "sticker blocked_reasons")
+        _string_tuple(self.recent_sticker_ids, "sticker recent_sticker_ids")
+        _optional_string_value(self.emotion, "sticker outcome emotion")
+        _string_tuple(self.scene_tags, "sticker outcome scene_tags")
+        if isinstance(self.candidate_count, bool) or not isinstance(
+            self.candidate_count,
+            int,
+        ):
+            raise ValueError("sticker outcome candidate_count must be an integer")
+        if self.candidate_count < 0:
+            raise ValueError("sticker outcome candidate_count must be 0 or greater")
+
+    def to_public_dict(self) -> dict[str, Any]:
+        return _omit_empty(
+            {
+                "selected": self.selected is not None,
+                "selection": (
+                    self.selected.to_public_dict()
+                    if self.selected is not None
+                    else None
+                ),
+                "blocked_reasons": list(self.blocked_reasons),
+                "recent_sticker_ids": list(self.recent_sticker_ids),
+                "emotion": self.emotion,
+                "scene_tags": list(self.scene_tags),
+                "candidate_count": self.candidate_count,
+            }
+        )
+
+
+@dataclass(frozen=True)
 class StickerLibrary:
     entries: tuple[StickerLibraryEntry, ...]
 
@@ -173,15 +218,33 @@ class StickerLibrary:
         self,
         request: StickerSelectionRequest,
     ) -> StickerSelectionResult | None:
+        return self.select_with_explanation(request).selected
+
+    def select_with_explanation(
+        self,
+        request: StickerSelectionRequest,
+    ) -> StickerSelectionOutcome:
         if not isinstance(request, StickerSelectionRequest):
             raise ValueError("request must be a StickerSelectionRequest")
-        if not request.character_stickers.enabled:
-            return None
-        if request.character_stickers.use_frequency <= 0:
-            return None
         recent_sticker_ids = recent_successful_sticker_ids(request.recent_send_feedback)
+        if not request.character_stickers.enabled:
+            return _outcome(
+                request,
+                blocked_reasons=("stickers_disabled",),
+                recent_sticker_ids=recent_sticker_ids,
+            )
+        if request.character_stickers.use_frequency <= 0:
+            return _outcome(
+                request,
+                blocked_reasons=("use_frequency_zero",),
+                recent_sticker_ids=recent_sticker_ids,
+            )
         if recent_sticker_ids:
-            return None
+            return _outcome(
+                request,
+                blocked_reasons=("recent_sticker_feedback",),
+                recent_sticker_ids=recent_sticker_ids,
+            )
         candidates: list[tuple[int, StickerLibraryEntry, tuple[str, ...]]] = []
         for entry in self.entries:
             if _is_blocked(entry, request):
@@ -192,18 +255,27 @@ class StickerLibrary:
             if score > 0 and _has_request_match(reasons):
                 candidates.append((score, entry, tuple(reasons)))
         if not candidates:
-            return None
+            return _outcome(
+                request,
+                blocked_reasons=("no_matching_sticker",),
+                recent_sticker_ids=recent_sticker_ids,
+            )
         _, entry, reasons = sorted(
             candidates,
             key=lambda item: (-item[0], item[1].sticker_id),
         )[0]
-        return StickerSelectionResult(
-            entry=entry,
-            reasons=reasons,
-            allow_sticker_only=(
-                request.allow_sticker_only
-                and request.character_stickers.allow_sticker_only_reply
+        return _outcome(
+            request,
+            selected=StickerSelectionResult(
+                entry=entry,
+                reasons=reasons,
+                allow_sticker_only=(
+                    request.allow_sticker_only
+                    and request.character_stickers.allow_sticker_only_reply
+                ),
             ),
+            recent_sticker_ids=recent_sticker_ids,
+            candidate_count=len(candidates),
         )
 
 
@@ -226,6 +298,24 @@ def recent_successful_sticker_ids(
                 if not sticker_ids:
                     _append_unique_sticker_id(sticker_ids, part.media_ref)
     return tuple(sticker_ids)
+
+
+def _outcome(
+    request: StickerSelectionRequest,
+    *,
+    selected: StickerSelectionResult | None = None,
+    blocked_reasons: tuple[str, ...] = (),
+    recent_sticker_ids: tuple[str, ...] = (),
+    candidate_count: int = 0,
+) -> StickerSelectionOutcome:
+    return StickerSelectionOutcome(
+        selected=selected,
+        blocked_reasons=blocked_reasons,
+        recent_sticker_ids=recent_sticker_ids,
+        emotion=request.emotion,
+        scene_tags=request.scene_tags,
+        candidate_count=candidate_count,
+    )
 
 
 def _is_blocked(
