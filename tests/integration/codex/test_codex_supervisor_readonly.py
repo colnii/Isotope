@@ -9659,7 +9659,8 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_launch_session(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "launch_session"
+    assert payload["supervisor_action"]["kind"] == "launch_session"
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "launch_session"
     assert payload["executed"]["managed"]["name"] == "new-planner"
     assert payload["executed"]["managed"]["pid"] == 45678
@@ -9777,7 +9778,8 @@ def test_codex_supervisor_runner_supervise_launch_uses_light_worker_profile(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["worker_profile"] == "light"
+    assert payload["supervisor_action"]["worker_profile"] == "light"
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "launch_session"
     assert payload["executed"]["worker_profile"] == "light"
     assert captured["command"][:6] == [
@@ -10199,10 +10201,11 @@ def test_codex_supervisor_runner_supervise_launch_skips_running_named_process(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "monitor"
-    assert payload["llm_action"]["error"] == (
+    assert payload["supervisor_action"]["kind"] == "monitor"
+    assert payload["supervisor_action"]["error"] == (
         "target already has running managed worker: planner-session"
     )
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "skipped": True,
@@ -10273,7 +10276,8 @@ def test_codex_supervisor_runner_supervise_llm_execute_can_request_context(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "request_context"
+    assert payload["supervisor_action"]["kind"] == "request_context"
+    assert payload["llm_action"] == payload["supervisor_action"]
     context = _codex_operation_context_result(payload["executed"])
     assert context["query"] == "Supervisor 下一步节奏"
     assert context["items"][0]["path"] == "docs/current/status.md"
