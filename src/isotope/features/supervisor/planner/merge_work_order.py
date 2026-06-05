@@ -33,7 +33,7 @@ def build_merge_work_order_prompt(payload: Mapping[str, Any]) -> str:
         ),
         (
             "execution_note: integration-review 是投影 payload；本工单允许动态 worker "
-            "按步骤人工复查后执行合并，builder 模块只生成工单文本。"
+            "按步骤人工复查后执行合并；builder 负责组装可执行工单协议。"
         ),
     ]
 

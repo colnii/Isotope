@@ -106,7 +106,9 @@ def test_merge_work_order_prompt_uses_execution_protocol_language():
     assert "禁止" not in prompt
     assert "不要" not in prompt
     assert "不能" not in prompt
-    assert "只读" not in prompt
+    assert "只" + "读" not in prompt
+    assert "只" + "生成" not in prompt
+    assert "工单" + "文本" not in prompt
     assert "停止并汇报" not in prompt
     assert "自动解决大范围冲突" not in prompt
 
