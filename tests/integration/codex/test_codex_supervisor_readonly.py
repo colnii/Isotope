@@ -8867,7 +8867,8 @@ def test_codex_supervisor_runner_supervise_llm_execute_sends_whitelisted_action(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == "send_status"
+    assert payload["supervisor_action"]["kind"] == "send_status"
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "send_status"
     assert payload["executed"]["managed"]["name"] == "lane-a"
     assert payload["executed"]["text"] == STATUS_REQUEST_TEXT
@@ -8957,7 +8958,8 @@ def test_codex_supervisor_runner_supervise_llm_execute_blocks_busy_tmux_send(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"]["kind"] == kind
+    assert payload["supervisor_action"]["kind"] == kind
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "skipped": True,
@@ -9045,7 +9047,11 @@ def test_codex_supervisor_runner_supervise_llm_execute_uses_selected_target_comm
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["executed"]["managed"]["name"] == "lane-b"
-    assert "--name lane-b" in payload["llm_action"]["command_suggestion"]["command"]
+    assert (
+        "--name lane-b"
+        in payload["supervisor_action"]["command_suggestion"]["command"]
+    )
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert "--name lane-b" in payload["executed"]["command"]
     assert calls == _tmux_send_calls(
         CONTINUE_REQUEST_TEXT,
@@ -9115,12 +9121,13 @@ def test_codex_supervisor_runner_supervise_llm_execute_skips_monitor(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "monitor",
         "target_name": None,
         "reason": "仍在工作，先观察。",
         "command_suggestion": None,
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "skipped": True,
