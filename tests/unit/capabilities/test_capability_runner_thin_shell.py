@@ -1956,8 +1956,25 @@ def test_runner_discovers_artifact_diff_result_and_changed_files_from_default_ca
     required = ["root", "cwd", "workspace_id", "run_id", "execution_id"]
     assert diff_description["input_contract"]["required"] == required
     assert changed_description["input_contract"]["required"] == required
-    assert "writes_only_artifact_store" in diff_description["safety_boundaries"]
-    assert "no_event_append" in changed_description["safety_boundaries"]
+    assert "artifact_store_write" in diff_description["safety_boundaries"]
+    assert "state_event_append_handoff" in changed_description["safety_boundaries"]
+
+
+def test_artifact_output_manifests_use_event_handoff_language():
+    descriptions = {
+        "diff": _runner().describe_capability("artifact.diff_result"),
+        "changed": _runner().describe_capability("artifact.changed_files"),
+    }
+    manifest_text = json.dumps(descriptions, ensure_ascii=False)
+    forbidden_terms = [
+        "no" + "_event" + "_append",
+    ]
+
+    for description in descriptions.values():
+        assert "artifact_store_write" in description["safety_boundaries"]
+        assert "state_event_append_handoff" in description["safety_boundaries"]
+    for term in forbidden_terms:
+        assert term not in manifest_text
 
 
 def test_runner_writes_changed_files_artifact_from_materialized_workspace(tmp_path):
@@ -1996,8 +2013,9 @@ def test_runner_writes_changed_files_artifact_from_materialized_workspace(tmp_pa
         "artifact_id": artifact["artifact_id"],
     }
     assert artifact["artifact_write"] == "performed"
-    assert artifact["event_append"] == "not_performed"
+    assert artifact["event_append"] == "state_event_append_handoff"
     assert content["changed_file_count"] == 2
+    assert content["event_append"] == "state_event_append_handoff"
     assert content["changed_files"] == [
         {"path": "src/app.py", "status": "modified"},
         {"path": "src/new.py", "status": "added"},
@@ -2031,9 +2049,11 @@ def test_runner_writes_diff_result_artifact_without_raw_file_content(tmp_path):
     content_text = ArtifactStore(root).get_content(artifact["artifact_id"])
     content = json.loads(content_text)
     assert artifact["artifact_type"] == "native_coding.diff_result"
+    assert artifact["event_append"] == "state_event_append_handoff"
     assert metadata["summary"] == "1 changed file in workspace_native_coding_slice_10"
     assert content["result_lines"] == ["modified src/app.py"]
     assert content["content_policy"] == "diff_result_projection"
+    assert content["event_append"] == "state_event_append_handoff"
     assert "old raw content" not in content_text
     assert "new raw content" not in content_text
 

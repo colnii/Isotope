@@ -100,7 +100,7 @@ def _run_artifact_result_artifact(
             "summary": artifact.summary,
             "ref": artifact.ref.to_dict(),
             "artifact_write": "performed",
-            "event_append": "not_performed",
+            "event_append": "state_event_append_handoff",
             "content_policy": "diff_result_projection",
         },
     }
@@ -120,7 +120,7 @@ def _artifact_content(
         "changed_files": changed_files,
         "include_paths": list(changed_payload["include_paths"]),
         "content_policy": "diff_result_projection",
-        "event_append": "not_performed",
+        "event_append": "state_event_append_handoff",
     }
     if artifact_type == "native_coding.diff_result":
         content["result_lines"] = [
