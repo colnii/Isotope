@@ -11,6 +11,7 @@ from typing import Any
 
 SCRIPT_NAMES = (
     "beta-day-report.sh",
+    "close-failure.sh",
     "diagnostics.sh",
     "first-run.sh",
     "failure-to-regression.sh",
@@ -122,6 +123,8 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
     if name == "beta-day-report.sh":
         command = _beta_day_report_command(config)
         return f"{common}\n{command}\n"
+    if name == "close-failure.sh":
+        return f"{common}\n{_close_failure_command(config)}"
     if name == "diagnostics.sh":
         command = _diagnostics_command()
         return f"{common}\n{command}\n"
@@ -441,6 +444,32 @@ def _record_failure_command(config: QQBetaPackConfig) -> str:
     )
 
 
+def _close_failure_command(config: QQBetaPackConfig) -> str:
+    return (
+        'FAILURE="${1:-${ISOTOPE_QQ_CLOSE_FAILURE:-}}"\n'
+        'FIX="${2:-${ISOTOPE_QQ_CLOSE_FAILURE_FIX:-}}"\n'
+        'REGRESSION_TEST="${3:-${ISOTOPE_QQ_CLOSE_FAILURE_REGRESSION_TEST:-}}"\n'
+        'if [ -z "$FAILURE" ] || [ -z "$FIX" ]; then\n'
+        '  echo "Usage: ./close-failure.sh <failure_id_or_symptom> <fix> [regression_test]" >&2\n'
+        '  echo "Or set ISOTOPE_QQ_CLOSE_FAILURE and ISOTOPE_QQ_CLOSE_FAILURE_FIX." >&2\n'
+        "  exit 2\n"
+        "fi\n"
+        "args=(\n"
+        "  isotope-social qq close-failure\n"
+        "  --failures-json logs/failures.json\n"
+        f"  --group {shlex.quote(config.group_id)}\n"
+        '  --failure "$FAILURE"\n'
+        f"  --resolved-date \"${{ISOTOPE_QQ_CLOSE_FAILURE_DATE:-$(date +%F)}}\"\n"
+        "  --status fixed\n"
+        '  --fix "$FIX"\n'
+        ")\n"
+        'if [ -n "$REGRESSION_TEST" ]; then\n'
+        '  args+=(--regression-test "$REGRESSION_TEST")\n'
+        "fi\n"
+        '"${args[@]}" --json\n'
+    )
+
+
 def _quote_command_part(part: str) -> str:
     if part in {'"$ONEBOT_ACCESS_TOKEN"', '"${ISOTOPE_QQ_BETA_DATE:-$(date +%F)}"'}:
         return part
@@ -549,6 +578,8 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 - Record a real beta issue with `./record-failure.sh`.
 - Record a real beta issue and draft replay regressions with
   `./failure-to-regression.sh`.
+- Close a fixed beta issue with `./close-failure.sh` after replay and pytest
+  verification.
 - Write the daily beta report with `./beta-day-report.sh`.
 - Draft replay regressions with `./regression-intake.sh`.
 
@@ -571,6 +602,8 @@ for stable replay output. To use LLM-generated text replies, change it to
 `logs/failures.json`; it does not enable sends.
 `record-failure.sh` appends one structured failure record to
 `logs/failures.json`.
+`close-failure.sh` marks one matching failure as fixed, writes `resolved_date`,
+and preserves the fix note in `logs/failures.json`.
 `failure-to-regression.sh` runs `record-failure.sh`, runs
 `regression-intake.sh`, then prints the next `qq replay` command(s) to review.
 If the failure includes a regression test path, it also prints the next pytest

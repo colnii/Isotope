@@ -221,6 +221,32 @@ def register_qq_commands(subparsers: argparse._SubParsersAction) -> None:
     record_failure.add_argument("--regression-test", help="Regression test path or planned path.")
     record_failure.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    close_failure = qq_subparsers.add_parser(
+        "close-failure",
+        help="Mark one QQ beta failure as fixed after replay and pytest verification.",
+    )
+    close_failure.add_argument(
+        "--failures-json",
+        required=True,
+        help="Operator-maintained failure records JSON file.",
+    )
+    close_failure.add_argument("--group", required=True, help="QQ group id.")
+    close_failure.add_argument("--failure", required=True, help="Failure id or exact symptom.")
+    close_failure.add_argument(
+        "--resolved-date",
+        required=True,
+        help="Resolution date, usually YYYY-MM-DD.",
+    )
+    close_failure.add_argument(
+        "--status",
+        default="fixed",
+        choices=("fixed", "resolved", "closed"),
+        help="Closed failure status. Defaults to fixed.",
+    )
+    close_failure.add_argument("--fix", required=True, help="Fix summary.")
+    close_failure.add_argument("--regression-test", help="Regression test path.")
+    close_failure.add_argument("--json", action="store_true", help="Print JSON output.")
+
     for name, help_text in (
         ("pause", "Pause one QQ group."),
         ("resume", "Resume one QQ group."),

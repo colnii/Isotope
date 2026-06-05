@@ -809,6 +809,145 @@ def test_social_runner_qq_record_failure_appends_structured_entry(
     ]
 
 
+def test_social_runner_qq_close_failure_marks_failure_fixed(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    failures = _write_json(
+        tmp_path / "failures.json",
+        {
+            "failures": [
+                {
+                    "id": "qq-beta-1",
+                    "date": "2026-06-05",
+                    "group": "99999",
+                    "status": "open",
+                    "symptom": "表情包过度热情",
+                    "regression_test": "tests/integration/qq/test_fake_onebot_flow.py",
+                }
+            ]
+        },
+    )
+
+    code = main(
+        [
+            "qq",
+            "close-failure",
+            "--failures-json",
+            str(failures),
+            "--group",
+            "99999",
+            "--failure",
+            "qq-beta-1",
+            "--resolved-date",
+            "2026-06-06",
+            "--fix",
+            "replay and pytest passed",
+            "--regression-test",
+            "tests/integration/qq/test_fake_onebot_flow.py",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "close-failure"
+    assert payload["open_failure_count"] == 0
+    assert payload["failure"]["status"] == "fixed"
+    assert payload["failure"]["resolved_date"] == "2026-06-06"
+    assert payload["failure"]["fix"] == "replay and pytest passed"
+
+    recorded = _read_json(failures)
+    assert recorded["failures"][0]["status"] == "fixed"
+    assert recorded["failures"][0]["resolved_date"] == "2026-06-06"
+    assert recorded["failures"][0]["fix"] == "replay and pytest passed"
+    assert (
+        recorded["failures"][0]["regression_test"]
+        == "tests/integration/qq/test_fake_onebot_flow.py"
+    )
+
+
+def test_social_runner_qq_close_failure_reports_missing_match(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    failures = _write_json(
+        tmp_path / "failures.json",
+        {
+            "failures": [
+                {
+                    "id": "qq-beta-1",
+                    "group": "99999",
+                    "status": "open",
+                    "symptom": "表情包过度热情",
+                }
+            ]
+        },
+    )
+
+    code = main(
+        [
+            "qq",
+            "close-failure",
+            "--failures-json",
+            str(failures),
+            "--group",
+            "99999",
+            "--failure",
+            "missing",
+            "--resolved-date",
+            "2026-06-06",
+            "--fix",
+            "not used",
+            "--json",
+        ]
+    )
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["code"] == "social_runner_error"
+    assert "no matching failure" in payload["error"]["message"]
+
+
+def test_social_runner_qq_close_failure_reports_multiple_matches(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    failures = _write_json(
+        tmp_path / "failures.json",
+        {
+            "failures": [
+                {"group": "99999", "status": "open", "symptom": "重复问题"},
+                {"group": "99999", "status": "open", "symptom": "重复问题"},
+            ]
+        },
+    )
+
+    code = main(
+        [
+            "qq",
+            "close-failure",
+            "--failures-json",
+            str(failures),
+            "--group",
+            "99999",
+            "--failure",
+            "重复问题",
+            "--resolved-date",
+            "2026-06-06",
+            "--fix",
+            "not used",
+            "--json",
+        ]
+    )
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"]["code"] == "social_runner_error"
+    assert "multiple matching failures" in payload["error"]["message"]
+
+
 def test_social_runner_qq_live_run_send_records_feedback(
     tmp_path: Path,
     capsys,
@@ -958,6 +1097,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert payload["output_dir"] == str(output_dir)
     assert sorted(payload["scripts"]) == [
         "beta-day-report.sh",
+        "close-failure.sh",
         "diagnostics.sh",
         "dry-run.sh",
         "export-log.sh",
@@ -1039,6 +1179,12 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert "ISOTOPE_QQ_FAILURE_SYMPTOM" in record_failure
     assert "ISOTOPE_QQ_FAILURE_OBSERVED_INPUT" in record_failure
     assert 'REGRESSION_TEST="${3:-${ISOTOPE_QQ_FAILURE_REGRESSION_TEST:-}}"' in record_failure
+
+    close_failure = (output_dir / "close-failure.sh").read_text(encoding="utf-8")
+    assert "qq close-failure" in close_failure.replace("\n", " ")
+    assert "--failures-json logs/failures.json" in close_failure
+    assert "ISOTOPE_QQ_CLOSE_FAILURE_DATE" in close_failure
+    assert "ISOTOPE_QQ_CLOSE_FAILURE_REGRESSION_TEST" in close_failure
 
     regression_intake = (output_dir / "regression-intake.sh").read_text(encoding="utf-8")
     assert " qq regression-intake " in regression_intake
@@ -1285,6 +1431,107 @@ def test_social_runner_qq_failure_to_regression_script_records_and_drafts(
         "tests/integration/qq/test_fake_onebot_flow.py -q"
     )
     assert (output_dir / "regressions" / "qq-failure-1.replay.json").is_file()
+
+
+def test_social_runner_qq_close_failure_script_marks_failure_fixed(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    output_dir = tmp_path / "qq-beta"
+    assert main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(output_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    record_result = subprocess.run(
+        [
+            "./failure-to-regression.sh",
+            "表情包过度热情",
+            "这能发吗",
+            "tests/integration/qq/test_fake_onebot_flow.py",
+        ],
+        cwd=output_dir,
+        env={
+            **os.environ,
+            "PATH": "/home/lumber/Github/isotope/.venv/bin:"
+            + os.environ.get("PATH", ""),
+            "PYTHONPATH": str(Path.cwd() / "src")
+            + os.pathsep
+            + os.environ.get("PYTHONPATH", ""),
+            "ISOTOPE_QQ_FAILURE_DATE": "2026-06-05",
+        },
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    assert record_result.returncode == 0
+
+    close_result = subprocess.run(
+        [
+            "./close-failure.sh",
+            "qq-failure-1",
+            "replay and pytest passed",
+            "tests/integration/qq/test_fake_onebot_flow.py",
+        ],
+        cwd=output_dir,
+        env={
+            **os.environ,
+            "PATH": "/home/lumber/Github/isotope/.venv/bin:"
+            + os.environ.get("PATH", ""),
+            "PYTHONPATH": str(Path.cwd() / "src")
+            + os.pathsep
+            + os.environ.get("PYTHONPATH", ""),
+            "ISOTOPE_QQ_CLOSE_FAILURE_DATE": "2026-06-06",
+        },
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert close_result.returncode == 0
+    payload = json.loads(close_result.stdout)
+    assert payload["command"] == "close-failure"
+    assert payload["open_failure_count"] == 0
+    failures = _read_json(output_dir / "logs" / "failures.json")
+    assert failures["failures"][0]["status"] == "fixed"
+    assert failures["failures"][0]["resolved_date"] == "2026-06-06"
+    assert failures["failures"][0]["fix"] == "replay and pytest passed"
+
+    intake_result = subprocess.run(
+        ["./regression-intake.sh"],
+        cwd=output_dir,
+        env={
+            **os.environ,
+            "PATH": "/home/lumber/Github/isotope/.venv/bin:"
+            + os.environ.get("PATH", ""),
+            "PYTHONPATH": str(Path.cwd() / "src")
+            + os.pathsep
+            + os.environ.get("PYTHONPATH", ""),
+        },
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    assert intake_result.returncode == 0
+    assert json.loads(intake_result.stdout)["draft_count"] == 0
+    assert _read_json(output_dir / "logs" / "regression-intake.json")["draft_count"] == 0
 
 
 def test_social_runner_qq_first_run_stops_before_missing_replay(

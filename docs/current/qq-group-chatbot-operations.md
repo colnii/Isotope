@@ -37,8 +37,8 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 
 The pack writes `diagnostics.sh`, `first-run.sh`, `health.sh`,
 `startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`, `beta-day-report.sh`,
-`record-failure.sh`, `failure-to-regression.sh`, `regression-intake.sh`,
-`send-run.sh`, `pause.sh`,
+`record-failure.sh`, `close-failure.sh`, `failure-to-regression.sh`,
+`regression-intake.sh`, `send-run.sh`, `pause.sh`,
 `resume.sh`, and `export-log.sh`. It also writes `logs/failures.json` and
 creates `regressions/`. Run `send-run.sh` only with
 `ISOTOPE_QQ_ENABLE_SEND=1`.
@@ -298,6 +298,28 @@ replay draft, fill any missing context from the real logs, then run it with
 `qq replay`. Once the replay captures the failure, add or update the matching
 pytest case named in the failure's `regression_test`.
 
+After the replay captures the issue and the pytest regression passes, close the
+failure explicitly:
+
+```bash
+isotope-social qq close-failure \
+  --failures-json .isotope/qq-beta/logs/failures.json \
+  --group <group_id> \
+  --failure qq-failure-1 \
+  --resolved-date 2026-06-06 \
+  --fix "replay and pytest passed" \
+  --regression-test tests/integration/qq/test_fake_onebot_flow.py --json
+cd .isotope/qq-beta
+ISOTOPE_QQ_CLOSE_FAILURE_DATE=2026-06-06 \
+  ./close-failure.sh qq-failure-1 "replay and pytest passed" \
+  tests/integration/qq/test_fake_onebot_flow.py
+```
+
+`close-failure` first matches `--failure` against a failure `id`. If no id
+matches, it matches the exact `symptom` in the requested group. It refuses to
+close when no record matches or more than one record matches. The update writes
+`status: fixed`, `resolved_date`, `fix`, and keeps the regression test path.
+
 To enable real sends in the controlled group, use the same live command with
 `--send`:
 
@@ -345,6 +367,7 @@ Each failure entry uses this JSON shape:
       "send_or_capability_log_entry": "...",
       "root_cause": "...",
       "fix": "...",
+      "resolved_date": "2026-06-06",
       "regression_test": "tests/integration/social/test_social_fake_platform_flow.py"
     }
   ]
@@ -406,6 +429,8 @@ Run this checklist for each controlled beta day:
   replay draft immediately.
 - Run `qq regression-intake` or `./regression-intake.sh` when failures are open.
 - Inspect `regression-intake.json` and replay drafts under `regressions/`.
+- After replay and pytest pass, close the fixed issue with `qq close-failure` or
+  `./close-failure.sh`.
 - Enable sends only after dry-run decisions look correct and the report has no
   unresolved failures.
 - Check health and adapter state at least once per session.
