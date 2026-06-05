@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from isotope.features.supervisor.commands.supervisor_action import (
+    set_supervisor_action_payload,
+    set_supervisor_followup_action_payload,
+    supervisor_followup_action_from_payload,
+)
+
 
 def planner_context_payload(
     args: Any,
@@ -60,15 +66,19 @@ def maybe_replan_after_context_request(
         recent = list(payload.get("recent_context_results") or [])
         recent.append(context_result)
         payload["recent_context_results"] = recent[-3:]
-    payload["llm_followup_action"] = api._decide_action_with_llm(
+    followup_action = api._decide_action_with_llm(
         args,
         report,
         payload,
     )
+    set_supervisor_followup_action_payload(payload, followup_action)
     followup_payload = {
         **payload,
-        "llm_action": payload["llm_followup_action"],
     }
+    set_supervisor_action_payload(
+        followup_payload,
+        supervisor_followup_action_from_payload(payload),
+    )
     payload["followup_executed"] = api._execute_llm_action(
         args,
         report,

@@ -1222,6 +1222,7 @@ def test_llm_context_replans_after_successful_context_request():
         "kind": "send_status",
         "reason": "context reviewed",
     }
+    assert payload["supervisor_followup_action"] == payload["llm_followup_action"]
     assert payload["followup_executed"] == {"kind": "send_status", "sent": True}
     assert calls[0] == (
         "decide",
@@ -1234,6 +1235,7 @@ def test_llm_context_replans_after_successful_context_request():
     assert calls[1][1]["payload"] == {
         **execute_payload,
         "llm_action": payload["llm_followup_action"],
+        "supervisor_action": payload["supervisor_followup_action"],
     }
 
 
