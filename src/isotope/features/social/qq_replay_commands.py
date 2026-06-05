@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Any
 
 from .replay import QQReplayTemplateConfig, create_qq_replay_template
+from .replay_scenarios import (
+    QQReplayScenariosConfig,
+    create_qq_replay_scenarios,
+)
 
 
 def handle_init_replay(args: argparse.Namespace) -> dict[str, Any]:
@@ -19,4 +23,17 @@ def handle_init_replay(args: argparse.Namespace) -> dict[str, Any]:
     )
     payload = result.to_public_dict()
     payload.update({"status": "ok", "command": "init-replay"})
+    return payload
+
+
+def handle_init_replay_scenarios(args: argparse.Namespace) -> dict[str, Any]:
+    result = create_qq_replay_scenarios(
+        QQReplayScenariosConfig(
+            output_dir=Path(args.output_dir),
+            group_id=args.group,
+            bot_user_id=args.bot_user_id,
+        )
+    )
+    payload = result.to_public_dict()
+    payload.update({"status": "ok", "command": "init-replay-scenarios"})
     return payload

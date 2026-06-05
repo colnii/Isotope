@@ -129,6 +129,21 @@ isotope-social qq replay --config-json .isotope/qq-beta/config.json \
   --output .isotope/qq-beta/logs/replay-report.json --json
 ```
 
+For role-card and sticker-pack tuning, generate scenario replays:
+
+```bash
+isotope-social qq init-replay-scenarios \
+  --output-dir .isotope/qq-beta/replay-scenarios \
+  --group <controlled_group_id> --bot-user-id <bot_qq> --json
+```
+
+The pack writes `01-ship-it-candidate.json`,
+`02-no-matching-sticker.json`, `03-forbid-frequency-zero.json`, and
+`index.json`. Run these files with `qq replay` against the same beta config.
+Use them to prove the expected sticker appears, prove an unmatched scene reports
+`no_matching_sticker`, and catch accidental `use_frequency_zero` role-card
+settings.
+
 Review `replay-report.json` for proposed actions, selected actions, sticker
 candidates, blocked turns, and send feedback count. Replay runs as dry-run and
 does not send QQ messages.
@@ -279,6 +294,9 @@ isotope-social qq apply-profile --pack-dir .isotope/qq-beta \
   --profile-dir .isotope/qq-profile --json
 isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
 isotope-social qq init-replay --output .isotope/qq-beta/replay.json \
+  --group <controlled_group_id> --bot-user-id <bot_qq> --json
+isotope-social qq init-replay-scenarios \
+  --output-dir .isotope/qq-beta/replay-scenarios \
   --group <controlled_group_id> --bot-user-id <bot_qq> --json
 isotope-social qq replay --config-json .isotope/qq-beta/config.json \
   --state-root .isotope/qq-beta/state \

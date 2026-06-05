@@ -115,6 +115,19 @@ def register_qq_commands(subparsers: argparse._SubParsersAction) -> None:
     init_replay.add_argument("--bot-user-id", required=True, help="Bot QQ user id.")
     init_replay.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    init_replay_scenarios = qq_subparsers.add_parser(
+        "init-replay-scenarios",
+        help="Create QQ replay tuning scenarios for sticker behavior.",
+    )
+    init_replay_scenarios.add_argument(
+        "--output-dir",
+        required=True,
+        help="Directory to write replay scenario JSON files.",
+    )
+    init_replay_scenarios.add_argument("--group", required=True, help="Controlled QQ group id.")
+    init_replay_scenarios.add_argument("--bot-user-id", required=True, help="Bot QQ user id.")
+    init_replay_scenarios.add_argument("--json", action="store_true", help="Print JSON output.")
+
     replay = qq_subparsers.add_parser(
         "replay",
         help="Replay captured QQ events through the configured social runtime.",

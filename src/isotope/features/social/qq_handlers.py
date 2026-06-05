@@ -29,7 +29,7 @@ from .qq_profile_commands import (
     handle_import_stickers,
     handle_init_profile,
 )
-from .qq_replay_commands import handle_init_replay
+from .qq_replay_commands import handle_init_replay, handle_init_replay_scenarios
 from .qq_runtime_commands import handle_live_run, handle_replay, handle_run
 
 
@@ -42,6 +42,7 @@ def qq_handlers() -> dict[str, Callable[[argparse.Namespace], dict[str, Any]]]:
         "apply_profile": handle_apply_profile,
         "import_stickers": handle_import_stickers,
         "init_replay": handle_init_replay,
+        "init_replay_scenarios": handle_init_replay_scenarios,
         "replay": handle_replay,
         "beta_check": handle_beta_check,
         "beta_diagnostics": handle_beta_diagnostics,

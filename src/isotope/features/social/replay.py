@@ -67,7 +67,7 @@ class QQReplayTemplateResult:
 
 
 def create_qq_replay_template(config: QQReplayTemplateConfig) -> QQReplayTemplateResult:
-    payload = _template_payload(config)
+    payload = qq_replay_template_payload(config)
     config.output.parent.mkdir(parents=True, exist_ok=True)
     _write_json(config.output, payload)
     return QQReplayTemplateResult(output=config.output, event_count=len(payload["events"]))
@@ -185,7 +185,7 @@ def evaluate_expectations(
     return results
 
 
-def _template_payload(config: QQReplayTemplateConfig) -> dict[str, Any]:
+def qq_replay_template_payload(config: QQReplayTemplateConfig) -> dict[str, Any]:
     group_id = int(config.group_id)
     return {
         "schema_version": "isotope.qq_replay.v1",
