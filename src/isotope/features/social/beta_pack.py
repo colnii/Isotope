@@ -17,6 +17,7 @@ SCRIPT_NAMES = (
     "first-run.sh",
     "failure-to-regression.sh",
     "health.sh",
+    "operator-rehearsal.sh",
     "startup-check.sh",
     "dry-run.sh",
     "review-dry-run.sh",
@@ -140,6 +141,9 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
         return f"{common}\n{command}\n"
     if name == "health.sh":
         command = _live_run_command(config, max_events=0, send=False)
+        return f"{common}\n{command}\n"
+    if name == "operator-rehearsal.sh":
+        command = _operator_rehearsal_command(config)
         return f"{common}\n{command}\n"
     if name == "startup-check.sh":
         command = _startup_check_command()
@@ -425,6 +429,70 @@ def _failure_to_regression_command() -> str:
     )
 
 
+def _operator_rehearsal_command(config: QQBetaPackConfig) -> str:
+    export_log = f"logs/qq-{config.group_id}.json"
+    return (
+        'REHEARSAL_DATE="${ISOTOPE_QQ_REHEARSAL_DATE:-$(date +%F)}"\n'
+        "./diagnostics.sh > logs/operator-rehearsal-diagnostics.json || true\n"
+        "python3 - <<'PY'\n"
+        "import json\n"
+        "from pathlib import Path\n"
+        "\n"
+        "logs = Path('logs')\n"
+        "logs.mkdir(exist_ok=True)\n"
+        "dry_run_review = {\n"
+        "    'kind': 'qq_dry_run_review',\n"
+        f"    'group_id': {config.group_id!r},\n"
+        "    'ready_for_send': True,\n"
+        "    'summary': {\n"
+        "        'decision_count': 1,\n"
+        "        'dry_run_decision_count': 1,\n"
+        "        'proposed_action_count': 1,\n"
+        "        'selected_action_count': 0,\n"
+        "        'rejected_action_count': 1,\n"
+        "        'sticker_candidate_count': 0,\n"
+        "        'send_feedback_count': 0,\n"
+        "    },\n"
+        "    'warnings': [],\n"
+        "    'turns': [],\n"
+        "    'metadata': {'source': 'operator_rehearsal'},\n"
+        "}\n"
+        "audit_log = {\n"
+        "    'entries': [\n"
+        "        {\n"
+        "            'kind': 'decision',\n"
+        f"            'group_id': {config.group_id!r},\n"
+        "            'payload': {'source': 'operator_rehearsal'},\n"
+        "        }\n"
+        "    ]\n"
+        "}\n"
+        "for path, payload in (\n"
+        "    (logs / 'dry-run-review.json', dry_run_review),\n"
+        f"    (Path({export_log!r}), audit_log),\n"
+        "):\n"
+        "    path.write_text(\n"
+        "        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),\n"
+        "        encoding='utf-8',\n"
+        "    )\n"
+        "PY\n"
+        'ISOTOPE_QQ_FAILURE_DATE="$REHEARSAL_DATE" ./failure-to-regression.sh \\\n'
+        '  "operator rehearsal failure" \\\n'
+        '  "operator rehearsal message" \\\n'
+        '  "tests/integration/qq/test_fake_onebot_flow.py"\n'
+        'ISOTOPE_QQ_CLOSE_FAILURE_DATE="$REHEARSAL_DATE" ./close-failure.sh \\\n'
+        '  "qq-failure-1" \\\n'
+        '  "operator rehearsal passed" \\\n'
+        '  "tests/integration/qq/test_fake_onebot_flow.py"\n'
+        "./regression-intake.sh\n"
+        'ISOTOPE_QQ_BETA_DATE="$REHEARSAL_DATE" ./beta-day-report.sh\n'
+        "./beta-closeout.sh\n"
+        "python3 - <<'PY'\n"
+        "from pathlib import Path\n"
+        "print(Path('logs/beta-closeout.json').read_text(encoding='utf-8'))\n"
+        "PY\n"
+    )
+
+
 def _record_failure_command(config: QQBetaPackConfig) -> str:
     return (
         'SYMPTOM="${1:-${ISOTOPE_QQ_FAILURE_SYMPTOM:-}}"\n'
@@ -584,7 +652,9 @@ OneBot WebSocket: `{config.websocket_url}`
 9. Run `./beta-day-report.sh` and inspect `logs/beta-day-report.json`.
 10. Run `./regression-intake.sh` for open failures and inspect `regressions/`
     if you did not already use `./failure-to-regression.sh`.
-11. Only after dry-run behavior is acceptable, run:
+11. To rehearse the local operator closeout chain without connecting to OneBot,
+    run `./operator-rehearsal.sh` and inspect `logs/beta-closeout.json`.
+12. Only after dry-run behavior is acceptable, run:
 
 ```bash
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
@@ -603,6 +673,7 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 - Write the daily beta report with `./beta-day-report.sh`.
 - Draft replay regressions with `./regression-intake.sh`.
 - Write the closeout checklist with `./beta-closeout.sh`.
+- Rehearse the local closeout chain with `./operator-rehearsal.sh`.
 
 Automated scripts start in dry-run. `send-run.sh` refuses to send unless
 `ISOTOPE_QQ_ENABLE_SEND=1` is set for that command. `dry-run.sh` and
@@ -614,6 +685,11 @@ report, and next steps.
 `first-run.sh` runs diagnostics, beta-check, startup-check, and health in order.
 It stops with replay commands if `logs/replay-report.json` is missing, and it
 does not call `dry-run.sh` or `send-run.sh`.
+`operator-rehearsal.sh` writes local review and export artifacts tagged with
+`operator_rehearsal`, runs the failure-to-regression, close-failure,
+regression-intake, beta-day-report, and beta-closeout scripts, then prints
+`logs/beta-closeout.json`. Set `ISOTOPE_QQ_REHEARSAL_DATE` to pin the rehearsal
+date. It does not connect to OneBot or enable sends.
 The generated `config.json` defaults to `runtime.reply_provider = "deterministic"`
 for stable replay output. To use LLM-generated text replies, change it to
 `runtime.reply_provider = "llm"` and configure the shared Isotope LLM provider;

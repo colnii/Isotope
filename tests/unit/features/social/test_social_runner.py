@@ -1257,6 +1257,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
         "failure-to-regression.sh",
         "first-run.sh",
         "health.sh",
+        "operator-rehearsal.sh",
         "pause.sh",
         "record-failure.sh",
         "regression-intake.sh",
@@ -1363,6 +1364,19 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert "Next pytest command(s):" in failure_to_regression
     assert "live-run" not in failure_to_regression
     assert "send-run" not in failure_to_regression
+
+    operator_rehearsal = (output_dir / "operator-rehearsal.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "./failure-to-regression.sh" in operator_rehearsal
+    assert "./close-failure.sh" in operator_rehearsal
+    assert "./regression-intake.sh" in operator_rehearsal
+    assert "./beta-day-report.sh" in operator_rehearsal
+    assert "./beta-closeout.sh" in operator_rehearsal
+    assert "operator_rehearsal" in operator_rehearsal
+    assert "live-run" not in operator_rehearsal
+    assert "dry-run.sh" not in operator_rehearsal
+    assert "send-run.sh" not in operator_rehearsal
 
     send_run = (output_dir / "send-run.sh").read_text(encoding="utf-8")
     assert "ISOTOPE_QQ_ENABLE_SEND" in send_run
@@ -1765,6 +1779,68 @@ def test_social_runner_qq_beta_closeout_script_writes_operator_report(
     report = _read_json(output_dir / "logs" / "beta-closeout.json")
     assert report["kind"] == "qq_beta_closeout"
     assert report["can_enter_send_run"] is True
+
+
+def test_social_runner_qq_operator_rehearsal_script_runs_local_closeout_chain(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    output_dir = tmp_path / "qq-beta"
+    assert main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(output_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    result = subprocess.run(
+        ["./operator-rehearsal.sh"],
+        cwd=output_dir,
+        env={
+            **os.environ,
+            "PATH": "/home/lumber/Github/isotope/.venv/bin:"
+            + os.environ.get("PATH", ""),
+            "PYTHONPATH": str(Path.cwd() / "src")
+            + os.pathsep
+            + os.environ.get("PYTHONPATH", ""),
+            "ISOTOPE_QQ_REHEARSAL_DATE": "2026-06-06",
+        },
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert (output_dir / "logs" / "dry-run-review.json").is_file()
+    assert (output_dir / "logs" / "qq-99999.json").is_file()
+    failures = _read_json(output_dir / "logs" / "failures.json")
+    assert len(failures["failures"]) == 1
+    assert failures["failures"][0]["status"] == "fixed"
+    assert failures["failures"][0]["resolved_date"] == "2026-06-06"
+    assert failures["failures"][0]["fix"] == "operator rehearsal passed"
+    assert _read_json(output_dir / "logs" / "regression-intake.json")["draft_count"] == 0
+
+    beta_day = _read_json(output_dir / "logs" / "beta-day-report.json")
+    assert beta_day["ready_for_send"] is True
+    assert beta_day["summary"]["open_failure_count"] == 0
+
+    closeout = _read_json(output_dir / "logs" / "beta-closeout.json")
+    assert closeout["can_enter_send_run"] is True
+    assert closeout["blockers"] == []
+    assert "operator_review_before_send" in result.stdout
 
 
 def test_social_runner_qq_first_run_stops_before_missing_replay(

@@ -37,8 +37,9 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 
 The pack writes `diagnostics.sh`, `first-run.sh`, `health.sh`,
 `startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`, `beta-day-report.sh`,
-`beta-closeout.sh`, `record-failure.sh`, `close-failure.sh`, `failure-to-regression.sh`,
-`regression-intake.sh`, `send-run.sh`, `pause.sh`,
+`beta-closeout.sh`, `record-failure.sh`, `close-failure.sh`,
+`failure-to-regression.sh`, `operator-rehearsal.sh`, `regression-intake.sh`,
+`send-run.sh`, `pause.sh`,
 `resume.sh`, and `export-log.sh`. It also writes `logs/failures.json` and
 creates `regressions/`. Run `send-run.sh` only with
 `ISOTOPE_QQ_ENABLE_SEND=1`.
@@ -339,6 +340,22 @@ no open failures, and no `pending_regression_drafts`. It does not enable send
 mode; it only tells the operator whether `ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh`
 is ready for manual review.
 
+To rehearse the whole local operator closeout chain before a real QQ session,
+run the generated script inside the beta pack:
+
+```bash
+cd .isotope/qq-beta
+ISOTOPE_QQ_REHEARSAL_DATE=2026-06-06 ./operator-rehearsal.sh
+```
+
+The rehearsal writes local `dry-run-review.json` and `qq-<group_id>.json`
+artifacts tagged with `operator_rehearsal`, runs `failure-to-regression.sh`,
+closes the sample failure through `close-failure.sh`, reruns
+`regression-intake.sh`, writes `beta-day-report.json`, writes
+`beta-closeout.json`, then prints the closeout JSON. It does not connect to
+OneBot and does not enable sends. The result is acceptable only when
+`can_enter_send_run` is true and `blockers` is empty.
+
 To enable real sends in the controlled group, use the same live command with
 `--send`:
 
@@ -452,6 +469,8 @@ Run this checklist for each controlled beta day:
   `./close-failure.sh`.
 - Run `qq beta-closeout` or `./beta-closeout.sh` and inspect
   `beta-closeout.json`, especially `can_enter_send_run` and `blockers`.
+- Before the first real session, run `./operator-rehearsal.sh` once and require
+  a clean `beta-closeout.json`.
 - Enable sends only after dry-run decisions look correct and the report has no
   unresolved failures.
 - Check health and adapter state at least once per session.
