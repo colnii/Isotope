@@ -19,7 +19,7 @@ def test_check_file_size_rejects_over_limit_source_file(tmp_path: Path, monkeypa
     assert messages == ["  FAIL  src/isotope/example.py: 4 lines (max 3)"]
 
 
-def test_check_file_size_allows_known_coupled_social_runner_test(
+def test_check_file_size_rejects_over_limit_test_file(
     tmp_path: Path, monkeypatch
 ) -> None:
     monkeypatch.chdir(tmp_path)
@@ -28,8 +28,7 @@ def test_check_file_size_allows_known_coupled_social_runner_test(
 
     passed, messages = check_file(str(test_path), max_lines=3, warn_lines=2)
 
-    assert passed is True
+    assert passed is False
     assert messages == [
-        "  WARN  tests/unit/features/social/test_social_runner.py: 4 lines "
-        "(max 3; allowed exception for coupled regression test)"
+        "  FAIL  tests/unit/features/social/test_social_runner.py: 4 lines (max 3)"
     ]

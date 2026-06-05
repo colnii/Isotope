@@ -27,15 +27,12 @@
   more QQ-specific modules are added, consider moving the QQ command, runtime,
   state/config, and adapter-facing glue modules into a focused `social/qq/`
   subpackage instead of continuing to grow the top-level social package.
-- New debt recorded on 2026-06-06: `tests/unit/features/social/test_social_runner.py`
-  remains a 2953-line coupled regression suite for the QQ CLI operator path.
-  It is allowlisted in `scripts/check_file_size.py` so the pre-commit size
-  guard can keep blocking oversized source files without forcing a risky test
-  split in this slice.
-- Remaining debt: when QQ CLI fixtures and scenario helpers are made separable,
-  split `test_social_runner.py` by operator workflow, replay/profile/sticker
-  coverage, and failure-closeout behavior. Until then, keep new social runner
-  coverage in smaller adjacent files when it does not need the coupled harness.
+- Addressed test split on 2026-06-06: the 2953-line
+  `tests/unit/features/social/test_social_runner.py` regression suite was split
+  into focused runner, profile/startup, and replay test files. The pre-commit
+  size guard no longer needs a social runner exception.
+- Remaining debt: keep future QQ CLI tests near the workflow they cover instead
+  of growing one broad runner test file again.
 
 ## Supervisor Web Handler
 
