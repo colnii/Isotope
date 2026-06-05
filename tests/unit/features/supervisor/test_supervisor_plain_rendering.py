@@ -97,6 +97,8 @@ def test_supervise_plain_prefers_supervisor_action_alias(capsys):
     print_supervise_plain(payload, report=object(), api=_StubApi())
 
     text = capsys.readouterr().out
+    assert "[Supervisor 白名单动作]" in text
+    assert "[LLM 白名单动作]" not in text
     assert "send_status / neutral" in text
     assert "monitor / legacy" not in text
 
@@ -115,11 +117,13 @@ def test_supervise_plain_prefers_supervisor_followup_action_alias(capsys):
     print_supervise_plain(payload, report=object(), api=_StubApi())
 
     text = capsys.readouterr().out
+    assert "[Supervisor 同轮后续动作]" in text
+    assert "[LLM 同轮后续动作]" not in text
     assert "send_status / neutral followup" in text
     assert "monitor / legacy followup" not in text
 
 
-def test_advice_plain_labels_model_action_as_llm(capsys):
+def test_advice_plain_labels_model_action_as_supervisor(capsys):
     print_advice_llm_action_plain(
         {
             "kind": "monitor",
@@ -128,8 +132,10 @@ def test_advice_plain_labels_model_action_as_llm(capsys):
     )
 
     text = capsys.readouterr().out
-    assert "LLM 动作：monitor" in text
-    assert "LLM 原因：still running" in text
+    assert "Supervisor 动作：monitor" in text
+    assert "Supervisor 原因：still running" in text
+    assert "LLM 动作：monitor" not in text
+    assert "LLM 原因：still running" not in text
 
 
 def test_advice_plain_labels_routed_action_as_program(capsys):

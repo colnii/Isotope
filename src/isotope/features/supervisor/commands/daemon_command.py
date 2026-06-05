@@ -7,6 +7,11 @@ import shlex
 from pathlib import Path
 from typing import Any
 
+from isotope.features.supervisor.commands.supervisor_action import (
+    LEGACY_LLM_ACTION_SECTION_TITLE,
+    PROGRAM_ROUTED_ACTION_SECTION_TITLE,
+    SUPERVISOR_ACTION_SECTION_TITLE,
+)
 from isotope.features.supervisor.daemon import (
     build_supervisor_daemon_night_summary,
     run_supervisor_watcher,
@@ -256,8 +261,13 @@ def read_tail_text(path_text: str | None, *, max_bytes: int = 64 * 1024) -> str:
 def recent_llm_action_from_log(text: str) -> dict[str, str] | None:
     lines = text.splitlines()
     recent: dict[str, str] | None = None
+    action_headers = {
+        f"[{SUPERVISOR_ACTION_SECTION_TITLE}]",
+        f"[{LEGACY_LLM_ACTION_SECTION_TITLE}]",
+        f"[{PROGRAM_ROUTED_ACTION_SECTION_TITLE}]",
+    }
     for index, raw_line in enumerate(lines):
-        if raw_line.strip() not in {"[LLM 白名单动作]", "[程序路由动作]"}:
+        if raw_line.strip() not in action_headers:
             continue
         for action_line in lines[index + 1 :]:
             line = action_line.strip()
@@ -583,7 +593,10 @@ def print_daemon_activity_plain(activity: Any) -> None:
     if snapshot_label is not None:
         print(f"状态快照：{snapshot_label}")
     if isinstance(action, dict):
-        print(f"LLM 动作：{action.get('kind') or '未知'} / {action.get('reason') or '无'}")
+        print(
+            f"Supervisor 动作：{action.get('kind') or '未知'} / "
+            f"{action.get('reason') or '无'}"
+        )
     if isinstance(ci, dict):
         print(f"CI：{ci.get('status') or 'unknown'} / {ci.get('detail') or '无'}")
     if isinstance(execution, dict):

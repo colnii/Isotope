@@ -7888,7 +7888,7 @@ def test_codex_supervisor_runner_advice_plain_prints_ask_user_question(
 
     assert exit_code == 0
     text = capsys.readouterr().out
-    assert "LLM 动作：ask_user" in text
+    assert "Supervisor 动作：ask_user" in text
     assert "等待拍板：目录迁移是保留兼容层，还是直接迁移并删除旧入口？" in text
     assert "上下文状态：conflict" in text
 

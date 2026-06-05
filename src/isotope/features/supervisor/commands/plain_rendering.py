@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from isotope.features.supervisor.commands.supervisor_action import (
+    PROGRAM_ROUTED_ACTION_SECTION_TITLE,
+    SUPERVISOR_ACTION_SECTION_TITLE,
+    SUPERVISOR_FOLLOWUP_ACTION_SECTION_TITLE,
     set_supervisor_action_payload,
     supervisor_action_from_payload,
     supervisor_followup_action_from_payload,
@@ -275,8 +278,12 @@ def llm_action_section_title(
     followup: bool = False,
 ) -> str:
     if is_program_routed_action(action):
-        return "程序同轮后续动作" if followup else "程序路由动作"
-    return "LLM 同轮后续动作" if followup else "LLM 白名单动作"
+        return "程序同轮后续动作" if followup else PROGRAM_ROUTED_ACTION_SECTION_TITLE
+    return (
+        SUPERVISOR_FOLLOWUP_ACTION_SECTION_TITLE
+        if followup
+        else SUPERVISOR_ACTION_SECTION_TITLE
+    )
 
 
 def print_llm_action_plain(
@@ -303,8 +310,8 @@ def print_advice_llm_action_plain(action: dict[str, Any]) -> None:
         print(f"程序路由动作：{action['kind']}")
         print(f"程序路由原因：{llm_action_detail(action)}")
     else:
-        print(f"LLM 动作：{action['kind']}")
-        print(f"LLM 原因：{llm_action_detail(action)}")
+        print(f"Supervisor 动作：{action['kind']}")
+        print(f"Supervisor 原因：{llm_action_detail(action)}")
     print_llm_action_route_plain(action)
     print_ask_user_action_plain(action)
 

@@ -1,8 +1,14 @@
-"""Shared Supervisor action payload helpers."""
+"""Shared Supervisor action payload and display helpers."""
 
 from __future__ import annotations
 
 from typing import Any
+
+
+SUPERVISOR_ACTION_SECTION_TITLE = "Supervisor 白名单动作"
+SUPERVISOR_FOLLOWUP_ACTION_SECTION_TITLE = "Supervisor 同轮后续动作"
+PROGRAM_ROUTED_ACTION_SECTION_TITLE = "程序路由动作"
+LEGACY_LLM_ACTION_SECTION_TITLE = "LLM 白名单动作"
 
 
 def set_supervisor_action_payload(
