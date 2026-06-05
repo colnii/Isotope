@@ -7,6 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from .beta_check import QQBetaCheckConfig, check_qq_beta_pack
+from .beta_closeout import (
+    QQBetaCloseoutConfig,
+    build_qq_beta_closeout,
+    write_qq_beta_closeout,
+)
 from .beta_day_report import (
     QQBetaDayReportConfig,
     build_qq_beta_day_report,
@@ -128,6 +133,27 @@ def handle_beta_day_report(args: argparse.Namespace) -> dict[str, Any]:
         "output": str(output),
         "ready_for_send": bool(report["ready_for_send"]),
         "open_failure_count": int(report["summary"]["open_failure_count"]),
+        "summary": report["summary"],
+        "next_actions": report["next_actions"],
+    }
+
+
+def handle_beta_closeout(args: argparse.Namespace) -> dict[str, Any]:
+    output = Path(args.output)
+    report = build_qq_beta_closeout(
+        QQBetaCloseoutConfig(
+            beta_day_report=Path(args.beta_day_report),
+            regression_intake=Path(args.regression_intake),
+            output=output,
+        )
+    )
+    write_qq_beta_closeout(output, report)
+    return {
+        "status": "ok",
+        "command": "beta-closeout",
+        "output": str(output),
+        "can_enter_send_run": bool(report["can_enter_send_run"]),
+        "blockers": report["blockers"],
         "summary": report["summary"],
         "next_actions": report["next_actions"],
     }

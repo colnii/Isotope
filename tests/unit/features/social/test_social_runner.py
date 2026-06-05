@@ -663,6 +663,158 @@ def test_social_runner_qq_beta_day_report_combines_review_log_and_failures(
     assert report["failures"][0]["symptom"] == "表情包语气太像公告"
 
 
+def test_social_runner_qq_beta_closeout_blocks_open_failures_and_drafts(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    beta_day_report = _write_json(
+        tmp_path / "beta-day-report.json",
+        {
+            "kind": "qq_beta_day_report",
+            "ready_for_send": False,
+            "summary": {
+                "failure_count": 2,
+                "open_failure_count": 1,
+                "warning_count": 1,
+                "decision_count": 5,
+            },
+            "review_warnings": ["dry_run_candidates_not_selected"],
+            "failures": [
+                {"id": "qq-beta-1", "status": "open", "symptom": "表情包语气太像公告"},
+                {"id": "qq-beta-2", "status": "fixed", "symptom": "已修复"},
+            ],
+            "next_actions": ["resolve_open_failures", "keep_send_guarded"],
+        },
+    )
+    regression_intake = _write_json(
+        tmp_path / "regression-intake.json",
+        {
+            "kind": "qq_regression_intake",
+            "draft_count": 1,
+            "open_failure_count": 1,
+            "drafts": [
+                {
+                    "failure_id": "qq-beta-1",
+                    "replay_json": "regressions/qq-beta-1.replay.json",
+                    "pytest_command": (
+                        "PYTHONPATH=src .venv/bin/python -m pytest "
+                        "tests/integration/qq/test_fake_onebot_flow.py -q"
+                    ),
+                }
+            ],
+        },
+    )
+    output = tmp_path / "beta-closeout.json"
+
+    code = main(
+        [
+            "qq",
+            "beta-closeout",
+            "--beta-day-report",
+            str(beta_day_report),
+            "--regression-intake",
+            str(regression_intake),
+            "--output",
+            str(output),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "beta-closeout"
+    assert payload["can_enter_send_run"] is False
+    assert payload["blockers"] == [
+        "review_dry_run_warnings",
+        "open_failures",
+        "pending_regression_drafts",
+    ]
+    assert "keep_send_guarded" in payload["next_actions"]
+
+    report = _read_json(output)
+    assert report["kind"] == "qq_beta_closeout"
+    assert report["summary"]["open_failure_count"] == 1
+    assert report["summary"]["closed_failure_count"] == 1
+    assert report["summary"]["pending_regression_draft_count"] == 1
+    assert report["pending_replay_commands"] == [
+        (
+            "isotope-social qq replay --config-json config.json --state-root state "
+            "--replay-json regressions/qq-beta-1.replay.json "
+            "--output logs/replay-report.json --json"
+        )
+    ]
+    assert report["pending_pytest_commands"] == [
+        (
+            "PYTHONPATH=src .venv/bin/python -m pytest "
+            "tests/integration/qq/test_fake_onebot_flow.py -q"
+        )
+    ]
+    assert report["checklist"][-1] == {
+        "name": "send_run",
+        "status": "blocked",
+        "command": "ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh",
+    }
+
+
+def test_social_runner_qq_beta_closeout_allows_operator_send_review(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    beta_day_report = _write_json(
+        tmp_path / "beta-day-report.json",
+        {
+            "kind": "qq_beta_day_report",
+            "ready_for_send": True,
+            "summary": {
+                "failure_count": 1,
+                "open_failure_count": 0,
+                "warning_count": 0,
+                "decision_count": 5,
+            },
+            "review_warnings": [],
+            "failures": [
+                {"id": "qq-beta-1", "status": "fixed", "symptom": "已修复"},
+            ],
+            "next_actions": ["operator_review_before_send"],
+        },
+    )
+    regression_intake = _write_json(
+        tmp_path / "regression-intake.json",
+        {
+            "kind": "qq_regression_intake",
+            "draft_count": 0,
+            "open_failure_count": 0,
+            "drafts": [],
+        },
+    )
+    output = tmp_path / "beta-closeout.json"
+
+    code = main(
+        [
+            "qq",
+            "beta-closeout",
+            "--beta-day-report",
+            str(beta_day_report),
+            "--regression-intake",
+            str(regression_intake),
+            "--output",
+            str(output),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["can_enter_send_run"] is True
+    assert payload["blockers"] == []
+    assert payload["next_actions"] == ["operator_review_before_send"]
+
+    report = _read_json(output)
+    assert report["can_enter_send_run"] is True
+    assert report["checklist"][-1]["status"] == "ready"
+
+
 def test_social_runner_qq_regression_intake_writes_replay_drafts(
     tmp_path: Path,
     capsys,
@@ -1096,6 +1248,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert payload["command"] == "init-beta"
     assert payload["output_dir"] == str(output_dir)
     assert sorted(payload["scripts"]) == [
+        "beta-closeout.sh",
         "beta-day-report.sh",
         "close-failure.sh",
         "diagnostics.sh",
@@ -1172,6 +1325,12 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
     assert "--failures-json logs/failures.json" in beta_day
     assert "--output logs/beta-day-report.json" in beta_day
     assert _read_json(output_dir / "logs" / "failures.json") == {"failures": []}
+
+    beta_closeout = (output_dir / "beta-closeout.sh").read_text(encoding="utf-8")
+    assert " qq beta-closeout " in beta_closeout
+    assert "--beta-day-report logs/beta-day-report.json" in beta_closeout
+    assert "--regression-intake logs/regression-intake.json" in beta_closeout
+    assert "--output logs/beta-closeout.json" in beta_closeout
 
     record_failure = (output_dir / "record-failure.sh").read_text(encoding="utf-8")
     assert "qq record-failure" in record_failure.replace("\n", " ")
@@ -1532,6 +1691,80 @@ def test_social_runner_qq_close_failure_script_marks_failure_fixed(
     assert intake_result.returncode == 0
     assert json.loads(intake_result.stdout)["draft_count"] == 0
     assert _read_json(output_dir / "logs" / "regression-intake.json")["draft_count"] == 0
+
+
+def test_social_runner_qq_beta_closeout_script_writes_operator_report(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    output_dir = tmp_path / "qq-beta"
+    assert main(
+        [
+            "qq",
+            "init-beta",
+            "--output-dir",
+            str(output_dir),
+            "--group",
+            "99999",
+            "--operator",
+            "op",
+            "--bot-user-id",
+            "bot_qq",
+            "--websocket-url",
+            "ws://127.0.0.1:3001",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    _write_json(
+        output_dir / "logs" / "beta-day-report.json",
+        {
+            "kind": "qq_beta_day_report",
+            "ready_for_send": True,
+            "summary": {
+                "failure_count": 0,
+                "open_failure_count": 0,
+                "warning_count": 0,
+            },
+            "review_warnings": [],
+            "failures": [],
+            "next_actions": ["operator_review_before_send"],
+        },
+    )
+    _write_json(
+        output_dir / "logs" / "regression-intake.json",
+        {
+            "kind": "qq_regression_intake",
+            "draft_count": 0,
+            "open_failure_count": 0,
+            "drafts": [],
+        },
+    )
+
+    result = subprocess.run(
+        ["./beta-closeout.sh"],
+        cwd=output_dir,
+        env={
+            **os.environ,
+            "PATH": "/home/lumber/Github/isotope/.venv/bin:"
+            + os.environ.get("PATH", ""),
+            "PYTHONPATH": str(Path.cwd() / "src")
+            + os.pathsep
+            + os.environ.get("PYTHONPATH", ""),
+        },
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(result.stdout)
+    assert payload["command"] == "beta-closeout"
+    assert payload["can_enter_send_run"] is True
+    report = _read_json(output_dir / "logs" / "beta-closeout.json")
+    assert report["kind"] == "qq_beta_closeout"
+    assert report["can_enter_send_run"] is True
 
 
 def test_social_runner_qq_first_run_stops_before_missing_replay(

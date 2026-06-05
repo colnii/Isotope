@@ -174,6 +174,23 @@ def register_qq_commands(subparsers: argparse._SubParsersAction) -> None:
     beta_day_report.add_argument("--output", required=True, help="Beta day report JSON file.")
     beta_day_report.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    beta_closeout = qq_subparsers.add_parser(
+        "beta-closeout",
+        help="Write a QQ beta closeout checklist from beta reports.",
+    )
+    beta_closeout.add_argument(
+        "--beta-day-report",
+        required=True,
+        help="Beta day report JSON file.",
+    )
+    beta_closeout.add_argument(
+        "--regression-intake",
+        required=True,
+        help="Regression intake index JSON file.",
+    )
+    beta_closeout.add_argument("--output", required=True, help="Closeout report JSON file.")
+    beta_closeout.add_argument("--json", action="store_true", help="Print JSON output.")
+
     regression_intake = qq_subparsers.add_parser(
         "regression-intake",
         help="Create QQ replay drafts from open beta failure records.",

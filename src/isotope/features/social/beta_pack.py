@@ -11,6 +11,7 @@ from typing import Any
 
 SCRIPT_NAMES = (
     "beta-day-report.sh",
+    "beta-closeout.sh",
     "close-failure.sh",
     "diagnostics.sh",
     "first-run.sh",
@@ -122,6 +123,9 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
     common = _common_env(config)
     if name == "beta-day-report.sh":
         command = _beta_day_report_command(config)
+        return f"{common}\n{command}\n"
+    if name == "beta-closeout.sh":
+        command = _beta_closeout_command()
         return f"{common}\n{command}\n"
     if name == "close-failure.sh":
         return f"{common}\n{_close_failure_command(config)}"
@@ -340,6 +344,22 @@ def _beta_day_report_command(config: QQBetaPackConfig) -> str:
         "--json",
     ]
     return " ".join(_quote_command_part(part) for part in parts)
+
+
+def _beta_closeout_command() -> str:
+    parts = [
+        "isotope-social",
+        "qq",
+        "beta-closeout",
+        "--beta-day-report",
+        "logs/beta-day-report.json",
+        "--regression-intake",
+        "logs/regression-intake.json",
+        "--output",
+        "logs/beta-closeout.json",
+        "--json",
+    ]
+    return " ".join(shlex.quote(part) for part in parts)
 
 
 def _regression_intake_command(config: QQBetaPackConfig) -> str:
@@ -582,6 +602,7 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
   verification.
 - Write the daily beta report with `./beta-day-report.sh`.
 - Draft replay regressions with `./regression-intake.sh`.
+- Write the closeout checklist with `./beta-closeout.sh`.
 
 Automated scripts start in dry-run. `send-run.sh` refuses to send unless
 `ISOTOPE_QQ_ENABLE_SEND=1` is set for that command. `dry-run.sh` and
@@ -600,6 +621,9 @@ for stable replay output. To use LLM-generated text replies, change it to
 `review-dry-run.sh` only writes a review report; it does not enable sends.
 `beta-day-report.sh` combines the dry-run review, exported audit log, and
 `logs/failures.json`; it does not enable sends.
+`beta-closeout.sh` combines `logs/beta-day-report.json` and
+`logs/regression-intake.json`, writes `logs/beta-closeout.json`, and reports
+whether the operator can review `send-run.sh`.
 `record-failure.sh` appends one structured failure record to
 `logs/failures.json`.
 `close-failure.sh` marks one matching failure as fixed, writes `resolved_date`,

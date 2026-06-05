@@ -37,7 +37,7 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 
 The pack writes `diagnostics.sh`, `first-run.sh`, `health.sh`,
 `startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`, `beta-day-report.sh`,
-`record-failure.sh`, `close-failure.sh`, `failure-to-regression.sh`,
+`beta-closeout.sh`, `record-failure.sh`, `close-failure.sh`, `failure-to-regression.sh`,
 `regression-intake.sh`, `send-run.sh`, `pause.sh`,
 `resume.sh`, and `export-log.sh`. It also writes `logs/failures.json` and
 creates `regressions/`. Run `send-run.sh` only with
@@ -320,6 +320,25 @@ matches, it matches the exact `symptom` in the requested group. It refuses to
 close when no record matches or more than one record matches. The update writes
 `status: fixed`, `resolved_date`, `fix`, and keeps the regression test path.
 
+Write the final day closeout report after `beta-day-report` and
+`regression-intake`:
+
+```bash
+isotope-social qq beta-closeout \
+  --beta-day-report .isotope/qq-beta/logs/beta-day-report.json \
+  --regression-intake .isotope/qq-beta/logs/regression-intake.json \
+  --output .isotope/qq-beta/logs/beta-closeout.json --json
+cd .isotope/qq-beta
+./beta-closeout.sh
+```
+
+`beta-closeout.json` contains `can_enter_send_run`, `blockers`, a `checklist`,
+`pending_replay_commands`, and `pending_pytest_commands`. `can_enter_send_run`
+is true only when the beta-day report is ready, there are no dry-run warnings,
+no open failures, and no `pending_regression_drafts`. It does not enable send
+mode; it only tells the operator whether `ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh`
+is ready for manual review.
+
 To enable real sends in the controlled group, use the same live command with
 `--send`:
 
@@ -431,6 +450,8 @@ Run this checklist for each controlled beta day:
 - Inspect `regression-intake.json` and replay drafts under `regressions/`.
 - After replay and pytest pass, close the fixed issue with `qq close-failure` or
   `./close-failure.sh`.
+- Run `qq beta-closeout` or `./beta-closeout.sh` and inspect
+  `beta-closeout.json`, especially `can_enter_send_run` and `blockers`.
 - Enable sends only after dry-run decisions look correct and the report has no
   unresolved failures.
 - Check health and adapter state at least once per session.
