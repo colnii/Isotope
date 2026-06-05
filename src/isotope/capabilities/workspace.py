@@ -217,7 +217,7 @@ def run_workspace_materialize(*, inputs: Mapping[str, Any] | None) -> dict[str, 
                 "absolute_paths_allowed": False,
                 "writes_only_under_state_root": True,
             },
-            "event_append": "not_performed",
+            "event_append": "state_event_append_handoff",
         },
     }
 

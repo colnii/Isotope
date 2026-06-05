@@ -88,7 +88,7 @@ def run_workspace_changed_files(*, inputs: Mapping[str, Any] | None) -> dict[str
             "changed_file_count": len(changed_files),
             "changed_files": changed_files,
             "include_paths": list(include_paths),
-            "artifact_write": "not_performed",
+            "artifact_write": "artifact_write_action_handoff",
             "content_policy": "diff_result_projection",
         },
     }
@@ -118,7 +118,7 @@ def run_workspace_release(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]
             "status": "released",
             "workspace_id": input_mapping["workspace_id"],
             "removed_path": str(workspace_root),
-            "event_append": "not_performed",
+            "event_append": "state_event_append_handoff",
             "delete_policy": "deletes_only_materialized_workspace",
         },
     }

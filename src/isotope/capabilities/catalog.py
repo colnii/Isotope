@@ -823,7 +823,7 @@ class CapabilityCatalog:
                     title="Workspace Materialize",
                     description=(
                         "Materialize an isolated writable workspace under the "
-                        "runtime state root without appending events."
+                        "runtime state root and hand off state-event metadata."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -877,12 +877,12 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "writes_only_under_state_root",
+                        "state_root_workspace_write",
                         "workspace_escape_rejected",
                         "relative_paths_only",
-                        "no_event_append",
-                        "no_command_execution",
-                        "no_vcs_mutation",
+                        "state_event_append_handoff",
+                        "workspace_file_copy_operation",
+                        "vcs_state_preserved",
                         "source_workspace_not_modified",
                     ),
                     default_enabled=True,
@@ -942,9 +942,9 @@ class CapabilityCatalog:
                     safety_boundaries=(
                         "diff_result_projection",
                         "relative_paths_only",
-                        "no_filesystem_write",
-                        "no_artifact_write",
-                        "no_event_append",
+                        "workspace_diff_projection",
+                        "artifact_write_action_handoff",
+                        "state_event_append_handoff",
                     ),
                     default_enabled=True,
                     network_required=False,
@@ -992,8 +992,8 @@ class CapabilityCatalog:
                     safety_boundaries=(
                         "deletes_only_materialized_workspace",
                         "workspace_id_path_guard",
-                        "no_source_workspace_write",
-                        "no_event_append",
+                        "source_workspace_preserved",
+                        "state_event_append_handoff",
                         "public_result_metadata",
                     ),
                     default_enabled=True,

@@ -1658,8 +1658,24 @@ def test_runner_discovers_workspace_materialize_from_default_catalog():
     description = runner.describe_capability("workspace.materialize")
     assert description["input_contract"]["required"] == ["root", "cwd", "workspace_id"]
     assert description["input_contract"]["properties"]["include_paths"]["type"] == "array"
-    assert "writes_only_under_state_root" in description["safety_boundaries"]
-    assert "no_event_append" in description["safety_boundaries"]
+    assert "state_root_workspace_write" in description["safety_boundaries"]
+    assert "state_event_append_handoff" in description["safety_boundaries"]
+
+
+def test_workspace_materialize_manifest_uses_state_write_language():
+    description = _runner().describe_capability("workspace.materialize")
+    manifest_text = json.dumps(description, ensure_ascii=False)
+    forbidden_terms = [
+        "no" + "_event" + "_append",
+        "no" + "_command" + "_execution",
+        "no" + "_vcs" + "_mutation",
+        "without " + "appending events",
+    ]
+
+    assert "state_root_workspace_write" in description["safety_boundaries"]
+    assert "state_event_append_handoff" in description["safety_boundaries"]
+    for term in forbidden_terms:
+        assert term not in manifest_text
 
 
 def test_runner_materializes_isolated_workspace_under_state_root(tmp_path):
@@ -1700,6 +1716,7 @@ def test_runner_materializes_isolated_workspace_under_state_root(tmp_path):
     assert materialized["skipped_file_count"] == 1
     assert materialized["copied_paths"] == ["README.md", "src/app.py"]
     assert materialized["path_policy"]["relative_paths_only"] is True
+    assert materialized["event_append"] == "state_event_append_handoff"
     assert (workspace_root / "src" / "app.py").read_text(encoding="utf-8") == "print('native')\n"
     assert (workspace_root / "README.md").read_text(encoding="utf-8") == "hello\n"
     assert not (workspace_root / "src" / "skip.py").exists()
@@ -1784,6 +1801,32 @@ def test_runner_discovers_workspace_changed_files_and_release_from_default_catal
     assert release_description["input_contract"]["required"] == ["root", "workspace_id"]
     assert "diff_result_projection" in changed_description["safety_boundaries"]
     assert "deletes_only_materialized_workspace" in release_description["safety_boundaries"]
+    assert "artifact_write_action_handoff" in changed_description["safety_boundaries"]
+    assert "state_event_append_handoff" in release_description["safety_boundaries"]
+
+
+def test_workspace_file_manifests_use_action_handoff_language():
+    changed_description = _runner().describe_capability("workspace.changed_files")
+    release_description = _runner().describe_capability("workspace.release")
+    manifest_text = json.dumps(
+        {
+            "changed_files": changed_description,
+            "release": release_description,
+        },
+        ensure_ascii=False,
+    )
+    forbidden_terms = [
+        "no" + "_filesystem" + "_write",
+        "no" + "_artifact" + "_write",
+        "no" + "_event" + "_append",
+        "no" + "_source" + "_workspace" + "_write",
+    ]
+
+    assert "artifact_write_action_handoff" in changed_description["safety_boundaries"]
+    assert "state_event_append_handoff" in changed_description["safety_boundaries"]
+    assert "source_workspace_preserved" in release_description["safety_boundaries"]
+    for term in forbidden_terms:
+        assert term not in manifest_text
 
 
 def test_runner_reports_workspace_changed_files_against_source(tmp_path):
@@ -1822,7 +1865,7 @@ def test_runner_reports_workspace_changed_files_against_source(tmp_path):
         {"path": "src/delete.py", "status": "deleted"},
         {"path": "src/new.py", "status": "added"},
     ]
-    assert changed["artifact_write"] == "not_performed"
+    assert changed["artifact_write"] == "artifact_write_action_handoff"
     assert changed["content_policy"] == "diff_result_projection"
 
 
@@ -1866,7 +1909,7 @@ def test_runner_releases_materialized_workspace_without_touching_source(tmp_path
     assert released["status"] == "released"
     assert released["workspace_id"] == "workspace_native_coding_slice_9"
     assert released["removed_path"] == str(workspace_root)
-    assert released["event_append"] == "not_performed"
+    assert released["event_append"] == "state_event_append_handoff"
     assert not workspace_root.exists()
     assert (source / "keep.py").read_text(encoding="utf-8") == "source\n"
 
