@@ -764,7 +764,7 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
     if capability.get("capability_id") == WORKSPACE_MATERIALIZE_CAPABILITY:
         return "deterministic_local"
     if is_workspace_capability(str(capability.get("capability_id", ""))):
-        return "deterministic_proposal"
+        return "deterministic_action_handoff"
     if capability.get("capability_id") == WORKSPACE_CHANGED_FILES_CAPABILITY:
         return "deterministic_projection"
     if capability.get("capability_id") == WORKSPACE_RELEASE_CAPABILITY:

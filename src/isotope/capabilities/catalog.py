@@ -719,17 +719,17 @@ class CapabilityCatalog:
                         "fields": [
                             "status",
                             "runner_kind",
-                            "workspace_proposal",
+                            "workspace_action",
                             "path_policy",
                             "next_required_capabilities",
                         ],
                     },
                     safety_boundaries=(
-                        "proposal_only_no_filesystem_write",
+                        "workspace_action_handoff",
                         "path_traversal_rejected",
                         "relative_paths_only",
-                        "no_workspace_materialization",
-                        "no_git_worktree_creation",
+                        "workspace_materialize_action_path",
+                        "git_worktree_creation_action_path",
                         "public_result_metadata",
                     ),
                     default_enabled=True,
@@ -739,8 +739,8 @@ class CapabilityCatalog:
                     capability_id="workspace.lease_create",
                     title="Workspace Lease Create",
                     description=(
-                        "Build a workspace.lease_created event candidate for a "
-                        "isolated writable workspace without appending it."
+                        "Build a workspace.lease_created event append handoff "
+                        "for an isolated writable workspace."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -749,7 +749,7 @@ class CapabilityCatalog:
                         "lease",
                         "isolated",
                         "native-coding",
-                        "event-candidate",
+                        "event-handoff",
                     ),
                     input_contract={
                         "type": "object",
@@ -810,10 +810,9 @@ class CapabilityCatalog:
                         ],
                     },
                     safety_boundaries=(
-                        "event_candidate_only",
-                        "no_event_append",
-                        "no_filesystem_write",
-                        "no_workspace_materialization",
+                        "lease_event_append_handoff",
+                        "state_event_append_action_path",
+                        "workspace_materialize_action_path",
                         "public_result_metadata",
                     ),
                     default_enabled=True,

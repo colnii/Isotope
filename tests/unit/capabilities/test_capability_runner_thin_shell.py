@@ -1460,11 +1460,28 @@ def test_runner_discovers_workspace_isolated_rw_from_default_catalog():
     description = runner.describe_capability("workspace.isolated_rw")
     assert description["input_contract"]["required"] == ["root", "cwd", "workspace_name"]
     assert description["input_contract"]["properties"]["allowed_paths"]["type"] == "array"
-    assert "proposal_only_no_filesystem_write" in description["safety_boundaries"]
+    assert "workspace_action_handoff" in description["safety_boundaries"]
     assert "path_traversal_rejected" in description["safety_boundaries"]
 
 
-def test_runner_runs_workspace_isolated_rw_proposal_without_creating_workspace(tmp_path):
+def test_workspace_isolated_rw_manifest_uses_action_handoff_language():
+    description = _runner().describe_capability("workspace.isolated_rw")
+    manifest_text = json.dumps(description, ensure_ascii=False)
+    forbidden_terms = [
+        "proposal" + "_only",
+        "no" + "_filesystem" + "_write",
+        "workspace" + "_proposal",
+        "no" + "_workspace" + "_materialization",
+        "no" + "_git" + "_worktree" + "_creation",
+    ]
+
+    assert "workspace_action_handoff" in description["safety_boundaries"]
+    assert "workspace_materialize_action_path" in description["safety_boundaries"]
+    for term in forbidden_terms:
+        assert term not in manifest_text
+
+
+def test_runner_runs_workspace_isolated_rw_action_handoff(tmp_path):
     source = tmp_path / "repo"
     source.mkdir()
     root = tmp_path / "state"
@@ -1480,22 +1497,22 @@ def test_runner_runs_workspace_isolated_rw_proposal_without_creating_workspace(t
         },
     )
 
-    proposal = result["workspace_proposal"]
+    action = result["workspace_action"]
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "workspace.isolated_rw"
     assert result["status"] == "completed"
-    assert result["runner_kind"] == "deterministic_proposal"
-    assert proposal["mode"] == "isolated_rw"
-    assert proposal["execution_mode"] == "proposal_only"
-    assert proposal["workspace_id"] == "workspace_native_coding_slice_2"
-    assert proposal["cwd_status"] == "exists"
-    assert proposal["root_ref"] == "workspace://workspace_native_coding_slice_2/isolated_rw"
-    assert proposal["allowed_paths"] == [
+    assert result["runner_kind"] == "deterministic_action_handoff"
+    assert action["mode"] == "isolated_rw"
+    assert action["execution_mode"] == "workspace_action_handoff"
+    assert action["workspace_id"] == "workspace_native_coding_slice_2"
+    assert action["cwd_status"] == "exists"
+    assert action["root_ref"] == "workspace://workspace_native_coding_slice_2/isolated_rw"
+    assert action["allowed_paths"] == [
         "src/isotope/capabilities",
         "tests/unit/capabilities",
     ]
-    assert proposal["forbidden_paths"] == ["src/isotope/features/supervisor"]
-    assert proposal["next_required_capabilities"] == []
+    assert action["forbidden_paths"] == ["src/isotope/features/supervisor"]
+    assert action["next_required_capabilities"] == []
     assert not list(root.rglob("*"))
 
 
@@ -1528,7 +1545,7 @@ def test_workspace_isolated_rw_plan_stops_when_required_inputs_are_missing():
 
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_proposal"
+    assert plan["runner_kind"] == "deterministic_action_handoff"
     assert plan["missing_inputs"] == ["root", "workspace_name"]
     assert plan["scenario"] is None
 
@@ -1551,11 +1568,28 @@ def test_runner_discovers_workspace_lease_create_from_default_catalog():
         "execution_id",
     ]
     assert description["input_contract"]["properties"]["mode"]["enum"] == ["isolated_rw"]
-    assert "event_candidate_only" in description["safety_boundaries"]
-    assert "no_event_append" in description["safety_boundaries"]
+    assert "lease_event_append_handoff" in description["safety_boundaries"]
+    assert "workspace_materialize_action_path" in description["safety_boundaries"]
 
 
-def test_runner_runs_workspace_lease_create_event_candidate_without_side_effects(tmp_path):
+def test_workspace_lease_create_manifest_uses_event_handoff_language():
+    description = _runner().describe_capability("workspace.lease_create")
+    manifest_text = json.dumps(description, ensure_ascii=False)
+    forbidden_terms = [
+        "event" + "_candidate" + "_only",
+        "no" + "_event" + "_append",
+        "no" + "_filesystem" + "_write",
+        "no" + "_workspace" + "_materialization",
+        "without " + "appending",
+    ]
+
+    assert "lease_event_append_handoff" in description["safety_boundaries"]
+    assert "workspace_materialize_action_path" in description["safety_boundaries"]
+    for term in forbidden_terms:
+        assert term not in manifest_text
+
+
+def test_runner_runs_workspace_lease_create_event_append_handoff(tmp_path):
     root = tmp_path / "state"
 
     result = _runner().run_capability(
@@ -1577,7 +1611,7 @@ def test_runner_runs_workspace_lease_create_event_candidate_without_side_effects
     assert result["kind"] == "capability_run_result"
     assert result["capability_id"] == "workspace.lease_create"
     assert result["status"] == "completed"
-    assert result["runner_kind"] == "deterministic_proposal"
+    assert result["runner_kind"] == "deterministic_action_handoff"
     assert event["event_type"] == "workspace.lease_created"
     assert payload["workspace_id"] == "workspace_native_coding_slice_3"
     assert payload["run_id"] == "run_native_coding"
@@ -1602,7 +1636,7 @@ def test_workspace_lease_create_plan_stops_when_required_inputs_are_missing():
 
     assert plan["can_launch"] is False
     assert plan["status"] == "missing_inputs"
-    assert plan["runner_kind"] == "deterministic_proposal"
+    assert plan["runner_kind"] == "deterministic_action_handoff"
     assert plan["missing_inputs"] == [
         "root",
         "workspace_id",

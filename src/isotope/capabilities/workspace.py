@@ -1,8 +1,7 @@
-"""Workspace capability proposals for native coding.
+"""Workspace action handoffs for native coding.
 
-The first isolated writable workspace slice is proposal-only. It fixes the
-path-safety and public contract for a future materialized workspace, but
-does not create directories, copy files, mutate repositories, or append events.
+The isolated writable workspace entrypoint builds the path-safe action handoff
+used by later lease and materialization capabilities.
 """
 
 from __future__ import annotations
@@ -83,11 +82,11 @@ def run_workspace_isolated_rw(*, inputs: Mapping[str, Any] | None) -> dict[str, 
         "kind": "capability_run_result",
         "capability_id": WORKSPACE_ISOLATED_RW_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_proposal",
-        "workspace_proposal": {
+        "runner_kind": "deterministic_action_handoff",
+        "workspace_action": {
             "workspace_id": workspace_id,
             "mode": "isolated_rw",
-            "execution_mode": "proposal_only",
+            "execution_mode": "workspace_action_handoff",
             "cwd_status": "exists" if cwd.exists() else "missing",
             "root_ref": f"workspace://{workspace_id}/isolated_rw",
             "allowed_paths": list(input_mapping["allowed_paths"]),
@@ -137,7 +136,7 @@ def run_workspace_lease_create(*, inputs: Mapping[str, Any] | None) -> dict[str,
         "kind": "capability_run_result",
         "capability_id": WORKSPACE_LEASE_CREATE_CAPABILITY,
         "status": "completed",
-        "runner_kind": "deterministic_proposal",
+        "runner_kind": "deterministic_action_handoff",
         "append_required": True,
         "lease_event": {
             "event_type": "workspace.lease_created",
