@@ -317,7 +317,7 @@ git commit -m "feat(social): wire qq llm participation config"
 - Modify: `docs/current/qq-group-chatbot-operations.md`
 - Test: relevant social tests
 
-- [ ] **Step 1: Document opt-in mode**
+- [x] **Step 1: Document opt-in mode**
 
 Add a short section showing:
 
@@ -332,7 +332,7 @@ Add a short section showing:
 
 Explain that ordinary messages may be answered or ignored by the LLM, while dry-run and send-run boundaries remain system controlled.
 
-- [ ] **Step 2: Run focused tests**
+- [x] **Step 2: Run focused tests**
 
 Run:
 
@@ -342,11 +342,13 @@ PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit
 
 Expected: all tests pass.
 
-- [ ] **Step 3: Run QQ live dry-run smoke manually**
+- [x] **Step 3: Run automated QQ runner dry-run smoke**
 
-Use the existing local NapCat config with a temporary JSON config that sets both providers to `llm`, but do not pass `--send`.
+Use a temporary JSON config that sets `participation_provider` to `llm` and a
+fake LLM provider, then run the existing QQ `dry-run` command path.
 
-Expected: a normal group message can produce either an LLM `silent` or an LLM `reply_text` candidate, and `send_feedback` remains empty.
+Expected: a normal group message can produce an LLM `reply_text` candidate, and
+`sent_group_messages` remains empty.
 
 - [ ] **Step 4: Commit docs**
 

@@ -101,8 +101,9 @@ cd .isotope/qq-beta
 ```
 
 The diagnostics output reports `allowed_groups`, `operator_user_ids`,
-`bot_user_id`, `websocket_url`, `runtime.reply_provider`, LLM provider status
-when LLM replies are selected, profile/sticker/replay state, and ordered
+`bot_user_id`, `websocket_url`, `runtime.reply_provider`,
+`runtime.participation_provider`, LLM provider status when LLM replies or LLM
+participation are selected, profile/sticker/replay state, and ordered
 `next_steps`. It returns `status: needs_action` until the beta pack is ready.
 
 Before connecting it to a real group session, check the pack itself:

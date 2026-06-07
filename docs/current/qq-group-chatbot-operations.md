@@ -88,9 +88,10 @@ cd .isotope/qq-beta
 ```
 
 Diagnostics does not connect to QQ. It summarizes the configured group,
-operator, bot user, OneBot URL, `reply_provider`, profile/sticker/replay state,
-LLM provider status when needed, `replay_scenarios_report`, and ordered
-`next_steps` for the operator. If `logs/replay-scenarios-report.json` is
+operator, bot user, OneBot URL, `reply_provider`, `participation_provider`,
+profile/sticker/replay state, LLM provider status when needed,
+`replay_scenarios_report`, and ordered `next_steps` for the operator. If
+`logs/replay-scenarios-report.json` is
 missing, diagnostics names `create_replay_scenarios` and
 `run_replay_scenarios` before any health or dry-run step.
 `first-run-rehearsal.sh` creates/applies the editable profile, runs replay and
