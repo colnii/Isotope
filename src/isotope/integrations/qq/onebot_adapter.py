@@ -42,6 +42,9 @@ class OneBotAdapter:
     def normalize_event(self, event: dict[str, Any]) -> SocialMessage | None:
         if not isinstance(event, dict):
             raise ValueError("event must be a dict")
+        post_type = event.get("post_type")
+        if post_type is not None and post_type != "message":
+            return None
         message_id = _required_text(event.get("message_id"), "message_id")
         if message_id in self._seen_message_ids:
             return None
@@ -82,10 +85,13 @@ class OneBotAdapter:
         return tuple(messages)
 
     def receive_next(self) -> SocialMessage | None:
-        event = self.client.receive_event()
-        if event is None:
-            return None
-        return self.normalize_event(event)
+        while True:
+            event = self.client.receive_event()
+            if event is None:
+                return None
+            message = self.normalize_event(event)
+            if message is not None:
+                return message
 
     def send_action(self, action: SocialReplyAction) -> SocialSendFeedback:
         if not isinstance(action, SocialReplyAction):

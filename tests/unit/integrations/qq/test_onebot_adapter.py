@@ -61,6 +61,26 @@ def test_onebot_adapter_ignores_duplicate_message_ids() -> None:
     assert adapter.normalize_event(_group_event()) is None
 
 
+def test_onebot_adapter_receive_next_skips_non_message_events() -> None:
+    client = FakeOneBotClient()
+    client.queue_event(
+        {
+            "time": 1780827832,
+            "self_id": 3261449720,
+            "post_type": "meta_event",
+            "meta_event_type": "lifecycle",
+            "sub_type": "connect",
+        }
+    )
+    client.queue_event(_group_event())
+    adapter = OneBotAdapter(client=client)
+
+    message = adapter.receive_next()
+
+    assert message is not None
+    assert message.message_id == "123"
+
+
 def test_onebot_adapter_maps_mixed_reply_action_to_segments() -> None:
     client = FakeOneBotClient()
     adapter = OneBotAdapter(client=client)
