@@ -30,6 +30,7 @@ def build_qq_beta_closeout(config: QQBetaCloseoutConfig) -> dict[str, Any]:
     summary = _dict_value(beta_day, "summary")
     failures = _list_value(beta_day, "failures")
     warnings = _list_value(beta_day, "review_warnings")
+    sticker_review = _dict_value(beta_day, "sticker_review", default={})
     drafts = _list_value(intake, "drafts")
 
     open_failure_count = _int_value(summary, "open_failure_count")
@@ -65,7 +66,9 @@ def build_qq_beta_closeout(config: QQBetaCloseoutConfig) -> dict[str, Any]:
             open_failure_count=open_failure_count,
             pending_draft_count=pending_draft_count,
             can_enter_send_run=can_enter_send_run,
+            sticker_review=sticker_review,
         ),
+        "sticker_review": sticker_review,
         "pending_replay_commands": pending_replay_commands,
         "pending_pytest_commands": pending_pytest_commands,
         "inputs": {
@@ -114,8 +117,9 @@ def _checklist(
     open_failure_count: int,
     pending_draft_count: int,
     can_enter_send_run: bool,
+    sticker_review: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    return [
+    items = [
         {
             "name": "dry_run_review",
             "status": "pass" if warning_count == 0 else "blocked",
@@ -134,6 +138,25 @@ def _checklist(
             "command": SEND_RUN_COMMAND,
         },
     ]
+    if sticker_review:
+        blocked_reasons = _dict_value(
+            sticker_review,
+            "blocked_reason_counts",
+            default={},
+        )
+        blocked_count = _int_value(sticker_review, "blocked_candidate_count")
+        candidate_count = _int_value(sticker_review, "candidate_count")
+        items.insert(
+            1,
+            {
+                "name": "sticker_review",
+                "status": "pass" if blocked_count == 0 else "needs_review",
+                "candidate_count": candidate_count,
+                "blocked_candidate_count": blocked_count,
+                "blocked_reason_counts": blocked_reasons,
+            },
+        )
+    return items
 
 
 def _next_actions(
@@ -200,8 +223,15 @@ def _read_json_object(path: Path) -> dict[str, Any]:
     return payload
 
 
-def _dict_value(payload: dict[str, Any], key: str) -> dict[str, Any]:
+def _dict_value(
+    payload: dict[str, Any],
+    key: str,
+    *,
+    default: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     value = payload.get(key)
+    if value is None and default is not None:
+        return dict(default)
     if not isinstance(value, dict):
         raise ValueError(f"{key} must be a JSON object")
     return dict(value)

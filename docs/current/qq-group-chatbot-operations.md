@@ -345,9 +345,11 @@ captures the failure. It does not connect to OneBot, does not send messages, and
 does not run pytest automatically.
 
 `beta-day-report.json` contains `review_warnings`, audit counts,
-`open_failure_count`, and `next_actions`. Treat `open_failure_count > 0` as
-unfinished product work: fix the behavior, add or update regression tests, then
-close the failure entry.
+`open_failure_count`, `sticker_review`, and `next_actions`. Check
+`sticker_review_candidate_count`, `sticker_blocked_candidate_count`, and
+`sticker_review.blocked_reason_counts` to see which sticker choices need
+operator review. Treat `open_failure_count > 0` as unfinished product work: fix
+the behavior, add or update regression tests, then close the failure entry.
 
 `regression-intake.sh` reads open entries from `logs/failures.json`, writes
 replay draft files under `regressions/`, and writes
@@ -391,11 +393,13 @@ cd .isotope/qq-beta
 ```
 
 `beta-closeout.json` contains `can_enter_send_run`, `blockers`, a `checklist`,
-`pending_replay_commands`, and `pending_pytest_commands`. `can_enter_send_run`
-is true only when the beta-day report is ready, there are no dry-run warnings,
-no open failures, and no `pending_regression_drafts`. It does not enable send
-mode; it only tells the operator whether `ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh`
-is ready for manual review.
+`sticker_review`, `pending_replay_commands`, and `pending_pytest_commands`. The
+checklist includes a `sticker_review` item with `candidate_count`,
+`blocked_candidate_count`, and `blocked_reason_counts`. `can_enter_send_run` is
+true only when the beta-day report is ready, there are no dry-run warnings, no
+open failures, and no `pending_regression_drafts`. It does not enable send mode;
+it only tells the operator whether `ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh` is
+ready for manual review.
 
 To rehearse the whole local operator closeout chain before a real QQ session,
 run the generated script inside the beta pack:

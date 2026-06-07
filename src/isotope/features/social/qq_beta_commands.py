@@ -139,6 +139,7 @@ def handle_beta_day_report(args: argparse.Namespace) -> dict[str, Any]:
         "ready_for_send": bool(report["ready_for_send"]),
         "open_failure_count": int(report["summary"]["open_failure_count"]),
         "summary": report["summary"],
+        "sticker_review": report["sticker_review"],
         "next_actions": report["next_actions"],
     }
 
@@ -160,6 +161,7 @@ def handle_beta_closeout(args: argparse.Namespace) -> dict[str, Any]:
         "can_enter_send_run": bool(report["can_enter_send_run"]),
         "blockers": report["blockers"],
         "summary": report["summary"],
+        "sticker_review": report["sticker_review"],
         "next_actions": report["next_actions"],
     }
 

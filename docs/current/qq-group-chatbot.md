@@ -317,10 +317,12 @@ isotope-social qq beta-day-report --date 2026-06-04 \
   --output .isotope/qq/beta-day-report.json --json
 ```
 
-`beta-day-report.json` combines dry-run warnings, audit counts, and
-`failures.json`. Inspect `open_failure_count` and `next_actions` before
-continuing. Open failures need fixes and regression tests before the next beta
-session.
+`beta-day-report.json` combines dry-run warnings, audit counts,
+`sticker_review`, and `failures.json`. Inspect `open_failure_count`,
+`sticker_review_candidate_count`, `sticker_blocked_candidate_count`,
+`sticker_review.blocked_reason_counts`, and `next_actions` before continuing.
+Open failures and blocked sticker candidates need fixes or operator review
+before the next beta session.
 
 Create replay drafts for open failures:
 

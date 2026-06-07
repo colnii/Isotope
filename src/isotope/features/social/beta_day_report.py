@@ -39,6 +39,7 @@ def build_qq_beta_day_report(config: QQBetaDayReportConfig) -> dict[str, Any]:
 
     review_summary = _dict_value(review, "summary")
     review_warnings = _list_value(review, "warnings")
+    sticker_review = _sticker_review(review)
     entries = _list_value(export_log, "entries")
     failures = _failure_entries(failures_payload)
     audit_counts = _audit_counts(entries, group_id=config.group_id)
@@ -60,6 +61,8 @@ def build_qq_beta_day_report(config: QQBetaDayReportConfig) -> dict[str, Any]:
         "failure_count": len(failures),
         "open_failure_count": len(open_failures),
         "warning_count": len(review_warnings),
+        "sticker_review_candidate_count": sticker_review["candidate_count"],
+        "sticker_blocked_candidate_count": sticker_review["blocked_candidate_count"],
     }
     next_actions = _next_actions(
         ready_for_send=ready_for_send,
@@ -78,6 +81,7 @@ def build_qq_beta_day_report(config: QQBetaDayReportConfig) -> dict[str, Any]:
         },
         "summary": summary,
         "review_warnings": review_warnings,
+        "sticker_review": sticker_review,
         "failures": failures,
         "next_actions": next_actions,
     }
@@ -124,6 +128,55 @@ def _next_actions(
     return actions
 
 
+def _sticker_review(review: dict[str, Any]) -> dict[str, Any]:
+    candidates: list[dict[str, Any]] = []
+    sticker_ids: list[str] = []
+    blocked_reason_counts: Counter[str] = Counter()
+    for turn in _list_value(review, "turns"):
+        if not isinstance(turn, dict):
+            continue
+        turn_index = _int_or_default(turn.get("index"), 0)
+        for candidate in _list_from_mapping(turn, "proposed"):
+            if not isinstance(candidate, dict):
+                continue
+            selection = candidate.get("sticker_selection")
+            if not isinstance(selection, dict):
+                continue
+            selected = bool(selection.get("selected"))
+            sticker_id = str(selection.get("sticker_id", ""))
+            blocked_reasons = _string_list(selection.get("blocked_reasons", []))
+            if selected and sticker_id and sticker_id not in sticker_ids:
+                sticker_ids.append(sticker_id)
+            for reason in blocked_reasons:
+                blocked_reason_counts[reason] += 1
+            candidates.append(
+                {
+                    "turn_index": turn_index,
+                    "candidate_id": str(candidate.get("candidate_id", "")),
+                    "selected": selected,
+                    "sticker_id": sticker_id,
+                    "pack_id": str(selection.get("pack_id", "")),
+                    "meaning": str(selection.get("meaning", "")),
+                    "media_ref": str(selection.get("media_ref", "")),
+                    "media_source": str(selection.get("media_source", "")),
+                    "local_path": str(selection.get("local_path", "")),
+                    "reasons": _string_list(selection.get("reasons", [])),
+                    "blocked_reasons": blocked_reasons,
+                    "reply_preview": str(candidate.get("reply_preview", "")),
+                }
+            )
+    return {
+        "candidate_count": len(candidates),
+        "selected_candidate_count": sum(1 for item in candidates if item["selected"]),
+        "blocked_candidate_count": sum(
+            1 for item in candidates if item["blocked_reasons"]
+        ),
+        "sticker_ids": sticker_ids,
+        "blocked_reason_counts": dict(sorted(blocked_reason_counts.items())),
+        "candidates": candidates,
+    }
+
+
 def _read_json_object(path: Path) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -143,6 +196,23 @@ def _list_value(payload: dict[str, Any], key: str) -> list[Any]:
     if not isinstance(value, list):
         raise ValueError(f"{key} must be a JSON array")
     return list(value)
+
+
+def _list_from_mapping(payload: dict[str, Any], key: str) -> list[Any]:
+    value = payload.get(key, [])
+    return list(value) if isinstance(value, list) else []
+
+
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
+def _int_or_default(value: object, default: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return default
+    return value
 
 
 def _failure_entries(payload: dict[str, Any]) -> list[dict[str, Any]]:
