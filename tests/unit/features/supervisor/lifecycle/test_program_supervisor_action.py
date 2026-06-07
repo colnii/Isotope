@@ -5,6 +5,7 @@ from typing import Any
 
 from isotope.features.supervisor.commands.supervise.action import (
     append_supervise_llm_action,
+    append_supervise_supervisor_action,
 )
 from isotope.features.supervisor.commands.supervise.execution import (
     append_supervise_execution,
@@ -93,6 +94,130 @@ def test_supervisor_action_falls_back_to_llm_when_program_has_no_deterministic_a
     assert payload["supervisor_action_planner"] == {
         "source": "llm",
         "reason": "llm_fallback",
+    }
+
+
+def test_supervisor_action_prepares_fixed_facts_for_llm_choice() -> None:
+    payload: dict[str, Any] = {
+        "current_batch": {
+            "target_names": ["running-worker"],
+            "summary": {"running": 1, "blocked": 0},
+        },
+        "recent_context_results": [
+            {
+                "cwd": "/repo",
+                "query": "已有上下文",
+                "items": [{"path": "docs/current/status.md"}],
+            }
+        ],
+        "decision_requests": [
+            {
+                "target_name": "blocked-worker",
+                "question": "选 A 还是 B？",
+                "context_status": "conflict",
+            }
+        ],
+        "worker_reviews": {
+            "status": "ok",
+            "decision_summary": {"merge_candidates": 1},
+            "workers": [
+                {
+                    "name": "merge-worker",
+                    "next_decision": {"merge_suitable": True},
+                }
+            ],
+        },
+        "delete_worktree_candidates": [
+            {"target_name": "done-worker", "record_id": "managed-done"}
+        ],
+        "capacity_decisions": [
+            {
+                "capacity_id": "artifact.review",
+                "next_action": "call_capacity",
+                "can_execute_agent_loop": True,
+            },
+            {
+                "capacity_id": "memory.recall",
+                "next_action": "request_input",
+                "can_execute_agent_loop": False,
+            },
+        ],
+    }
+
+    action = append_supervise_supervisor_action(
+        _args(llm_action=True),
+        payload,
+        action_report=object(),
+        active_goals=[
+            {
+                "goal_id": "goal-1",
+                "target_name": "blocked-worker",
+                "last_status": "blocked",
+            }
+        ],
+        explicit_goal=None,
+        fanout_status=None,
+        fanout_paused=False,
+        worker_role_guard=None,
+        merge_dispatch=None,
+        fanout_plan=None,
+        lifecycle_execution=None,
+        api=_LLMUsesPreparedFactsApi(),
+    )
+
+    assert action == {
+        "kind": "request_context",
+        "query": "复查 blocked-worker 的上下文",
+    }
+    assert payload["supervisor_action"] == action
+    assert payload["supervisor_action_planner"] == {
+        "source": "llm",
+        "reason": "prepared_context",
+    }
+    assert payload["supervisor_prepared_action_context"] == {
+        "kind": "supervisor_prepared_action_context",
+        "source": "program",
+        "facts": [
+            {
+                "kind": "active_goals",
+                "count": 1,
+                "target_names": ["blocked-worker"],
+                "statuses": {"blocked": 1},
+            },
+            {
+                "kind": "current_batch",
+                "target_names": ["running-worker"],
+                "summary": {"running": 1, "blocked": 0},
+            },
+            {
+                "kind": "decision_requests",
+                "count": 1,
+                "target_names": ["blocked-worker"],
+                "context_statuses": {"conflict": 1},
+            },
+            {
+                "kind": "recent_context_results",
+                "count": 1,
+                "queries": ["已有上下文"],
+            },
+            {
+                "kind": "worker_reviews",
+                "status": "ok",
+                "decision_summary": {"merge_candidates": 1},
+                "merge_suitable": 1,
+            },
+            {
+                "kind": "delete_worktree_candidates",
+                "count": 1,
+                "target_names": ["done-worker"],
+            },
+            {
+                "kind": "capacity_decisions",
+                "ready": ["artifact.review"],
+                "request_input": ["memory.recall"],
+                "blocked": [],
+            },
+        ],
     }
 
 
@@ -189,6 +314,36 @@ class _LLMFallbackApi:
         return {
             "kind": "request_context",
             "query": "existing supervisor action planner contract",
+        }
+
+    def _promote_llm_command_suggestion(self, _payload: dict[str, Any]) -> None:
+        return None
+
+
+class _LLMUsesPreparedFactsApi:
+    def _loop_without_autonomous_scope(self, *_args: Any, **_kwargs: Any) -> bool:
+        return False
+
+    def _decide_action_with_llm(
+        self,
+        _args: Any,
+        _report: Any,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        prepared = payload["supervisor_prepared_action_context"]
+        assert not prepared.get("candidates")
+        assert [fact["kind"] for fact in prepared["facts"]] == [
+            "active_goals",
+            "current_batch",
+            "decision_requests",
+            "recent_context_results",
+            "worker_reviews",
+            "delete_worktree_candidates",
+            "capacity_decisions",
+        ]
+        return {
+            "kind": "request_context",
+            "query": "复查 blocked-worker 的上下文",
         }
 
     def _promote_llm_command_suggestion(self, _payload: dict[str, Any]) -> None:

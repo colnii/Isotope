@@ -1,4 +1,4 @@
-"""LLM action selection for supervise/loop commands."""
+"""Supervisor action selection for supervise/loop commands."""
 
 from __future__ import annotations
 
@@ -12,37 +12,6 @@ from isotope.features.supervisor.commands.supervise.program_action import (
     build_supervisor_prepared_action_context,
     select_required_supervisor_action,
 )
-
-
-def append_supervise_llm_action(
-    args: Any,
-    payload: dict[str, Any],
-    action_report: Any,
-    *,
-    active_goals: list[dict[str, Any]],
-    explicit_goal: str | None,
-    fanout_status: dict[str, Any] | None,
-    fanout_paused: bool,
-    worker_role_guard: dict[str, Any] | None,
-    merge_dispatch: dict[str, Any] | None,
-    fanout_plan: dict[str, Any] | None,
-    lifecycle_execution: dict[str, Any] | None = None,
-    api: Any | None = None,
-) -> dict[str, Any] | None:
-    return append_supervise_supervisor_action(
-        args,
-        payload,
-        action_report,
-        active_goals=active_goals,
-        explicit_goal=explicit_goal,
-        fanout_status=fanout_status,
-        fanout_paused=fanout_paused,
-        worker_role_guard=worker_role_guard,
-        merge_dispatch=merge_dispatch,
-        fanout_plan=fanout_plan,
-        lifecycle_execution=lifecycle_execution,
-        api=api,
-    )
 
 
 def append_supervise_supervisor_action(
@@ -90,6 +59,7 @@ def append_supervise_supervisor_action(
     prepared_context = build_supervisor_prepared_action_context(
         args,
         action_report,
+        payload=payload,
         active_goals=active_goals,
         explicit_goal=explicit_goal,
         fanout_status=fanout_status,
@@ -112,3 +82,35 @@ def append_supervise_supervisor_action(
     )
     api._promote_llm_command_suggestion(payload)
     return action
+
+
+def append_supervise_llm_action(
+    args: Any,
+    payload: dict[str, Any],
+    action_report: Any,
+    *,
+    active_goals: list[dict[str, Any]],
+    explicit_goal: str | None,
+    fanout_status: dict[str, Any] | None,
+    fanout_paused: bool,
+    worker_role_guard: dict[str, Any] | None,
+    merge_dispatch: dict[str, Any] | None,
+    fanout_plan: dict[str, Any] | None,
+    lifecycle_execution: dict[str, Any] | None = None,
+    api: Any | None = None,
+) -> dict[str, Any] | None:
+    """Compatibility wrapper for the old llm_action helper name."""
+    return append_supervise_supervisor_action(
+        args,
+        payload,
+        action_report,
+        active_goals=active_goals,
+        explicit_goal=explicit_goal,
+        fanout_status=fanout_status,
+        fanout_paused=fanout_paused,
+        worker_role_guard=worker_role_guard,
+        merge_dispatch=merge_dispatch,
+        fanout_plan=fanout_plan,
+        lifecycle_execution=lifecycle_execution,
+        api=api,
+    )

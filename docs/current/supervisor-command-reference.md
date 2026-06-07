@@ -53,7 +53,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 | `agent-group` | 创建、发送、tick 和查看 Supervisor 内部 Agent group chat。 | [terminology](./terminology.md) |
 | `worktree-audit` | 查看本地 worktree/branch 主题词，提示可能重复开发的候选；删除、合并和文件修改由后续显式命令处理。 | 本文 |
 | `dashboard` / `web` / `events` | 本机 dashboard、web 页面、bell 事件和受控按钮入口。 | [quick start](./codex-supervisor-guide.md)、[operations runbook](./supervisor-operations-runbook.md) |
-| `advise` / `supervise` / `llm-action` | 白名单动作选择和显式执行；程序预查状态和候选，LLM planner（模型规划器）选择最终动作。 | [capability inventory](./supervisor-capability-inventory.md) |
+| `advise` / `supervise` / `llm-action` | 白名单动作选择和显式执行；程序预查状态、事实摘要和候选，LLM planner（模型规划器）选择最终动作。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `launch` / `resume` / `adopt` / `send` / `archive` | 托管 Codex worker、tmux lane 和状态协议交互。 | [operations runbook](./supervisor-operations-runbook.md) |
 | `worker-review` / `integration-review` / `replan` | 审查 worker、测试结果、合入候选和下一步建议。 | [capability details](./supervisor-capability-details.md) |
 | `merge-work-order` / `merge-dispatch` / `promotion` | 生成 merge worker 工单、派发合并、CI watch 和 promotion gate。 | [architecture migration table](./supervisor-architecture-migration-table.md) |
@@ -173,7 +173,7 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
 
 ## 当前边界
 
-- Supervisor 不是纯规则脚本；程序负责重复状态查询和候选整理，最终动作选择仍交给 LLM planner。
+- Supervisor 不是纯规则脚本；程序负责重复状态查询、事实摘要和候选整理，最终动作选择仍交给 LLM planner。
 - 自动动作必须走白名单、cooldown（冷却）、state ledger（状态账本）和 workspace
   boundary（工作区边界）。
 - 开工前如果存在多个活跃 worktree，先跑 `worktree-audit`；发现候选重复时先人工

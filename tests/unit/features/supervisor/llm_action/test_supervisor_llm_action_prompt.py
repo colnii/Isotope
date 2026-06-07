@@ -152,3 +152,32 @@ def test_llm_action_prompt_builder_exposes_prepared_action_context():
 
     payload = json.loads(messages[1]["content"])
     assert payload["prepared_action_context"] == prepared_context
+
+
+def test_llm_action_prompt_rules_prioritize_prepared_context_without_bloat():
+    report = SimpleNamespace(
+        generated_at="2026-05-24T00:00:00Z",
+        recommendation=_StubRecommendation(),
+        sessions=[],
+    )
+    prepared_context = {
+        "kind": "supervisor_prepared_action_context",
+        "source": "program",
+        "facts": [
+            {
+                "kind": "decision_requests",
+                "count": 1,
+                "target_names": ["blocked-worker"],
+            }
+        ],
+    }
+
+    messages = build_llm_action_messages(
+        report,
+        [{"kind": "monitor", "label": "继续监控", "command": "true"}],
+        prepared_action_context=prepared_context,
+    )
+
+    payload = json.loads(messages[1]["content"])
+    assert payload["action_rules"][0].startswith("先读 prepared_action_context")
+    assert len(payload["action_rules"]) <= 18

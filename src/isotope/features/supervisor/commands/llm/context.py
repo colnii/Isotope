@@ -26,6 +26,7 @@ def planner_context_payload(
     context_report = action_report if action_report is not None else report
     payload = {
         "recent_context_results": api._recent_context_results(args, context_report),
+        "decision_requests": api._decision_request_dicts(args),
         "recent_decision_answers": api._decision_answer_dicts(args),
     }
     capacity_payload = api._loop_capacity_decision_payload(
