@@ -17,6 +17,7 @@ from .startup_gate import QQStartupGateConfig, check_qq_startup_gate
 DEFAULT_PROFILE_DIR = "../qq-profile"
 DEFAULT_PROFILE_NAME = "群聊工程猫"
 DEFAULT_REPLAY_REPORT = "logs/replay-report.json"
+DEFAULT_REPLAY_SCENARIOS_REPORT = "logs/replay-scenarios-report.json"
 
 
 @dataclass(frozen=True)
@@ -35,10 +36,24 @@ def build_qq_beta_diagnostics(config: QQBetaDiagnosticsConfig) -> dict[str, Any]
     config_path = pack_dir / "config.json"
     payload = load_config(config_path)
     replay_report = pack_dir / DEFAULT_REPLAY_REPORT
+    replay_scenarios_report = pack_dir / DEFAULT_REPLAY_SCENARIOS_REPORT
 
-    checks = _build_checks(pack_dir=pack_dir, replay_report=replay_report)
-    summary = _build_summary(payload, pack_dir=pack_dir, replay_report=replay_report)
-    ready = bool(replay_report.exists()) and all(bool(check.get("ok")) for check in checks)
+    checks = _build_checks(
+        pack_dir=pack_dir,
+        replay_report=replay_report,
+        replay_scenarios_report=replay_scenarios_report,
+    )
+    summary = _build_summary(
+        payload,
+        pack_dir=pack_dir,
+        replay_report=replay_report,
+        replay_scenarios_report=replay_scenarios_report,
+    )
+    ready = (
+        bool(replay_report.exists())
+        and bool(replay_scenarios_report.exists())
+        and all(bool(check.get("ok")) for check in checks)
+    )
     next_steps = _next_steps(summary=summary, checks=checks)
     return {
         "status": "ready" if ready else "needs_action",
@@ -51,10 +66,19 @@ def build_qq_beta_diagnostics(config: QQBetaDiagnosticsConfig) -> dict[str, Any]
     }
 
 
-def _build_checks(*, pack_dir: Path, replay_report: Path) -> list[dict[str, Any]]:
+def _build_checks(
+    *,
+    pack_dir: Path,
+    replay_report: Path,
+    replay_scenarios_report: Path,
+) -> list[dict[str, Any]]:
     if replay_report.exists():
         result = check_qq_startup_gate(
-            QQStartupGateConfig(pack_dir=pack_dir, replay_report=replay_report)
+            QQStartupGateConfig(
+                pack_dir=pack_dir,
+                replay_report=replay_report,
+                replay_scenarios_report=replay_scenarios_report,
+            )
         )
         return list(result.checks)
     checks: list[dict[str, Any]] = []
@@ -77,6 +101,15 @@ def _build_checks(*, pack_dir: Path, replay_report: Path) -> list[dict[str, Any]
             "errors": [f"replay report does not exist: {replay_report}"],
         }
     )
+    checks.append(
+        {
+            "name": "replay_scenarios_report",
+            "ok": False,
+            "errors": [
+                f"replay scenarios report does not exist: {replay_scenarios_report}"
+            ],
+        }
+    )
     return checks
 
 
@@ -85,6 +118,7 @@ def _build_summary(
     *,
     pack_dir: Path,
     replay_report: Path,
+    replay_scenarios_report: Path,
 ) -> dict[str, Any]:
     group_policy = dict_field(payload, "group_policy", default={})
     allowed_groups = _string_list(group_policy.get("allowed_groups", []))
@@ -104,6 +138,9 @@ def _build_summary(
         "profile": _profile_summary(payload),
         "stickers": _sticker_summary(payload),
         "replay_report": _replay_report_summary(replay_report),
+        "replay_scenarios_report": _replay_scenarios_report_summary(
+            replay_scenarios_report
+        ),
         "scripts": _script_summary(pack_dir),
     }
 
@@ -198,6 +235,28 @@ def _replay_report_summary(path: Path) -> dict[str, Any]:
     }
 
 
+def _replay_scenarios_report_summary(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {"exists": False, "path": str(path), "passed": None}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return {"exists": True, "path": str(path), "passed": None, "errors": [str(exc)]}
+    if not isinstance(payload, dict):
+        return {
+            "exists": True,
+            "path": str(path),
+            "passed": None,
+            "errors": ["replay scenarios report must contain a JSON object"],
+        }
+    return {
+        "exists": True,
+        "path": str(path),
+        "passed": payload.get("passed"),
+        "summary": payload.get("summary", {}),
+    }
+
+
 def _script_summary(pack_dir: Path) -> dict[str, bool]:
     return {
         name: (pack_dir / name).exists()
@@ -275,12 +334,41 @@ def _next_steps(
             },
             _rerun_step(),
         ]
+    replay_scenarios_report = summary.get("replay_scenarios_report", {})
+    if isinstance(replay_scenarios_report, dict) and not replay_scenarios_report.get(
+        "exists"
+    ):
+        return [
+            {
+                "name": "create_replay_scenarios",
+                "command": (
+                    "isotope-social qq init-replay-scenarios "
+                    f"--output-dir replay-scenarios --group {group} "
+                    f"--bot-user-id {bot_user_id} --json"
+                ),
+                "reason": "startup readiness needs replay scenario files",
+            },
+            {
+                "name": "run_replay_scenarios",
+                "command": (
+                    "isotope-social qq replay-scenarios --config-json config.json "
+                    "--state-root state --scenario-dir replay-scenarios "
+                    f"--output {DEFAULT_REPLAY_SCENARIOS_REPORT} "
+                    "--reports-dir logs/replay-scenario-reports --json"
+                ),
+                "reason": (
+                    "generate logs/replay-scenarios-report.json before live dry-run"
+                ),
+            },
+            _rerun_step(),
+        ]
     if failed_names:
         return [
             {
                 "name": "fix_startup_check",
                 "command": "isotope-social qq startup-check --pack-dir . "
-                f"--replay-report {DEFAULT_REPLAY_REPORT} --json",
+                f"--replay-report {DEFAULT_REPLAY_REPORT} "
+                f"--replay-scenarios-report {DEFAULT_REPLAY_SCENARIOS_REPORT} --json",
                 "reason": "startup-check still has failed checks: "
                 + ", ".join(sorted(failed_names)),
             },

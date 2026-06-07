@@ -113,6 +113,9 @@ isotope-social qq beta-check --pack-dir .isotope/qq-beta --json
 The check validates required files, parses `config.json`, runs shell syntax
 checks, exercises `pause.sh`, `resume.sh`, and `export-log.sh`, and confirms
 `send-run.sh` still refuses to run unless `ISOTOPE_QQ_ENABLE_SEND=1` is set.
+`beta-diagnostics` reports both `replay_report` and
+`replay_scenarios_report`; when the scenario report is missing, its
+`next_steps` include `create_replay_scenarios` and `run_replay_scenarios`.
 For generated packs, `./first-run.sh` runs diagnostics, beta-check,
 startup-check, and `./health.sh` in order. It stops with replay commands if
 `logs/replay-report.json` or `logs/replay-scenarios-report.json` is missing,

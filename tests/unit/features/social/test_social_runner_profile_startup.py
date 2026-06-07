@@ -6,6 +6,7 @@ from pathlib import Path
 
 from isotope.features.social import CharacterCard, StickerLibrary, beta_diagnostics, startup_gate
 from isotope.llm.provider import LLMProviderResolution
+from tests.unit.features.social.test_social_qq_startup_scenarios import _scenario_report
 from tests.unit.features.social.test_social_runner import (
     _prepare_profiled_replay_pack,
     _read_json,
@@ -415,6 +416,7 @@ def test_social_runner_qq_beta_diagnostics_reports_ready_pack(
     capsys,
 ) -> None:
     beta_dir, _report_path = _prepare_profiled_replay_pack(tmp_path, capsys)
+    _scenario_report(beta_dir / "logs" / "replay-scenarios-report.json", passed=True)
 
     code = main(["qq", "beta-diagnostics", "--pack-dir", str(beta_dir), "--json"])
 
