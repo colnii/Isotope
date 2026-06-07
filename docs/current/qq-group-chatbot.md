@@ -61,12 +61,11 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 ```
 
 The generated pack contains `config.json`, `state/`, `logs/`, `diagnostics.sh`,
-`first-run.sh`, `health.sh`, `startup-check.sh`, `dry-run.sh`,
-`review-dry-run.sh`, `beta-day-report.sh`, `record-failure.sh`,
-`regression-intake.sh`, `send-run.sh`, `pause.sh`, `resume.sh`,
-`export-log.sh`, and a `README.md` with the first-run order. It also creates
-`logs/failures.json` for operator failure records and `regressions/` for replay
-drafts.
+`first-run-rehearsal.sh`, `first-run.sh`, `health.sh`, `startup-check.sh`,
+`dry-run.sh`, `review-dry-run.sh`, `beta-day-report.sh`, `record-failure.sh`,
+`regression-intake.sh`, `send-run.sh`, `pause.sh`, `resume.sh`, `export-log.sh`,
+and a `README.md` with the first-run order. It also creates `logs/failures.json`
+for operator failure records and `regressions/` for replay drafts.
 
 Generate editable role and sticker files before the first real session:
 
@@ -116,6 +115,11 @@ checks, exercises `pause.sh`, `resume.sh`, and `export-log.sh`, and confirms
 `beta-diagnostics` reports both `replay_report` and
 `replay_scenarios_report`; when the scenario report is missing, its
 `next_steps` include `create_replay_scenarios` and `run_replay_scenarios`.
+For a full local rehearsal before touching OneBot, run
+`./first-run-rehearsal.sh` from the generated pack. It creates/applies the
+editable profile, runs replay and replay scenarios, then runs startup-check and
+diagnostics without calling `health.sh`, `dry-run.sh`, `send-run.sh`, or
+`live-run`.
 For generated packs, `./first-run.sh` runs diagnostics, beta-check,
 startup-check, and `./health.sh` in order. It stops with replay commands if
 `logs/replay-report.json` or `logs/replay-scenarios-report.json` is missing,
@@ -332,6 +336,7 @@ isotope-social qq startup-check --pack-dir .isotope/qq-beta \
   --replay-scenarios-report .isotope/qq-beta/logs/replay-scenarios-report.json \
   --json
 cd .isotope/qq-beta
+./first-run-rehearsal.sh
 ./first-run.sh
 ./dry-run.sh
 ./review-dry-run.sh

@@ -27,6 +27,7 @@ def test_qq_group_chatbot_runbooks_cover_beta_operations() -> None:
         "operator_rehearsal",
         "ISOTOPE_QQ_REHEARSAL_DATE",
         "first-run.sh",
+        "first-run-rehearsal.sh",
         "beta-check",
         "startup-check",
         "ready",

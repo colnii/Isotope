@@ -8,12 +8,20 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .beta_pack_support import (
+    first_run_rehearsal_command,
+    init_replay_command,
+    init_replay_scenarios_command,
+    qq_replay_command,
+    qq_replay_scenarios_command,
+)
 
 SCRIPT_NAMES = (
     "beta-day-report.sh",
     "beta-closeout.sh",
     "close-failure.sh",
     "diagnostics.sh",
+    "first-run-rehearsal.sh",
     "first-run.sh",
     "failure-to-regression.sh",
     "health.sh",
@@ -132,6 +140,9 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
         return f"{common}\n{_close_failure_command(config)}"
     if name == "diagnostics.sh":
         command = _diagnostics_command()
+        return f"{common}\n{command}\n"
+    if name == "first-run-rehearsal.sh":
+        command = first_run_rehearsal_command(config)
         return f"{common}\n{command}\n"
     if name == "first-run.sh":
         command = _first_run_command(config)
@@ -262,46 +273,16 @@ def _diagnostics_command() -> str:
 
 
 def _first_run_command(config: QQBetaPackConfig) -> str:
-    replay_command = _qq_replay_command(config)
-    init_replay_scenarios_command = shlex.join(
-        [
-            "isotope-social",
-            "qq",
-            "init-replay-scenarios",
-            "--output-dir",
-            "replay-scenarios",
-            "--group",
-            config.group_id,
-            "--bot-user-id",
-            config.bot_user_id,
-            "--json",
-        ]
-    )
-    replay_scenarios_command = shlex.join(
-        [
-            "isotope-social",
-            "qq",
-            "replay-scenarios",
-            "--config-json",
-            "config.json",
-            "--state-root",
-            "state",
-            "--scenario-dir",
-            "replay-scenarios",
-            "--output",
-            "logs/replay-scenarios-report.json",
-            "--reports-dir",
-            "logs/replay-scenario-reports",
-            "--json",
-        ]
-    )
+    replay_command = qq_replay_command(config)
+    init_scenarios_command = init_replay_scenarios_command(config)
+    replay_scenarios_command = qq_replay_scenarios_command()
     return (
         "./diagnostics.sh || true\n"
         "isotope-social qq beta-check --pack-dir . --json\n"
         "if ! [ -f logs/replay-report.json ]; then\n"
         '  echo "Missing logs/replay-report.json. Run these commands before first-run:" >&2\n'
         "  echo "
-        f"{shlex.quote(_init_replay_command(config))} >&2\n"
+        f"{shlex.quote(init_replay_command(config))} >&2\n"
         "  echo "
         f"{shlex.quote(replay_command)} >&2\n"
         "  exit 2\n"
@@ -310,7 +291,7 @@ def _first_run_command(config: QQBetaPackConfig) -> str:
         '  echo "Missing logs/replay-scenarios-report.json. '
         'Run these commands before first-run:" >&2\n'
         "  echo "
-        f"{shlex.quote(init_replay_scenarios_command)} >&2\n"
+        f"{shlex.quote(init_scenarios_command)} >&2\n"
         "  echo "
         f"{shlex.quote(replay_scenarios_command)} >&2\n"
         "  exit 2\n"
@@ -318,40 +299,6 @@ def _first_run_command(config: QQBetaPackConfig) -> str:
         "./startup-check.sh\n"
         "./health.sh\n"
     )
-
-
-def _init_replay_command(config: QQBetaPackConfig) -> str:
-    parts = [
-        "isotope-social",
-        "qq",
-        "init-replay",
-        "--output",
-        "replay.json",
-        "--group",
-        config.group_id,
-        "--bot-user-id",
-        config.bot_user_id,
-        "--json",
-    ]
-    return " ".join(shlex.quote(part) for part in parts)
-
-
-def _qq_replay_command(config: QQBetaPackConfig) -> str:
-    parts = [
-        "isotope-social",
-        "qq",
-        "replay",
-        "--config-json",
-        "config.json",
-        "--state-root",
-        "state",
-        "--replay-json",
-        "replay.json",
-        "--output",
-        "logs/replay-report.json",
-        "--json",
-    ]
-    return " ".join(shlex.quote(part) for part in parts)
 
 
 def _review_dry_run_command(config: QQBetaPackConfig) -> str:
@@ -682,22 +629,22 @@ OneBot WebSocket: `{config.websocket_url}`
 
 ## First run order
 
-1. Apply an editable profile pack.
-2. Create and run replay plus replay scenarios.
-3. Run `./first-run.sh`.
-4. Run `./diagnostics.sh` again after config or profile edits.
-5. Run `./dry-run.sh`.
-6. Run `./review-dry-run.sh` and inspect `logs/dry-run-review.json`.
-7. Run `./export-log.sh`.
-8. Record observed issues in `logs/failures.json`, or use
+1. Run `./first-run-rehearsal.sh` to generate/apply the profile, replay, and
+   replay scenario reports without connecting to OneBot.
+2. Run `./first-run.sh`.
+3. Run `./diagnostics.sh` again after config or profile edits.
+4. Run `./dry-run.sh`.
+5. Run `./review-dry-run.sh` and inspect `logs/dry-run-review.json`.
+6. Run `./export-log.sh`.
+7. Record observed issues in `logs/failures.json`, or use
    `./failure-to-regression.sh` to record and draft a replay regression in one
    operator step.
-9. Run `./beta-day-report.sh` and inspect `logs/beta-day-report.json`.
-10. Run `./regression-intake.sh` for open failures and inspect `regressions/`
+8. Run `./beta-day-report.sh` and inspect `logs/beta-day-report.json`.
+9. Run `./regression-intake.sh` for open failures and inspect `regressions/`
     if you did not already use `./failure-to-regression.sh`.
-11. To rehearse the local operator closeout chain without connecting to OneBot,
+10. To rehearse the local operator closeout chain without connecting to OneBot,
     run `./operator-rehearsal.sh` and inspect `logs/beta-closeout.json`.
-12. Only after dry-run behavior is acceptable, run:
+11. Only after dry-run behavior is acceptable, run:
 
 ```bash
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
@@ -716,6 +663,7 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 - Write the daily beta report with `./beta-day-report.sh`.
 - Draft replay regressions with `./regression-intake.sh`.
 - Write the closeout checklist with `./beta-closeout.sh`.
+- Rehearse the local first-run chain with `./first-run-rehearsal.sh`.
 - Rehearse the local closeout chain with `./operator-rehearsal.sh`.
 
 Automated scripts start in dry-run. `send-run.sh` refuses to send unless
@@ -725,6 +673,9 @@ Automated scripts start in dry-run. `send-run.sh` refuses to send unless
 `isotope-social qq beta-diagnostics --pack-dir . --json`, reads this pack, and
 reports the configured group, operator, bot, OneBot URL, reply provider, replay
 report, and next steps.
+`first-run-rehearsal.sh` runs profile setup, replay, replay scenarios,
+startup-check, and diagnostics locally. It does not call `health.sh`,
+`dry-run.sh`, `send-run.sh`, or `live-run`.
 `first-run.sh` runs diagnostics, beta-check, startup-check, and health in order.
 It stops with replay commands if `logs/replay-report.json` or
 `logs/replay-scenarios-report.json` is missing, and it does not call

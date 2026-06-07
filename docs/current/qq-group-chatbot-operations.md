@@ -35,12 +35,12 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
   --bot-user-id <bot_qq> --websocket-url ws://127.0.0.1:3001 --json
 ```
 
-The pack writes `diagnostics.sh`, `first-run.sh`, `health.sh`,
-`startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`, `beta-day-report.sh`,
-`beta-closeout.sh`, `record-failure.sh`, `close-failure.sh`,
-`failure-to-regression.sh`, `operator-rehearsal.sh`, `regression-intake.sh`,
-`send-run.sh`, `pause.sh`,
-`resume.sh`, and `export-log.sh`. It also writes `logs/failures.json` and
+The pack writes `diagnostics.sh`, `first-run-rehearsal.sh`, `first-run.sh`,
+`health.sh`, `startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`,
+`beta-day-report.sh`, `beta-closeout.sh`, `record-failure.sh`,
+`close-failure.sh`, `failure-to-regression.sh`, `operator-rehearsal.sh`,
+`regression-intake.sh`, `send-run.sh`, `pause.sh`, `resume.sh`, and
+`export-log.sh`. It also writes `logs/failures.json` and
 creates `regressions/`. Run `send-run.sh` only with
 `ISOTOPE_QQ_ENABLE_SEND=1`.
 
@@ -88,6 +88,9 @@ LLM provider status when needed, `replay_scenarios_report`, and ordered
 `next_steps` for the operator. If `logs/replay-scenarios-report.json` is
 missing, diagnostics names `create_replay_scenarios` and
 `run_replay_scenarios` before any health or dry-run step.
+`first-run-rehearsal.sh` creates/applies the editable profile, runs replay and
+replay scenarios, then runs startup-check and diagnostics without connecting to
+OneBot.
 `first-run.sh` then runs diagnostics, beta-check, startup-check, and health in
 order. It stops before health if `logs/replay-report.json` or
 `logs/replay-scenarios-report.json` is missing, and it does not run dry-run or
@@ -493,6 +496,7 @@ Run this checklist for each controlled beta day:
 - Confirm `allowed_groups` and `operator_user_ids`.
 - Run `qq beta-diagnostics` or `./diagnostics.sh` and follow `next_steps`.
 - Run `isotope-social qq beta-check --pack-dir .isotope/qq-beta --json`.
+- Run `./first-run-rehearsal.sh` once before touching OneBot.
 - Run `qq init-replay` and `qq replay`, then review `replay-report.json`.
 - Run `qq startup-check` or `./first-run.sh` and require `ready: true`.
 - Confirm `./first-run.sh` reaches `./health.sh` before consuming messages.

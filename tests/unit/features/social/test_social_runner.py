@@ -1255,6 +1255,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
         "dry-run.sh",
         "export-log.sh",
         "failure-to-regression.sh",
+        "first-run-rehearsal.sh",
         "first-run.sh",
         "health.sh",
         "operator-rehearsal.sh",
