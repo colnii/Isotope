@@ -134,11 +134,20 @@ def test_tavily_provider_executes_search_with_injected_http_backend():
         )
         return {
             "query": "agent memory retrieval",
+            "answer": (
+                "Agent memory retrieval should preserve cited observations "
+                "and expose enough source text for follow-up reasoning."
+            ),
             "results": [
                 {
                     "title": "Isotope research note",
                     "url": "https://example.com/research-note",
                     "content": "Research claims should cite source-backed snippets.",
+                    "raw_content": (
+                        "Research claims should cite source-backed snippets. "
+                        "The full cleaned page explains that memory retrieval "
+                        "must keep provenance and enough context for the model."
+                    ),
                     "score": 0.91,
                 }
             ],
@@ -165,10 +174,11 @@ def test_tavily_provider_executes_search_with_injected_http_backend():
             },
             "payload": {
                 "query": "agent memory retrieval",
-                "search_depth": "basic",
+                "search_depth": "advanced",
                 "max_results": 3,
-                "include_answer": False,
-                "include_raw_content": False,
+                "chunks_per_source": 3,
+                "include_answer": "advanced",
+                "include_raw_content": "text",
                 "include_usage": True,
             },
             "timeout_seconds": 9,
@@ -181,7 +191,11 @@ def test_tavily_provider_executes_search_with_injected_http_backend():
             "source_id": "src_001",
             "title": "Isotope research note",
             "url": "https://example.com/research-note",
-            "snippet": "Research claims should cite source-backed snippets.",
+            "snippet": (
+                "Research claims should cite source-backed snippets. "
+                "The full cleaned page explains that memory retrieval "
+                "must keep provenance and enough context for the model."
+            ),
                 "why_used": "Tavily search result rank 1, score 0.91",
                 "retrieved_at": payload["sources"][0]["retrieved_at"],
                 "provider_rank": 1,
@@ -189,9 +203,20 @@ def test_tavily_provider_executes_search_with_injected_http_backend():
                 "source_authority": "unknown",
             }
         ]
+    assert payload["report"]["summary"].startswith("Agent memory retrieval should")
     assert payload["report"]["claims"][0]["source_ids"] == ["src_001"]
+    assert "full cleaned page explains" in payload["report"]["claims"][0]["text"]
+    assert payload["report"]["limitations"] == [
+        "Tavily search used cleaned source content when available.",
+    ]
     assert payload["provenance"]["tavily"]["response_time"] == 0.42
     assert payload["provenance"]["tavily"]["usage"] == {"credits": 1}
+    assert (
+        payload["provenance"]["content_mode"]
+        == "tavily_answer_with_cleaned_source_content"
+    )
+    assert payload["provenance"]["tavily"]["include_answer"] == "advanced"
+    assert payload["provenance"]["tavily"]["include_raw_content"] == "text"
     assert "test-secret-key" not in json.dumps(payload)
 
 

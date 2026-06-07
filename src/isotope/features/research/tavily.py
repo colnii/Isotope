@@ -26,7 +26,7 @@ class TavilyResearchProvider:
         enable_network: bool = False,
         timeout_seconds: int = 120,
         max_results: int = 5,
-        search_depth: str = "basic",
+        search_depth: str = "advanced",
         http_post: Callable[..., dict[str, Any]] | None = None,
         http_get: Callable[..., dict[str, Any]] | None = None,
     ):
@@ -75,8 +75,9 @@ class TavilyResearchProvider:
             "query": clean_query,
             "search_depth": self.search_depth,
             "max_results": self.max_results,
-            "include_answer": False,
-            "include_raw_content": False,
+            "chunks_per_source": 3,
+            "include_answer": "advanced",
+            "include_raw_content": "text",
             "include_usage": True,
         }
         response_payload = self.http_post(
@@ -325,7 +326,9 @@ def _normalize_tavily_search_payload(
             continue
         url = _clean_optional_string(result.get("url"))
         content = _clean_optional_string(result.get("content"))
-        if not url or not content:
+        raw_content = _clean_optional_string(result.get("raw_content"))
+        source_text = raw_content or content
+        if not url or not source_text:
             continue
         title = _clean_optional_string(result.get("title")) or url
         source_id = f"src_{len(sources) + 1:03d}"
@@ -337,7 +340,7 @@ def _normalize_tavily_search_payload(
             "source_id": source_id,
             "title": title,
             "url": url,
-            "snippet": _truncate_text(content, 500),
+            "snippet": _truncate_text(source_text, 1200),
             "why_used": why_used,
             "retrieved_at": retrieved_at,
             "provider_rank": index,
@@ -346,16 +349,17 @@ def _normalize_tavily_search_payload(
         sources.append(source)
         claims.append(
             {
-                "text": _truncate_text(content, 500),
+                "text": _truncate_text(source_text, 1200),
                 "source_ids": [source_id],
                 "confidence": "medium",
             }
         )
     source_count = len(sources)
     suffix = "s" if source_count != 1 else ""
-    summary = f"Tavily returned {source_count} source-backed result{suffix} for {query}."
+    answer = _clean_optional_string(payload.get("answer"))
+    summary = answer or f"Tavily returned {source_count} source-backed result{suffix} for {query}."
     limitations = [
-        "Tavily response was normalized from search result snippets.",
+        "Tavily search used cleaned source content when available.",
     ]
     if not sources:
         limitations.append("No valid Tavily results were returned.")
@@ -375,10 +379,14 @@ def _normalize_tavily_search_payload(
         },
         "provenance": {
             "provider": "tavily",
+            "content_mode": "tavily_answer_with_cleaned_source_content",
             "tavily": {
                 "endpoint": TavilyResearchProvider.endpoint_url,
                 "search_depth": request_payload.get("search_depth"),
                 "max_results": request_payload.get("max_results"),
+                "chunks_per_source": request_payload.get("chunks_per_source"),
+                "include_answer": request_payload.get("include_answer"),
+                "include_raw_content": request_payload.get("include_raw_content"),
                 "timeout_seconds": timeout_seconds,
                 "response_time": payload.get("response_time"),
                 "usage": payload.get("usage") if isinstance(payload.get("usage"), dict) else None,

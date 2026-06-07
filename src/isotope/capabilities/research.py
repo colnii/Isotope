@@ -252,6 +252,11 @@ def _research_content_status(research: Mapping[str, Any]) -> str:
 
 
 def _research_content_note(research: Mapping[str, Any]) -> str:
+    if _research_content_status(research) == "tavily_answer_with_cleaned_source_content":
+        return (
+            "Research result contains a Tavily answer plus cleaned source content "
+            "previews for model-visible follow-up reasoning."
+        )
     limitations = []
     report = research.get("report")
     if isinstance(report, Mapping) and isinstance(report.get("limitations"), list):

@@ -304,7 +304,10 @@ def test_research_search_private_tavily_policy_uses_research_flow_artifacts(
                     "limitations": [],
                     "next_queries": [],
                 },
-                "provenance": {"provider": "tavily"},
+                "provenance": {
+                    "provider": "tavily",
+                    "content_mode": "tavily_answer_with_cleaned_source_content",
+                },
             }
 
     def build_provider(provider_id, **kwargs):
@@ -338,8 +341,11 @@ def test_research_search_private_tavily_policy_uses_research_flow_artifacts(
     research_search = result["research_search"]
     assert research_search["provider"] == "tavily"
     assert research_search["source_count"] == 1
-    assert research_search["content_status"] == "source_preview"
-    assert "source-backed previews" in research_search["content_note"]
+    assert (
+        research_search["content_status"]
+        == "tavily_answer_with_cleaned_source_content"
+    )
+    assert "Tavily answer plus cleaned source content" in research_search["content_note"]
     assert [item["artifact_type"] for item in research_search["artifacts"]] == [
         "research.raw_transcript",
         "research.report",
@@ -562,5 +568,4 @@ def test_research_promote_capability_builds_public_metadata_proposal_summary(tmp
     assert "raw report body" not in output
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
-
 
