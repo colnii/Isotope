@@ -12,7 +12,7 @@ from typing import Any, Protocol
 from isotope.llm.prompts import load_system_prompt, render_json_prompt_template
 
 from .goal_queue import record_supervisor_goal
-from .goal_research_handoff import attach_research_handoff_to_candidates
+from .goal_research_handoff import attach_selected_research_handoff_to_candidates
 
 PLANNING_DOCS = (
     "docs/current/status.md",
@@ -20,6 +20,7 @@ PLANNING_DOCS = (
     "docs/current/supervisor-capability-map.md",
 )
 MAX_DOC_CHARS = 20000
+MAX_RESEARCH_CONTEXT_CHARS = 6000
 
 
 class GoalPlanningProvider(Protocol):
@@ -36,6 +37,7 @@ class GoalCandidate:
     stage: str | None = None
     scope: str | None = None
     merge_gate: str | None = None
+    research_handoff: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         item: dict[str, Any] = {
@@ -51,6 +53,8 @@ class GoalCandidate:
             item["scope"] = self.scope
         if self.merge_gate is not None:
             item["merge_gate"] = self.merge_gate
+        if self.research_handoff is not None:
+            item["research_handoff"] = self.research_handoff
         return item
 
 
@@ -99,10 +103,7 @@ def plan_supervisor_goals(
         provider=provider,
         original_messages=messages,
     )
-    candidates = attach_research_handoff_to_candidates(
-        planning.candidates,
-        research_context=research_context,
-    )
+    candidates = attach_selected_research_handoff_to_candidates(planning.candidates)
     if not candidates:
         raise ValueError("LLM returned no goal candidates")
 
@@ -168,7 +169,9 @@ def build_goal_planning_messages(
 ) -> list[dict[str, str]]:
     prompt_facts = _facts_for_goal_planning(facts, user_goal=user_goal)
     if research_context:
-        prompt_facts["conversation.research_context"] = _clip(research_context)
+        prompt_facts["conversation.research_context"] = _clip_research_context(
+            research_context
+        )
     return [
         {
             "role": "system",
@@ -323,6 +326,7 @@ def _goal_candidates_from_payload(payload: Any) -> list[GoalCandidate]:
                 stage=_optional_string(raw.get("stage")),
                 scope=_optional_string(raw.get("scope")),
                 merge_gate=_optional_string(raw.get("merge_gate")),
+                research_handoff=_optional_string(raw.get("research_handoff")),
             )
         )
     return candidates
@@ -463,6 +467,12 @@ def _clip(text: str) -> str:
     if len(text) <= MAX_DOC_CHARS:
         return text
     return text[:MAX_DOC_CHARS] + "\n...[truncated]"
+
+
+def _clip_research_context(text: str) -> str:
+    if len(text) <= MAX_RESEARCH_CONTEXT_CHARS:
+        return text
+    return text[:MAX_RESEARCH_CONTEXT_CHARS] + "\n...[truncated]"
 
 
 def _required_string(value: object, field: str) -> str:

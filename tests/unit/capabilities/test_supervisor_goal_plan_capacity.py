@@ -69,6 +69,52 @@ class SparseResearchContextGoalProvider:
         )
 
 
+class SelectedResearchHandoffGoalProvider:
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        user_payload = json.loads(messages[1]["content"])
+        assert "conversation.research_context" in user_payload["facts"]
+        return json.dumps(
+            {
+                "plan_summary": "基于 Agent OS 调研规划下一步。",
+                "goals": [
+                    {
+                        "goal": "更新 Isotope 的 Agent OS 开发规划。",
+                        "target_name": "plan-agent-os-roadmap",
+                        "reason": "基于已完成调研中 sandbox runtime 和 persistent memory 趋势。",
+                        "research_handoff": (
+                            "基于刚才搜到的趋势：1) sandbox runtime 成为执行边界；"
+                            "2) persistent memory 让任务可恢复。参考 src_001 和 "
+                            "https://example.test/agent-memory。"
+                        ),
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
+class ClippedResearchContextGoalProvider:
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        user_payload = json.loads(messages[1]["content"])
+        research_context = user_payload["facts"]["conversation.research_context"]
+        assert "research-context-prefix" in research_context
+        assert "research-context-tail-should-not-be-sent" not in research_context
+        assert len(research_context) < 7000
+        return json.dumps(
+            {
+                "plan_summary": "基于裁剪后的调研上下文规划。",
+                "goals": [
+                    {
+                        "goal": "整理调研结论。",
+                        "target_name": "summarize-research",
+                        "reason": "使用已裁剪的 conversation.research_context。",
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
 def _write_current_docs(root: Path) -> None:
     docs = root / "docs" / "current"
     docs.mkdir(parents=True)
@@ -181,7 +227,37 @@ def test_supervisor_goal_plan_capability_passes_research_context_to_planner(
     assert result["goal_plan"]["plan_summary"] == "把 Agent OS 调研结果转成 Isotope 规划。"
 
 
-def test_supervisor_goal_plan_written_goal_carries_research_handoff_for_worker(
+def test_supervisor_goal_plan_clips_research_context_for_planner(
+    tmp_path,
+    monkeypatch,
+):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    _write_current_docs(workspace)
+    codex_home = tmp_path / "codex-home"
+    monkeypatch.setattr(
+        "isotope.capabilities.supervisor_goal_plan.resolve_summary_provider_from_env",
+        lambda **_: ClippedResearchContextGoalProvider(),
+    )
+
+    result = CapabilityRunner().run_capability(
+        "supervisor.goal_plan",
+        inputs={
+            "state_root": str(codex_home),
+            "cwd": str(workspace),
+            "goal": "基于 Agent OS 调研推进 Isotope 规划",
+            "research_context": (
+                "research-context-prefix\n"
+                + ("large research chunk\n" * 500)
+                + "research-context-tail-should-not-be-sent"
+            ),
+        },
+    )
+
+    assert result["goal_plan"]["plan_summary"] == "基于裁剪后的调研上下文规划。"
+
+
+def test_supervisor_goal_plan_does_not_force_raw_research_context_into_worker_goal(
     tmp_path,
     monkeypatch,
 ):
@@ -234,8 +310,71 @@ def test_supervisor_goal_plan_written_goal_carries_research_handoff_for_worker(
     written_goal = result["goal_plan"]["written_goals"][0]["goal"]
     active_goal = read_active_supervisor_goals(codex_home=codex_home)[0].goal
     for goal_text in (candidate_goal, written_goal, active_goal):
-        assert "Research handoff for worker:\nFindings:" in goal_text
-        assert "\nSources:" in goal_text
-        assert "sandbox runtime" in goal_text
-        assert "Persistent Agent Memory" in goal_text
+        assert goal_text == "更新 Isotope 的 Agent OS 开发规划。"
+        assert "Research handoff for worker" not in goal_text
+        assert "https://example.test/agent-memory" not in goal_text
+
+
+def test_supervisor_goal_plan_uses_selected_research_handoff_for_worker(
+    tmp_path,
+    monkeypatch,
+):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    _write_current_docs(workspace)
+    codex_home = tmp_path / "codex-home"
+    monkeypatch.setattr(
+        "isotope.capabilities.supervisor_goal_plan.resolve_summary_provider_from_env",
+        lambda **_: SelectedResearchHandoffGoalProvider(),
+    )
+    research_context = json.dumps(
+        {
+            "kind": "conversation_research_context",
+            "items": [
+                {
+                    "report": (
+                        "Agent OS 前沿强调 sandbox runtime、persistent memory、"
+                        "多 agent 调度，以及 RAW_CONTEXT_SHOULD_NOT_BE_COPIED。"
+                    ),
+                    "sources": [
+                        {
+                            "source_id": "src_001",
+                            "title": "Agent OS Runtime Design",
+                            "url": "https://example.test/agent-os-runtime",
+                            "snippet": "Sandbox runtime becomes the execution boundary.",
+                        },
+                        {
+                            "source_id": "src_002",
+                            "title": "Persistent Agent Memory",
+                            "url": "https://example.test/agent-memory",
+                            "snippet": "Memory and task state make agents resumable.",
+                        },
+                    ],
+                }
+            ],
+        },
+        ensure_ascii=False,
+    )
+
+    result = CapabilityRunner().run_capability(
+        "supervisor.goal_plan",
+        inputs={
+            "state_root": str(codex_home),
+            "cwd": str(workspace),
+            "goal": "基于 Agent OS 调研推进 Isotope 规划",
+            "research_context": research_context,
+            "write": True,
+        },
+    )
+
+    candidate = result["goal_plan"]["candidates"][0]
+    candidate_goal = candidate["goal"]
+    written_goal = result["goal_plan"]["written_goals"][0]["goal"]
+    active_goal = read_active_supervisor_goals(codex_home=codex_home)[0].goal
+    for goal_text in (candidate_goal, written_goal, active_goal):
+        assert "Research handoff for worker:" in goal_text
+        assert "基于刚才搜到的趋势" in goal_text
+        assert "sandbox runtime 成为执行边界" in goal_text
         assert "https://example.test/agent-memory" in goal_text
+        assert "RAW_CONTEXT_SHOULD_NOT_BE_COPIED" not in goal_text
+    assert candidate["research_handoff"].startswith("基于刚才搜到的趋势")

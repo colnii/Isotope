@@ -37,7 +37,8 @@
         "depends_on": ["可选，必须先完成并合入的 target_name 或 goal_id"],
         "stage": "可选，同阶段可并行；后续阶段必须等前置阶段完成",
         "scope": "可选，本目标触碰的代码或文档范围",
-        "merge_gate": "可选，解锁本目标前必须完成的 merge gate 名称"
+        "merge_gate": "可选，解锁本目标前必须完成的 merge gate 名称",
+        "research_handoff": "可选，只有当该 worker 需要已完成调研上下文时填写；必须是你选择后的短摘要、source id 或 URL，禁止复制原始 conversation.research_context"
       }
     ]
   },
@@ -45,7 +46,9 @@
     "每个 goal 必须能独立启动一个 Supervisor worker。",
     "完整规划可以多于 parallel_launch_limit；parallel_launch_limit 只表示建议首批并发上限，不是规划截断上限。",
     "如果 user_goal 存在，必须围绕它拆解可执行目标。",
-    "如果 facts 包含 conversation.research_context，必须把它当作已完成调研事实来使用；plan_summary、reason 和每个 worker-facing goal 要体现这些调研发现，不要把已完成的调研重新规划成搜索或资料搜集任务。",
+    "如果 facts 包含 conversation.research_context，必须把它当作已完成调研事实来使用；plan_summary 和 reason 要体现关键调研发现，不要把已完成的调研重新规划成搜索或资料搜集任务。",
+    "如果某个 worker 启动后需要知道刚才调研的内容，只在该 goal 上填写简短 research_handoff；你可以只写 X/Y/Z 趋势、source id、URL 或结论摘要，也可以在 goal 已经足够明确时不填。",
+    "research_handoff 必须由你筛选和概括，不能复制完整 conversation.research_context。",
     "当 user_goal 指向完整功能板块时，必须输出 plan_summary、phases、parallel_recommendations、stop_conditions 和 acceptance_conditions。",
     "不要输出泛泛的继续推进、优化系统、阅读文档。",
     "不要生成需要用户另行解释范围的任务。",

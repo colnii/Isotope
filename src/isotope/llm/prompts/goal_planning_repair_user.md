@@ -29,7 +29,8 @@
         "depends_on": ["可选，依赖的 target_name 或 goal_id"],
         "stage": "可选，阶段名",
         "scope": "可选，影响范围",
-        "merge_gate": "可选，依赖的 merge gate"
+        "merge_gate": "可选，依赖的 merge gate",
+        "research_handoff": "可选，给 worker 的短调研交接摘要或 source/URL，禁止复制原始调研上下文"
       }
     ]
   },
