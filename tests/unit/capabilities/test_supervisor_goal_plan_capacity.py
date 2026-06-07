@@ -28,6 +28,28 @@ class FakeGoalProvider:
         )
 
 
+class ResearchContextGoalProvider:
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        user_payload = json.loads(messages[1]["content"])
+        facts = user_payload["facts"]
+        assert "conversation.research_context" in facts
+        assert "sandbox runtime" in facts["conversation.research_context"]
+        assert "Persistent Agent Memory" in facts["conversation.research_context"]
+        return json.dumps(
+            {
+                "plan_summary": "把 Agent OS 调研结果转成 Isotope 规划。",
+                "goals": [
+                    {
+                        "goal": "把 sandbox runtime 纳入 Isotope 开发规划。",
+                        "target_name": "plan-sandbox-runtime",
+                        "reason": "来自 conversation.research_context。",
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
 def _write_current_docs(root: Path) -> None:
     docs = root / "docs" / "current"
     docs.mkdir(parents=True)
@@ -109,3 +131,32 @@ def test_supervisor_goal_plan_capability_writes_when_explicitly_requested(
     assert [item.target_name for item in active_goals] == [
         "supervisor-goal-plan-capacity"
     ]
+
+
+def test_supervisor_goal_plan_capability_passes_research_context_to_planner(
+    tmp_path,
+    monkeypatch,
+):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    _write_current_docs(workspace)
+    codex_home = tmp_path / "codex-home"
+    monkeypatch.setattr(
+        "isotope.capabilities.supervisor_goal_plan.resolve_summary_provider_from_env",
+        lambda **_: ResearchContextGoalProvider(),
+    )
+
+    result = CapabilityRunner().run_capability(
+        "supervisor.goal_plan",
+        inputs={
+            "state_root": str(codex_home),
+            "cwd": str(workspace),
+            "goal": "基于 Agent OS 调研推进 Isotope 规划",
+            "research_context": (
+                "Agent OS 前沿强调 sandbox runtime；"
+                "Persistent Agent Memory 让任务可恢复。"
+            ),
+        },
+    )
+
+    assert result["goal_plan"]["plan_summary"] == "把 Agent OS 调研结果转成 Isotope 规划。"

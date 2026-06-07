@@ -69,6 +69,7 @@ def plan_supervisor_goals(
     codex_home: Path | str,
     provider: GoalPlanningProvider,
     user_goal: str | None = None,
+    research_context: str | None = None,
     write: bool = False,
     limit: int = 3,
     planning_trigger: str = "manual",
@@ -86,6 +87,7 @@ def plan_supervisor_goals(
         root=workspace,
         facts=facts,
         user_goal=_optional_string(user_goal),
+        research_context=_optional_string(research_context),
         limit=limit,
         write_mode=write,
         planning_trigger=planning_trigger,
@@ -123,7 +125,7 @@ def plan_supervisor_goals(
         "planning_trigger": planning_trigger,
         "parallel_launch_limit": limit,
         "parse_repaired": parse_repaired,
-        "sources": list(PLANNING_DOCS),
+        "sources": _goal_planning_sources(research_context),
         "candidates": [candidate.to_dict() for candidate in candidates],
         "written_goals": written,
         "plan_summary": planning.plan_summary,
@@ -158,7 +160,11 @@ def build_goal_planning_messages(
     limit: int,
     write_mode: bool,
     planning_trigger: str = "manual",
+    research_context: str | None = None,
 ) -> list[dict[str, str]]:
+    prompt_facts = _facts_for_goal_planning(facts, user_goal=user_goal)
+    if research_context:
+        prompt_facts["conversation.research_context"] = _clip(research_context)
     return [
         {
             "role": "system",
@@ -172,7 +178,7 @@ def build_goal_planning_messages(
                     "workspace": str(root),
                     "user_goal": user_goal,
                     "planning_trigger": planning_trigger,
-                    "facts": _facts_for_goal_planning(facts, user_goal=user_goal),
+                    "facts": prompt_facts,
                     "parallel_launch_limit": limit,
                     "write_mode": write_mode,
                 },
@@ -198,6 +204,13 @@ def _user_goal_mentions_provider_context(user_goal: str | None) -> bool:
     if user_goal is None:
         return False
     return re.search(r"\b(provider|fake)\b", user_goal, flags=re.IGNORECASE) is not None
+
+
+def _goal_planning_sources(research_context: str | None) -> list[str]:
+    sources = list(PLANNING_DOCS)
+    if _optional_string(research_context):
+        sources.append("conversation.research_context")
+    return sources
 
 
 def _without_provider_context_lines(text: str) -> str:

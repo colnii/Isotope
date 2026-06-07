@@ -2194,6 +2194,13 @@ class CapabilityCatalog:
                                 "description": "Maximum planned goal candidates.",
                                 "default": 3,
                             },
+                            "research_context": {
+                                "type": "string",
+                                "description": (
+                                    "Optional low-sensitive research summary "
+                                    "from prior conversation capabilities."
+                                ),
+                            },
                             "write": {
                                 "type": "boolean",
                                 "description": "Write planned candidates into the goal queue.",

@@ -41,6 +41,7 @@ from .conversation_observations import (
     research_artifact_detail_from_agent_loop,
     screen_artifact_detail_from_agent_loop,
 )
+from .conversation_research_context import research_context_from_observations
 
 
 GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS = 90.0
@@ -199,6 +200,7 @@ def run_supervisor_conversation_events(
                     context=context,
                     provider=provider,
                     user_message=clean_message,
+                    observations=list(observations),
                     timeout_seconds=timeout_seconds,
                 )
                 for capacity_decision in capacity_decisions
@@ -442,6 +444,7 @@ def _run_capability_decision(
     context: dict[str, Any],
     provider: SupervisorConversationProvider,
     user_message: str,
+    observations: list[dict[str, Any]] | None,
     timeout_seconds: float | None,
 ) -> Iterator[SupervisorConversationEvent]:
     capacity_id = _require_text(decision.get("capacity_id"), "capacity_id")
@@ -453,6 +456,7 @@ def _run_capability_decision(
         arguments=arguments,
         context=context,
         user_message=user_message,
+        observations=observations,
     )
     display_inputs = _capacity_display_inputs(capacity_id, inputs)
     title = _capability_title(capacity_id, context=context)
@@ -678,6 +682,7 @@ def _capability_inputs_from_decision(
     arguments: dict[str, Any],
     context: dict[str, Any],
     user_message: str = "",
+    observations: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     allowed_inputs = _capability_input_names(capacity_id)
     if not allowed_inputs:
@@ -697,6 +702,11 @@ def _capability_inputs_from_decision(
         inputs=inputs,
         user_message=user_message,
     )
+    inputs = _apply_conversation_goal_plan_research_context(
+        capacity_id,
+        inputs=inputs,
+        observations=observations,
+    )
     inputs = _normalize_conversation_capability_inputs(capacity_id, inputs)
     return inputs
 
@@ -714,6 +724,22 @@ def _apply_conversation_goal_plan_write_route(
         normalized.pop("write", None)
         return normalized
     normalized["write"] = True
+    return normalized
+
+
+def _apply_conversation_goal_plan_research_context(
+    capacity_id: str,
+    *,
+    inputs: dict[str, Any],
+    observations: list[dict[str, Any]] | None,
+) -> dict[str, Any]:
+    if capacity_id != "supervisor.goal_plan" or "research_context" in inputs:
+        return inputs
+    research_context = research_context_from_observations(observations)
+    if not research_context:
+        return inputs
+    normalized = dict(inputs)
+    normalized["research_context"] = research_context
     return normalized
 
 

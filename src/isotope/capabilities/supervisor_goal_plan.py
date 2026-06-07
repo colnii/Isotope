@@ -51,6 +51,7 @@ def run_supervisor_goal_plan(*, inputs: Mapping[str, Any] | None) -> dict[str, A
         codex_home=Path(input_mapping[SUPERVISOR_STATE_ROOT_INPUT]),
         provider=provider,
         user_goal=input_mapping["goal"],
+        research_context=input_mapping.get("research_context"),
         write=input_mapping["write"],
         limit=input_mapping["limit"],
         planning_trigger="capacity",
@@ -84,6 +85,12 @@ def _validate_supervisor_goal_plan_inputs(
     write = input_mapping.get("write", False)
     if not isinstance(write, bool):
         raise ValueError("write must be a boolean")
+
+    research_context = input_mapping.get("research_context")
+    if research_context is not None and (
+        not isinstance(research_context, str) or not research_context.strip()
+    ):
+        raise ValueError("research_context must be a non-empty string when provided")
 
     normalized = {
         key: value

@@ -165,17 +165,17 @@
               {#if message.role === 'assistant'}
                 <div class="mb-1 text-xs font-semibold text-isotope-muted">Isotope</div>
               {/if}
-              {#if message.content}
-                <p class="whitespace-pre-wrap break-words">{message.content}</p>
-              {:else}
-                <p class="text-isotope-muted">...</p>
-              {/if}
               {#if message.role === 'assistant' && message.capacityCalls?.length}
-                <div class="mt-3 space-y-2">
+                <div class="mb-3 space-y-2">
                   {#each message.capacityCalls as call (call.id)}
                     <CapacityCallCard {call} {agentClient} />
                   {/each}
                 </div>
+              {/if}
+              {#if message.content}
+                <p class="whitespace-pre-wrap break-words">{message.content}</p>
+              {:else if !(message.role === 'assistant' && message.capacityCalls?.length)}
+                <p class="text-isotope-muted">...</p>
               {/if}
               {#if message.role === 'assistant' && (message.provider || message.model)}
                 <div class="mt-2 text-[11px] uppercase text-isotope-muted">
