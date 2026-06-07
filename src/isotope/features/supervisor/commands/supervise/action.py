@@ -9,7 +9,8 @@ from isotope.features.supervisor.commands.supervisor_action import (
     set_supervisor_action_payload,
 )
 from isotope.features.supervisor.commands.supervise.program_action import (
-    select_program_supervisor_action,
+    build_supervisor_prepared_action_context,
+    select_required_supervisor_action,
 )
 
 
@@ -65,7 +66,28 @@ def append_supervise_supervisor_action(
     if not (args.llm_action or args.llm_execute):
         return None
 
-    program_action = select_program_supervisor_action(
+    required_action = select_required_supervisor_action(
+        args,
+        action_report,
+        active_goals=active_goals,
+        explicit_goal=explicit_goal,
+        fanout_status=fanout_status,
+        fanout_paused=fanout_paused,
+        worker_role_guard=worker_role_guard,
+        fanout_plan=fanout_plan,
+        api=api,
+    )
+    if required_action is not None:
+        action = required_action["action"]
+        set_supervisor_action_payload(payload, action)
+        set_supervisor_action_planner_payload(
+            payload,
+            source="program",
+            reason=required_action["reason"],
+        )
+        return action
+
+    prepared_context = build_supervisor_prepared_action_context(
         args,
         action_report,
         active_goals=active_goals,
@@ -78,21 +100,15 @@ def append_supervise_supervisor_action(
         lifecycle_execution=lifecycle_execution,
         api=api,
     )
-    if program_action is not None:
-        set_supervisor_action_payload(payload, program_action.action)
-        set_supervisor_action_planner_payload(
-            payload,
-            source="program",
-            reason=program_action.reason,
-        )
-        return program_action.action
+    if prepared_context is not None:
+        payload["supervisor_prepared_action_context"] = prepared_context
 
     action = api._decide_action_with_llm(args, action_report, payload)
     set_supervisor_action_payload(payload, action)
     set_supervisor_action_planner_payload(
         payload,
         source="llm",
-        reason="llm_fallback",
+        reason="prepared_context" if prepared_context is not None else "llm_fallback",
     )
     api._promote_llm_command_suggestion(payload)
     return action

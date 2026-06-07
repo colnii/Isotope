@@ -367,7 +367,7 @@ def test_lifecycle_execution_action_monitors_delete_blockers() -> None:
     }
 
 
-def test_supervise_action_uses_lifecycle_execution_plan() -> None:
+def test_supervise_action_prepares_lifecycle_context_for_llm_choice() -> None:
     payload: dict[str, object] = {}
     action = append_supervise_llm_action(
         argparse.Namespace(llm_action=True, llm_execute=False),
@@ -391,9 +391,17 @@ def test_supervise_action_uses_lifecycle_execution_plan() -> None:
     }
     assert payload["supervisor_action"] == action
     assert payload["llm_action"] == payload["supervisor_action"]
+    assert payload["supervisor_action_planner"] == {
+        "source": "llm",
+        "reason": "prepared_context",
+    }
+    assert payload["supervisor_prepared_action_context"]["candidates"][0] == {
+        "reason": "worker_lifecycle_execution",
+        "action": action,
+    }
 
 
-def test_supervise_action_routes_delete_blockers_without_llm() -> None:
+def test_supervise_action_prepares_delete_blocker_context_for_llm_choice() -> None:
     plan = build_worker_lifecycle_execution_plan(
         worker_lifecycle_decision=_decision(
             next_step="cleanup_worktree",
@@ -440,6 +448,14 @@ def test_supervise_action_routes_delete_blockers_without_llm() -> None:
     }
     assert payload["supervisor_action"] == action
     assert payload["llm_action"] == payload["supervisor_action"]
+    assert payload["supervisor_action_planner"] == {
+        "source": "llm",
+        "reason": "prepared_context",
+    }
+    assert payload["supervisor_prepared_action_context"]["candidates"][0] == {
+        "reason": "worker_lifecycle_execution",
+        "action": action,
+    }
 
 
 def test_supervise_planning_builds_archive_worker_lifecycle_execution() -> None:
@@ -1027,11 +1043,13 @@ class _StubActionApi:
     def _loop_without_autonomous_scope(self, *args, **kwargs):
         return False
 
-    def _decide_action_with_llm(self, *args, **kwargs):
-        raise AssertionError("LLM should not be called for lifecycle execution")
+    def _decide_action_with_llm(self, args, report, payload):
+        return payload["supervisor_prepared_action_context"]["candidates"][0][
+            "action"
+        ]
 
     def _promote_llm_command_suggestion(self, payload):
-        raise AssertionError("LLM promotion should not run")
+        return None
 
 
 class _StubPlanningApi:

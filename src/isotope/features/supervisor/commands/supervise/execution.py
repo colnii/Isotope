@@ -34,6 +34,10 @@ def append_supervise_execution(
         from isotope.features.supervisor import runner as api
 
     if args.llm_execute:
+        if _payload_action_selected_by_llm(payload):
+            payload["executed"] = api._execute_llm_action(args, action_report, payload)
+            api._maybe_replan_after_context_request(args, action_report, payload)
+            return payload["executed"]
         return _append_supervise_llm_execution(
             args,
             payload,
@@ -62,6 +66,11 @@ def append_supervise_execution(
         payload["executed"] = api._execute_advice(args, report, payload)
         return payload["executed"]
     return None
+
+
+def _payload_action_selected_by_llm(payload: dict[str, Any]) -> bool:
+    planner = payload.get("supervisor_action_planner")
+    return isinstance(planner, dict) and planner.get("source") == "llm"
 
 
 def _append_supervise_llm_execution(

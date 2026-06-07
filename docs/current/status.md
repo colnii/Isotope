@@ -8,6 +8,6 @@ Isotope 是 local-first 的 AI engineering workbench，当前主线是让 Superv
 当前重点：
 1. 推进 Supervisor 产品化，让功能可展示、可持续扩展
 2. Agent loop、worker 管理和拍板流程形成闭环
-3. 开放判断保持模型参与，重复生命周期动作由程序接管
+3. 开放判断保持模型参与，重复状态查询和候选整理由程序承担
 
 更多信息：[README](../../README.md)、[任务队列](./agent-task-queue.md)

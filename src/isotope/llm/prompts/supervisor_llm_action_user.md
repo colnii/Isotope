@@ -12,6 +12,7 @@
   "planner_priority": {{ planner_priority }},
   "blocked_context_priority": {{ blocked_context_priority }},
   "capacity_decisions": {{ capacity_decisions }},
+  "prepared_action_context": {{ prepared_action_context }},
   "worker_profiles": {
     "coding": "默认代码开发档，适合需要改代码、跑测试、做复杂判断的任务。",
     "light": "低成本轻任务档，适合轻量检查、状态汇报、smoke 或短小验证。"
@@ -34,6 +35,7 @@
     "recent_decision_answers 是用户已经拍板的答案；相关 goal 或 session 后续按答案继续推进。",
     "candidate_targets.resume_context_hint 为 large_session_file 时，恢复历史可能消耗大量 tokens；除非确实需要该完整历史，恢复前优先考虑 request_context 或 launch_session。",
     "worker_reviews 提供下一轮决策上下文；next_decision.merge_suitable 进入复查合并路径，merge/rebase/delete 走白名单动作和对应候选。",
+    "prepared_action_context 是程序替你预查好的候选动作和理由，用来减少重复工具查询；它不是最终决定，最终仍由你选择 supervisor_action。",
     "worker_lifecycle_contract.decision 是程序托管的 worker 生命周期状态；execution 已记录的动作视为完成记录，后续选择剩余步骤。",
     "worker_lifecycle_contract.execution.summary 是程序汇总的生命周期队列：archivable/delete_ready/delete_blocked/result_actions；先读它再判断是否需要补上下文、等待或选择白名单动作。",
     "worker_lifecycle_contract.execution.recommended_next_step 是程序派生的固定流程建议；优先按它判断 monitor、archive_ready、delete_ready、delete_blocked 或 merge_dispatch_ready。",

@@ -122,3 +122,33 @@ def test_llm_action_prompt_builder_exposes_worker_lifecycle_contract():
         "If next_step is archive_worker or cleanup_worktree, prefer monitor unless a matching guarded cleanup candidate is present.",
         "Use LLM actions only for gaps, human decisions, or explicitly allowed follow-up actions.",
     ]
+
+
+def test_llm_action_prompt_builder_exposes_prepared_action_context():
+    report = SimpleNamespace(
+        generated_at="2026-05-24T00:00:00Z",
+        recommendation=_StubRecommendation(),
+        sessions=[],
+    )
+    prepared_context = {
+        "kind": "supervisor_prepared_action_context",
+        "source": "program",
+        "candidates": [
+            {
+                "reason": "worker_lifecycle_execution",
+                "action": {
+                    "kind": "launch_session",
+                    "target_name": "supervisor-merge-dispatch",
+                },
+            }
+        ],
+    }
+
+    messages = build_llm_action_messages(
+        report,
+        [{"kind": "monitor", "label": "继续监控", "command": "true"}],
+        prepared_action_context=prepared_context,
+    )
+
+    payload = json.loads(messages[1]["content"])
+    assert payload["prepared_action_context"] == prepared_context

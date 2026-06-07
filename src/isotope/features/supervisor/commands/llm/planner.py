@@ -75,6 +75,7 @@ def _generate_llm_action_decision(
         worker_lifecycle_execution_result=payload.get(
             "worker_lifecycle_execution_result"
         ),
+        prepared_action_context=payload.get("supervisor_prepared_action_context"),
     )
 
 

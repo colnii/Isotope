@@ -149,6 +149,7 @@ def generate_llm_action_decision(
     worker_lifecycle_decision: dict[str, Any] | None = None,
     worker_lifecycle_execution: dict[str, Any] | None = None,
     worker_lifecycle_execution_result: dict[str, Any] | None = None,
+    prepared_action_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     action_command_suggestions = _active_goal_scoped_command_suggestions(
         command_suggestions,
@@ -182,6 +183,7 @@ def generate_llm_action_decision(
             worker_lifecycle_decision,
             worker_lifecycle_execution,
             worker_lifecycle_execution_result,
+            prepared_action_context,
         )
     )
     payload = _normalize_llm_action_payload(_extract_json_object(raw))

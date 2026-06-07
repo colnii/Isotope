@@ -37,6 +37,7 @@ def build_llm_action_messages(
     worker_lifecycle_decision: dict[str, Any] | None = None,
     worker_lifecycle_execution: dict[str, Any] | None = None,
     worker_lifecycle_execution_result: dict[str, Any] | None = None,
+    prepared_action_context: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     """Build the prompt for guarded LLM planning."""
     from . import llm_summary as _summary
@@ -117,6 +118,7 @@ def build_llm_action_messages(
                     "blocked_context_priority": blocked_context_priority,
                     "capacity_decisions": capacity_decisions or [],
                     "delete_worktree_candidates": delete_worktree_candidates or [],
+                    "prepared_action_context": prepared_action_context or {},
                     "worker_lifecycle_contract": _worker_lifecycle_contract(
                         worker_lifecycle_decision,
                         worker_lifecycle_execution=worker_lifecycle_execution,
