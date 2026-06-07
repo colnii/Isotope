@@ -265,7 +265,7 @@ git commit -m "feat(social): let llm decide participation"
 - Modify: `src/isotope/features/social/qq_runtime_commands.py`
 - Create: `tests/unit/features/social/decision/test_social_qq_llm_participation_config.py`
 
-- [ ] **Step 1: Write failing config wiring tests**
+- [x] **Step 1: Write failing config wiring tests**
 
 Create tests proving:
 
@@ -274,7 +274,7 @@ Create tests proving:
 - missing LLM provider raises `ValueError("LLM participation provider is not configured: ...")`.
 - invalid value raises `ValueError("runtime.participation_provider must be rules or llm")`.
 
-- [ ] **Step 2: Run tests and verify red**
+- [x] **Step 2: Run tests and verify red**
 
 Run:
 
@@ -284,7 +284,7 @@ PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit
 
 Expected: config value is ignored.
 
-- [ ] **Step 3: Implement config wiring**
+- [x] **Step 3: Implement config wiring**
 
 Modify `decision_loop_from_config`:
 
@@ -293,7 +293,7 @@ Modify `decision_loop_from_config`:
 - if `"llm"`, resolve chat provider and pass `LLMSocialParticipationProvider(chat_provider=resolution.provider)`
 - keep existing `runtime.reply_provider` validation for rule-based reply generation
 
-- [ ] **Step 4: Run config tests and commit**
+- [x] **Step 4: Run config tests and commit**
 
 Run:
 

@@ -34,6 +34,7 @@ from .replay import (
 )
 from .runtime import SocialRuntime, SocialRuntimeConfig
 from .loop import SocialDecisionLoop
+from .participation_provider import LLMSocialParticipationProvider
 from .reply_provider import LLMSocialReplyProvider
 
 
@@ -207,17 +208,43 @@ def runtime_config_from_config(config: dict[str, Any]) -> SocialRuntimeConfig:
 
 def decision_loop_from_config(config: dict[str, Any]) -> SocialDecisionLoop:
     runtime = dict_field(config, "runtime", default={})
+    participation_name = string_value(
+        runtime.get("participation_provider", "rules"),
+        "runtime.participation_provider",
+    )
     provider_name = string_value(
         runtime.get("reply_provider", "deterministic"),
         "runtime.reply_provider",
     )
+    llm_provider: Any | None = None
+    if participation_name == "llm":
+        resolution = resolve_llm_chat_provider()
+        if resolution.status != "configured" or resolution.provider is None:
+            raise ValueError(
+                "LLM participation provider is not configured: "
+                f"{resolution.reason_code}"
+            )
+        llm_provider = resolution.provider
+    elif participation_name != "rules":
+        raise ValueError("runtime.participation_provider must be rules or llm")
+
+    participation_provider = (
+        LLMSocialParticipationProvider(chat_provider=llm_provider)
+        if llm_provider is not None
+        else None
+    )
     if provider_name == "deterministic":
-        return SocialDecisionLoop()
+        return SocialDecisionLoop(participation_provider=participation_provider)
     if provider_name != "llm":
         raise ValueError("runtime.reply_provider must be deterministic or llm")
-    resolution = resolve_llm_chat_provider()
-    if resolution.status != "configured" or resolution.provider is None:
-        raise ValueError(f"LLM reply provider is not configured: {resolution.reason_code}")
+    if llm_provider is None:
+        resolution = resolve_llm_chat_provider()
+        if resolution.status != "configured" or resolution.provider is None:
+            raise ValueError(
+                f"LLM reply provider is not configured: {resolution.reason_code}"
+            )
+        llm_provider = resolution.provider
     return SocialDecisionLoop(
-        reply_provider=LLMSocialReplyProvider(chat_provider=resolution.provider)
+        reply_provider=LLMSocialReplyProvider(chat_provider=llm_provider),
+        participation_provider=participation_provider,
     )
