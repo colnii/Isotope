@@ -183,6 +183,10 @@ def register_qq_commands(subparsers: argparse._SubParsersAction) -> None:
     startup_check.add_argument("--pack-dir", required=True, help="Generated beta pack directory.")
     startup_check.add_argument("--replay-report", required=True, help="Replay report JSON file.")
     startup_check.add_argument(
+        "--replay-scenarios-report",
+        help="Aggregate replay scenario report JSON file.",
+    )
+    startup_check.add_argument(
         "--min-sticker-candidates",
         type=int,
         default=1,

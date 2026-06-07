@@ -242,6 +242,8 @@ def _startup_check_command() -> str:
         ".",
         "--replay-report",
         "logs/replay-report.json",
+        "--replay-scenarios-report",
+        "logs/replay-scenarios-report.json",
         "--json",
     ]
     return " ".join(shlex.quote(part) for part in parts)
@@ -261,6 +263,38 @@ def _diagnostics_command() -> str:
 
 def _first_run_command(config: QQBetaPackConfig) -> str:
     replay_command = _qq_replay_command(config)
+    init_replay_scenarios_command = shlex.join(
+        [
+            "isotope-social",
+            "qq",
+            "init-replay-scenarios",
+            "--output-dir",
+            "replay-scenarios",
+            "--group",
+            config.group_id,
+            "--bot-user-id",
+            config.bot_user_id,
+            "--json",
+        ]
+    )
+    replay_scenarios_command = shlex.join(
+        [
+            "isotope-social",
+            "qq",
+            "replay-scenarios",
+            "--config-json",
+            "config.json",
+            "--state-root",
+            "state",
+            "--scenario-dir",
+            "replay-scenarios",
+            "--output",
+            "logs/replay-scenarios-report.json",
+            "--reports-dir",
+            "logs/replay-scenario-reports",
+            "--json",
+        ]
+    )
     return (
         "./diagnostics.sh || true\n"
         "isotope-social qq beta-check --pack-dir . --json\n"
@@ -270,6 +304,15 @@ def _first_run_command(config: QQBetaPackConfig) -> str:
         f"{shlex.quote(_init_replay_command(config))} >&2\n"
         "  echo "
         f"{shlex.quote(replay_command)} >&2\n"
+        "  exit 2\n"
+        "fi\n"
+        "if ! [ -f logs/replay-scenarios-report.json ]; then\n"
+        '  echo "Missing logs/replay-scenarios-report.json. '
+        'Run these commands before first-run:" >&2\n'
+        "  echo "
+        f"{shlex.quote(init_replay_scenarios_command)} >&2\n"
+        "  echo "
+        f"{shlex.quote(replay_scenarios_command)} >&2\n"
         "  exit 2\n"
         "fi\n"
         "./startup-check.sh\n"
@@ -640,7 +683,7 @@ OneBot WebSocket: `{config.websocket_url}`
 ## First run order
 
 1. Apply an editable profile pack.
-2. Create and run replay.
+2. Create and run replay plus replay scenarios.
 3. Run `./first-run.sh`.
 4. Run `./diagnostics.sh` again after config or profile edits.
 5. Run `./dry-run.sh`.
@@ -683,8 +726,9 @@ Automated scripts start in dry-run. `send-run.sh` refuses to send unless
 reports the configured group, operator, bot, OneBot URL, reply provider, replay
 report, and next steps.
 `first-run.sh` runs diagnostics, beta-check, startup-check, and health in order.
-It stops with replay commands if `logs/replay-report.json` is missing, and it
-does not call `dry-run.sh` or `send-run.sh`.
+It stops with replay commands if `logs/replay-report.json` or
+`logs/replay-scenarios-report.json` is missing, and it does not call
+`dry-run.sh` or `send-run.sh`.
 `operator-rehearsal.sh` writes local review and export artifacts tagged with
 `operator_rehearsal`, runs the failure-to-regression, close-failure,
 regression-intake, beta-day-report, and beta-closeout scripts, then prints

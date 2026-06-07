@@ -17,6 +17,7 @@ from .stickers import StickerLibrary
 class QQStartupGateConfig:
     pack_dir: Path
     replay_report: Path
+    replay_scenarios_report: Path | None = None
     min_sticker_candidates: int = 1
 
     def __post_init__(self) -> None:
@@ -24,6 +25,10 @@ class QQStartupGateConfig:
             raise ValueError("pack-dir must be a non-empty path")
         if not str(self.replay_report).strip():
             raise ValueError("replay-report must be a non-empty path")
+        if self.replay_scenarios_report is not None and not str(
+            self.replay_scenarios_report
+        ).strip():
+            raise ValueError("replay-scenarios-report must be a non-empty path")
         if (
             isinstance(self.min_sticker_candidates, bool)
             or not isinstance(self.min_sticker_candidates, int)
@@ -37,6 +42,7 @@ class QQStartupGateConfig:
 class QQStartupGateResult:
     pack_dir: Path
     replay_report: Path
+    replay_scenarios_report: Path | None
     checks: tuple[dict[str, Any], ...]
 
     @property
@@ -47,6 +53,11 @@ class QQStartupGateResult:
         return {
             "pack_dir": str(self.pack_dir),
             "replay_report": str(self.replay_report),
+            "replay_scenarios_report": (
+                str(self.replay_scenarios_report)
+                if self.replay_scenarios_report is not None
+                else None
+            ),
             "ready": self.ready,
             "checks": list(self.checks),
         }
@@ -57,7 +68,7 @@ def check_qq_startup_gate(config: QQStartupGateConfig) -> QQStartupGateResult:
     config_path = pack_dir / "config.json"
     config_payload = _load_json_object(config_path) if config_path.exists() else {}
     replay_report_payload = _optional_replay_report_payload(config.replay_report)
-    checks = (
+    checks: tuple[dict[str, Any], ...] = (
         _check_beta_pack(pack_dir),
         _check_profile_assets(config_payload, base_dir=pack_dir),
         _check_sticker_assets(
@@ -71,9 +82,12 @@ def check_qq_startup_gate(config: QQStartupGateConfig) -> QQStartupGateResult:
             min_sticker_candidates=config.min_sticker_candidates,
         ),
     )
+    if config.replay_scenarios_report is not None:
+        checks += (_check_replay_scenarios_report(config.replay_scenarios_report),)
     return QQStartupGateResult(
         pack_dir=pack_dir,
         replay_report=config.replay_report,
+        replay_scenarios_report=config.replay_scenarios_report,
         checks=checks,
     )
 
@@ -264,6 +278,48 @@ def _check_replay_report(path: Path, *, min_sticker_candidates: int) -> dict[str
     }
 
 
+def _check_replay_scenarios_report(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {
+            "name": "replay_scenarios_report",
+            "ok": False,
+            "errors": [f"replay scenarios report does not exist: {path}"],
+        }
+    try:
+        payload = _load_json_object(path)
+    except (FileNotFoundError, ValueError, json.JSONDecodeError) as exc:
+        return {"name": "replay_scenarios_report", "ok": False, "errors": [str(exc)]}
+    summary = payload.get("summary", {})
+    scenarios = payload.get("scenarios", [])
+    errors: list[str] = []
+    if payload.get("kind") != "qq_replay_scenarios_report":
+        errors.append("kind must be qq_replay_scenarios_report")
+    if payload.get("passed") is not True:
+        errors.append("replay scenarios report passed must be true")
+    scenario_count = _int_field(summary, "scenario_count")
+    passed_count = _int_field(summary, "passed_count")
+    failed_count = _int_field(summary, "failed_count")
+    if scenario_count <= 0:
+        errors.append("summary.scenario_count must be greater than 0")
+    if failed_count != 0:
+        errors.append("summary.failed_count must be 0")
+    if passed_count != scenario_count:
+        errors.append("summary.passed_count must equal summary.scenario_count")
+    failed_scenarios = _failed_replay_scenarios(scenarios)
+    if failed_scenarios:
+        errors.append("all replay scenarios must pass")
+    return {
+        "name": "replay_scenarios_report",
+        "ok": not errors,
+        "passed": payload.get("passed"),
+        "scenario_count": scenario_count,
+        "passed_count": passed_count,
+        "failed_count": failed_count,
+        "failed_scenarios": failed_scenarios,
+        "errors": errors,
+    }
+
+
 def _asset_path(payload: dict[str, Any], key: str, *, base_dir: Path) -> Path | None:
     value = payload.get(key)
     if not isinstance(value, str) or not value.strip():
@@ -319,6 +375,19 @@ def _required_sticker_ids(replay_report_payload: dict[str, Any] | None) -> list[
                 normalized = sticker_id.strip()
                 if normalized not in result:
                     result.append(normalized)
+    return result
+
+
+def _failed_replay_scenarios(scenarios: object) -> list[str]:
+    if not isinstance(scenarios, list):
+        return []
+    result: list[str] = []
+    for item in scenarios:
+        if not isinstance(item, dict) or item.get("passed") is True:
+            continue
+        scenario_id = item.get("scenario_id")
+        if isinstance(scenario_id, str) and scenario_id.strip():
+            result.append(scenario_id.strip())
     return result
 
 

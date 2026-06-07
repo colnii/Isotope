@@ -86,8 +86,9 @@ Diagnostics does not connect to QQ. It summarizes the configured group,
 operator, bot user, OneBot URL, `reply_provider`, profile/sticker/replay state,
 LLM provider status when needed, and ordered `next_steps` for the operator.
 `first-run.sh` then runs diagnostics, beta-check, startup-check, and health in
-order. It stops before health if `logs/replay-report.json` is missing, and it
-does not run dry-run or send-enabled commands.
+order. It stops before health if `logs/replay-report.json` or
+`logs/replay-scenarios-report.json` is missing, and it does not run dry-run or
+send-enabled commands.
 
 Before the first live session, run the pack check:
 
@@ -108,6 +109,15 @@ isotope-social qq replay --config-json .isotope/qq-beta/config.json \
   --state-root .isotope/qq-beta/state \
   --replay-json .isotope/qq-beta/replay.json \
   --output .isotope/qq-beta/logs/replay-report.json --json
+isotope-social qq init-replay-scenarios \
+  --output-dir .isotope/qq-beta/replay-scenarios \
+  --group <group_id> --bot-user-id <bot_qq> --json
+isotope-social qq replay-scenarios \
+  --config-json .isotope/qq-beta/config.json \
+  --state-root .isotope/qq-beta/state \
+  --scenario-dir .isotope/qq-beta/replay-scenarios \
+  --output .isotope/qq-beta/logs/replay-scenarios-report.json \
+  --reports-dir .isotope/qq-beta/logs/replay-scenario-reports --json
 ```
 
 Open `replay-report.json` and check whether the role sounds like the intended
@@ -125,15 +135,19 @@ Run the startup gate after replay:
 
 ```bash
 isotope-social qq startup-check --pack-dir .isotope/qq-beta \
-  --replay-report .isotope/qq-beta/logs/replay-report.json --json
+  --replay-report .isotope/qq-beta/logs/replay-report.json \
+  --replay-scenarios-report .isotope/qq-beta/logs/replay-scenarios-report.json \
+  --json
 ```
 
 `ready` must be `true`. The checks are `beta_pack`, `profile_assets`,
-`sticker_assets`, `llm_reply_provider`, and `replay_report`. If
+`sticker_assets`, `llm_reply_provider`, `replay_report`, and
+`replay_scenarios_report`. If
 `profile_assets` fails, apply the profile pack again. If `llm_reply_provider`
 fails, either switch the beta config back to `runtime.reply_provider =
 "deterministic"` or configure the shared Isotope LLM provider. If
-`replay_report` fails, fix the replay result before connecting to OneBot.
+`replay_report` or `replay_scenarios_report` fails, fix the replay result before
+connecting to OneBot.
 Generated `dry-run.sh` and `send-run.sh` run `startup-check.sh` before the live
 command.
 
@@ -162,8 +176,19 @@ isotope-social qq replay --config-json .isotope/qq-beta/config.json \
   --state-root .isotope/qq-beta/state \
   --replay-json .isotope/qq-beta/replay.json \
   --output .isotope/qq-beta/logs/replay-report.json --json
+isotope-social qq init-replay-scenarios \
+  --output-dir .isotope/qq-beta/replay-scenarios \
+  --group <group_id> --bot-user-id <bot_qq> --json
+isotope-social qq replay-scenarios \
+  --config-json .isotope/qq-beta/config.json \
+  --state-root .isotope/qq-beta/state \
+  --scenario-dir .isotope/qq-beta/replay-scenarios \
+  --output .isotope/qq-beta/logs/replay-scenarios-report.json \
+  --reports-dir .isotope/qq-beta/logs/replay-scenario-reports --json
 isotope-social qq startup-check --pack-dir .isotope/qq-beta \
-  --replay-report .isotope/qq-beta/logs/replay-report.json --json
+  --replay-report .isotope/qq-beta/logs/replay-report.json \
+  --replay-scenarios-report .isotope/qq-beta/logs/replay-scenarios-report.json \
+  --json
 isotope-social qq review-dry-run --state-root .isotope/qq-beta/state \
   --group <group_id> --output .isotope/qq-beta/logs/dry-run-review.json --json
 isotope-social qq export-log --state-root .isotope/qq-beta/state \

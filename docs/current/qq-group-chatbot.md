@@ -115,8 +115,8 @@ checks, exercises `pause.sh`, `resume.sh`, and `export-log.sh`, and confirms
 `send-run.sh` still refuses to run unless `ISOTOPE_QQ_ENABLE_SEND=1` is set.
 For generated packs, `./first-run.sh` runs diagnostics, beta-check,
 startup-check, and `./health.sh` in order. It stops with replay commands if
-`logs/replay-report.json` is missing, and it never runs `dry-run.sh` or
-`send-run.sh`.
+`logs/replay-report.json` or `logs/replay-scenarios-report.json` is missing,
+and it never runs `dry-run.sh` or `send-run.sh`.
 
 Create and run a replay before connecting NapCat:
 
@@ -177,15 +177,18 @@ Run the startup gate after replay and before generated live scripts:
 
 ```bash
 isotope-social qq startup-check --pack-dir .isotope/qq-beta \
-  --replay-report .isotope/qq-beta/logs/replay-report.json --json
+  --replay-report .isotope/qq-beta/logs/replay-report.json \
+  --replay-scenarios-report .isotope/qq-beta/logs/replay-scenarios-report.json \
+  --json
 ```
 
 The result must show `ready: true`. The check names are `beta_pack`,
-`profile_assets`, `sticker_assets`, `llm_reply_provider`, and
-`replay_report`. A blocked result means the generated `dry-run.sh` and
-`send-run.sh` will stop before connecting to OneBot. `llm_reply_provider` passes
-without model configuration when `runtime.reply_provider` is `deterministic`;
-when it is `llm`, the shared Isotope LLM provider must resolve successfully.
+`profile_assets`, `sticker_assets`, `llm_reply_provider`, `replay_report`, and
+`replay_scenarios_report`. A blocked result means the generated `dry-run.sh`
+and `send-run.sh` will stop before connecting to OneBot. `llm_reply_provider`
+passes without model configuration when `runtime.reply_provider` is
+`deterministic`; when it is `llm`, the shared Isotope LLM provider must resolve
+successfully.
 
 ## Run
 
@@ -322,7 +325,9 @@ isotope-social qq replay --config-json .isotope/qq-beta/config.json \
   --replay-json .isotope/qq-beta/replay.json \
   --output .isotope/qq-beta/logs/replay-report.json --json
 isotope-social qq startup-check --pack-dir .isotope/qq-beta \
-  --replay-report .isotope/qq-beta/logs/replay-report.json --json
+  --replay-report .isotope/qq-beta/logs/replay-report.json \
+  --replay-scenarios-report .isotope/qq-beta/logs/replay-scenarios-report.json \
+  --json
 cd .isotope/qq-beta
 ./first-run.sh
 ./dry-run.sh

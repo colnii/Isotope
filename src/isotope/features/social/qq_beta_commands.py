@@ -78,6 +78,11 @@ def handle_startup_check(args: argparse.Namespace) -> dict[str, Any]:
         QQStartupGateConfig(
             pack_dir=Path(args.pack_dir),
             replay_report=Path(args.replay_report),
+            replay_scenarios_report=(
+                Path(args.replay_scenarios_report)
+                if args.replay_scenarios_report
+                else None
+            ),
             min_sticker_candidates=args.min_sticker_candidates,
         )
     )

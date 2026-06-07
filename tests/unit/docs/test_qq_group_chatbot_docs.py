@@ -84,6 +84,8 @@ def test_qq_group_chatbot_runbooks_cover_beta_operations() -> None:
         "replay-scenarios",
         "replay-scenarios-report.json",
         "replay-scenario-reports",
+        "--replay-scenarios-report",
+        "replay_scenarios_report",
         "01-ship-it-candidate.json",
         "02-no-matching-sticker.json",
         "03-forbid-frequency-zero.json",
