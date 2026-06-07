@@ -1258,6 +1258,7 @@ def test_social_runner_qq_init_beta_writes_operator_pack(
         "first-run-rehearsal.sh",
         "first-run.sh",
         "health.sh",
+        "import-stickers.sh",
         "operator-rehearsal.sh",
         "pause.sh",
         "record-failure.sh",

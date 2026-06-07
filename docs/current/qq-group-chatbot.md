@@ -62,10 +62,12 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 
 The generated pack contains `config.json`, `state/`, `logs/`, `diagnostics.sh`,
 `first-run-rehearsal.sh`, `first-run.sh`, `health.sh`, `startup-check.sh`,
-`dry-run.sh`, `review-dry-run.sh`, `beta-day-report.sh`, `record-failure.sh`,
-`regression-intake.sh`, `send-run.sh`, `pause.sh`, `resume.sh`, `export-log.sh`,
-and a `README.md` with the first-run order. It also creates `logs/failures.json`
-for operator failure records and `regressions/` for replay drafts.
+`dry-run.sh`, `review-dry-run.sh`, `import-stickers.sh`,
+`beta-day-report.sh`, `record-failure.sh`, `regression-intake.sh`,
+`send-run.sh`, `pause.sh`, `resume.sh`, `export-log.sh`, and a `README.md`
+with the first-run order. It also creates `sticker-assets/manifest.json`,
+`logs/failures.json` for operator failure records, and `regressions/` for
+replay drafts.
 
 Generate editable role and sticker files before the first real session:
 
@@ -120,6 +122,13 @@ For a full local rehearsal before touching OneBot, run
 editable profile, runs replay and replay scenarios, then runs startup-check and
 diagnostics without calling `health.sh`, `dry-run.sh`, `send-run.sh`, or
 `live-run`.
+To replace the sample sticker refs with real local files, put the image files
+named in `sticker-assets/manifest.json` next to that manifest and run
+`./import-stickers.sh`. The script imports the files into
+`../qq-profile/sticker-library.json`, applies the profile to the beta pack,
+runs replay and replay scenarios, then runs startup-check and diagnostics. If a
+file is missing, it stops with the missing path before any OneBot connection is
+opened.
 For generated packs, `./first-run.sh` runs diagnostics, beta-check,
 startup-check, and `./health.sh` in order. It stops with replay commands if
 `logs/replay-report.json` or `logs/replay-scenarios-report.json` is missing,
@@ -454,6 +463,20 @@ relative to `sticker-library.json` so startup-check can verify the asset still
 exists after import. The output is a normal `sticker-library.json`, so
 `apply-profile`, `inspect stickers`, `startup-check`, and replay use the same
 path as a hand-written library.
+
+Generated beta packs also include `sticker-assets/manifest.json` and
+`./import-stickers.sh` so the operator can do the same import from inside the
+pack:
+
+```bash
+cd .isotope/qq-beta
+# put ship.png next to sticker-assets/manifest.json, or edit the manifest
+./import-stickers.sh
+```
+
+That script does the import, applies the profile, reruns replay scenarios, and
+finishes with diagnostics. It does not call `live-run`, `health.sh`,
+`dry-run.sh`, or `send-run.sh`.
 
 `startup-check` reports sticker `sticker_ids`, replay
 `required_sticker_ids`, `missing_required_sticker_ids`, and

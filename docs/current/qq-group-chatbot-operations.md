@@ -37,11 +37,12 @@ isotope-social qq init-beta --output-dir .isotope/qq-beta \
 
 The pack writes `diagnostics.sh`, `first-run-rehearsal.sh`, `first-run.sh`,
 `health.sh`, `startup-check.sh`, `dry-run.sh`, `review-dry-run.sh`,
-`beta-day-report.sh`, `beta-closeout.sh`, `record-failure.sh`,
-`close-failure.sh`, `failure-to-regression.sh`, `operator-rehearsal.sh`,
-`regression-intake.sh`, `send-run.sh`, `pause.sh`, `resume.sh`, and
-`export-log.sh`. It also writes `logs/failures.json` and
-creates `regressions/`. Run `send-run.sh` only with
+`import-stickers.sh`, `beta-day-report.sh`, `beta-closeout.sh`,
+`record-failure.sh`, `close-failure.sh`, `failure-to-regression.sh`,
+`operator-rehearsal.sh`, `regression-intake.sh`, `send-run.sh`, `pause.sh`,
+`resume.sh`, and `export-log.sh`. It also writes
+`sticker-assets/manifest.json`, `logs/failures.json`, and creates
+`regressions/`. Run `send-run.sh` only with
 `ISOTOPE_QQ_ENABLE_SEND=1`.
 
 Generate an editable profile pack and apply it to the beta pack before checking
@@ -68,6 +69,10 @@ empty, or if replay `required_sticker_ids` produce
 `missing_required_sticker_ids`. `apply-profile` updates
 `.isotope/qq-beta/config.json` to read those files and writes
 `.isotope/qq-beta/config.before-profile.json` as the previous config.
+Generated beta packs also provide `./import-stickers.sh`: put the files named
+by `sticker-assets/manifest.json` into `sticker-assets/`, run the script, and
+it will import the library, apply the profile, rerun replay scenarios,
+startup-check, and diagnostics without connecting to OneBot.
 
 After any profile or config edit, run diagnostics before touching OneBot:
 
@@ -497,6 +502,8 @@ Run this checklist for each controlled beta day:
 - Run `qq beta-diagnostics` or `./diagnostics.sh` and follow `next_steps`.
 - Run `isotope-social qq beta-check --pack-dir .isotope/qq-beta --json`.
 - Run `./first-run-rehearsal.sh` once before touching OneBot.
+- Put real sticker files under `sticker-assets/` and run
+  `./import-stickers.sh` before judging sticker behavior.
 - Run `qq init-replay` and `qq replay`, then review `replay-report.json`.
 - Run `qq startup-check` or `./first-run.sh` and require `ready: true`.
 - Confirm `./first-run.sh` reaches `./health.sh` before consuming messages.

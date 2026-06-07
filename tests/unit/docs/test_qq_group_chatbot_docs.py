@@ -28,6 +28,8 @@ def test_qq_group_chatbot_runbooks_cover_beta_operations() -> None:
         "ISOTOPE_QQ_REHEARSAL_DATE",
         "first-run.sh",
         "first-run-rehearsal.sh",
+        "import-stickers.sh",
+        "sticker-assets",
         "beta-check",
         "startup-check",
         "ready",

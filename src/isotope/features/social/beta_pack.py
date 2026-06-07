@@ -12,8 +12,10 @@ from .beta_pack_support import (
     first_run_rehearsal_command,
     init_replay_command,
     init_replay_scenarios_command,
+    import_stickers_command,
     qq_replay_command,
     qq_replay_scenarios_command,
+    write_sticker_asset_template,
 )
 
 SCRIPT_NAMES = (
@@ -25,6 +27,7 @@ SCRIPT_NAMES = (
     "first-run.sh",
     "failure-to-regression.sh",
     "health.sh",
+    "import-stickers.sh",
     "operator-rehearsal.sh",
     "startup-check.sh",
     "dry-run.sh",
@@ -99,6 +102,7 @@ def create_qq_beta_pack(config: QQBetaPackConfig) -> QQBetaPackResult:
             json.dumps({"failures": []}, ensure_ascii=False, indent=2, sort_keys=True),
             encoding="utf-8",
         )
+    write_sticker_asset_template(output_dir)
 
     config_path = output_dir / "config.json"
     config_path.write_text(
@@ -152,6 +156,9 @@ def _script_body(name: str, config: QQBetaPackConfig) -> str:
         return f"{common}\n{command}\n"
     if name == "health.sh":
         command = _live_run_command(config, max_events=0, send=False)
+        return f"{common}\n{command}\n"
+    if name == "import-stickers.sh":
+        command = import_stickers_command(config)
         return f"{common}\n{command}\n"
     if name == "operator-rehearsal.sh":
         command = _operator_rehearsal_command(config)
@@ -631,20 +638,23 @@ OneBot WebSocket: `{config.websocket_url}`
 
 1. Run `./first-run-rehearsal.sh` to generate/apply the profile, replay, and
    replay scenario reports without connecting to OneBot.
-2. Run `./first-run.sh`.
-3. Run `./diagnostics.sh` again after config or profile edits.
-4. Run `./dry-run.sh`.
-5. Run `./review-dry-run.sh` and inspect `logs/dry-run-review.json`.
-6. Run `./export-log.sh`.
-7. Record observed issues in `logs/failures.json`, or use
+2. Put real sticker files next to `sticker-assets/manifest.json`, then run
+   `./import-stickers.sh` to import, apply, replay, startup-check, and
+   diagnostics without connecting to OneBot.
+3. Run `./first-run.sh`.
+4. Run `./diagnostics.sh` again after config or profile edits.
+5. Run `./dry-run.sh`.
+6. Run `./review-dry-run.sh` and inspect `logs/dry-run-review.json`.
+7. Run `./export-log.sh`.
+8. Record observed issues in `logs/failures.json`, or use
    `./failure-to-regression.sh` to record and draft a replay regression in one
    operator step.
-8. Run `./beta-day-report.sh` and inspect `logs/beta-day-report.json`.
-9. Run `./regression-intake.sh` for open failures and inspect `regressions/`
+9. Run `./beta-day-report.sh` and inspect `logs/beta-day-report.json`.
+10. Run `./regression-intake.sh` for open failures and inspect `regressions/`
     if you did not already use `./failure-to-regression.sh`.
-10. To rehearse the local operator closeout chain without connecting to OneBot,
+11. To rehearse the local operator closeout chain without connecting to OneBot,
     run `./operator-rehearsal.sh` and inspect `logs/beta-closeout.json`.
-11. Only after dry-run behavior is acceptable, run:
+12. Only after dry-run behavior is acceptable, run:
 
 ```bash
 ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
@@ -664,6 +674,8 @@ ISOTOPE_QQ_ENABLE_SEND=1 ./send-run.sh
 - Draft replay regressions with `./regression-intake.sh`.
 - Write the closeout checklist with `./beta-closeout.sh`.
 - Rehearse the local first-run chain with `./first-run-rehearsal.sh`.
+- Import local sticker files and rerun local replay checks with
+  `./import-stickers.sh`.
 - Rehearse the local closeout chain with `./operator-rehearsal.sh`.
 
 Automated scripts start in dry-run. `send-run.sh` refuses to send unless
@@ -676,6 +688,11 @@ report, and next steps.
 `first-run-rehearsal.sh` runs profile setup, replay, replay scenarios,
 startup-check, and diagnostics locally. It does not call `health.sh`,
 `dry-run.sh`, `send-run.sh`, or `live-run`.
+`import-stickers.sh` reads `sticker-assets/manifest.json`, imports local sticker
+files into `../qq-profile/sticker-library.json`, applies that profile, reruns
+replay and replay scenarios, then runs startup-check and diagnostics. It stops
+with the exact missing file path if a manifest file is absent. It does not call
+`health.sh`, `dry-run.sh`, `send-run.sh`, or `live-run`.
 `first-run.sh` runs diagnostics, beta-check, startup-check, and health in order.
 It stops with replay commands if `logs/replay-report.json` or
 `logs/replay-scenarios-report.json` is missing, and it does not call
