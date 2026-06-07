@@ -99,6 +99,74 @@ def test_goal_plan_write_true_from_model_is_ignored_without_explicit_user_reques
     assert events[-1].payload == {"text": "已生成候选目标，未写入目标队列。"}
 
 
+def test_goal_plan_confirmation_followup_writes_goal_queue(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    captured_inputs: list[dict[str, Any]] = []
+
+    def fake_execute_capacity_step(**kwargs: Any) -> dict[str, Any]:
+        inputs = dict(kwargs["inputs"])
+        captured_inputs.append(inputs)
+        return _agent_loop(
+            {
+                "goal_plan": {
+                    "status": "ok",
+                    "mode": "write",
+                    "planning_trigger": "capacity",
+                    "candidates": [
+                        {
+                            "goal": "整理 Agent OS 调研结果。",
+                            "target_name": "document-agent-os-research",
+                        }
+                    ],
+                    "written_goals": [
+                        {
+                            "goal": "整理 Agent OS 调研结果。",
+                            "target_name": "document-agent-os-research",
+                        }
+                    ],
+                }
+            }
+        )
+
+    monkeypatch.setattr(
+        conversation_loop,
+        "_execute_capacity_step_with_timeout",
+        fake_execute_capacity_step,
+    )
+    provider = RecordingConversationProvider(
+        [
+            {
+                "kind": "call_capability",
+                "capacity_id": "supervisor.goal_plan",
+                "arguments": {
+                    "goal": "基于 Agent OS 前沿设计调研结果，推进 Isotope 开发规划"
+                },
+                "rationale": "用户确认写入上一轮规划。",
+            },
+            {
+                "kind": "direct_answer",
+                "answer": "已写入目标队列。",
+            },
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="可以写入",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert captured_inputs[0]["write"] is True
+    assert events[0].payload["inputs"]["write"] is True
+    assert events[-1].payload == {"text": "已写入目标队列。"}
+
+
 def test_conversation_loop_answers_instead_of_repeating_completed_capacity(
     tmp_path,
     monkeypatch,

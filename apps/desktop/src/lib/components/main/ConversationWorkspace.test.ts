@@ -14,3 +14,17 @@ describe('ConversationWorkspace', () => {
     );
   });
 });
+
+describe('CapacityCallDetails', () => {
+  test('renders raw detail JSON only after a details section is opened', () => {
+    const path = join(process.cwd(), 'src/lib/components/main/CapacityCallDetails.svelte');
+    const source = readFileSync(path, 'utf8');
+    const openBindingIndex = source.indexOf('bind:open');
+    const rawPreIndex = source.indexOf('{formatCapacityDetailContent(section)}');
+
+    expect(openBindingIndex).toBeGreaterThan(-1);
+    expect(rawPreIndex).toBeGreaterThan(-1);
+    expect(openBindingIndex).toBeLessThan(rawPreIndex);
+    expect(source).toContain('{#if openSections[index]}');
+  });
+});

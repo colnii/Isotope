@@ -755,6 +755,12 @@ def _explicit_goal_plan_write_requested(user_message: str) -> bool:
         "加入目标队列",
         "加到目标队列",
         "放入目标队列",
+        "可以写入",
+        "确认写入",
+        "同意写入",
+        "允许写入",
+        "写入吧",
+        "就写入",
         "入队",
         "创建目标",
     )
