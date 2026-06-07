@@ -128,9 +128,12 @@ def test_supervisor_loop_replenishes_done_workers_and_dispatches_merge_e2e(
         second_payload["worker_lifecycle_decision"]["summary"]["ready_to_integrate"]
         == 2
     )
-    assert second_payload["supervisor_action"]["kind"] == "launch_session"
-    assert second_payload["supervisor_action"]["source"] == "integration_review"
-    assert second_payload["llm_action"] == second_payload["supervisor_action"]
+    assert second_payload["worker_lifecycle_execution"]["kind"] == "merge_dispatch"
+    assert (
+        second_payload["worker_lifecycle_execution"]["next_step"]
+        == "launch_merge_worker"
+    )
+    assert second_payload["worker_lifecycle_execution"]["status"] == "ready_to_launch"
     assert second_payload["executed"]["display_kind"] == "merge_dispatch"
     assert second_payload["executed"]["managed"]["name"] == "supervisor-merge-dispatch"
     assert "cleanup_archived" not in second_payload
@@ -223,10 +226,10 @@ def test_supervisor_loop_dispatches_merge_before_launching_more_fanout(
     assert payload["merge_dispatch"]["integration_review"]["summary"][
         "ready_to_integrate"
     ] == 1
-    assert payload["supervisor_action"]["kind"] == "launch_session"
-    assert payload["supervisor_action"]["source"] == "integration_review"
-    assert payload["llm_action"] == payload["supervisor_action"]
-    assert payload["executed"]["display_kind"] == "merge_dispatch"
+    assert payload["worker_lifecycle_execution"]["kind"] == "merge_dispatch"
+    assert payload["worker_lifecycle_execution"]["next_step"] == "launch_merge_worker"
+    assert payload["worker_lifecycle_execution"]["status"] == "ready_to_launch"
+    assert payload["executed"]["managed"]["worker_role"] == "merge_dispatch"
     assert payload["executed"]["managed"]["name"] == "supervisor-merge-dispatch"
     assert len(launched_commands) == 1
     assert any(

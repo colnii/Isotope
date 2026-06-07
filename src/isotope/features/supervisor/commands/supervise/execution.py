@@ -70,7 +70,12 @@ def append_supervise_execution(
 
 def _payload_action_selected_by_llm(payload: dict[str, Any]) -> bool:
     planner = payload.get("supervisor_action_planner")
-    return isinstance(planner, dict) and planner.get("source") == "llm"
+    if not (isinstance(planner, dict) and planner.get("source") == "llm"):
+        return False
+    action = payload.get("supervisor_action")
+    if not isinstance(action, dict):
+        return False
+    return not action.get("error")
 
 
 def _append_supervise_llm_execution(

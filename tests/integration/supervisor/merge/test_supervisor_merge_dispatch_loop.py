@@ -89,9 +89,6 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
     assert payload["worker_lifecycle_execution"]["kind"] == "merge_dispatch"
     assert payload["worker_lifecycle_execution"]["next_step"] == "launch_merge_worker"
     assert payload["worker_lifecycle_execution"]["status"] == "ready_to_launch"
-    assert payload["supervisor_action"]["kind"] == "launch_session"
-    assert payload["supervisor_action"]["source"] == "integration_review"
-    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "launch_session"
     assert payload["executed"]["managed"]["name"] == DEFAULT_TARGET_NAME
     assert payload["worker_lifecycle_decision"]["execution"]["kind"] == "launch_session"
@@ -352,11 +349,12 @@ def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     activity = payload["daemon"]["activity"]
-    assert activity["recent_supervisor_action"]["kind"] == "merge_dispatch"
-    assert activity["recent_supervisor_action"]["reason"] == (
-        "ready_to_integrate workers require merge dispatch"
+    assert activity["state_snapshot"]["worker_lifecycle_execution"]["kind"] == (
+        "merge_dispatch"
     )
-    assert activity["recent_llm_action"] == activity["recent_supervisor_action"]
+    assert activity["state_snapshot"]["worker_lifecycle_execution"]["status"] == (
+        "ready_to_launch"
+    )
     assert activity["recent_execution"] == {
         "status": "skipped",
         "detail": "merge_dispatch / merge dispatch launch adapter required",
