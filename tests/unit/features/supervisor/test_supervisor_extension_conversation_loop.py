@@ -84,6 +84,52 @@ def test_conversation_loop_loads_project_local_skills_without_model_roots(
     assert "## Checklist" not in second_prompt
 
 
+def test_conversation_loop_loads_project_extension_skills_without_model_roots(
+    tmp_path,
+) -> None:
+    _write_test_skill(
+        tmp_path / "isotope.extensions" / "skills",
+        "project-skill",
+        description="Project skill from cwd.",
+        body="# Project Skill\n",
+    )
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "skills.search",
+                    "arguments": {"query": "Project", "limit": 5},
+                    "rationale": "Find a project extension skill.",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "已找到项目 extension skill。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="找项目 skill。",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert events[1].payload["capacity_id"] == "skills.search"
+    second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
+    assert "skill_search_result" in second_prompt
+    assert "project-skill" in second_prompt
+    assert "source_kind" in second_prompt
+    assert "project" in second_prompt
+
+
 def test_conversation_loop_loads_project_local_mcp_config_without_env(
     tmp_path,
     monkeypatch,

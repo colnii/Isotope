@@ -34,6 +34,11 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "isotope.llm.prompts" = ["*.md"]
+"isotope.builtin.extensions" = [
+    "skills/**/SKILL.md",
+    "mcp/*.json",
+    "mcp/servers.d/*.json",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

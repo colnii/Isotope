@@ -253,6 +253,9 @@
 | `approval` | 人工确认，敏感动作执行前的暂停和恢复机制 | 权限/产品 | `src/isotope/runtime/in_process/` |
 | `capability` | 能力，产品可发现、可运行的功能单元；catalog/runner 会拒绝 malformed inputs，manifest 返回结构化副本，nested contract 不共享原始定义对象 | 产品能力 | `src/isotope/capabilities/catalog.py`, `src/isotope/capabilities/runner.py` |
 | `capability runner` | 能力运行器，用命令行方式搜索能力、生成计划或启动能力 | 产品能力 | `src/isotope/capabilities/runner.py`, `isotope-capability` |
+| `extension asset` | 扩展资产，项目、用户或发行包里提供给模型发现的 skill 或 MCP server 定义 | 产品能力/扩展 | `isotope.extensions/`, `src/isotope/builtin/extensions/`, `src/isotope/extensions/` |
+| `built-in extension asset` | 内置扩展资产，随 Isotope Python package 打包发布的 skill 或 MCP JSON | 产品能力/扩展/发行 | `src/isotope/builtin/extensions/` |
+| `legacy project extension asset` | 兼容项目扩展资产，仍从 `.isotope/skills` 或 `.isotope/mcp_servers.json` 冷加载，但优先级低于推荐的 `isotope.extensions/` | 兼容/扩展 | `.isotope/skills`, `.isotope/mcp_servers.json` |
 | `Codex task` | Codex 任务，把外部 Codex 执行封装成可路由能力；`task.py` 保留 facade，request 和 adapter contract 已拆到专门模块 | 工具/任务 | `src/isotope/integrations/codex/task.py`, `src/isotope/integrations/codex/task_request.py`, `src/isotope/integrations/codex/task_contract.py`, `src/isotope/integrations/codex/cli.py` |
 | `workspace` | 工作区，任务运行时读写资源的边界 | 产品/资源 | `src/isotope/workspace/` |
 | `memory` | 记忆，用于保存、查询和投影长期上下文；当前本地 query 返回 summary / refs / provenance，full content 走 controlled expand | 智能体 | `src/isotope/memory/`, `src/isotope/memory/views.py` |

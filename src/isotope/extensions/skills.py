@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import os
 from pathlib import Path
 import re
 from typing import Any, Iterable
+
+from importlib.resources.abc import Traversable
+
+from isotope.extensions.sources import (
+    ExtensionSource,
+    iter_named_files,
+    read_text,
+    skill_sources,
+)
 
 
 DEFAULT_SKILL_BODY_LIMIT = 12000
@@ -19,40 +27,27 @@ class SkillRecord:
     skill_id: str
     name: str
     description: str
-    source_root: Path
-    skill_path: Path
-
-    @property
-    def relative_path(self) -> str:
-        return self.skill_path.relative_to(self.source_root).as_posix()
+    source_kind: str
+    relative_path: str
+    skill_resource: Path | Traversable
 
     def to_metadata(self) -> dict[str, Any]:
         return {
             "skill_id": self.skill_id,
             "name": self.name,
             "description": self.description,
-            "source_root": str(self.source_root),
             "relative_path": self.relative_path,
             "readiness": "ready",
+            "source_kind": self.source_kind,
         }
 
 
 def default_skill_roots(*, cwd: Path | str | None = None) -> list[Path]:
     roots: list[Path] = []
-    env_roots = os.environ.get("ISOTOPE_SKILL_ROOTS")
-    if env_roots:
-        roots.extend(
-            Path(item).expanduser()
-            for item in env_roots.split(os.pathsep)
-            if item
-        )
-    isotope_home = os.environ.get("ISOTOPE_HOME")
-    if isotope_home:
-        roots.append(Path(isotope_home).expanduser() / "skills")
-    project_root = Path(cwd).expanduser() if cwd is not None else Path.cwd()
-    roots.append(project_root / ".isotope" / "skills")
-    roots.append(Path.home() / ".isotope" / "skills")
-    return _unique_existing_roots(roots)
+    for source in skill_sources(cwd=cwd):
+        if isinstance(source.root, Path) and source.root.is_dir():
+            roots.append(source.root)
+    return roots
 
 
 def discover_skills(
@@ -66,7 +61,7 @@ def discover_skills(
         raise ValueError("query must be a string")
     if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
         raise ValueError("limit must be a positive integer")
-    records, skipped = _load_skill_records(_normalize_roots(roots, cwd=cwd))
+    records, skipped = _load_skill_records(_normalize_sources(roots, cwd=cwd))
     normalized_query = query.strip().lower()
     matches: list[SkillRecord] = []
     for record in records:
@@ -101,10 +96,10 @@ def describe_skill(
         or max_body_chars <= 0
     ):
         raise ValueError("max_body_chars must be a positive integer")
-    records, _skipped = _load_skill_records(_normalize_roots(roots, cwd=cwd))
+    records, _skipped = _load_skill_records(_normalize_sources(roots, cwd=cwd))
     for record in records:
         if record.skill_id == skill_id:
-            text = record.skill_path.read_text(encoding="utf-8")
+            text = read_text(record.skill_resource)
             markdown_body = _markdown_body(text)
             body = markdown_body[:max_body_chars]
             return {
@@ -117,58 +112,47 @@ def describe_skill(
     raise ValueError(f"unknown skill_id: {skill_id}")
 
 
-def _normalize_roots(
+def _normalize_sources(
     roots: Iterable[Path | str] | None,
     *,
     cwd: Path | str | None,
-) -> list[Path]:
-    if roots is None:
-        return default_skill_roots(cwd=cwd)
-    normalized = [Path(root).expanduser() for root in roots]
-    return _unique_existing_roots(normalized)
+) -> list[ExtensionSource]:
+    return skill_sources(cwd=cwd, explicit_roots=roots)
 
 
-def _unique_existing_roots(roots: Iterable[Path]) -> list[Path]:
-    seen: set[Path] = set()
-    result: list[Path] = []
-    for root in roots:
-        resolved = root.resolve() if root.exists() else root
-        if resolved in seen or not root.exists() or not root.is_dir():
-            continue
-        seen.add(resolved)
-        result.append(root)
-    return result
-
-
-def _load_skill_records(roots: list[Path]) -> tuple[list[SkillRecord], list[dict[str, str]]]:
-    records: list[SkillRecord] = []
+def _load_skill_records(
+    sources: list[ExtensionSource],
+) -> tuple[list[SkillRecord], list[dict[str, str]]]:
+    records_by_id: dict[str, SkillRecord] = {}
     skipped: list[dict[str, str]] = []
-    for root in roots:
-        for skill_path in sorted(root.rglob("SKILL.md")):
-            parsed = _parse_skill_file(skill_path)
+    for source in sources:
+        for skill_resource, relative_path in iter_named_files(source.root, "SKILL.md"):
+            parsed = _parse_skill_text(read_text(skill_resource))
             if parsed is None:
                 skipped.append(
                     {
-                        "relative_path": skill_path.relative_to(root).as_posix(),
+                        "relative_path": relative_path,
                         "readiness": "invalid_frontmatter",
+                        "source_kind": source.source_kind,
                     }
                 )
                 continue
-            records.append(
-                SkillRecord(
-                    skill_id=parsed["name"],
-                    name=parsed["name"],
-                    description=parsed["description"],
-                    source_root=root,
-                    skill_path=skill_path,
-                )
+            skill_id = parsed["name"]
+            if skill_id in records_by_id:
+                continue
+            records_by_id[skill_id] = SkillRecord(
+                skill_id=skill_id,
+                name=parsed["name"],
+                description=parsed["description"],
+                source_kind=source.source_kind,
+                relative_path=relative_path,
+                skill_resource=skill_resource,
             )
-    records.sort(key=lambda item: item.skill_id)
+    records = sorted(records_by_id.values(), key=lambda item: item.skill_id)
     return records, skipped
 
 
-def _parse_skill_file(path: Path) -> dict[str, str] | None:
-    text = path.read_text(encoding="utf-8")
+def _parse_skill_text(text: str) -> dict[str, str] | None:
     match = _FRONTMATTER_RE.match(text)
     if match is None:
         return None

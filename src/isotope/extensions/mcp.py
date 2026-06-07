@@ -7,10 +7,18 @@ from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
+import sys
 from typing import Any, Iterable, Mapping
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
+from isotope.extensions.sources import (
+    SOURCE_EXPLICIT,
+    mcp_file_sources,
+    mcp_json_files,
+    read_text,
+)
 
 
 @dataclass(frozen=True)
@@ -21,6 +29,7 @@ class McpServerConfig:
     env: Mapping[str, str] | None = None
     enabled: bool = True
     allowed_tools: tuple[str, ...] = ()
+    source_kind: str = SOURCE_EXPLICIT
 
     def command_summary(self) -> str:
         return " ".join([self.command, *self.args]).strip()
@@ -40,6 +49,7 @@ def list_mcp_servers(*, configs: Iterable[McpServerConfig]) -> dict[str, Any]:
                 "allowed_operations": (
                     ["tools/list", "tools/call"] if config.enabled else []
                 ),
+                "source_kind": config.source_kind,
             }
         )
     return {"kind": "mcp_server_list", "servers": servers}
@@ -51,37 +61,47 @@ def load_mcp_server_configs(*, cwd: Path | str | None = None) -> list[McpServerC
         return _mcp_server_configs_from_payload(
             json.loads(raw),
             source="ISOTOPE_MCP_SERVERS_JSON",
+            source_kind=SOURCE_EXPLICIT,
         )
-    path = _mcp_server_config_path(cwd=cwd)
-    if path is None:
-        return []
-    return _mcp_server_configs_from_payload(
-        json.loads(path.read_text(encoding="utf-8")),
-        source=str(path),
-    )
-
-
-def _mcp_server_config_path(*, cwd: Path | str | None) -> Path | None:
     explicit = os.environ.get("ISOTOPE_MCP_SERVERS_JSON_FILE")
     if explicit:
-        return Path(explicit).expanduser()
-    candidates: list[Path] = []
-    isotope_home = os.environ.get("ISOTOPE_HOME")
-    if isotope_home:
-        candidates.append(Path(isotope_home).expanduser() / "mcp_servers.json")
-    project_root = Path(cwd).expanduser() if cwd is not None else Path.cwd()
-    candidates.append(project_root / ".isotope" / "mcp_servers.json")
-    candidates.append(Path.home() / ".isotope" / "mcp_servers.json")
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate
-    return None
+        path = Path(explicit).expanduser()
+        return _load_mcp_json_resource(
+            path,
+            source=str(path),
+            source_kind=SOURCE_EXPLICIT,
+        )
+    merged: dict[str, McpServerConfig] = {}
+    for source in reversed(mcp_file_sources(cwd=cwd)):
+        for resource, relative_path in mcp_json_files(source):
+            configs = _load_mcp_json_resource(
+                resource,
+                source=f"{source.label}/{relative_path}",
+                source_kind=source.source_kind,
+            )
+            for config in configs:
+                merged[config.server_id] = config
+    return sorted(merged.values(), key=lambda item: item.server_id)
+
+
+def _load_mcp_json_resource(
+    resource: Any,
+    *,
+    source: str,
+    source_kind: str,
+) -> list[McpServerConfig]:
+    return _mcp_server_configs_from_payload(
+        json.loads(read_text(resource)),
+        source=source,
+        source_kind=source_kind,
+    )
 
 
 def _mcp_server_configs_from_payload(
     payload: Any,
     *,
     source: str,
+    source_kind: str,
 ) -> list[McpServerConfig]:
     if not isinstance(payload, dict):
         raise ValueError(f"{source} must be a JSON object")
@@ -90,7 +110,11 @@ def _mcp_server_configs_from_payload(
         payload = servers
     if isinstance(payload, list):
         return [
-            _mcp_server_config_from_mapping(item.get("server_id"), item)
+            _mcp_server_config_from_mapping(
+                item.get("server_id"),
+                item,
+                source_kind=source_kind,
+            )
             for item in payload
             if isinstance(item, dict)
         ]
@@ -98,27 +122,30 @@ def _mcp_server_configs_from_payload(
         raise ValueError(f"{source} servers must be an object or array")
     configs: list[McpServerConfig] = []
     for server_id, value in payload.items():
-        configs.append(_mcp_server_config_from_mapping(server_id, value))
+        configs.append(
+            _mcp_server_config_from_mapping(
+                server_id,
+                value,
+                source_kind=source_kind,
+            )
+        )
     return configs
 
 
 def _mcp_server_config_from_mapping(
     server_id: Any,
     value: Any,
+    *,
+    source_kind: str,
 ) -> McpServerConfig:
     if not isinstance(server_id, str) or not server_id:
         raise ValueError("MCP server id must be a non-empty string")
     if not isinstance(value, dict):
         raise ValueError("MCP server config must be an object")
-    command = value.get("command")
-    args = value.get("args", [])
     env = value.get("env")
     enabled = value.get("enabled", True)
     allowed_tools = value.get("allowed_tools", [])
-    if not isinstance(command, str) or not command:
-        raise ValueError("MCP server command must be a non-empty string")
-    if not isinstance(args, list) or not all(isinstance(item, str) for item in args):
-        raise ValueError("MCP server args must be an array of strings")
+    command, args = _resolve_command_fields(value)
     if env is not None and (
         not isinstance(env, dict)
         or not all(
@@ -136,11 +163,34 @@ def _mcp_server_config_from_mapping(
     return McpServerConfig(
         server_id=server_id,
         command=command,
-        args=tuple(args),
+        args=args,
         env=env,
         enabled=enabled,
         allowed_tools=tuple(allowed_tools),
+        source_kind=source_kind,
     )
+
+
+def _resolve_command_fields(value: Mapping[str, Any]) -> tuple[str, tuple[str, ...]]:
+    command = value.get("command")
+    command_ref = value.get("command_ref")
+    args = value.get("args", [])
+    if command and command_ref:
+        raise ValueError("MCP server config must not set both command and command_ref")
+    if not isinstance(args, list) or not all(isinstance(item, str) for item in args):
+        raise ValueError("MCP server args must be an array of strings")
+    if command_ref is not None:
+        if not isinstance(command_ref, str) or not command_ref.startswith(
+            "python_module:"
+        ):
+            raise ValueError("MCP server command_ref must use python_module:<module>")
+        module = command_ref.removeprefix("python_module:")
+        if not module:
+            raise ValueError("MCP server command_ref module must be non-empty")
+        return sys.executable, ("-m", module, *args)
+    if not isinstance(command, str) or not command:
+        raise ValueError("MCP server command must be a non-empty string")
+    return command, tuple(args)
 
 
 def list_mcp_tools(
@@ -297,3 +347,5 @@ def _validate_config(config: McpServerConfig) -> None:
         isinstance(item, str) for item in config.allowed_tools
     ):
         raise ValueError("allowed_tools must be a tuple of strings")
+    if not isinstance(config.source_kind, str) or not config.source_kind:
+        raise ValueError("source_kind must be a non-empty string")

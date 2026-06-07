@@ -400,6 +400,7 @@ def _safe_skill_metadata(skill: dict[str, Any]) -> dict[str, Any] | None:
             "description": description,
             "relative_path": _string_value(skill.get("relative_path")),
             "readiness": _string_value(skill.get("readiness")),
+            "source_kind": _string_value(skill.get("source_kind")),
         }.items()
         if value not in (None, "", [], {})
     }
@@ -433,6 +434,7 @@ def _safe_mcp_server(server: dict[str, Any]) -> dict[str, Any] | None:
         "enabled": bool(server.get("enabled")),
         "readiness": _string_value(server.get("readiness")),
         "allowed_operations": _string_list_value(server.get("allowed_operations")),
+        "source_kind": _string_value(server.get("source_kind")),
     }
 
 

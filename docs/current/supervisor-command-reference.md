@@ -197,17 +197,22 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   caller audit；`controlled_expand` 有 expand grant 和正预算时会物化 matched
   `MemoryRecord.content` 的 budgeted `materialized_text`；source artifact full
   content 走 artifact inspect / expansion 路径。
-- `skills.search` / `skills.describe` 默认读取 Isotope 自己的 skill roots：
-  `$ISOTOPE_HOME/skills`、当前项目 `.isotope/skills` 和 `~/.isotope/skills`。
-  Codex skill 目录不再默认扫描；需要兼容导入时，通过 capability 输入里的
-  `roots` 显式传入。
+- `skills.search` / `skills.describe` 默认读取 Isotope 自己的 skill assets：
+  当前项目 `isotope.extensions/skills/<skill-id>/SKILL.md`、`$ISOTOPE_HOME/skills`、
+  `~/.isotope/skills`、随 Isotope 打包的 built-in skills，以及兼容路径
+  `.isotope/skills`。`skills.search` 只返回 metadata；需要加载某个 `SKILL.md`
+  正文时再用 `skills.describe`。Codex skill 目录不再默认扫描；需要兼容导入时，
+  通过 capability 输入里的 `roots` 显式传入。
 - `mcp.servers.list` / `mcp.tools.search` / `mcp.tool.call` 默认冷加载 MCP JSON：
   `ISOTOPE_MCP_SERVERS_JSON` 可临时覆盖，`ISOTOPE_MCP_SERVERS_JSON_FILE` 可指向
-  显式配置文件；未设置时按 `$ISOTOPE_HOME/mcp_servers.json`、当前项目
-  `.isotope/mcp_servers.json`、`~/.isotope/mcp_servers.json` 查找。JSON 可写成
-  `{ "server_id": { ... } }`，也可写成 `{ "servers": { ... } }` 或
-  `{ "servers": [ ... ] }`；`mcp.tool.call` 仍只允许调用配置里的
-  `allowed_tools`。
+  显式配置文件；未设置时按当前项目 `isotope.extensions/mcp/servers.json` 和
+  `isotope.extensions/mcp/servers.d/*.json`、`$ISOTOPE_HOME/mcp_servers.json`、
+  `~/.isotope/mcp_servers.json`、built-in MCP JSON，以及兼容路径
+  `.isotope/mcp_servers.json` 查找。JSON 可写成 `{ "server_id": { ... } }`，
+  也可写成 `{ "servers": { ... } }` 或 `{ "servers": [ ... ] }`。同一层内
+  `servers.d/*.json` 按文件名排序覆盖 `servers.json`，高优先级 source 覆盖低优先级
+  source；每次 capability 调用都会重新读取 JSON，不需要重启 Supervisor。
+  `mcp.tool.call` 仍只允许调用配置里的 `allowed_tools`。
 - `write_memory` 是 runtime action，Supervisor 通过 action proposal 调用它；默认 action
   registry 已启用它，但 policy 要求显式 approval。批准后只追加结构化
   `memory.record_created` event，query/read model 返回 summary / refs / provenance。

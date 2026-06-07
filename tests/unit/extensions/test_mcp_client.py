@@ -47,6 +47,7 @@ def test_list_mcp_servers_returns_command_summary_without_raw_env() -> None:
                 "enabled": True,
                 "readiness": "ready",
                 "allowed_operations": ["tools/list", "tools/call"],
+                "source_kind": "explicit",
             }
         ],
     }
@@ -164,6 +165,166 @@ def test_load_mcp_server_configs_from_json_file(monkeypatch, tmp_path) -> None:
             command=sys.executable,
             args=(str(FIXTURE_SERVER),),
             allowed_tools=("echo",),
+            source_kind="explicit",
+        )
+    ]
+
+
+def test_load_mcp_server_configs_from_project_isotope_extensions(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    project = tmp_path / "project"
+    config_dir = project / "isotope.extensions" / "mcp"
+    config_dir.mkdir(parents=True)
+    (config_dir / "servers.json").write_text(
+        json.dumps(
+            {
+                "servers": {
+                    "echo": {
+                        "command": sys.executable,
+                        "args": [str(FIXTURE_SERVER)],
+                        "allowed_tools": ["echo"],
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ISOTOPE_MCP_SERVERS_JSON", raising=False)
+    monkeypatch.delenv("ISOTOPE_MCP_SERVERS_JSON_FILE", raising=False)
+    monkeypatch.delenv("ISOTOPE_HOME", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.chdir(project)
+
+    configs = load_mcp_server_configs()
+
+    assert configs == [
+        McpServerConfig(
+            server_id="echo",
+            command=sys.executable,
+            args=(str(FIXTURE_SERVER),),
+            allowed_tools=("echo",),
+            source_kind="project",
+        )
+    ]
+
+
+def test_mcp_servers_d_fragments_override_base_in_sorted_order(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    project = tmp_path / "project"
+    config_dir = project / "isotope.extensions" / "mcp"
+    fragments = config_dir / "servers.d"
+    fragments.mkdir(parents=True)
+    (config_dir / "servers.json").write_text(
+        json.dumps(
+            {
+                "servers": {
+                    "echo": {"command": "base", "allowed_tools": ["echo"]}
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    (fragments / "10-first.json").write_text(
+        json.dumps(
+            {
+                "servers": {
+                    "echo": {"command": "first", "allowed_tools": ["echo"]}
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    (fragments / "20-second.json").write_text(
+        json.dumps(
+            {
+                "servers": {
+                    "echo": {"command": "second", "allowed_tools": ["echo"]}
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ISOTOPE_MCP_SERVERS_JSON", raising=False)
+    monkeypatch.delenv("ISOTOPE_MCP_SERVERS_JSON_FILE", raising=False)
+    monkeypatch.delenv("ISOTOPE_HOME", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.chdir(project)
+
+    configs = load_mcp_server_configs()
+
+    assert configs[0].command == "second"
+    assert configs[0].source_kind == "project"
+
+
+def test_project_mcp_config_overrides_user_and_builtin(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    home = tmp_path / "home"
+    isotope_home = tmp_path / "isotope-home"
+    project = tmp_path / "project"
+    isotope_home.mkdir()
+    (isotope_home / "mcp_servers.json").write_text(
+        json.dumps(
+            {"servers": {"echo": {"command": "user", "allowed_tools": ["echo"]}}}
+        ),
+        encoding="utf-8",
+    )
+    project_config = project / "isotope.extensions" / "mcp"
+    project_config.mkdir(parents=True)
+    (project_config / "servers.json").write_text(
+        json.dumps(
+            {
+                "servers": {
+                    "echo": {"command": "project", "allowed_tools": ["echo"]}
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ISOTOPE_MCP_SERVERS_JSON", raising=False)
+    monkeypatch.delenv("ISOTOPE_MCP_SERVERS_JSON_FILE", raising=False)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("ISOTOPE_HOME", str(isotope_home))
+    monkeypatch.chdir(project)
+
+    configs = load_mcp_server_configs()
+
+    echo = next(config for config in configs if config.server_id == "echo")
+    assert echo.command == "project"
+    assert echo.source_kind == "project"
+
+
+def test_mcp_command_ref_python_module_resolves_to_current_python(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv(
+        "ISOTOPE_MCP_SERVERS_JSON",
+        json.dumps(
+            {
+                "servers": {
+                    "docs": {
+                        "command_ref": "python_module:isotope.builtin_mcp.docs_server",
+                        "allowed_tools": ["search_docs"],
+                    }
+                }
+            }
+        ),
+    )
+
+    configs = load_mcp_server_configs()
+
+    assert configs == [
+        McpServerConfig(
+            server_id="docs",
+            command=sys.executable,
+            args=("-m", "isotope.builtin_mcp.docs_server"),
+            allowed_tools=("search_docs",),
+            source_kind="explicit",
         )
     ]
 
@@ -203,5 +364,6 @@ def test_load_mcp_server_configs_from_project_local_json(
             command=sys.executable,
             args=(str(FIXTURE_SERVER),),
             allowed_tools=("echo",),
+            source_kind="legacy_project",
         )
     ]

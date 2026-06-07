@@ -56,9 +56,10 @@ def test_discover_skills_returns_metadata_without_body(tmp_path) -> None:
     assert skill["skill_id"] == "llm2docx"
     assert skill["name"] == "llm2docx"
     assert skill["description"] == "Fill Word templates and inspect docx files."
-    assert skill["source_root"] == str(root)
+    assert "source_root" not in skill
     assert skill["relative_path"] == "docx/SKILL.md"
     assert skill["readiness"] == "ready"
+    assert skill["source_kind"] == "explicit"
     assert "body" not in skill
     assert "PRIVATE BODY SHOULD NOT APPEAR" not in repr(result)
 
@@ -116,8 +117,70 @@ def test_discover_skills_skips_invalid_skill_without_failing_scan(tmp_path) -> N
         {
             "relative_path": "invalid/SKILL.md",
             "readiness": "invalid_frontmatter",
+            "source_kind": "explicit",
         }
     ]
+
+
+def test_discover_skills_loads_project_isotope_extensions(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    project = tmp_path / "project"
+    _write_skill(
+        project / "isotope.extensions" / "skills",
+        "project",
+        name="project-skill",
+        description="Zebra project extension skill.",
+    )
+    monkeypatch.delenv("ISOTOPE_SKILL_ROOTS", raising=False)
+    monkeypatch.delenv("ISOTOPE_HOME", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.chdir(project)
+
+    result = discover_skills(query="zebra")
+
+    assert [skill["skill_id"] for skill in result["skills"]] == ["project-skill"]
+    assert result["skills"][0]["source_kind"] == "project"
+
+
+def test_discover_skills_loads_packaged_builtin_skill(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.delenv("ISOTOPE_SKILL_ROOTS", raising=False)
+    monkeypatch.delenv("ISOTOPE_HOME", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.chdir(tmp_path)
+
+    result = discover_skills(query="isotope-extension-guide")
+
+    assert result["skills"][0]["skill_id"] == "isotope-extension-guide"
+    assert result["skills"][0]["source_kind"] == "builtin"
+
+
+def test_project_skill_overrides_builtin_skill_id(tmp_path, monkeypatch) -> None:
+    project = tmp_path / "project"
+    _write_skill(
+        project / "isotope.extensions" / "skills",
+        "override",
+        name="isotope-extension-guide",
+        description="Project override for extension docs.",
+    )
+    monkeypatch.delenv("ISOTOPE_SKILL_ROOTS", raising=False)
+    monkeypatch.delenv("ISOTOPE_HOME", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.chdir(project)
+
+    result = discover_skills(query="extension")
+    match = next(
+        skill
+        for skill in result["skills"]
+        if skill["skill_id"] == "isotope-extension-guide"
+    )
+
+    assert match["description"] == "Project override for extension docs."
+    assert match["source_kind"] == "project"
 
 
 def test_default_skill_roots_are_isotope_native_and_project_local(
@@ -135,7 +198,7 @@ def test_default_skill_roots_are_isotope_native_and_project_local(
         description="Isotope native skill.",
     )
     _write_skill(
-        project / ".isotope" / "skills",
+        project / "isotope.extensions" / "skills",
         "project",
         name="project-skill",
         description="Project local skill.",
@@ -153,7 +216,22 @@ def test_default_skill_roots_are_isotope_native_and_project_local(
 
     result = discover_skills()
 
-    assert [skill["skill_id"] for skill in result["skills"]] == [
-        "native-skill",
-        "project-skill",
-    ]
+    skill_ids = [skill["skill_id"] for skill in result["skills"]]
+    assert "native-skill" in skill_ids
+    assert "project-skill" in skill_ids
+    assert "codex-skill" not in skill_ids
+
+
+def test_explicit_roots_can_import_codex_skills(tmp_path) -> None:
+    codex_root = tmp_path / "codex" / "skills"
+    _write_skill(
+        codex_root,
+        "docx",
+        name="codex-docx",
+        description="Codex compatibility skill.",
+    )
+
+    result = discover_skills(roots=[codex_root])
+
+    assert [skill["skill_id"] for skill in result["skills"]] == ["codex-docx"]
+    assert result["skills"][0]["source_kind"] == "explicit"
