@@ -317,6 +317,88 @@ describe('appState', () => {
     ]);
   });
 
+  test('includes compact capacity results in assistant history for follow-up questions', async () => {
+    const calls: Array<{ question: string; history?: Array<{ role: string; content: string }> }> = [];
+    const state = createAppState({
+      agentClient: {
+        loadSnapshot: async () => realSnapshot(),
+        loadScreenArtifactContent: async () => { throw new Error('not used'); },
+        resolveApproval: async () => ({
+          status: 'ok',
+          approvalId: 'decision-1',
+          resolution: 'approved',
+          runStatus: 'completed',
+          snapshot: realSnapshot()
+        }),
+        askDesktopQuestion: async (question, handlers) => {
+          calls.push({
+            question,
+            history: handlers?.history
+          });
+          if (question === '调研 Agent OS') {
+            return {
+              question,
+              answer: '调研和规划已完成。',
+              provider: 'deterministic_test',
+              model: 'deterministic_test',
+              capacityCalls: [
+                {
+                  id: 'capacity_research_search',
+                  capacityId: 'research.search',
+                  title: '检索资料',
+                  status: 'ok',
+                  inputSummary: { query: 'Agent OS 前沿设计 2025 2026' },
+                  resultSummary: {
+                    agent_loop_research_provider: 'tavily',
+                    agent_loop_research_report: 'Tavily returned 5 source-backed results.',
+                    agent_loop_research_source_count: 5
+                  },
+                  details: [
+                    {
+                      label: 'Result',
+                      kind: 'json',
+                      content: {
+                        agent_loop_research_source_previews: [
+                          {
+                            provider_rank: 1,
+                            source_id: 'src_001',
+                            title: 'Agentic OS 技术详解',
+                            url: 'https://example.test/agentic-os',
+                            snippet: 'Agent OS 强调调度、记忆、sandbox runtime。',
+                            why_used: 'Tavily search result rank 1'
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            };
+          }
+          return {
+            question,
+            answer: '基于上一轮调研解释。',
+            provider: 'deterministic_test',
+            model: 'deterministic_test'
+          };
+        }
+      }
+    });
+
+    await state.initialize();
+    await state.askDesktopQuestion('调研 Agent OS');
+    await state.askDesktopQuestion('给我讲一下');
+
+    const followUpHistory = calls[1].history ?? [];
+    const assistantHistory = followUpHistory.find((message) => message.role === 'assistant');
+    expect(assistantHistory?.content).toContain('调研和规划已完成。');
+    expect(assistantHistory?.content).toContain('research.search');
+    expect(assistantHistory?.content).toContain('Tavily returned 5 source-backed results.');
+    expect(assistantHistory?.content).toContain('Agentic OS 技术详解');
+    expect(assistantHistory?.content).toContain('sandbox runtime');
+    expect(assistantHistory?.content.length).toBeLessThan(2000);
+  });
+
   test('resolves approval and refreshes snapshot from backend response', async () => {
     const before = realSnapshot();
     const after: IsotopeSnapshot = {

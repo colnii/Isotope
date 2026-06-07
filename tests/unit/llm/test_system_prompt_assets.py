@@ -84,6 +84,13 @@ def test_supervisor_conversation_prompt_does_not_encode_fixed_intent_routes():
     assert "report_capability_gap" in prompt
 
 
+def test_goal_planning_prompt_reuses_conversation_research_context():
+    prompt = load_prompt_template("goal_planning_user")
+
+    assert "conversation.research_context" in prompt
+    assert "不要把已完成的调研重新规划成搜索或资料搜集任务" in prompt
+
+
 def test_prompt_template_renderer_replaces_placeholders_and_rejects_missing_values():
     rendered = render_prompt_text(
         "before {{ first }} middle {{second}} after",
