@@ -94,6 +94,9 @@ def _candidate_review(candidate: object) -> dict[str, Any]:
     sticker = _sticker_from_candidate(candidate)
     if sticker is not None:
         review["sticker"] = sticker
+    sticker_selection = _sticker_selection_from_candidate(candidate)
+    if sticker_selection is not None:
+        review["sticker_selection"] = sticker_selection
     reply_preview = _reply_preview(candidate)
     if reply_preview:
         review["reply_preview"] = reply_preview
@@ -101,20 +104,14 @@ def _candidate_review(candidate: object) -> dict[str, Any]:
 
 
 def _sticker_from_candidate(candidate: dict[str, Any]) -> dict[str, Any] | None:
-    metadata = candidate.get("metadata", {})
-    if isinstance(metadata, dict):
-        selection = metadata.get("sticker_selection")
-        if isinstance(selection, dict):
-            entry = selection.get("entry", {})
-            if isinstance(entry, dict):
-                return {
-                    "sticker_id": str(entry.get("sticker_id", "")),
-                    "pack_id": str(entry.get("pack_id", "")),
-                    "meaning": str(entry.get("meaning", "")),
-                    "reasons": list(selection.get("reasons", []))
-                    if isinstance(selection.get("reasons", []), list)
-                    else [],
-                }
+    selection = _sticker_selection_from_candidate(candidate)
+    if selection is not None and selection["selected"] and selection["sticker_id"]:
+        return {
+            "sticker_id": selection["sticker_id"],
+            "pack_id": selection["pack_id"],
+            "meaning": selection["meaning"],
+            "reasons": list(selection["reasons"]),
+        }
     action = candidate.get("reply_action", {})
     if not isinstance(action, dict):
         return None
@@ -132,6 +129,45 @@ def _sticker_from_candidate(candidate: dict[str, Any]) -> dict[str, Any] | None:
                 else [],
             }
     return None
+
+
+def _sticker_selection_from_candidate(
+    candidate: dict[str, Any],
+) -> dict[str, Any] | None:
+    metadata = candidate.get("metadata", {})
+    if not isinstance(metadata, dict):
+        return None
+    raw_selection = metadata.get("sticker_selection")
+    if not isinstance(raw_selection, dict):
+        return None
+    selected = _bool_field(raw_selection, "selected", default="entry" in raw_selection)
+    selection = _dict_field(raw_selection, "selection")
+    if not selection and "entry" in raw_selection:
+        selection = raw_selection
+    entry = _dict_field(selection, "entry")
+    media = _dict_field(entry, "media")
+    reasons = _string_list(selection.get("reasons", []))
+    candidate_count = _int_or_default(
+        raw_selection.get("candidate_count"),
+        1 if selected else 0,
+    )
+    return {
+        "selected": selected,
+        "sticker_id": str(entry.get("sticker_id", "")),
+        "pack_id": str(entry.get("pack_id", "")),
+        "media_ref": str(media.get("media_ref", "")),
+        "media_source": str(media.get("source", "")),
+        "local_path": str(media.get("local_path", "")),
+        "meaning": str(entry.get("meaning", "")),
+        "tags": _string_list(entry.get("tags", [])),
+        "reasons": reasons,
+        "blocked_reasons": _string_list(raw_selection.get("blocked_reasons", [])),
+        "recent_sticker_ids": _string_list(raw_selection.get("recent_sticker_ids", [])),
+        "emotion": str(raw_selection.get("emotion", "")),
+        "scene_tags": _string_list(raw_selection.get("scene_tags", [])),
+        "candidate_count": candidate_count,
+        "allow_sticker_only": _bool_field(selection, "allow_sticker_only", default=False),
+    }
 
 
 def _reply_preview(candidate: dict[str, Any]) -> str:
@@ -219,8 +255,30 @@ def _dict_field(payload: dict[str, Any], key: str) -> dict[str, Any]:
     return dict(value)
 
 
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value if isinstance(item, str)]
+
+
+def _bool_field(
+    payload: dict[str, Any],
+    key: str,
+    *,
+    default: bool,
+) -> bool:
+    value = payload.get(key)
+    return value if isinstance(value, bool) else default
+
+
 def _int_field(payload: dict[str, Any], key: str) -> int:
     value = payload.get(key, 0)
     if isinstance(value, bool) or not isinstance(value, int):
         return 0
+    return value
+
+
+def _int_or_default(value: object, default: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return default
     return value

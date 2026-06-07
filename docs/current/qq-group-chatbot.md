@@ -290,9 +290,13 @@ isotope-social qq review-dry-run --state-root .isotope/qq \
 ```
 
 The report writes `ready_for_send`, `summary`, per-turn proposed and rejected
-actions, `sticker_candidate_count`, and `warnings`. `ready_for_send` is not
-permission to send; it is only a review field. Read the warnings and still
-enable sends manually.
+actions, `reply_preview`, `sticker_candidate_count`, and `warnings`. For sticker
+turns, inspect each candidate's `sticker_selection`: selected sticker candidates
+show `sticker_id`, `pack_id`, `media_ref`, `media_source`, `local_path`,
+`meaning`, `tags`, `reasons`, `candidate_count`, and `allow_sticker_only`; text
+fallback candidates still show `blocked_reasons`, `recent_sticker_ids`,
+`emotion`, and `scene_tags`. `ready_for_send` is not permission to send; it is
+only a review field. Read the warnings and still enable sends manually.
 
 Export the audit log, record observed failures, and close the beta day with a
 daily report:

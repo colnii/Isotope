@@ -279,7 +279,12 @@ Before enabling sends, review:
 
 - wake reason;
 - selected or rejected candidates;
-- sticker selection reasons;
+- `reply_preview`;
+- sticker `sticker_selection` fields, including `sticker_id`, `pack_id`,
+  `media_ref`, `media_source`, `local_path`, `meaning`, `tags`, `reasons`,
+  `candidate_count`, and `allow_sticker_only`;
+- text fallback `sticker_selection.blocked_reasons`, `recent_sticker_ids`,
+  `emotion`, and `scene_tags`;
 - `dry-run-review.json` summary, `sticker_candidate_count`, and `warnings`;
 - capability reports;
 - whether send feedback from a previous turn suppresses repeated replies.
