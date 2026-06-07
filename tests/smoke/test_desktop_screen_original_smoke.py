@@ -129,14 +129,16 @@ def test_desktop_chat_screen_observe_original_image_endpoint_smoke(tmp_path, mon
 
         assert chat_response.status == 200
         events = _parse_sse(chat_body)
-        assert [event["event"] for event in events] == [
+        event_names = [event["event"] for event in events]
+        assert event_names[:4] == [
             "start",
             "capacity_start",
+            "capacity_update",
             "capacity_result",
-            "delta",
-            "done",
         ]
-        capacity_result = events[2]["data"]
+        assert set(event_names[4:-1]) == {"delta"}
+        assert event_names[-1] == "done"
+        capacity_result = events[3]["data"]
         assert capacity_result["capacity_id"] == "screen.observe"
         assert capacity_result["status"] == "ok"
         assert capacity_result["result"][

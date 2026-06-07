@@ -78,14 +78,16 @@ def test_desktop_chat_capacity_result_can_feed_model_and_http_artifact_content(
 
     assert response.status == 200
     events = _parse_sse(body)
-    assert [event["event"] for event in events] == [
+    event_names = [event["event"] for event in events]
+    assert event_names[:4] == [
         "start",
         "capacity_start",
+        "capacity_update",
         "capacity_result",
-        "delta",
-        "done",
     ]
-    capacity_result = events[2]["data"]
+    assert set(event_names[4:-1]) == {"delta"}
+    assert event_names[-1] == "done"
+    capacity_result = events[3]["data"]
     assert capacity_result["capacity_id"] == "memory.query"
     assert capacity_result["status"] == "ok"
     assert "result" + "_summary" not in capacity_result

@@ -251,8 +251,8 @@ def test_research_cli_inspect_returns_research_artifact_json(
     assert payload["status"] == "ok"
     assert payload["artifact"]["artifact_type"] == "research.report"
     assert payload["artifact"]["summary"] == (
-        "Isotope Research Fixture Local research fixture content for "
-        "source-backed artifact tests."
+        f"Research report for {local_research_url}: Isotope Research Fixture "
+        "Local research fixture content for source-backed artifact tests."
     )
     assert payload["artifact"]["ref"] == {
         "ref_type": "artifact",
@@ -414,7 +414,10 @@ def test_research_cli_inspect_prints_research_artifact_plain(
     assert result.returncode == 0, result.stderr
     assert "status: ok" in result.stdout
     assert "artifact: research.raw_transcript artifact_001" in result.stdout
-    assert f"summary: raw research provider output: {local_research_url}" in result.stdout
+    assert (
+        f"summary: Raw provider payload for research query: {local_research_url}"
+        in result.stdout
+    )
     assert '"provider": "tavily"' in result.stdout
 
 

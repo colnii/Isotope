@@ -111,19 +111,24 @@ def test_desktop_chat_can_drive_search_read_patch_and_diff_artifact(
 
     assert response.status == 200
     events = _parse_sse(body)
-    assert [event["event"] for event in events] == [
+    event_names = [event["event"] for event in events]
+    assert event_names[:13] == [
         "start",
         "capacity_start",
+        "capacity_update",
         "capacity_result",
         "capacity_start",
+        "capacity_update",
         "capacity_result",
         "capacity_start",
+        "capacity_update",
         "capacity_result",
         "capacity_start",
+        "capacity_update",
         "capacity_result",
-        "delta",
-        "done",
     ]
+    assert set(event_names[13:-1]) == {"delta"}
+    assert event_names[-1] == "done"
     capacity_results = [
         event["data"] for event in events if event["event"] == "capacity_result"
     ]
