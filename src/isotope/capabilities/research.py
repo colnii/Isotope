@@ -93,6 +93,8 @@ def run_research_search(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
     if isinstance(research, Mapping):
         research_search["report_summary"] = _research_report_summary(research)
         research_search["source_previews"] = _research_source_previews(sources)
+        research_search["content_status"] = _research_content_status(research)
+        research_search["content_note"] = _research_content_note(research)
     error = payload.get("error")
     if isinstance(error, Mapping):
         research_search["error"] = {
@@ -238,6 +240,28 @@ def _research_report_summary(research: Mapping[str, Any]) -> str:
         return ""
     summary = report.get("summary")
     return _truncate_text(summary.strip(), 1000) if isinstance(summary, str) else ""
+
+
+def _research_content_status(research: Mapping[str, Any]) -> str:
+    provenance = research.get("provenance")
+    if isinstance(provenance, Mapping):
+        mode = provenance.get("content_mode")
+        if isinstance(mode, str) and mode.strip():
+            return mode.strip()
+    return "source_preview"
+
+
+def _research_content_note(research: Mapping[str, Any]) -> str:
+    limitations = []
+    report = research.get("report")
+    if isinstance(report, Mapping) and isinstance(report.get("limitations"), list):
+        limitations = [item for item in report["limitations"] if isinstance(item, str)]
+    if any("snippet" in item.lower() for item in limitations):
+        return (
+            "Research result contains source-backed previews from search snippets, "
+            "not full article text."
+        )
+    return "Research result contains source-backed previews, not full article text."
 
 
 def _research_source_previews(sources: Any) -> list[dict[str, Any]]:

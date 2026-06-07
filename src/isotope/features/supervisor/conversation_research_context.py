@@ -40,6 +40,12 @@ def _research_context_item(observation: dict[str, Any]) -> dict[str, Any] | None
         for key, value in {
             "status": _string_value(result.get("agent_loop_research_search_status")),
             "report": _string_value(result.get("agent_loop_research_report")),
+            "content_status": _string_value(
+                result.get("agent_loop_research_content_status")
+            ),
+            "content_note": _string_value(
+                result.get("agent_loop_research_content_note")
+            ),
             "source_count": _int_value(result.get("agent_loop_research_source_count")),
         }.items()
         if value not in ("", 0, None)

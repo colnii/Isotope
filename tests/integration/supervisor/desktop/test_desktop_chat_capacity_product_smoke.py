@@ -169,16 +169,19 @@ def _run_product_flow(
         )
     )
 
-    assert [event.event for event in events] == [
+    assert [event.event for event in events[:3]] == [
         "capacity_start",
+        "capacity_update",
         "capacity_result",
-        "delta",
     ]
-    assert events[2].payload["text"]
+    answer = "".join(
+        event.payload["text"] for event in events if event.event == "delta"
+    )
+    assert answer
     return {
         "start": events[0].payload,
-        "result": events[1].payload,
-        "answer": events[2].payload["text"],
+        "result": events[2].payload,
+        "answer": answer,
         "second_prompt": json.dumps(provider.calls[1]["messages"], ensure_ascii=False),
         "rendered": json.dumps(
             {

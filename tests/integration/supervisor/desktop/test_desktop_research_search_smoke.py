@@ -107,14 +107,14 @@ def test_desktop_chat_research_search_reports_default_codex_failure(
 
     assert response.status == 200
     events = _parse_sse(body)
-    assert [event["event"] for event in events] == [
+    assert [event["event"] for event in events[:4]] == [
         "start",
         "capacity_start",
+        "capacity_update",
         "capacity_result",
-        "delta",
-        "done",
     ]
-    capacity_result = events[2]["data"]
+    assert events[-1]["event"] == "done"
+    capacity_result = events[3]["data"]
     assert capacity_result["capacity_id"] == "research.search"
     assert capacity_result["title"] == "Research Search"
     assert capacity_result["status"] == "blocked"
@@ -208,19 +208,19 @@ def test_desktop_chat_research_search_uses_configured_tavily_internally(
 
     assert response.status == 200
     events = _parse_sse(body)
-    assert [event["event"] for event in events] == [
+    assert [event["event"] for event in events[:4]] == [
         "start",
         "capacity_start",
+        "capacity_update",
         "capacity_result",
-        "delta",
-        "done",
     ]
+    assert events[-1]["event"] == "done"
     capacity_start = events[1]["data"]
     assert capacity_start["inputs"] == {
         "query": "desktop tavily configured policy",
         "root": str(tmp_path),
     }
-    capacity_result = events[2]["data"]
+    capacity_result = events[3]["data"]
     assert capacity_result["status"] == "ok"
     assert capacity_result["result"]["agent_loop_research_provider"] == "tavily"
     assert provider_calls == [
@@ -291,7 +291,10 @@ def test_research_runtime_private_tavily_exact_url_writes_artifacts(
         "research.report",
     ]
     report_artifact = research_search["artifacts"][1]
-    assert report_artifact["summary"] == research_search["report_summary"]
+    assert report_artifact["summary"] == (
+        f"Research report for {local_research_url}: "
+        f"{research_search['report_summary']}"
+    )
 
 
 @pytest.fixture

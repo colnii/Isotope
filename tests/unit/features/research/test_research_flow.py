@@ -56,12 +56,15 @@ def test_research_flow_persists_raw_and_normalized_artifacts(tmp_path):
         {
             "artifact_type": "research.raw_transcript",
             "ref": result.artifact_refs[0].to_dict(),
-            "summary": "raw research provider output: agent memory retrieval",
+            "summary": "Raw provider payload for research query: agent memory retrieval",
         },
         {
             "artifact_type": "research.report",
             "ref": result.artifact_refs[1].to_dict(),
-            "summary": "Test summary for agent memory retrieval.",
+            "summary": (
+                "Research report for agent memory retrieval: "
+                "Test summary for agent memory retrieval."
+            ),
         },
     ]
     records = [
@@ -72,7 +75,10 @@ def test_research_flow_persists_raw_and_normalized_artifacts(tmp_path):
         "research.raw_transcript",
         "research.report",
     ]
-    assert records[1]["summary"] == "Test summary for agent memory retrieval."
+    assert records[1]["summary"] == (
+        "Research report for agent memory retrieval: "
+        "Test summary for agent memory retrieval."
+    )
 
 
 def test_research_flow_persists_tavily_execution_artifacts(tmp_path):

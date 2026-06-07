@@ -240,6 +240,11 @@ def test_research_search_uses_runtime_provider_policy_by_default(
         research_search["report_summary"]
         == "Codex research summary for capacity research integration."
     )
+    assert research_search["content_status"] == "source_preview"
+    assert (
+        research_search["content_note"]
+        == "Research result contains source-backed previews, not full article text."
+    )
     assert research_search["source_previews"] == [
         {
             "source_id": "src_001",
@@ -333,6 +338,8 @@ def test_research_search_private_tavily_policy_uses_research_flow_artifacts(
     research_search = result["research_search"]
     assert research_search["provider"] == "tavily"
     assert research_search["source_count"] == 1
+    assert research_search["content_status"] == "source_preview"
+    assert "source-backed previews" in research_search["content_note"]
     assert [item["artifact_type"] for item in research_search["artifacts"]] == [
         "research.raw_transcript",
         "research.report",
@@ -555,6 +562,5 @@ def test_research_promote_capability_builds_public_metadata_proposal_summary(tmp
     assert "raw report body" not in output
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
-
 
 

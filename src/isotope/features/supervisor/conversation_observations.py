@@ -185,6 +185,7 @@ def _capability_result_detail_label(capacity_id: str) -> str:
         "code.read": "Code read result",
         "code.apply_patch": "Patch result",
         "artifact.diff_result": "Artifact result",
+        "supervisor.project_status": "Project status summary",
         "skills.search": "Skills search result",
         "skills.describe": "Skill description",
         "mcp.servers.list": "MCP servers",
@@ -612,29 +613,43 @@ def _project_status_observation(capability_run: dict[str, Any]) -> dict[str, Any
     summary = capability_run.get("project_state")
     if not isinstance(summary, dict):
         return None
+    activities = summary.get("activities")
+    approvals = summary.get("approvals")
+    artifacts = summary.get("artifacts")
+    active_goal = _safe_mapping(summary.get("active_goal"))
+    active_agent = _safe_mapping(summary.get("active_agent"))
     return {
         "kind": "project_state",
         "status": capability_run.get("status"),
         "project_state": {
             "snapshot_id": summary.get("snapshot_id"),
             "generated_at": summary.get("generated_at"),
-            "source": summary.get("source"),
-            "active_goal": summary.get("active_goal"),
-            "active_agent": summary.get("active_agent"),
+            "active_goal": _compact_project_state_node(active_goal),
+            "active_agent": _compact_project_state_node(active_agent),
             "counts": _safe_mapping(summary.get("counts")),
-            "approvals": _safe_mapping_list(summary.get("approvals"), limit=10),
-            "activities": _safe_mapping_list(summary.get("activities"), limit=20),
-            "artifacts": _safe_mapping_list(summary.get("artifacts"), limit=10),
+            "activity_count": len(activities) if isinstance(activities, list) else 0,
+            "approval_count": len(approvals) if isinstance(approvals, list) else 0,
+            "artifact_count": len(artifacts) if isinstance(artifacts, list) else 0,
             "self_repair_workers": _safe_mapping_list(
                 summary.get("self_repair_workers"),
-                limit=10,
+                limit=3,
             ),
             "latest_self_repair": _safe_mapping(summary.get("latest_self_repair")),
             "open_capability_gaps": _safe_mapping_list(
                 summary.get("open_capability_gaps"),
-                limit=10,
+                limit=3,
             ),
         },
+    }
+
+
+def _compact_project_state_node(value: dict[str, Any]) -> dict[str, Any]:
+    if not value:
+        return {}
+    return {
+        key: _clip_text(text.strip(), limit=180)
+        for key in ("id", "kind", "status", "title")
+        if isinstance((text := value.get(key)), str) and text.strip()
     }
 
 

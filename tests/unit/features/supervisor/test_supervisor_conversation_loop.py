@@ -1305,7 +1305,9 @@ def test_conversation_loop_returns_capacity_error_when_execution_times_out(
     assert events[1].payload["status"] == "error"
     assert events[1].payload["result"] == {
         "error_type": "TimeoutError",
-        "message": "capacity execution timed out",
+        "message": "research.search capacity execution timed out after 0.05s",
+        "capacity_id": "research.search",
+        "timeout_seconds": 0.05,
     }
     assert events[2].payload == {
         "text": "research.search 执行超时，未拿到网页内容。"
@@ -1353,7 +1355,7 @@ def test_conversation_loop_stops_when_model_repeats_failed_capacity(
     ]
     assert events[1].payload["status"] == "error"
     assert events[2].payload == {
-        "text": "research.search 执行失败：capacity execution timed out"
+        "text": "research.search 执行失败：research.search capacity execution timed out after 120s"
     }
     assert len(provider.calls) == 2
 

@@ -118,12 +118,25 @@ def stream_desktop_chat_events(
             capacity_runner=capacity_runner,
             timeout_seconds=chat_timeout_seconds,
         ):
+            if event.event == "delta":
+                text = event.payload.get("text")
+                if isinstance(text, str):
+                    for chunk in desktop_chat_answer_chunks(text):
+                        yield DesktopChatStreamEvent(
+                            event="delta",
+                            payload={"text": chunk},
+                            provider=event.provider,
+                            model=event.model,
+                        )
+                    continue
             yield DesktopChatStreamEvent(
                 event=event.event,
                 payload=event.payload,
                 provider=event.provider,
                 model=event.model,
             )
+            if event.event == "capacity_start":
+                yield _desktop_capacity_update_event(event)
         return
     chat_context = build_desktop_chat_context(capacity_runner=capacity_runner)
     if capacity_provider is not None:
@@ -290,6 +303,31 @@ def desktop_chat_answer_chunks(answer: str, *, chunk_size: int = 12) -> list[str
     if isinstance(chunk_size, bool) or not isinstance(chunk_size, int) or chunk_size <= 0:
         raise ValueError("chunk_size must be a positive integer")
     return [answer[index : index + chunk_size] for index in range(0, len(answer), chunk_size)]
+
+
+def _desktop_capacity_update_event(
+    event: Any,
+) -> DesktopChatStreamEvent:
+    payload = event.payload
+    return DesktopChatStreamEvent(
+        event="capacity_update",
+        payload={
+            "id": payload.get("id"),
+            "capacity_id": payload.get("capacity_id"),
+            "title": payload.get("title"),
+            "status": "running",
+            "result": {"phase": "executing"},
+            "details": [
+                {
+                    "label": "Progress",
+                    "kind": "json",
+                    "content": {"phase": "executing"},
+                }
+            ],
+        },
+        provider=event.provider,
+        model=event.model,
+    )
 
 
 def _desktop_chat_messages(

@@ -42,10 +42,11 @@ from .conversation_observations import (
     screen_artifact_detail_from_agent_loop,
 )
 from .conversation_research_context import research_context_from_observations
-
-
-GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS = 90.0
-RESEARCH_SEARCH_CAPACITY_TIMEOUT_SECONDS = 120.0
+from .conversation_timeouts import (
+    CapacityExecutionTimeout,
+    capacity_timeout_seconds as _capacity_timeout_seconds,
+    execute_capacity_step_with_timeout,
+)
 
 
 class SupervisorConversationProvider(Protocol):
@@ -527,6 +528,10 @@ def _run_capability_decision(
             "error_type": type(exc).__name__,
             "message": str(exc) or type(exc).__name__,
         }
+        if isinstance(exc, CapacityExecutionTimeout):
+            result["error_type"] = "TimeoutError"
+            result["capacity_id"] = exc.capacity_id
+            result["timeout_seconds"] = exc.timeout_seconds
         extra_details = []
         private = {
             "model_observation": {
@@ -572,53 +577,20 @@ def _execute_capacity_step_with_timeout(
     state_root: Path,
     timeout_seconds: float | None,
 ) -> dict[str, Any]:
-    if timeout_seconds is None:
-        return _execute_agent_loop_capacity_step(
-            goal=goal,
-            capability_id=capability_id,
-            inputs=inputs,
-            state_root=state_root,
-        )
-    if timeout_seconds <= 0:
-        raise TimeoutError("capacity execution timed out")
-    executor = ThreadPoolExecutor(max_workers=1)
-    pending_call = executor.submit(
-        _execute_agent_loop_capacity_step,
+    return execute_capacity_step_with_timeout(
         goal=goal,
         capability_id=capability_id,
         inputs=inputs,
         state_root=state_root,
+        timeout_seconds=timeout_seconds,
+        executor_func=_execute_agent_loop_capacity_step,
     )
-    try:
-        return pending_call.result(timeout=timeout_seconds)
-    except FutureTimeoutError as exc:
-        pending_call.cancel()
-        raise TimeoutError("capacity execution timed out") from exc
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
 
 
 def _scoped_coding_steps(value: Any) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         return 6
     return min(max(value, 1), 12)
-
-
-def _capacity_timeout_seconds(
-    capacity_id: str,
-    timeout_seconds: float | None,
-) -> float | None:
-    if capacity_id == "research.search":
-        if timeout_seconds is None:
-            return RESEARCH_SEARCH_CAPACITY_TIMEOUT_SECONDS
-        if timeout_seconds < 1:
-            return timeout_seconds
-        return max(timeout_seconds, RESEARCH_SEARCH_CAPACITY_TIMEOUT_SECONDS)
-    if capacity_id != "supervisor.goal_plan":
-        return timeout_seconds
-    if timeout_seconds is None:
-        return GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS
-    return max(timeout_seconds, GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS)
 
 
 def _repeated_failed_capacity_answer(

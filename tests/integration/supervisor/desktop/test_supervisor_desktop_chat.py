@@ -459,13 +459,15 @@ def test_desktop_chat_stream_uses_conversation_loop_for_model_capacity_choice(
         )
     )
 
-    assert [event.event for event in events] == [
+    assert [event.event for event in events[:3]] == [
         "capacity_start",
+        "capacity_update",
         "capacity_result",
-        "delta",
     ]
-    assert events[1].payload["result"]["agent_loop_tick_status"] == "executed"
-    assert events[2].payload["text"] == "已经通过 Supervisor agent loop 执行 capability。"
+    assert events[2].payload["result"]["agent_loop_tick_status"] == "executed"
+    assert "".join(event.payload["text"] for event in events[3:]) == (
+        "已经通过 Supervisor agent loop 执行 capability。"
+    )
     assert len(provider.calls) == 2
 
 
@@ -535,11 +537,13 @@ def test_desktop_chat_endpoint_can_call_goal_plan_capacity(
     assert response.status == 200
     events = _parse_sse(body)
     names = [event["event"] for event in events]
-    assert names[:4] == ["start", "capacity_start", "capacity_result", "delta"]
+    assert names[:4] == ["start", "capacity_start", "capacity_update", "capacity_result"]
     assert events[1]["data"]["capacity_id"] == "supervisor.goal_plan"
-    assert events[2]["data"]["capacity_id"] == "supervisor.goal_plan"
-    assert events[2]["data"]["status"] == "ok"
-    assert events[3]["data"]["text"] == "已通过目标规划 capacity 生成候选目标。"
+    assert events[3]["data"]["capacity_id"] == "supervisor.goal_plan"
+    assert events[3]["data"]["status"] == "ok"
+    assert "".join(
+        event["data"]["text"] for event in events if event["event"] == "delta"
+    ) == "已通过目标规划 capacity 生成候选目标。"
     assert len(provider.calls) == 2
 
 
@@ -610,8 +614,11 @@ def test_desktop_chat_endpoint_writes_goal_plan_when_user_explicitly_requests_qu
     assert response.status == 200
     events = _parse_sse(body)
     assert events[1]["data"]["inputs"]["write"] is True
-    assert events[2]["data"]["status"] == "ok"
-    assert events[3]["data"]["text"] == "已写入目标队列。"
+    capacity_result = next(event for event in events if event["event"] == "capacity_result")
+    assert capacity_result["data"]["status"] == "ok"
+    assert "".join(
+        event["data"]["text"] for event in events if event["event"] == "delta"
+    ) == "已写入目标队列。"
     active_goals = read_active_supervisor_goals(codex_home=state_root)
     assert len(active_goals) == 1
     assert active_goals[0].target_name == "desktop-chat-goal-plan"
@@ -691,12 +698,12 @@ def test_desktop_chat_stream_projects_research_search_artifacts(
         )
     )
 
-    assert [event.event for event in events] == [
+    assert [event.event for event in events[:3]] == [
         "capacity_start",
+        "capacity_update",
         "capacity_result",
-        "delta",
     ]
-    capacity_result = events[1].payload
+    capacity_result = events[2].payload
     assert capacity_result["capacity_id"] == "research.search"
     assert capacity_result["title"] == "Research Search"
     assert capacity_result["status"] == "ok"
@@ -725,8 +732,11 @@ def test_desktop_chat_stream_projects_research_search_artifacts(
         "research.report",
     ]
     assert [artifact["summary"] for artifact in artifacts] == [
-        "raw research provider output: desktop chat research",
-        "Research report summary for desktop chat.",
+        "Raw provider payload for research query: desktop chat research",
+        (
+            "Research report for desktop chat research: "
+            "Research report summary for desktop chat."
+        ),
     ]
     assert artifacts[0]["run_id"] == artifacts[1]["run_id"]
     for artifact in artifacts:
@@ -742,7 +752,9 @@ def test_desktop_chat_stream_projects_research_search_artifacts(
     assert "Research report summary for desktop chat." in second_prompt
     assert "Research source-backed result." in second_prompt
     assert "raw_output" not in second_prompt
-    assert events[2].payload["text"] == "已完成搜索并写入 research artifacts。"
+    assert "".join(event.payload["text"] for event in events[3:]) == (
+        "已完成搜索并写入 research artifacts。"
+    )
 
 
 def test_desktop_chat_stream_can_answer_from_project_status_capacity(
@@ -755,6 +767,12 @@ def test_desktop_chat_stream_can_answer_from_project_status_capacity(
         goal="把 Desktop chat 打成黄金路径",
         cwd=workspace,
         target_name="desktop-chat",
+    )
+    record_supervisor_goal(
+        codex_home=tmp_path,
+        goal="不应该把整棵 activity JSON 塞进桌面聊天详情",
+        cwd=workspace,
+        target_name="noisy-project-status",
     )
     provider = MultiResponseDesktopChatProvider(
         [
@@ -783,19 +801,29 @@ def test_desktop_chat_stream_can_answer_from_project_status_capacity(
         )
     )
 
-    assert [event.event for event in events] == [
+    assert [event.event for event in events[:3]] == [
         "capacity_start",
+        "capacity_update",
         "capacity_result",
-        "delta",
     ]
+    assert all(event.event == "delta" for event in events[3:])
     assert events[0].payload["capacity_id"] == "supervisor.project_status"
-    assert events[1].payload["result"]["agent_loop_project_status_status"] == (
+    assert events[2].payload["result"]["agent_loop_project_status_status"] == (
         "completed"
     )
+    project_detail = next(
+        detail
+        for detail in events[2].payload["details"]
+        if detail["label"] == "Project status summary"
+    )
+    assert "activity_count" in project_detail["content"]["project_state"]
+    assert "activities" not in project_detail["content"]["project_state"]
     second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
     assert "project_state" in second_prompt
     assert "把 Desktop chat 打成黄金路径" in second_prompt
-    assert events[2].payload["text"] == "Desktop chat golden path 正在推进。"
+    assert "".join(event.payload["text"] for event in events[3:]) == (
+        "Desktop chat golden path 正在推进。"
+    )
 
 
 def test_desktop_chat_stream_uses_conversation_loop_for_streaming_capable_provider(
@@ -828,13 +856,15 @@ def test_desktop_chat_stream_uses_conversation_loop_for_streaming_capable_provid
         )
     )
 
-    assert [event.event for event in events] == [
+    assert [event.event for event in events[:3]] == [
         "capacity_start",
+        "capacity_update",
         "capacity_result",
-        "delta",
     ]
-    assert events[1].payload["capacity_id"] == "artifact.review"
-    assert events[2].payload["text"] == "streaming-capable provider 也走了 capacity loop。"
+    assert events[2].payload["capacity_id"] == "artifact.review"
+    assert "".join(event.payload["text"] for event in events[3:]) == (
+        "streaming-capable provider 也走了 capacity loop。"
+    )
 
 
 def test_desktop_chat_stream_times_out_slow_answer_provider(tmp_path) -> None:
@@ -1024,6 +1054,32 @@ def test_stream_desktop_chat_helper_streams_provider_deltas(tmp_path) -> None:
     assert chunks[-1].provider == "stub-stream"
     assert chunks[-1].model == "stub-stream-chat"
     assert provider.calls[0]["max_tokens"] == 512
+
+
+def test_desktop_chat_events_split_conversation_loop_answer_into_deltas(tmp_path) -> None:
+    provider = MultiResponseDesktopChatProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "这是一个应该通过 SSE 分块返回的较长回答。",
+                },
+                ensure_ascii=False,
+            )
+        ]
+    )
+
+    events = list(
+        stream_desktop_chat_events(
+            state_root=tmp_path,
+            question="讲一下",
+            provider=provider,
+        )
+    )
+
+    deltas = [event.payload["text"] for event in events if event.event == "delta"]
+    assert len(deltas) > 1
+    assert "".join(deltas) == "这是一个应该通过 SSE 分块返回的较长回答。"
 
 
 def test_desktop_chat_endpoint_rejects_empty_question(tmp_path) -> None:

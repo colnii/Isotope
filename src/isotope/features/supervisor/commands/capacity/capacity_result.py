@@ -214,6 +214,12 @@ def _agent_loop_research_search_result(
     report_summary = research_search.get("report_summary")
     if isinstance(report_summary, str) and report_summary:
         result["agent_loop_research_report"] = report_summary
+    content_status = research_search.get("content_status")
+    if isinstance(content_status, str) and content_status:
+        result["agent_loop_research_content_status"] = content_status
+    content_note = research_search.get("content_note")
+    if isinstance(content_note, str) and content_note:
+        result["agent_loop_research_content_note"] = content_note
     source_previews = research_search.get("source_previews")
     if isinstance(source_previews, list):
         result["agent_loop_research_source_previews"] = source_previews[:5]

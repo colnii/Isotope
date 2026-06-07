@@ -107,7 +107,7 @@ class ResearchFlow:
         run = self.core.start_run(session.session_id, goal=f"research: {clean_query}")
         raw_artifact = self.core.runtime.create_source_artifact(
             run.run_id,
-            summary=f"raw research provider output: {clean_query}",
+            summary=f"Raw provider payload for research query: {clean_query}",
             content=json.dumps(provider_payload, ensure_ascii=False, sort_keys=True),
             artifact_type="research.raw_transcript",
         )
@@ -116,7 +116,7 @@ class ResearchFlow:
         normalized = WebResearchRun.from_dict(normalized_payload)
         report_artifact = self.core.runtime.create_source_artifact(
             run.run_id,
-            summary=normalized.report.summary or f"research report: {clean_query}",
+            summary=_research_report_artifact_summary(normalized, clean_query),
             content=json.dumps(normalized.to_dict(), ensure_ascii=False, sort_keys=True),
             artifact_type="research.report",
             source_refs=[raw_artifact["artifact_ref"]],
@@ -151,3 +151,13 @@ def _artifact_summary(artifact: dict[str, Any]) -> dict[str, Any]:
         "ref": artifact["artifact_ref"].to_dict(),
         "summary": artifact["artifact_summary"],
     }
+
+
+def _research_report_artifact_summary(
+    research: WebResearchRun,
+    query: str,
+) -> str:
+    summary = research.report.summary.strip()
+    if not summary:
+        return f"Research report for {query}"
+    return f"Research report for {query}: {summary}"
