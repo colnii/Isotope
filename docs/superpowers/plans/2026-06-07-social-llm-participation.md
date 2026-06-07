@@ -350,7 +350,7 @@ fake LLM provider, then run the existing QQ `dry-run` command path.
 Expected: a normal group message can produce an LLM `reply_text` candidate, and
 `sent_group_messages` remains empty.
 
-- [ ] **Step 4: Commit docs**
+- [x] **Step 4: Commit docs**
 
 Commit:
 
@@ -359,7 +359,7 @@ git add docs/current/qq-group-chatbot.md docs/current/qq-group-chatbot-operation
 git commit -m "docs(social): describe llm participation mode"
 ```
 
-- [ ] **Step 5: Final branch verification**
+- [x] **Step 5: Final branch verification**
 
 Run:
 
