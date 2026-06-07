@@ -6,10 +6,6 @@ import type {
   DesktopChatHistoryMessage
 } from '../client/agentClient';
 import type { ActivityNode, IsotopeSnapshot } from '../contracts/isotope';
-import {
-  capacityCallSummary,
-  researchSourcePreviewsForDetailSection
-} from '../view/capacityCallView';
 
 export type DesktopChatMessage = {
   id: string;
@@ -178,46 +174,10 @@ function desktopChatHistory(messages: DesktopChatMessage[]): DesktopChatHistoryM
   return messages
     .map((message) => ({
       role: message.role,
-      content: desktopChatHistoryContent(message)
+      content: message.content.trim()
     }))
     .filter((message) => message.content.length > 0)
     .slice(-12);
-}
-
-function desktopChatHistoryContent(message: DesktopChatMessage): string {
-  const content = message.content.trim();
-  const capacityContext = desktopCapacityHistoryContext(message.capacityCalls);
-  return [content, capacityContext].filter(Boolean).join('\n\n');
-}
-
-function desktopCapacityHistoryContext(calls: DesktopCapacityCall[] | undefined): string {
-  if (!calls?.length) return '';
-  const summaries = calls
-    .filter((call) => call.status !== 'running')
-    .slice(-4)
-    .map((call) => desktopCapacityHistoryLine(call))
-    .filter(Boolean);
-  if (!summaries.length) return '';
-  return ['desktop_capacity_history:', ...summaries].join('\n');
-}
-
-function desktopCapacityHistoryLine(call: DesktopCapacityCall): string {
-  const lines = [`- ${call.capacityId}: ${clipHistoryText(capacityCallSummary(call), 360)}`];
-  const sourceLines = call.details
-    .flatMap((section) => researchSourcePreviewsForDetailSection(section))
-    .slice(0, 3)
-    .map((source, index) => {
-      const snippet = source.snippet ? ` — ${clipHistoryText(source.snippet, 180)}` : '';
-      const url = source.url ? ` (${source.url})` : '';
-      return `  source ${source.providerRank ?? index + 1}: ${source.title}${snippet}${url}`;
-    });
-  return [...lines, ...sourceLines].join('\n');
-}
-
-function clipHistoryText(text: string, limit: number): string {
-  const clean = text.replace(/\s+/g, ' ').trim();
-  if (clean.length <= limit) return clean;
-  return `${clean.slice(0, limit - 1)}...`;
 }
 
 function updateAssistantCapacityCall(

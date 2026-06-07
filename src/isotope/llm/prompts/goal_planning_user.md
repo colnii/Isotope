@@ -45,7 +45,7 @@
     "每个 goal 必须能独立启动一个 Supervisor worker。",
     "完整规划可以多于 parallel_launch_limit；parallel_launch_limit 只表示建议首批并发上限，不是规划截断上限。",
     "如果 user_goal 存在，必须围绕它拆解可执行目标。",
-    "如果 facts 包含 conversation.research_context，必须把它当作已完成调研事实来使用；plan_summary 和 reason 要体现这些调研发现，不要把已完成的调研重新规划成搜索或资料搜集任务。",
+    "如果 facts 包含 conversation.research_context，必须把它当作已完成调研事实来使用；plan_summary、reason 和每个 worker-facing goal 要体现这些调研发现，不要把已完成的调研重新规划成搜索或资料搜集任务。",
     "当 user_goal 指向完整功能板块时，必须输出 plan_summary、phases、parallel_recommendations、stop_conditions 和 acceptance_conditions。",
     "不要输出泛泛的继续推进、优化系统、阅读文档。",
     "不要生成需要用户另行解释范围的任务。",

@@ -50,6 +50,25 @@ class ResearchContextGoalProvider:
         )
 
 
+class SparseResearchContextGoalProvider:
+    def summarize(self, messages: list[dict[str, str]]) -> str:
+        user_payload = json.loads(messages[1]["content"])
+        assert "conversation.research_context" in user_payload["facts"]
+        return json.dumps(
+            {
+                "plan_summary": "基于 Agent OS 调研规划下一步。",
+                "goals": [
+                    {
+                        "goal": "更新 Isotope 的 Agent OS 开发规划。",
+                        "target_name": "plan-agent-os-roadmap",
+                        "reason": "使用已完成调研。",
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+
 def _write_current_docs(root: Path) -> None:
     docs = root / "docs" / "current"
     docs.mkdir(parents=True)
@@ -160,3 +179,63 @@ def test_supervisor_goal_plan_capability_passes_research_context_to_planner(
     )
 
     assert result["goal_plan"]["plan_summary"] == "把 Agent OS 调研结果转成 Isotope 规划。"
+
+
+def test_supervisor_goal_plan_written_goal_carries_research_handoff_for_worker(
+    tmp_path,
+    monkeypatch,
+):
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    _write_current_docs(workspace)
+    codex_home = tmp_path / "codex-home"
+    monkeypatch.setattr(
+        "isotope.capabilities.supervisor_goal_plan.resolve_summary_provider_from_env",
+        lambda **_: SparseResearchContextGoalProvider(),
+    )
+    research_context = json.dumps(
+        {
+            "kind": "conversation_research_context",
+            "items": [
+                {
+                    "report": "Agent OS 前沿强调 sandbox runtime、persistent memory 和多 agent 调度。",
+                    "sources": [
+                        {
+                            "source_id": "src_001",
+                            "title": "Agent OS Runtime Design",
+                            "url": "https://example.test/agent-os-runtime",
+                            "snippet": "Sandbox runtime becomes the execution boundary.",
+                        },
+                        {
+                            "source_id": "src_002",
+                            "title": "Persistent Agent Memory",
+                            "url": "https://example.test/agent-memory",
+                            "snippet": "Memory and task state make agents resumable.",
+                        },
+                    ],
+                }
+            ],
+        },
+        ensure_ascii=False,
+    )
+
+    result = CapabilityRunner().run_capability(
+        "supervisor.goal_plan",
+        inputs={
+            "state_root": str(codex_home),
+            "cwd": str(workspace),
+            "goal": "基于 Agent OS 调研推进 Isotope 规划",
+            "research_context": research_context,
+            "write": True,
+        },
+    )
+
+    candidate_goal = result["goal_plan"]["candidates"][0]["goal"]
+    written_goal = result["goal_plan"]["written_goals"][0]["goal"]
+    active_goal = read_active_supervisor_goals(codex_home=codex_home)[0].goal
+    for goal_text in (candidate_goal, written_goal, active_goal):
+        assert "Research handoff for worker:\nFindings:" in goal_text
+        assert "\nSources:" in goal_text
+        assert "sandbox runtime" in goal_text
+        assert "Persistent Agent Memory" in goal_text
+        assert "https://example.test/agent-memory" in goal_text

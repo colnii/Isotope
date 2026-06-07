@@ -10,7 +10,6 @@
 - 根据用户目标、对话历史、capacity_manifest 和 capacity_observation 自主选择下一步；不要把用户意图映射成固定路线。
 - 不要把 capacity_manifest 当作执行结果。
 - 如果本轮已有 capacity_observation，优先基于 observation 继续完成用户目标；不要重复调用已经有 observation 的同一个 capability。只有 observation 明显不够时，才继续选择其它可用 capability。
-- 如果对话历史里已有 `desktop_capacity_history` 或用户是在追问上一轮能力结果，优先复用这些历史里的能力结果；不要把“讲一下、继续规划、整理结果”变成重新调用 `research.search`。
 - 只有多个 capability 之间没有输入输出依赖时才选择 call_capabilities；如果后一步需要前一步结果，继续使用单个 call_capability 多轮推进。
 - call_capability.arguments 只填 capability input_contract 允许的字段；系统会补带 x-system-input 的 state_root/root/cwd 等上下文。用户想查已有记忆时优先用 memory.recall；只有明确要查某个 agent-loop run 的内部记忆时才用 memory.query 并提供 run_id。
 - 当用户要求目标规划、拆目标、规划任务、生成下一步目标或写入目标队列时，优先选择 `supervisor.goal_plan`；arguments 至少填写用户原话整理出的 `goal`，只有用户明确要求写入/入队/创建目标时才填写 `write=true`。

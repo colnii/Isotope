@@ -317,7 +317,7 @@ describe('appState', () => {
     ]);
   });
 
-  test('includes compact capacity results in assistant history for follow-up questions', async () => {
+  test('keeps capacity cards out of frontend chat history', async () => {
     const calls: Array<{ question: string; history?: Array<{ role: string; content: string }> }> = [];
     const state = createAppState({
       agentClient: {
@@ -390,13 +390,14 @@ describe('appState', () => {
     await state.askDesktopQuestion('给我讲一下');
 
     const followUpHistory = calls[1].history ?? [];
-    const assistantHistory = followUpHistory.find((message) => message.role === 'assistant');
-    expect(assistantHistory?.content).toContain('调研和规划已完成。');
-    expect(assistantHistory?.content).toContain('research.search');
-    expect(assistantHistory?.content).toContain('Tavily returned 5 source-backed results.');
-    expect(assistantHistory?.content).toContain('Agentic OS 技术详解');
-    expect(assistantHistory?.content).toContain('sandbox runtime');
-    expect(assistantHistory?.content.length).toBeLessThan(2000);
+    expect(followUpHistory).toContainEqual({
+      role: 'assistant',
+      content: '调研和规划已完成。'
+    });
+    const serialized = JSON.stringify(followUpHistory);
+    expect(serialized).not.toContain('desktop_capacity_history');
+    expect(serialized).not.toContain('research.search');
+    expect(serialized).not.toContain('Tavily returned 5 source-backed results.');
   });
 
   test('resolves approval and refreshes snapshot from backend response', async () => {

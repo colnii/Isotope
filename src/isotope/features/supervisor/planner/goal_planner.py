@@ -12,6 +12,7 @@ from typing import Any, Protocol
 from isotope.llm.prompts import load_system_prompt, render_json_prompt_template
 
 from .goal_queue import record_supervisor_goal
+from .goal_research_handoff import attach_research_handoff_to_candidates
 
 PLANNING_DOCS = (
     "docs/current/status.md",
@@ -98,7 +99,10 @@ def plan_supervisor_goals(
         provider=provider,
         original_messages=messages,
     )
-    candidates = planning.candidates
+    candidates = attach_research_handoff_to_candidates(
+        planning.candidates,
+        research_context=research_context,
+    )
     if not candidates:
         raise ValueError("LLM returned no goal candidates")
 
