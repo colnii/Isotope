@@ -33,7 +33,7 @@ class RecordingConversationProvider:
         )
 
 
-def test_conversation_loop_rejects_direct_answer_that_promises_tool_call(
+def test_conversation_loop_rejects_unbased_direct_answer_before_observation(
     tmp_path,
     monkeypatch,
 ) -> None:
@@ -59,7 +59,7 @@ def test_conversation_loop_rejects_direct_answer_that_promises_tool_call(
         [
             {
                 "kind": "direct_answer",
-                "answer": "现在我来正确调用：先搜索 Isotope 的核心模块结构。",
+                "answer": "我需要先了解 Isotope 的实际源码后再分析不足。",
             },
             {
                 "kind": "call_capability",
@@ -78,7 +78,7 @@ def test_conversation_loop_rejects_direct_answer_that_promises_tool_call(
         run_supervisor_conversation_events(
             state_root=tmp_path / "state",
             cwd=tmp_path,
-            user_message="先搜索 Isotope 的核心模块结构",
+            user_message="分析 Isotope 当前能力不足",
             provider=provider,
             max_turns=4,
         )
@@ -98,7 +98,74 @@ def test_conversation_loop_rejects_direct_answer_that_promises_tool_call(
         ensure_ascii=False,
     )
     assert "invalid_direct_answer" in second_call_messages
-    assert "call_capability" in second_call_messages
+    assert "answer_basis" in second_call_messages
+
+
+def test_conversation_loop_accepts_no_capability_direct_answer_basis(tmp_path) -> None:
+    provider = RecordingConversationProvider(
+        [
+            {
+                "kind": "direct_answer",
+                "answer_basis": {
+                    "kind": "no_capability_needed",
+                    "reason": "用户只是普通问候。",
+                },
+                "answer": "你好，有什么需要我帮忙的？",
+            },
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="你好",
+            provider=provider,
+            max_turns=2,
+        )
+    )
+
+    assert [event.event for event in events] == ["delta"]
+    assert events[0].payload == {"text": "你好，有什么需要我帮忙的？"}
+
+
+def test_invalid_direct_answer_observation_does_not_make_next_answer_based(
+    tmp_path,
+) -> None:
+    provider = RecordingConversationProvider(
+        [
+            {
+                "kind": "direct_answer",
+                "answer": "我需要先了解 Isotope 的实际源码后再分析不足。",
+            },
+            {
+                "kind": "direct_answer",
+                "answer": "我还是直接给结论。",
+            },
+            {
+                "kind": "direct_answer",
+                "answer_basis": {
+                    "kind": "no_capability_needed",
+                    "reason": "用户改为普通闲聊。",
+                },
+                "answer": "这里只回答普通闲聊。",
+            },
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="分析 Isotope 当前能力不足",
+            provider=provider,
+            max_turns=4,
+        )
+    )
+
+    assert [event.event for event in events] == ["delta"]
+    assert events[0].payload == {"text": "这里只回答普通闲聊。"}
+    assert len(provider.calls) == 3
 
 
 def _agent_loop(capability_run: dict[str, Any]) -> dict[str, Any]:

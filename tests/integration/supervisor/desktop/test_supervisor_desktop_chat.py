@@ -21,6 +21,20 @@ from isotope.features.supervisor.web import create_dashboard_server
 from isotope.llm.provider import LLMResponse, LLMStreamChunk
 
 
+def no_capability_direct_answer(answer: str) -> str:
+    return json.dumps(
+        {
+            "kind": "direct_answer",
+            "answer_basis": {
+                "kind": "no_capability_needed",
+                "reason": "测试场景不需要能力调用。",
+            },
+            "answer": answer,
+        },
+        ensure_ascii=False,
+    )
+
+
 class RecordingDesktopChatProvider:
     provider = "deterministic_test"
     model = "stub-desktop-chat"
@@ -224,7 +238,9 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
         cwd=workspace,
         target_name="loop-check",
     )
-    provider = RecordingDesktopChatProvider()
+    provider = RecordingDesktopChatProvider(
+        content=no_capability_direct_answer("loop 正在监督 worker。")
+    )
     server = create_dashboard_server(
         codex_home=tmp_path,
         host="127.0.0.1",
@@ -900,7 +916,9 @@ def test_desktop_chat_stream_times_out_slow_answer_provider(tmp_path) -> None:
 
 
 def test_desktop_chat_endpoint_sends_developer_capacity_question_to_llm_with_context(tmp_path) -> None:
-    provider = RecordingDesktopChatProvider(content="我会按上下文列出 capacity。")
+    provider = RecordingDesktopChatProvider(
+        content=no_capability_direct_answer("我会按上下文列出 capacity。")
+    )
     server = create_dashboard_server(
         codex_home=tmp_path,
         host="127.0.0.1",
@@ -959,7 +977,9 @@ def test_desktop_chat_endpoint_sends_developer_capacity_question_to_llm_with_con
 
 
 def test_desktop_chat_endpoint_includes_session_history_before_current_question(tmp_path) -> None:
-    provider = RecordingDesktopChatProvider(content="你的上句话是：之前跑过的 screen run？")
+    provider = RecordingDesktopChatProvider(
+        content=no_capability_direct_answer("你的上句话是：之前跑过的 screen run？")
+    )
     server = create_dashboard_server(
         codex_home=tmp_path,
         host="127.0.0.1",
@@ -1008,7 +1028,9 @@ def test_desktop_chat_endpoint_includes_session_history_before_current_question(
 
 
 def test_desktop_chat_keeps_full_history_message_when_context_fits(tmp_path) -> None:
-    provider = RecordingDesktopChatProvider(content="我保留了完整历史。")
+    provider = RecordingDesktopChatProvider(
+        content=no_capability_direct_answer("我保留了完整历史。")
+    )
     long_message = "FULL_HISTORY_MARKER:" + ("0123456789" * 430)
 
     events = list(
@@ -1027,7 +1049,9 @@ def test_desktop_chat_keeps_full_history_message_when_context_fits(tmp_path) -> 
 
 
 def test_desktop_chat_compacts_oversized_history_instead_of_dropping_old_turns(tmp_path) -> None:
-    provider = RecordingDesktopChatProvider(content="我看到了压缩上下文。")
+    provider = RecordingDesktopChatProvider(
+        content=no_capability_direct_answer("我看到了压缩上下文。")
+    )
     history = [
         {
             "role": "user" if index % 2 == 0 else "assistant",
@@ -1078,6 +1102,10 @@ def test_desktop_chat_events_split_conversation_loop_answer_into_deltas(tmp_path
             json.dumps(
                 {
                     "kind": "direct_answer",
+                    "answer_basis": {
+                        "kind": "no_capability_needed",
+                        "reason": "测试只验证最终回答分块。",
+                    },
                     "answer": "这是一个应该通过 SSE 分块返回的较长回答。",
                 },
                 ensure_ascii=False,

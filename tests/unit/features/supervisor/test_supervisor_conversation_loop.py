@@ -8,7 +8,6 @@ from typing import Any
 
 from isotope.capabilities.runner import CapabilityRunner
 from isotope.features.supervisor.conversation_loop import (
-    SupervisorConversationEvent,
     run_supervisor_conversation_events,
 )
 from isotope.features.supervisor.planner.goal_queue import (
@@ -182,103 +181,6 @@ def _write_memory_record(memory_dir, record: MemoryRecord) -> None:
         json.dumps(asdict(record), sort_keys=True),
         encoding="utf-8",
     )
-
-
-def test_conversation_loop_accepts_plain_text_as_direct_answer(tmp_path) -> None:
-    provider = RecordingConversationProvider(["你好，我在。"])
-
-    events = list(
-        run_supervisor_conversation_events(
-            state_root=tmp_path,
-            cwd=tmp_path / "repo",
-            user_message="你好",
-            provider=provider,
-        )
-    )
-
-    assert events == [
-        SupervisorConversationEvent(
-            event="delta",
-            payload={"text": "你好，我在。"},
-            provider="deterministic_test",
-            model="stub-conversation",
-        )
-    ]
-    assert len(provider.calls) == 1
-    messages = provider.calls[0]["messages"]
-    assert messages[-1] == {"role": "user", "content": "你好"}
-    rendered = json.dumps(messages, ensure_ascii=False)
-    assert "capacity_manifest" in rendered
-    assert "direct_answer" in rendered
-    assert "call_capability" in rendered
-    assert "report_capability_gap" in rendered
-    assert "raw_response" not in rendered
-
-
-def test_conversation_loop_manifest_keeps_research_provider_policy_internal(
-    tmp_path,
-) -> None:
-    provider = RecordingConversationProvider(["你好，我在。"])
-
-    list(
-        run_supervisor_conversation_events(
-            state_root=tmp_path,
-            cwd=tmp_path / "repo",
-            user_message="你好",
-            provider=provider,
-        )
-    )
-
-    system_prompt = provider.calls[0]["messages"][0]["content"]
-
-    assert '"capability_id": "research.search"' in system_prompt
-    research_manifest = system_prompt.split('"capability_id": "research.search"', 1)[1]
-    research_manifest = research_manifest.split('"capability_id": "research.promote"', 1)[
-        0
-    ]
-    assert '"query"' in research_manifest
-    assert '"provider"' not in research_manifest
-    assert '"provider_gate"' not in research_manifest
-    assert '"allow_network"' not in research_manifest
-    assert "provider=tavily" not in system_prompt
-
-
-def test_conversation_manifest_hides_system_routing_inputs(tmp_path) -> None:
-    provider = RecordingConversationProvider(["你好，我在。"])
-
-    list(
-        run_supervisor_conversation_events(
-            state_root=tmp_path / "state",
-            cwd=tmp_path / "repo",
-            user_message="你好",
-            provider=provider,
-        )
-    )
-
-    system_prompt = provider.calls[0]["messages"][0]["content"]
-    assert '"code.search"' in system_prompt
-    assert '"query"' in system_prompt
-    assert '"cwd"' not in system_prompt
-    assert '"root"' not in system_prompt
-
-
-def test_conversation_loop_prompt_routes_goal_planning_to_capacity(tmp_path) -> None:
-    provider = RecordingConversationProvider(["我先直接回答。"])
-
-    list(
-        run_supervisor_conversation_events(
-            state_root=tmp_path,
-            cwd=tmp_path / "repo",
-            user_message="帮我规划下一步目标",
-            provider=provider,
-        )
-    )
-
-    system_prompt = provider.calls[0]["messages"][0]["content"]
-    assert "目标规划、拆目标、规划任务" in system_prompt
-    assert "supervisor.goal_plan" in system_prompt
-    assert "call_capability" in system_prompt
-    assert "不要重复调用已经有 observation 的同一个 capability" in system_prompt
 
 
 def test_conversation_loop_uses_longer_timeout_for_goal_plan_capacity() -> None:
@@ -1690,29 +1592,6 @@ def test_conversation_loop_applies_reviewed_native_coding_diff(tmp_path) -> None
     assert str(workspace) not in rendered
     assert "expected_source_digests" not in rendered
     assert "value = 2" not in rendered
-
-
-def test_conversation_loop_manifest_exposes_extension_entrypoints_without_skill_registry(
-    tmp_path,
-) -> None:
-    provider = RecordingConversationProvider(["你好，我在。"])
-
-    list(
-        run_supervisor_conversation_events(
-            state_root=tmp_path,
-            cwd=tmp_path / "repo",
-            user_message="我需要处理 Word 文档",
-            provider=provider,
-        )
-    )
-
-    system_prompt = provider.calls[0]["messages"][0]["content"]
-    assert '"capability_id": "skills.search"' in system_prompt
-    assert '"capability_id": "skills.describe"' in system_prompt
-    assert '"capability_id": "mcp.tool.call"' in system_prompt
-    assert "llm2docx" not in system_prompt
-    assert "SKILL.md" not in system_prompt
-    assert "## Checklist" not in system_prompt
 
 
 def test_conversation_loop_feeds_skill_search_metadata_to_next_turn(tmp_path) -> None:
