@@ -105,10 +105,21 @@ def handle_live_run(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def handle_replay(args: argparse.Namespace) -> dict[str, Any]:
-    config_path = Path(args.config_json)
-    state_root = Path(args.state_root)
-    replay_path = Path(args.replay_json)
-    output_path = Path(args.output)
+    return run_qq_replay(
+        config_path=Path(args.config_json),
+        state_root=Path(args.state_root),
+        replay_path=Path(args.replay_json),
+        output_path=Path(args.output),
+    )
+
+
+def run_qq_replay(
+    *,
+    config_path: Path,
+    state_root: Path,
+    replay_path: Path,
+    output_path: Path,
+) -> dict[str, Any]:
     config = load_config(config_path)
     state = load_state(state_root)
     operations = operations_from_config(config, state=state)

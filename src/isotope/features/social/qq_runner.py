@@ -137,6 +137,27 @@ def register_qq_commands(subparsers: argparse._SubParsersAction) -> None:
     replay.add_argument("--output", required=True, help="Replay report JSON file.")
     replay.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    replay_scenarios = qq_subparsers.add_parser(
+        "replay-scenarios",
+        help="Run every QQ replay file in a generated scenario pack.",
+    )
+    _add_config_state_args(replay_scenarios)
+    replay_scenarios.add_argument(
+        "--scenario-dir",
+        required=True,
+        help="Directory containing replay scenario JSON files and index.json.",
+    )
+    replay_scenarios.add_argument(
+        "--output",
+        required=True,
+        help="Aggregate replay scenario report JSON file.",
+    )
+    replay_scenarios.add_argument(
+        "--reports-dir",
+        help="Directory for per-scenario replay reports.",
+    )
+    replay_scenarios.add_argument("--json", action="store_true", help="Print JSON output.")
+
     beta_check = qq_subparsers.add_parser(
         "beta-check",
         help="Verify a generated QQ beta pack before operator use.",

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from isotope.features.social.runner import main
+from tests.unit.features.social.test_social_runner import _config, _write_json
 
 
 def _read_json(path: Path) -> dict:
@@ -78,3 +79,145 @@ def test_social_runner_qq_init_replay_scenarios_writes_tuning_pack(
     assert guard["expectations"]["forbid_sticker_block_reasons"] == [
         "use_frequency_zero"
     ]
+
+
+def test_social_runner_qq_replay_scenarios_writes_aggregate_report(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    scenario_dir = tmp_path / "replay-scenarios"
+    report_path = tmp_path / "logs" / "replay-scenarios-report.json"
+    reports_dir = tmp_path / "logs" / "replay-scenario-reports"
+    config_path = _write_json(tmp_path / "config.json", _config())
+
+    assert main(
+        [
+            "qq",
+            "init-replay-scenarios",
+            "--output-dir",
+            str(scenario_dir),
+            "--group",
+            "99999",
+            "--bot-user-id",
+            "bot_qq",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    code = main(
+        [
+            "qq",
+            "replay-scenarios",
+            "--config-json",
+            str(config_path),
+            "--state-root",
+            str(tmp_path / "state"),
+            "--scenario-dir",
+            str(scenario_dir),
+            "--output",
+            str(report_path),
+            "--reports-dir",
+            str(reports_dir),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["command"] == "replay-scenarios"
+    assert payload["passed"] is True
+    assert payload["scenario_count"] == 3
+    assert payload["passed_count"] == 3
+    assert payload["failed_count"] == 0
+    assert payload["output"] == str(report_path)
+    assert payload["reports_dir"] == str(reports_dir)
+    assert [scenario["scenario_id"] for scenario in payload["scenarios"]] == [
+        "ship_it_candidate",
+        "no_matching_sticker",
+        "forbid_frequency_zero",
+    ]
+
+    report = _read_json(report_path)
+    assert report["kind"] == "qq_replay_scenarios_report"
+    assert report["passed"] is True
+    assert report["summary"] == {
+        "scenario_count": 3,
+        "passed_count": 3,
+        "failed_count": 0,
+    }
+    assert all(Path(item["report_json"]).exists() for item in report["scenarios"])
+    assert report["scenarios"][1]["summary"][
+        "sticker_candidate_block_reason_counts"
+    ] == {"no_matching_sticker": 1}
+
+
+def test_social_runner_qq_replay_scenarios_fails_when_any_scenario_fails(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    scenario_dir = tmp_path / "replay-scenarios"
+    report_path = tmp_path / "logs" / "replay-scenarios-report.json"
+    reports_dir = tmp_path / "logs" / "replay-scenario-reports"
+    config_payload = _config()
+    config_payload["role_card"]["stickers"]["use_frequency"] = 0.0
+    config_path = _write_json(tmp_path / "config.json", config_payload)
+
+    assert main(
+        [
+            "qq",
+            "init-replay-scenarios",
+            "--output-dir",
+            str(scenario_dir),
+            "--group",
+            "99999",
+            "--bot-user-id",
+            "bot_qq",
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    code = main(
+        [
+            "qq",
+            "replay-scenarios",
+            "--config-json",
+            str(config_path),
+            "--state-root",
+            str(tmp_path / "state"),
+            "--scenario-dir",
+            str(scenario_dir),
+            "--output",
+            str(report_path),
+            "--reports-dir",
+            str(reports_dir),
+            "--json",
+        ]
+    )
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "failed"
+    assert payload["command"] == "replay-scenarios"
+    assert payload["passed"] is False
+    assert payload["scenario_count"] == 3
+    assert payload["passed_count"] == 0
+    assert payload["failed_count"] == 3
+    assert [scenario["passed"] for scenario in payload["scenarios"]] == [
+        False,
+        False,
+        False,
+    ]
+
+    report = _read_json(report_path)
+    assert report["passed"] is False
+    assert report["summary"]["failed_count"] == 3
+    failed_names = [
+        expectation["name"]
+        for scenario in report["scenarios"]
+        for expectation in scenario["expectations"]
+        if not expectation["ok"]
+    ]
+    assert "forbid_sticker_block_reasons" in failed_names

@@ -139,10 +139,23 @@ isotope-social qq init-replay-scenarios \
 
 The pack writes `01-ship-it-candidate.json`,
 `02-no-matching-sticker.json`, `03-forbid-frequency-zero.json`, and
-`index.json`. Run these files with `qq replay` against the same beta config.
-Use them to prove the expected sticker appears, prove an unmatched scene reports
-`no_matching_sticker`, and catch accidental `use_frequency_zero` role-card
-settings.
+`index.json`. Run the full pack with one command against the same beta config:
+
+```bash
+isotope-social qq replay-scenarios \
+  --config-json .isotope/qq-beta/config.json \
+  --state-root .isotope/qq-beta/state \
+  --scenario-dir .isotope/qq-beta/replay-scenarios \
+  --output .isotope/qq-beta/logs/replay-scenarios-report.json \
+  --reports-dir .isotope/qq-beta/logs/replay-scenario-reports --json
+```
+
+The command writes `replay-scenarios-report.json` as the aggregate report and
+one per-scenario `qq_replay_report` under `replay-scenario-reports`. It exits
+with status 2 when any scenario fails, so it can guard startup scripts or CI.
+Use these scenarios to prove the expected sticker appears, prove an unmatched
+scene reports `no_matching_sticker`, and catch accidental `use_frequency_zero`
+role-card settings.
 
 Review `replay-report.json` for proposed actions, selected actions, sticker
 candidates, blocked turns, and send feedback count. Replay runs as dry-run and
@@ -298,6 +311,12 @@ isotope-social qq init-replay --output .isotope/qq-beta/replay.json \
 isotope-social qq init-replay-scenarios \
   --output-dir .isotope/qq-beta/replay-scenarios \
   --group <controlled_group_id> --bot-user-id <bot_qq> --json
+isotope-social qq replay-scenarios \
+  --config-json .isotope/qq-beta/config.json \
+  --state-root .isotope/qq-beta/state \
+  --scenario-dir .isotope/qq-beta/replay-scenarios \
+  --output .isotope/qq-beta/logs/replay-scenarios-report.json \
+  --reports-dir .isotope/qq-beta/logs/replay-scenario-reports --json
 isotope-social qq replay --config-json .isotope/qq-beta/config.json \
   --state-root .isotope/qq-beta/state \
   --replay-json .isotope/qq-beta/replay.json \
