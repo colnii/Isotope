@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import inspect
 import json
+import time
 from typing import Any
 
 from isotope.features.supervisor import conversation_loop
@@ -164,6 +166,83 @@ def test_conversation_loop_answers_instead_of_repeating_completed_capacity(
     ]
     assert "supervisor.goal_plan 已完成" in events[-1].payload["text"]
     assert "修复桌面 chat capacity loop 收束" in events[-1].payload["text"]
+
+
+def test_conversation_loop_default_max_turns_is_300() -> None:
+    signature = inspect.signature(run_supervisor_conversation_events)
+
+    assert signature.parameters["max_turns"].default == 300
+
+
+def test_conversation_loop_runs_parallel_capacity_decision_with_updates(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    captured_inputs: list[tuple[str, dict[str, Any]]] = []
+
+    def fake_execute_capacity_step(**kwargs: Any) -> dict[str, Any]:
+        capacity_id = kwargs["capability_id"]
+        inputs = dict(kwargs["inputs"])
+        captured_inputs.append((capacity_id, inputs))
+        if capacity_id == "supervisor.project_status":
+            time.sleep(0.05)
+        return _agent_loop(
+            {
+                "kind": capacity_id.replace(".", "_"),
+                "status": "completed",
+            }
+        )
+
+    monkeypatch.setattr(
+        conversation_loop,
+        "_execute_capacity_step_with_timeout",
+        fake_execute_capacity_step,
+    )
+    provider = RecordingConversationProvider(
+        [
+            {
+                "kind": "call_capabilities",
+                "calls": [
+                    {
+                        "capacity_id": "supervisor.project_status",
+                        "arguments": {},
+                    },
+                    {
+                        "capacity_id": "memory.recall",
+                        "arguments": {"query": "capacity loop"},
+                    },
+                ],
+                "rationale": "状态和记忆可以并行获取。",
+            },
+            {
+                "kind": "direct_answer",
+                "answer": "并行能力调用已完成。",
+            },
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="同时看项目状态和记忆",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    names = [event.event for event in events]
+    assert names.count("capacity_start") == 2
+    assert names.count("capacity_update") >= 2
+    assert names.count("capacity_result") == 2
+    assert names[-1] == "delta"
+    assert {capacity_id for capacity_id, _inputs in captured_inputs} == {
+        "supervisor.project_status",
+        "memory.recall",
+    }
+    first_result_index = names.index("capacity_result")
+    assert names[:first_result_index].count("capacity_start") == 2
+    assert events[-1].payload == {"text": "并行能力调用已完成。"}
 
 
 def _agent_loop(capability_run: dict[str, Any]) -> dict[str, Any]:

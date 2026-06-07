@@ -241,7 +241,7 @@ async function readDesktopChatStream(
     const { value, done } = await reader.read();
     if (value) {
       buffer += decoder.decode(value, { stream: !done });
-      const blocks = buffer.split('\n\n');
+      const blocks = buffer.split(/\r?\n\r?\n/);
       buffer = blocks.pop() ?? '';
       for (const block of blocks) {
         const event = parseDesktopChatEvent(block);
@@ -297,9 +297,11 @@ function markRunningCapacityCallsError(
 function parseDesktopChatEvent(block: string): { name: string; data: Record<string, unknown> } {
   const lines = block.split(/\r?\n/);
   const eventLine = lines.find((line) => line.startsWith('event: '));
-  const dataLine = lines.find((line) => line.startsWith('data: '));
+  const dataLines = lines
+    .filter((line) => line.startsWith('data: '))
+    .map((line) => line.slice('data: '.length));
   const name = eventLine?.slice('event: '.length).trim() || 'message';
-  const data = dataLine ? JSON.parse(dataLine.slice('data: '.length)) : {};
+  const data = dataLines.length ? JSON.parse(dataLines.join('\n')) : {};
   return { name, data };
 }
 

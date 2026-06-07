@@ -32,6 +32,7 @@ from isotope.platform.schemas.input_contract import (
 )
 
 from .desktop_chat_context import compact_desktop_chat_history_messages
+from .conversation_parallel import run_parallel_event_generators
 from .conversation_observations import (
     capability_result_detail_from_agent_loop,
     capacity_observation_from_event_payload,
@@ -77,7 +78,7 @@ def run_supervisor_conversation_events(
     max_tokens: int = 512,
     history: list[dict[str, str]] | None = None,
     capacity_runner: CapabilityRunner | None = None,
-    max_turns: int = 6,
+    max_turns: int = 300,
     timeout_seconds: float | None = None,
 ) -> Iterator[SupervisorConversationEvent]:
     clean_message = _require_text(user_message, "user_message")
@@ -115,42 +116,99 @@ def run_supervisor_conversation_events(
                 model=response.model,
             )
             return
-        if decision["kind"] == "call_capability":
-            capacity_id = _require_text(decision.get("capacity_id"), "capacity_id")
-            if capacity_id in completed_capabilities:
+        if decision["kind"] in {"call_capability", "call_capabilities"}:
+            capacity_decisions: list[dict[str, Any]]
+            if decision["kind"] == "call_capability":
+                capacity_decisions = [decision]
+            else:
+                calls = decision.get("calls")
+                if not isinstance(calls, list) or not calls:
+                    yield SupervisorConversationEvent(
+                        event="delta",
+                        payload={"text": "没有可执行的并行能力调用。"},
+                        provider=response.provider,
+                        model=response.model,
+                    )
+                    return
+                capacity_decisions = [
+                    {"kind": "call_capability", **call}
+                    for call in calls
+                    if isinstance(call, dict)
+                ]
+                if not capacity_decisions:
+                    yield SupervisorConversationEvent(
+                        event="delta",
+                        payload={"text": "没有可执行的并行能力调用。"},
+                        provider=response.provider,
+                        model=response.model,
+                    )
+                    return
+            repeated_completed_capacity_id = next(
+                (
+                    capacity_id
+                    for capacity_id in (
+                        decision.get("capacity_id")
+                        for decision in capacity_decisions
+                    )
+                    if isinstance(capacity_id, str)
+                    and capacity_id in completed_capabilities
+                ),
+                None,
+            )
+            if repeated_completed_capacity_id is not None:
                 yield SupervisorConversationEvent(
                     event="delta",
                     payload={
                         "text": _repeated_completed_capacity_answer(
-                            capacity_id,
-                            completed_capabilities[capacity_id],
+                            repeated_completed_capacity_id,
+                            completed_capabilities[repeated_completed_capacity_id],
                         )
                     },
                     provider=response.provider,
                     model=response.model,
                 )
                 return
-            if capacity_id in failed_capabilities:
+            repeated_failed_capacity_id = next(
+                (
+                    capacity_id
+                    for capacity_id in (
+                        decision.get("capacity_id")
+                        for decision in capacity_decisions
+                    )
+                    if isinstance(capacity_id, str) and capacity_id in failed_capabilities
+                ),
+                None,
+            )
+            if repeated_failed_capacity_id is not None:
                 yield SupervisorConversationEvent(
                     event="delta",
                     payload={
                         "text": _repeated_failed_capacity_answer(
-                            capacity_id,
-                            failed_capabilities[capacity_id],
+                            repeated_failed_capacity_id,
+                            failed_capabilities[repeated_failed_capacity_id],
                         )
                     },
                     provider=response.provider,
                     model=response.model,
                 )
                 return
-            for event in _run_capability_decision(
-                decision,
-                state_root=Path(state_root).expanduser(),
-                context=context,
-                provider=provider,
-                user_message=clean_message,
-                timeout_seconds=timeout_seconds,
-            ):
+            event_streams = [
+                _run_capability_decision(
+                    capacity_decision,
+                    state_root=Path(state_root).expanduser(),
+                    context=context,
+                    provider=provider,
+                    user_message=clean_message,
+                    timeout_seconds=timeout_seconds,
+                )
+                for capacity_decision in capacity_decisions
+            ]
+            event_iterator = (
+                event_streams[0]
+                if len(event_streams) == 1
+                else run_parallel_event_generators(event_streams)
+            )
+            for event in event_iterator:
                 yield event
                 if event.event == "capacity_result":
                     observation = capacity_observation_from_event_payload(
@@ -367,7 +425,12 @@ def _parse_decision(content: str) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {"kind": "direct_answer", "answer": stripped}
     kind = payload.get("kind")
-    if kind not in {"direct_answer", "call_capability", "report_capability_gap"}:
+    if kind not in {
+        "direct_answer",
+        "call_capability",
+        "call_capabilities",
+        "report_capability_gap",
+    }:
         return {"kind": "direct_answer", "answer": stripped}
     return dict(payload)
 

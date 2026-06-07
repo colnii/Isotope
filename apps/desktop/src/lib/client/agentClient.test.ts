@@ -302,6 +302,48 @@ describe('agentClient', () => {
     expect(cancelled).toBe(true);
   });
 
+  test('streams desktop chat answer from CRLF SSE frames', async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder();
+        controller.enqueue(encoder.encode('event: start\r\ndata: {"status":"ok"}\r\n\r\n'));
+        controller.enqueue(encoder.encode('event: delta\r\ndata: {"text":"正常"}\r\n\r\n'));
+        controller.enqueue(
+          encoder.encode(
+            'event: done\r\ndata: {"status":"ok","provider":"fixture","model":"fixture-model"}\r\n\r\n'
+          )
+        );
+        controller.close();
+      }
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(stream, {
+            status: 200,
+            headers: { 'content-type': 'text/event-stream; charset=utf-8' }
+          })
+      )
+    );
+    const deltas: string[] = [];
+
+    const answer = await createAgentClient('http://127.0.0.1:8765').askDesktopQuestion(
+      'hello?',
+      {
+        onDelta: (text) => deltas.push(text)
+      }
+    );
+
+    expect(deltas).toEqual(['正常']);
+    expect(answer).toEqual({
+      question: 'hello?',
+      answer: '正常',
+      provider: 'fixture',
+      model: 'fixture-model'
+    });
+  });
+
   test('marks running capacity calls as error when the stream reports an error', async () => {
     const stream = new ReadableStream({
       start(controller) {
