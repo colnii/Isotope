@@ -32,6 +32,10 @@ from isotope.platform.schemas.input_contract import (
 )
 
 from .desktop_chat_context import compact_desktop_chat_history_messages
+from .conversation.direct_answer import (
+    direct_answer_promises_capability,
+    invalid_direct_answer_observation,
+)
 from .conversation_parallel import run_parallel_event_generators
 from .conversation_observations import (
     capability_result_detail_from_agent_loop,
@@ -111,6 +115,9 @@ def run_supervisor_conversation_events(
         decision = _parse_decision(response.content)
         if decision["kind"] == "direct_answer":
             answer = _require_text(decision.get("answer"), "answer")
+            if direct_answer_promises_capability(answer):
+                observations.append(invalid_direct_answer_observation(answer))
+                continue
             yield SupervisorConversationEvent(
                 event="delta",
                 payload={"text": answer},
