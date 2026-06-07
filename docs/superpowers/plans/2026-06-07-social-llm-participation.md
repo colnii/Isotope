@@ -16,7 +16,7 @@
 - Create: `src/isotope/features/social/participation_provider.py`
 - Create: `tests/unit/features/social/decision/test_llm_participation_provider.py`
 
-- [ ] **Step 1: Write failing tests for provider output parsing**
+- [x] **Step 1: Write failing tests for provider output parsing**
 
 Create `tests/unit/features/social/decision/test_llm_participation_provider.py` with tests for:
 
@@ -64,7 +64,7 @@ def test_participation_decision_rejects_respond_without_text() -> None:
         raise AssertionError("expected ValueError")
 ```
 
-- [ ] **Step 2: Run tests and verify red**
+- [x] **Step 2: Run tests and verify red**
 
 Run:
 
@@ -74,7 +74,7 @@ PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit
 
 Expected: import failure because `participation_provider.py` does not exist.
 
-- [ ] **Step 3: Implement minimal parser and value object**
+- [x] **Step 3: Implement minimal parser and value object**
 
 Create `src/isotope/features/social/participation_provider.py` with:
 
@@ -141,7 +141,7 @@ def _confidence(value: object) -> float:
     return parsed
 ```
 
-- [ ] **Step 4: Run parser tests and commit**
+- [x] **Step 4: Run parser tests and commit**
 
 Run the same pytest command. Expected: all tests pass.
 
@@ -160,7 +160,7 @@ git commit -m "feat(social): add llm participation decision parser"
 - Create: `src/isotope/llm/prompts/social_participation_user.md`
 - Modify: `tests/unit/features/social/decision/test_llm_participation_provider.py`
 
-- [ ] **Step 1: Add failing test for provider prompt and metadata**
+- [x] **Step 1: Add failing test for provider prompt and metadata**
 
 Append a fake chat provider test that calls `LLMSocialParticipationProvider.decide(...)` with a minimal `SocialDecisionRequest` and asserts:
 
@@ -171,7 +171,7 @@ assert fake_provider.messages[0]["role"] == "system"
 assert "required_json_shape" in fake_provider.messages[1]["content"]
 ```
 
-- [ ] **Step 2: Run test and verify red**
+- [x] **Step 2: Run test and verify red**
 
 Run:
 
@@ -181,7 +181,7 @@ PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit
 
 Expected: import failure for `LLMSocialParticipationProvider`.
 
-- [ ] **Step 3: Implement provider**
+- [x] **Step 3: Implement provider**
 
 Add `LLMSocialParticipationProvider` to `participation_provider.py`. It should:
 
@@ -192,7 +192,7 @@ Add `LLMSocialParticipationProvider` to `participation_provider.py`. It should:
 
 Prompt files should mirror the existing `social_reply` prompt style and require JSON only.
 
-- [ ] **Step 4: Run provider tests and commit**
+- [x] **Step 4: Run provider tests and commit**
 
 Run the provider test file. Expected: all tests pass.
 
