@@ -300,6 +300,7 @@ def test_desktop_chat_endpoint_streams_real_backend_answer_without_json_result(
         "integration_review",
         "launch_worker",
         "resume_worker",
+        "adopt_resume_by_description",
     ]
     assert provider.calls[0]["max_tokens"] == 512
 

@@ -38,12 +38,13 @@ def test_supervisor_loop_monitors_when_no_controllable_target(
 
     payload = _run_loop(codex_home=codex_home, workspace_root=tmp_path, capsys=capsys)
 
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "monitor",
         "target_name": None,
         "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
         "command_suggestion": None,
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "skipped": True,
@@ -202,8 +203,9 @@ def test_supervisor_loop_turns_empty_llm_response_into_monitor(
 
     payload = _run_loop(codex_home=codex_home, workspace_root=tmp_path, capsys=capsys)
 
-    assert payload["llm_action"]["kind"] == "monitor"
-    assert "LLM action must be a JSON object" in payload["llm_action"]["error"]
+    assert payload["supervisor_action"]["kind"] == "monitor"
+    assert "LLM action must be a JSON object" in payload["supervisor_action"]["error"]
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "monitor"
     assert payload["executed"]["skipped"] is True
 
@@ -242,7 +244,8 @@ def test_supervisor_loop_escalates_repeated_empty_llm_response_to_decision_reque
     )
 
     assert first["executed"]["kind"] == "monitor"
-    assert second["llm_action"]["kind"] == "ask_user"
+    assert second["supervisor_action"]["kind"] == "ask_user"
+    assert second["llm_action"] == second["supervisor_action"]
     assert second["executed"]["kind"] == "ask_user"
     assert second["executed"]["requires_user"] is True
     assert second["executed"]["target_name"] == "lane-a"
@@ -284,10 +287,11 @@ def test_supervisor_loop_turns_unknown_target_into_monitor(
 
     payload = _run_loop(codex_home=codex_home, workspace_root=tmp_path, capsys=capsys)
 
-    assert payload["llm_action"]["kind"] == "monitor"
-    assert payload["llm_action"]["error"] == (
+    assert payload["supervisor_action"]["kind"] == "monitor"
+    assert payload["supervisor_action"]["error"] == (
         "unknown managed target for LLM action: missing-lane"
     )
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "monitor"
 
 
@@ -600,14 +604,15 @@ def test_supervisor_loop_ignores_missing_worktree_delete_target(
 
     payload = _run_loop(codex_home=codex_home, workspace_root=tmp_path, capsys=capsys)
 
-    assert payload["llm_action"]["kind"] == "monitor"
-    assert payload["llm_action"]["error"] == (
+    assert payload["supervisor_action"]["kind"] == "monitor"
+    assert payload["supervisor_action"]["error"] == (
         "delete_worktree target is not an allowed cleanup candidate"
     )
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "skipped": True,
-        "reason": payload["llm_action"]["reason"],
+        "reason": payload["supervisor_action"]["reason"],
     }
     assert not missing_worktree.exists()
 

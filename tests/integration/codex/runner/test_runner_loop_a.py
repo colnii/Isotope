@@ -388,7 +388,8 @@ def test_codex_supervisor_runner_loop_uses_decision_answer_to_continue_goal(
     payload = json.loads(capsys.readouterr().out)
     assert payload["decision_requests"] == []
     assert payload["recent_decision_answers"][0]["answer"] == "保留兼容层，先保证旧入口可用。"
-    assert payload["llm_action"]["kind"] == "launch_session"
+    assert payload["supervisor_action"]["kind"] == "launch_session"
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "launch_session"
     assert captured["command"][9].startswith("WORK ORDER")
     assert "用户已拍板保留兼容层" in captured["command"][9]
@@ -619,12 +620,13 @@ def test_codex_supervisor_runner_loop_does_not_launch_after_terminal_done_goals(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["command_suggestions"] == []
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "monitor",
         "target_name": None,
         "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
         "command_suggestion": None,
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "skipped": True,
@@ -693,12 +695,13 @@ def test_codex_supervisor_runner_loop_ignores_exited_managed_process_without_act
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "monitor",
         "target_name": None,
         "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
         "command_suggestion": None,
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "skipped": True,
@@ -834,12 +837,13 @@ def test_codex_supervisor_runner_loop_without_active_goal_idles(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["active_goals"] == []
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "monitor",
         "target_name": None,
         "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
         "command_suggestion": None,
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "skipped": True,
@@ -875,12 +879,13 @@ def test_codex_supervisor_runner_loop_uses_daily_defaults(
     assert len(lines) == 1
     payload = json.loads(lines[0])
     assert payload["automation"]["ready"] is False
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "monitor",
         "target_name": None,
         "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
         "command_suggestion": None,
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "reason": "当前没有可控的 Supervisor 目标，先继续监控。",
@@ -980,7 +985,6 @@ def test_codex_supervisor_runner_loop_auto_adopts_discovered_tmux_candidate(
     assert records[0]["name"] == "iso-dev"
     assert records[0]["tmux_session"] == "iso_dev"
     assert records[0]["cwd"] == str(workspace)
-
 
 
 

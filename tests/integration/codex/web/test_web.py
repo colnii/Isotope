@@ -1230,18 +1230,18 @@ def test_codex_supervisor_web_returns_manual_llm_action_without_sending(
 
     assert response.status == 200
     assert payload["status"] == "ok"
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "send_status",
         "target_name": "lane-a",
-            "reason": "先看进度。",
-            "command_suggestion": {
-                "command": _supervisor_send_command("lane-a", STATUS_REQUEST_TEXT),
-                "kind": "send_status",
-                "label": "让托管 Codex 汇报状态",
-            },
+        "reason": "先看进度。",
+        "command_suggestion": {
+            "command": _supervisor_send_command("lane-a", STATUS_REQUEST_TEXT),
+            "kind": "send_status",
+            "label": "让托管 Codex 汇报状态",
+        },
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert send_calls == []
-
 
 
 def test_codex_supervisor_web_returns_ask_user_after_context_gate(
@@ -1332,7 +1332,7 @@ def test_codex_supervisor_web_returns_ask_user_after_context_gate(
         thread.join(timeout=2)
 
     assert response.status == 200
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "ask_user",
         "target_name": "resume-019e35a2",
         "session_id": "019e35a2-e442-75e2-84ab-3761a685a736",
@@ -1343,6 +1343,7 @@ def test_codex_supervisor_web_returns_ask_user_after_context_gate(
         "reason": "Codex 明确要拍板，既有指示不足，文档和现状冲突。",
         "command_suggestion": None,
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["recent_context_results"][0]["query"] == "目录迁移 兼容策略"
 
 
@@ -1569,6 +1570,4 @@ def test_codex_supervisor_web_rejects_unsupported_managed_command(tmp_path):
     assert payload["status"] == "error"
     assert payload["error"]["code"] == "codex_supervisor_web_error"
     assert "send_status" in payload["error"]["message"]
-
-
 

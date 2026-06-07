@@ -837,7 +837,11 @@ def test_supervisor_goal_plan_write_feeds_loop_without_explicit_goal(
     assert exit_code == 0
     loop_payload = json.loads(capsys.readouterr().out)
     assert loop_payload["active_goals"] == plan_payload["written_goals"]
-    assert loop_payload["llm_action"]["target_name"] == "supervisor-autopilot-goal-entry"
+    assert (
+        loop_payload["supervisor_action"]["target_name"]
+        == "supervisor-autopilot-goal-entry"
+    )
+    assert loop_payload["llm_action"] == loop_payload["supervisor_action"]
     assert loop_payload["executed"]["managed"]["name"] == "supervisor-autopilot-goal-entry"
     assert captured["command"][9].startswith("WORK ORDER")
     assert "goal: 把高层目标拆成可由 daemon 消费的目标队列项。" in captured["command"][9]

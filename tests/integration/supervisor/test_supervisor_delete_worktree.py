@@ -180,7 +180,7 @@ def test_execute_delete_worktree_removes_archived_integrated_supervisor_worktree
         _runner_args(codex_home),
         _empty_report(),
         {
-            "llm_action": {
+            "supervisor_action": {
                 "kind": "delete_worktree",
                 "target_name": "done-worker",
                 "record_id": "managed-done",
@@ -414,7 +414,7 @@ def test_execute_delete_worktree_skips_unarchived_worker(tmp_path, monkeypatch):
         _runner_args(codex_home),
         _empty_report(),
         {
-            "llm_action": {
+            "supervisor_action": {
                 "kind": "delete_worktree",
                 "target_name": "active-worker",
                 "record_id": "managed-active",
@@ -446,7 +446,7 @@ def test_execute_delete_worktree_skips_path_outside_supervisor_worktrees(tmp_pat
         _runner_args(codex_home),
         _empty_report(),
         {
-            "llm_action": {
+            "supervisor_action": {
                 "kind": "delete_worktree",
                 "target_name": "outside-worker",
                 "record_id": "managed-outside",

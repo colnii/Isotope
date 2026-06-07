@@ -62,7 +62,7 @@ def test_supervise_plain_prints_lifecycle_action_route(capsys):
     payload = {
         "automation": {"ready": True, "reason": "ready"},
         "recommendation": {"label": "继续监控", "action": "monitor"},
-        "llm_action": {
+        "supervisor_action": {
             "kind": "cleanup_worktree",
             "source": "worker_lifecycle",
             "decision_source": "worker_lifecycle_execution",

@@ -89,8 +89,9 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
     assert payload["worker_lifecycle_execution"]["kind"] == "merge_dispatch"
     assert payload["worker_lifecycle_execution"]["next_step"] == "launch_merge_worker"
     assert payload["worker_lifecycle_execution"]["status"] == "ready_to_launch"
-    assert payload["llm_action"]["kind"] == "launch_session"
-    assert payload["llm_action"]["source"] == "integration_review"
+    assert payload["supervisor_action"]["kind"] == "launch_session"
+    assert payload["supervisor_action"]["source"] == "integration_review"
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "launch_session"
     assert payload["executed"]["managed"]["name"] == DEFAULT_TARGET_NAME
     assert payload["worker_lifecycle_decision"]["execution"]["kind"] == "launch_session"
@@ -103,7 +104,8 @@ def test_supervisor_loop_dispatches_merge_worker_for_ready_integration(
         "source: supervisor integration-review payload" in item for item in captured[0]
     )
     prompt = captured[0][-1]
-    assert "只允许按本工单要求推送当前工作分支，用于远端 CI 验证" in prompt
+    assert "CI conclusion 必须通过" in prompt
+    assert "SUPERVISOR_NEXT: 用一句中文说明下一步；CI 失败时写明失败时下一步" in prompt
     assert "不主动推送远端" not in prompt
     registry_path = codex_home / "supervisor" / "managed_sessions.jsonl"
     managed_records = [
@@ -177,8 +179,9 @@ def test_supervisor_loop_does_not_dispatch_merge_worker_inside_merge_worker_work
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert "merge_dispatch" not in payload
-    assert payload["llm_action"]["kind"] == "monitor"
-    assert payload["llm_action"]["reason"] == "当前工作区是 merge worker，跳过 merge dispatch。"
+    assert payload["supervisor_action"]["kind"] == "monitor"
+    assert payload["supervisor_action"]["reason"] == "当前工作区是 merge worker，跳过 merge dispatch。"
+    assert payload["llm_action"] == payload["supervisor_action"]
 
 
 def test_supervisor_loop_does_not_dispatch_merge_worker_inside_repair_workspace(
@@ -245,8 +248,9 @@ def test_supervisor_loop_does_not_dispatch_merge_worker_inside_repair_workspace(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert "merge_dispatch" not in payload
-    assert payload["llm_action"]["kind"] == "monitor"
-    assert payload["llm_action"]["reason"] == "当前工作区是 merge_repair worker，跳过递归调度。"
+    assert payload["supervisor_action"]["kind"] == "monitor"
+    assert payload["supervisor_action"]["reason"] == "当前工作区是 merge_repair worker，跳过递归调度。"
+    assert payload["llm_action"] == payload["supervisor_action"]
 
 
 def test_supervisor_daemon_status_surfaces_merge_dispatch_activity(
@@ -453,8 +457,9 @@ def test_supervisor_loop_waits_when_merge_worker_is_already_running(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert "merge_dispatch" not in payload
-    assert payload["llm_action"]["kind"] == "monitor"
-    assert payload["llm_action"]["reason"] == "merge worker 正在运行，等待下一轮。"
+    assert payload["supervisor_action"]["kind"] == "monitor"
+    assert payload["supervisor_action"]["reason"] == "merge worker 正在运行，等待下一轮。"
+    assert payload["llm_action"] == payload["supervisor_action"]
 
 
 def test_supervisor_loop_auto_archives_done_merge_worker_after_integrated_review(
@@ -565,10 +570,14 @@ def test_supervisor_loop_auto_archives_done_merge_worker_after_integrated_review
     assert payload["cleanup_archived"][0]["goal"]["goal_id"] == goal.goal_id
     assert payload["worker_lifecycle_decision"]["action"] == "archive_integrated"
     assert payload["worker_lifecycle_decision"]["source"] == "cleanup"
-    assert (
-        payload["worker_lifecycle_decision"]["execution"]
-        == payload["cleanup_archived"]
-    )
+    assert payload["worker_lifecycle_decision"]["execution"] == {
+        "kind": "cleanup_worktree",
+        "skipped": True,
+        "reason": "worktree delete blockers require attention",
+        "source": "worker_lifecycle",
+        "count": 0,
+        "blockers": 1,
+    }
     assert merge_workspace.exists() is True
 
     registry_events = [

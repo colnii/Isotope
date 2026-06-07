@@ -47,7 +47,7 @@ def test_execute_llm_action_routes_request_context_through_codex_operation_capac
     result = execute_llm_action(
         args,
         report=None,
-        payload={"llm_action": action},
+        payload={"supervisor_action": action},
         api=api,
     )
 

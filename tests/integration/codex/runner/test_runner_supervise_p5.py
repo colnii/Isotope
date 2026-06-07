@@ -1005,13 +1005,14 @@ def test_codex_supervisor_runner_supervise_invalid_llm_action_falls_back_to_moni
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "monitor",
         "target_name": None,
         "reason": "LLM 动作无效，已跳过执行：unknown resumable session for LLM action: done-session",
         "command_suggestion": None,
         "error": "unknown resumable session for LLM action: done-session",
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "skipped": True,
@@ -1073,7 +1074,7 @@ def test_codex_supervisor_runner_supervise_llm_provider_failure_falls_back_to_mo
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "monitor",
         "target_name": None,
         "reason": (
@@ -1083,9 +1084,9 @@ def test_codex_supervisor_runner_supervise_llm_provider_failure_falls_back_to_mo
         "command_suggestion": None,
         "error": "All LLM pool entries failed: pool:ValueError(empty model response)",
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "monitor"
     assert payload["executed"]["skipped"] is True
-
 
 
 

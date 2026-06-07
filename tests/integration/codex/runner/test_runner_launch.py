@@ -979,7 +979,7 @@ def test_codex_supervisor_runner_adopt_registers_existing_tmux_session(
     assert payload["managed"]["status"] == "adopted"
     assert payload["managed"]["backend"] == "tmux"
     assert payload["managed"]["tmux_session"] == "isotope-lane-a"
-    assert payload["managed"]["prompt"] == "接管已有 tmux 会话"
+    assert payload["managed"]["prompt"] == "接管已有 Codex 会话"
     assert calls[0] == ["tmux", "has-session", "-t", "isotope-lane-a"]
     assert calls[1][:4] == ["tmux", "set-hook", "-t", "isotope-lane-a"]
     assert calls[1][4] == "alert-bell"
@@ -1167,6 +1167,5 @@ def test_codex_supervisor_runner_send_rejects_non_tmux_managed_session(
     payload = json.loads(capsys.readouterr().out)
     assert payload["error"]["code"] == "codex_supervisor_runner_error"
     assert "tmux" in payload["error"]["message"]
-
 
 

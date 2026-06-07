@@ -332,7 +332,7 @@ DASHBOARD_SCRIPT_INTERACTIONS = r'''    async function copyResumeCommand(item, b
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error ? payload.error.message : "模型建议失败");
-        renderLlmAction(payload.llm_action);
+        renderLlmAction(payload.supervisor_action || payload.llm_action);
       } catch (error) {
         result.textContent = "模型建议失败：" + text(error.message);
       } finally {

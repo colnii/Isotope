@@ -30,6 +30,7 @@ from ..llm_action.llm_summary import (
     generate_llm_action_decision,
     resolve_summary_provider_from_env,
 )
+from ..commands.supervisor_action import set_supervisor_action_payload
 from isotope.llm.provider import resolve_llm_chat_provider
 from ...ask.pool import resolve_workbench_ask_provider_from_env
 from ..registry import TmuxBellHookRepair, repair_tmux_bell_hooks, send_to_managed_codex
@@ -189,13 +190,16 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         provider = self.llm_action_provider or resolve_summary_provider_from_env(
             agent_name="supervisor"
         )
-        payload["llm_action"] = generate_llm_action_decision(
-            report,
-            payload["command_suggestions"],
-            provider,
-            recent_context_results,
-            None,
-            decision_answer_dicts(self.codex_home),
+        set_supervisor_action_payload(
+            payload,
+            generate_llm_action_decision(
+                report,
+                payload["command_suggestions"],
+                provider,
+                recent_context_results,
+                None,
+                decision_answer_dicts(self.codex_home),
+            ),
         )
         return payload
 

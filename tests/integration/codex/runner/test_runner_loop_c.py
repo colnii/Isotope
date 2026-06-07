@@ -1452,13 +1452,14 @@ def test_codex_supervisor_runner_loop_goal_provider_resolution_failure_is_visibl
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "monitor",
         "target_name": None,
         "reason": "LLM 动作无效，已跳过执行：No LLM pool entries found",
         "command_suggestion": None,
         "error": "No LLM pool entries found",
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"] == {
         "kind": "monitor",
         "skipped": True,
@@ -1587,10 +1588,13 @@ def test_codex_supervisor_runner_loop_can_continue_multiple_lanes_with_default_b
     lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
     assert len(lines) == 2
     payloads = [json.loads(line) for line in lines]
-    assert [payload["llm_action"]["target_name"] for payload in payloads] == [
+    assert [payload["supervisor_action"]["target_name"] for payload in payloads] == [
         "lane-a",
         "lane-b",
     ]
+    assert all(
+        payload["llm_action"] == payload["supervisor_action"] for payload in payloads
+    )
     assert [payload["executed"]["kind"] for payload in payloads] == [
         "send_continue",
         "send_continue",
@@ -1605,6 +1609,5 @@ def test_codex_supervisor_runner_loop_can_continue_multiple_lanes_with_default_b
         target="isotope-lane-b",
     )
     assert provider.calls == 2
-
 
 

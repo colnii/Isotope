@@ -232,7 +232,7 @@ def test_codex_supervisor_llm_execute_blocks_old_resume_when_active_goal_exists(
                 "command": "isotope-supervisor launch --name goal-worker",
             },
         ],
-        "llm_action": {
+        "supervisor_action": {
             "kind": "resume_session",
             "session_id": "old-session",
             "prompt_kind": "send_continue",
@@ -1173,7 +1173,6 @@ def test_codex_supervisor_runner_supervise_launch_skips_running_named_process(
             "target already has running managed worker: planner-session"
         ),
     }
-
 
 
 

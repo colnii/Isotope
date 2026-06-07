@@ -97,7 +97,8 @@ def test_supervisor_loop_replenishes_done_workers_and_dispatches_merge_e2e(
     )
 
     assert first_payload["goal_replenishment"]["written_count"] == 2
-    assert first_payload["llm_action"]["kind"] == "fanout_launch_sessions"
+    assert first_payload["supervisor_action"]["kind"] == "fanout_launch_sessions"
+    assert first_payload["llm_action"] == first_payload["supervisor_action"]
     assert first_payload["executed"]["summary"]["launched"] == 2
     assert first_payload["executed"]["summary"]["skipped"] == 0
     assert [item["managed"]["name"] for item in first_payload["executed"]["results"]] == [
@@ -127,8 +128,9 @@ def test_supervisor_loop_replenishes_done_workers_and_dispatches_merge_e2e(
         second_payload["worker_lifecycle_decision"]["summary"]["ready_to_integrate"]
         == 2
     )
-    assert second_payload["llm_action"]["kind"] == "launch_session"
-    assert second_payload["llm_action"]["source"] == "integration_review"
+    assert second_payload["supervisor_action"]["kind"] == "launch_session"
+    assert second_payload["supervisor_action"]["source"] == "integration_review"
+    assert second_payload["llm_action"] == second_payload["supervisor_action"]
     assert second_payload["executed"]["display_kind"] == "merge_dispatch"
     assert second_payload["executed"]["managed"]["name"] == "supervisor-merge-dispatch"
     assert "cleanup_archived" not in second_payload
@@ -221,8 +223,9 @@ def test_supervisor_loop_dispatches_merge_before_launching_more_fanout(
     assert payload["merge_dispatch"]["integration_review"]["summary"][
         "ready_to_integrate"
     ] == 1
-    assert payload["llm_action"]["kind"] == "launch_session"
-    assert payload["llm_action"]["source"] == "integration_review"
+    assert payload["supervisor_action"]["kind"] == "launch_session"
+    assert payload["supervisor_action"]["source"] == "integration_review"
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["display_kind"] == "merge_dispatch"
     assert payload["executed"]["managed"]["name"] == "supervisor-merge-dispatch"
     assert len(launched_commands) == 1

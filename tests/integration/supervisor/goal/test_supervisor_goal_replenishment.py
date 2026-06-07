@@ -211,7 +211,8 @@ def test_supervisor_loop_replenishes_goals_from_docs_when_low_water(
         "supervisor-low-water-loop",
         "supervisor-low-water-daemon",
     ]
-    assert payload["llm_action"]["kind"] == "fanout_launch_sessions"
+    assert payload["supervisor_action"]["kind"] == "fanout_launch_sessions"
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["summary"]["launched"] == 2
     assert payload["lifecycle_trace"]["summary"]["active_goals"] == 2
     assert payload["lifecycle_trace"]["summary"]["active_managed_workers"] == 2
