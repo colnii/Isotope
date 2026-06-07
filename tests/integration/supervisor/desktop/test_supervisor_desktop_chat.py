@@ -169,7 +169,14 @@ class StreamingCapableDecisionProvider(MultiResponseDesktopChatProvider):
         *,
         max_tokens: int = 512,
     ):
-        raise AssertionError("desktop chat should route default providers through conversation loop")
+        self.calls.append({"messages": messages, "max_tokens": max_tokens})
+        for chunk in ("streaming-capable ", "provider 也走了 capacity loop。"):
+            yield LLMStreamChunk(
+                provider=self.provider,
+                model=self.model,
+                content=chunk,
+                raw={},
+            )
 
 
 class DesktopChatGoalPlanProvider:
@@ -864,6 +871,15 @@ def test_desktop_chat_stream_uses_conversation_loop_for_streaming_capable_provid
     assert events[2].payload["capacity_id"] == "artifact.review"
     assert "".join(event.payload["text"] for event in events[3:]) == (
         "streaming-capable provider 也走了 capacity loop。"
+    )
+    assert len(provider.calls) == 3
+    assert "你是 Isotope Supervisor 的产品对话决策层" in json.dumps(
+        provider.calls[0]["messages"],
+        ensure_ascii=False,
+    )
+    assert "capacity_result" in json.dumps(
+        provider.calls[2]["messages"],
+        ensure_ascii=False,
     )
 
 

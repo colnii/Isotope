@@ -116,6 +116,7 @@ def run_supervisor_conversation_events(
                 payload={"text": answer},
                 provider=response.provider,
                 model=response.model,
+                private={"decision_kind": "direct_answer"},
             )
             return
         if decision["kind"] in {"call_capability", "call_capabilities"}:

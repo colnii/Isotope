@@ -108,6 +108,7 @@ def stream_desktop_chat_events(
         raise ValueError("max_tokens must be a positive integer")
     use_conversation_loop = capacity_provider is None
     if use_conversation_loop:
+        chat_context = build_desktop_chat_context(capacity_runner=capacity_runner)
         for event in run_supervisor_conversation_events(
             state_root=state_root,
             cwd=Path(cwd).expanduser() if cwd is not None else Path.cwd(),
@@ -118,9 +119,30 @@ def stream_desktop_chat_events(
             capacity_runner=capacity_runner,
             timeout_seconds=chat_timeout_seconds,
         ):
+            if event.event == "capacity_result":
+                chat_context["capacity_result"] = event.payload
             if event.event == "delta":
                 text = event.payload.get("text")
                 if isinstance(text, str):
+                    if (
+                        event.private.get("decision_kind") == "direct_answer"
+                        and callable(getattr(provider, "stream_generate", None))
+                    ):
+                        for chunk in _stream_desktop_chat_chunks_with_timeout(
+                            clean_question,
+                            chat_context,
+                            provider=provider,
+                            max_tokens=max_tokens,
+                            timeout_seconds=chat_timeout_seconds,
+                            history=history,
+                        ):
+                            yield DesktopChatStreamEvent(
+                                event="delta",
+                                payload={"text": chunk.content},
+                                provider=chunk.provider,
+                                model=chunk.model,
+                            )
+                        continue
                     for chunk in desktop_chat_answer_chunks(text):
                         yield DesktopChatStreamEvent(
                             event="delta",
