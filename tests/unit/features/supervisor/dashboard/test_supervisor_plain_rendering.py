@@ -86,6 +86,29 @@ def test_supervise_plain_prints_lifecycle_action_route(capsys):
     )
 
 
+def test_supervise_plain_uses_planner_source_for_program_action_title(capsys):
+    payload = {
+        "automation": {"ready": True, "reason": "ready"},
+        "recommendation": {"label": "继续监控", "action": "monitor"},
+        "supervisor_action_planner": {
+            "source": "program",
+            "reason": "worker_lifecycle_execution",
+        },
+        "supervisor_action": {
+            "kind": "launch_session",
+            "target_name": "supervisor-merge-dispatch",
+            "source": "integration_review",
+        },
+    }
+
+    print_supervise_plain(payload, report=object(), api=_StubApi())
+
+    text = capsys.readouterr().out
+    assert "[程序路由动作]" in text
+    assert "[Supervisor 白名单动作]" not in text
+    assert "launch_session / no reason provided" in text
+
+
 def test_supervise_plain_prefers_supervisor_action_alias(capsys):
     payload = {
         "automation": {"ready": True, "reason": "ready"},

@@ -19,6 +19,18 @@ def set_supervisor_action_payload(
     payload["supervisor_action"] = action
 
 
+def set_supervisor_action_planner_payload(
+    payload: dict[str, Any],
+    *,
+    source: str,
+    reason: str,
+) -> None:
+    payload["supervisor_action_planner"] = {
+        "source": source,
+        "reason": reason,
+    }
+
+
 def set_supervisor_followup_action_payload(
     payload: dict[str, Any],
     action: dict[str, Any],

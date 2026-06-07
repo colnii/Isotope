@@ -74,7 +74,10 @@ def print_supervise_plain(
     if _has_supervisor_action(payload):
         print()
         llm_action = supervisor_action_from_payload(payload)
-        print(f"[{llm_action_section_title(llm_action)}]")
+        planner = payload.get("supervisor_action_planner")
+        print(
+            f"[{llm_action_section_title(llm_action, planner=planner)}]"
+        )
         print_llm_action_plain(llm_action, api=api)
     if _has_supervisor_followup_action(payload):
         print()
@@ -276,7 +279,10 @@ def llm_action_section_title(
     action: dict[str, Any],
     *,
     followup: bool = False,
+    planner: Any | None = None,
 ) -> str:
+    if isinstance(planner, dict) and planner.get("source") == "program":
+        return "程序同轮后续动作" if followup else PROGRAM_ROUTED_ACTION_SECTION_TITLE
     if is_program_routed_action(action):
         return "程序同轮后续动作" if followup else PROGRAM_ROUTED_ACTION_SECTION_TITLE
     return (

@@ -75,7 +75,7 @@ def supervise_payload(
     lifecycle_execution = planning.lifecycle_execution
     if args.llm_summary:
         payload["llm_summary"] = api._summarize_with_llm(report)
-    api._append_supervise_llm_action(
+    api._append_supervise_supervisor_action(
         args,
         payload,
         action_report,

@@ -11,8 +11,11 @@
 Codex Supervisor 是 Isotope 的本机管理层：观察多个 Codex 会话，启动和接管
 worker，汇总证据，生成下一步建议，并通过白名单动作进行受控推进。
 
-它不是纯规则脚本。LLM planner（模型规划器）应参与判断、调度和下一步建议；
-规则、冷却、状态协议、tmux 和工作区边界只提供 guardrail（护栏）。
+它不是纯规则脚本，也不是每轮都让 LLM planner（模型规划器）重判一遍。
+明确的生命周期动作先由程序处理，例如监控已有 worker、派发 merge worker、
+归档完成项和清理已集成 worktree。程序无法确定的目标拆解、上下文请求、
+新 worker prompt 和用户拍板，再交给 LLM planner；规则、冷却、状态协议、
+tmux 和工作区边界提供 guardrail（护栏）。
 
 ## 最短路径
 

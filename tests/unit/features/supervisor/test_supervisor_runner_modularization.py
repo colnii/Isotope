@@ -1168,9 +1168,14 @@ def test_supervisor_runner_delegates_supervise_action_selection():
         runner._append_supervise_llm_action
         is action_module.append_supervise_llm_action
     )
+    assert (
+        runner._append_supervise_supervisor_action
+        is action_module.append_supervise_supervisor_action
+    )
 
     source = inspect.getsource(runner)
     assert "def _append_supervise_llm_action(" not in source
+    assert "def _append_supervise_supervisor_action(" not in source
 
 
 def test_llm_context_replans_after_successful_context_request():

@@ -279,6 +279,7 @@ from .supervise.planning import (
 )
 from .supervise.action import (
     append_supervise_llm_action as _append_supervise_llm_action,
+    append_supervise_supervisor_action as _append_supervise_supervisor_action,
 )
 from .supervise.execution import (
     append_supervise_execution as _append_supervise_execution,
