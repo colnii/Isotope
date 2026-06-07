@@ -92,6 +92,7 @@ def run_supervisor_conversation_events(
     )
     observations: list[dict[str, Any]] = []
     failed_capabilities: dict[str, dict[str, Any]] = {}
+    completed_capabilities: dict[str, dict[str, Any]] = {}
     for _turn_index in range(max_turns):
         response = _generate_with_timeout(
             provider,
@@ -116,6 +117,19 @@ def run_supervisor_conversation_events(
             return
         if decision["kind"] == "call_capability":
             capacity_id = _require_text(decision.get("capacity_id"), "capacity_id")
+            if capacity_id in completed_capabilities:
+                yield SupervisorConversationEvent(
+                    event="delta",
+                    payload={
+                        "text": _repeated_completed_capacity_answer(
+                            capacity_id,
+                            completed_capabilities[capacity_id],
+                        )
+                    },
+                    provider=response.provider,
+                    model=response.model,
+                )
+                return
             if capacity_id in failed_capabilities:
                 yield SupervisorConversationEvent(
                     event="delta",
@@ -139,12 +153,11 @@ def run_supervisor_conversation_events(
             ):
                 yield event
                 if event.event == "capacity_result":
-                    observations.append(
-                        capacity_observation_from_event_payload(
-                            payload=event.payload,
-                            private=event.private,
-                        )
+                    observation = capacity_observation_from_event_payload(
+                        payload=event.payload,
+                        private=event.private,
                     )
+                    observations.append(observation)
                     payload_capacity_id = event.payload.get("capacity_id")
                     if isinstance(payload_capacity_id, str):
                         if event.payload.get("status") == "error":
@@ -157,8 +170,10 @@ def run_supervisor_conversation_events(
                                 if isinstance(result_text, dict)
                                 else {}
                             )
+                            completed_capabilities.pop(payload_capacity_id, None)
                         else:
                             failed_capabilities.pop(payload_capacity_id, None)
+                            completed_capabilities[payload_capacity_id] = observation
             continue
         if decision["kind"] == "report_capability_gap":
             gap = _record_capability_gap(
@@ -549,6 +564,51 @@ def _repeated_failed_capacity_answer(
     return f"{capacity_id} 执行失败：{message.strip()}"
 
 
+def _repeated_completed_capacity_answer(
+    capacity_id: str,
+    observation: dict[str, Any],
+) -> str:
+    result = observation.get("result")
+    result = result if isinstance(result, dict) else {}
+    if capacity_id == "supervisor.goal_plan":
+        return _goal_plan_completed_answer(capacity_id, result)
+    status = observation.get("status")
+    status_text = f"状态：{status}。" if isinstance(status, str) and status else ""
+    return f"{capacity_id} 已完成。{status_text}".strip()
+
+
+def _goal_plan_completed_answer(capacity_id: str, result: dict[str, Any]) -> str:
+    parts = [f"{capacity_id} 已完成。"]
+    summary = result.get("plan_summary")
+    if isinstance(summary, str) and summary.strip():
+        parts.append(summary.strip())
+    candidates = result.get("candidates")
+    if isinstance(candidates, list):
+        goals = [
+            candidate.get("goal")
+            for candidate in candidates[:3]
+            if isinstance(candidate, dict)
+            and isinstance(candidate.get("goal"), str)
+            and candidate.get("goal", "").strip()
+        ]
+        if goals:
+            parts.append(
+                "候选目标："
+                + "；".join(
+                    f"{index + 1}. {goal.strip()}"
+                    for index, goal in enumerate(goals)
+                )
+            )
+    written_count = result.get("written_count")
+    if isinstance(written_count, int):
+        parts.append(
+            f"已写入目标队列 {written_count} 项。"
+            if written_count > 0
+            else "未写入目标队列。"
+        )
+    return " ".join(parts)
+
+
 def _capability_inputs_from_decision(
     capacity_id: str,
     *,
@@ -586,11 +646,10 @@ def _apply_conversation_goal_plan_write_route(
 ) -> dict[str, Any]:
     if capacity_id != "supervisor.goal_plan":
         return inputs
-    if "write" in inputs:
-        return inputs
-    if not _explicit_goal_plan_write_requested(user_message):
-        return inputs
     normalized = dict(inputs)
+    if not _explicit_goal_plan_write_requested(user_message):
+        normalized.pop("write", None)
+        return normalized
     normalized["write"] = True
     return normalized
 
