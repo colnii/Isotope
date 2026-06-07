@@ -9,3 +9,4 @@ build/
 src/isotope/features/supervisor/supervisor_llm_pool.toml
 src/isotope/features/research/research_tavily.toml
 .isotope/dev/qq-real-smoke.toml
+tests/integration/qq/qq_real_smoke.local.toml

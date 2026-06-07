@@ -497,15 +497,14 @@ Run this checklist for each controlled beta day:
 ## Real Smoke Guard
 
 Real QQ smoke uses developer TOML settings, not the application beta-pack
-config. Copy the example once:
+config. Copy the example once beside the QQ integration test:
 
 ```bash
-mkdir -p .isotope/dev
 cp tests/integration/qq/qq_real_smoke.toml.example \
-  .isotope/dev/qq-real-smoke.toml
+  tests/integration/qq/qq_real_smoke.local.toml
 ```
 
-Fill `.isotope/dev/qq-real-smoke.toml`:
+Fill `tests/integration/qq/qq_real_smoke.local.toml`:
 
 ```toml
 [qq.real_smoke]
@@ -536,6 +535,7 @@ mode = "dry-run"
 ```
 
 `access_token` is optional. Fill it when NapCat requires a OneBot token, or keep
-it empty and set `ISOTOPE_QQ_ACCESS_TOKEN` only for a temporary shell.
+it empty and set `ISOTOPE_QQ_ACCESS_TOKEN` only for a temporary shell. The old
+`.isotope/dev/qq-real-smoke.toml` path is still supported as a fallback.
 Automated real smoke must not send messages. Use the manual `live-run --send`
 command only after reviewing dry-run decisions.

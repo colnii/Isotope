@@ -109,6 +109,7 @@ def test_qq_group_chatbot_runbooks_cover_beta_operations() -> None:
         "--max-events 0",
         "ISOTOPE_QQ_REAL_SMOKE",
         "qq_real_smoke.toml.example",
+        "qq_real_smoke.local.toml",
         ".isotope/dev/qq-real-smoke.toml",
         "access_token",
         "ISOTOPE_QQ_REAL_SMOKE_MODE",

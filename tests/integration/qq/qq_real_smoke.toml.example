@@ -1,7 +1,8 @@
 # QQ real smoke developer settings -- EXAMPLE FILE
 #
-# Copy this file to .isotope/dev/qq-real-smoke.toml and fill in local values.
-# The real .isotope/dev/qq-real-smoke.toml is git-ignored and never committed.
+# Copy this file to tests/integration/qq/qq_real_smoke.local.toml and fill in
+# local values. The real qq_real_smoke.local.toml is git-ignored and never
+# committed.
 # This is a developer test harness config, not the application beta-pack config.
 
 [qq.real_smoke]

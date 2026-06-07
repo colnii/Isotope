@@ -343,16 +343,15 @@ isotope-social qq live-run --config-json config.json --state-root .isotope/qq \
 ```
 
 Real smoke is a developer setting, not an application setting. Copy the example
-TOML once, fill in the local test group and NapCat values, and keep the real
-file uncommitted:
+TOML once beside the QQ integration test, fill in the local test group and
+NapCat values, and keep the real file uncommitted:
 
 ```bash
-mkdir -p .isotope/dev
 cp tests/integration/qq/qq_real_smoke.toml.example \
-  .isotope/dev/qq-real-smoke.toml
+  tests/integration/qq/qq_real_smoke.local.toml
 ```
 
-Fill `.isotope/dev/qq-real-smoke.toml`:
+Fill `tests/integration/qq/qq_real_smoke.local.toml`:
 
 ```toml
 [qq.real_smoke]
@@ -388,9 +387,10 @@ Then rerun the same pytest command. `ISOTOPE_QQ_REAL_SMOKE=1`,
 `ISOTOPE_QQ_REAL_SMOKE_CONFIG`, `ISOTOPE_QQ_REAL_SMOKE_MODE`,
 `ISOTOPE_QQ_ONEBOT_URL`, `ISOTOPE_QQ_TEST_GROUP`, `ISOTOPE_QQ_BOT_USER_ID`,
 `ISOTOPE_QQ_ACCESS_TOKEN`, and `ISOTOPE_QQ_REAL_SMOKE_TIMEOUT` remain supported
-as temporary overrides for CI or one-off shells. Automated real smoke never
-passes `--send`; send-enabled beta is the manual `live-run --send` command
-above.
+as temporary overrides for CI or one-off shells. The old
+`.isotope/dev/qq-real-smoke.toml` path is still supported as a fallback.
+Automated real smoke never passes `--send`; send-enabled beta is the manual
+`live-run --send` command above.
 
 Do not run real smoke in a public or high-traffic group.
 

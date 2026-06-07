@@ -78,6 +78,7 @@ def test_onebot_history_backfill_skips_duplicate_events() -> None:
     assert [message.message_id for message in messages] == ["123", "124"]
 
 
+LOCAL_REAL_SMOKE_CONFIG = Path("tests/integration/qq/qq_real_smoke.local.toml")
 DEFAULT_REAL_SMOKE_CONFIG = Path(".isotope/dev/qq-real-smoke.toml")
 
 
@@ -102,7 +103,11 @@ def _real_smoke_toml_config() -> dict[str, object]:
 
 def _real_smoke_toml_path() -> Path:
     configured = os.environ.get("ISOTOPE_QQ_REAL_SMOKE_CONFIG")
-    return Path(configured) if configured else DEFAULT_REAL_SMOKE_CONFIG
+    if configured:
+        return Path(configured)
+    if LOCAL_REAL_SMOKE_CONFIG.is_file():
+        return LOCAL_REAL_SMOKE_CONFIG
+    return DEFAULT_REAL_SMOKE_CONFIG
 
 
 def _write_real_smoke_toml(
@@ -184,15 +189,18 @@ def test_real_qq_smoke_env_vars_override_dev_toml_config(
     assert env["mode"] == "dry-run"
 
 
-def test_real_qq_smoke_collection_gate_reads_enabled_toml(
+def test_real_qq_smoke_collection_gate_prefers_local_test_toml(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    config = tmp_path / "qq-real-smoke.toml"
-    _write_real_smoke_toml(config)
+    local_config = tmp_path / LOCAL_REAL_SMOKE_CONFIG
+    local_config.parent.mkdir(parents=True)
+    _write_real_smoke_toml(local_config)
+    monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("ISOTOPE_QQ_REAL_SMOKE", raising=False)
-    monkeypatch.setenv("ISOTOPE_QQ_REAL_SMOKE_CONFIG", str(config))
+    monkeypatch.delenv("ISOTOPE_QQ_REAL_SMOKE_CONFIG", raising=False)
 
+    assert _real_smoke_toml_path() == LOCAL_REAL_SMOKE_CONFIG
     assert _real_smoke_enabled()
 
 
