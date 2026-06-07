@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from isotope.features.social import (
     SocialMessagePart,
     SocialReplyAction,
@@ -79,6 +81,42 @@ def test_onebot_adapter_receive_next_skips_non_message_events() -> None:
 
     assert message is not None
     assert message.message_id == "123"
+
+
+def test_onebot_adapter_receive_next_uses_one_deadline_for_skipped_events() -> None:
+    class DeadlineAwareClient:
+        receive_timeout_seconds = 10.0
+
+        def __init__(self) -> None:
+            self.events: list[dict[str, Any] | None] = [
+                {
+                    "time": 1780827832,
+                    "self_id": 3261449720,
+                    "post_type": "meta_event",
+                    "meta_event_type": "lifecycle",
+                    "sub_type": "connect",
+                },
+                {
+                    "time": 1780827862,
+                    "self_id": 3261449720,
+                    "post_type": "meta_event",
+                    "meta_event_type": "heartbeat",
+                    "interval": 30000,
+                },
+                None,
+            ]
+            self.timeouts: list[float | None] = []
+
+        def receive_event(self, *, timeout_seconds: float | None = None) -> dict | None:
+            self.timeouts.append(timeout_seconds)
+            return self.events.pop(0)
+
+    times = iter([100.0, 100.0, 104.0, 109.5])
+    client = DeadlineAwareClient()
+    adapter = OneBotAdapter(client=client, clock=lambda: next(times))
+
+    assert adapter.receive_next() is None
+    assert client.timeouts == [10.0, 6.0, 0.5]
 
 
 def test_onebot_adapter_maps_mixed_reply_action_to_segments() -> None:

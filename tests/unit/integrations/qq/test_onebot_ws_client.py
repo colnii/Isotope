@@ -81,6 +81,17 @@ def test_onebot_websocket_client_receives_event_frame() -> None:
     assert client.connection_state().pending_events == 0
 
 
+def test_onebot_websocket_client_receive_event_returns_none_on_timeout() -> None:
+    websocket = FakeWebSocket([])
+    client = OneBotWebSocketClient(
+        "ws://127.0.0.1:3001",
+        connector=FakeConnector(websocket),
+        receive_timeout_seconds=0.01,
+    )
+
+    assert client.receive_event() is None
+
+
 def test_onebot_websocket_client_sends_group_msg_and_matches_echo() -> None:
     websocket = FakeWebSocket(
         [

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import inspect
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -37,6 +40,7 @@ class OneBotConnectionState:
 class OneBotAdapter:
     client: Any
     adapter_name: str = "onebot"
+    clock: Callable[[], float] = time.monotonic
     _seen_message_ids: set[str] = field(default_factory=set)
 
     def normalize_event(self, event: dict[str, Any]) -> SocialMessage | None:
@@ -85,8 +89,18 @@ class OneBotAdapter:
         return tuple(messages)
 
     def receive_next(self) -> SocialMessage | None:
+        timeout_seconds = _client_receive_timeout(self.client)
+        deadline = None if timeout_seconds is None else self.clock() + timeout_seconds
         while True:
-            event = self.client.receive_event()
+            remaining_seconds = None
+            if deadline is not None:
+                remaining_seconds = deadline - self.clock()
+                if remaining_seconds <= 0:
+                    return None
+            event = _receive_client_event(
+                self.client,
+                timeout_seconds=remaining_seconds,
+            )
             if event is None:
                 return None
             message = self.normalize_event(event)
@@ -176,6 +190,31 @@ def _parts_from_segments(
     if not parts:
         parts.append(SocialMessagePart(kind="raw", platform_data={"empty_message": True}))
     return tuple(parts), tuple(mentions), reply_to
+
+
+def _client_receive_timeout(client: Any) -> float | None:
+    value = getattr(client, "receive_timeout_seconds", None)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    parsed = float(value)
+    return parsed if parsed > 0 else None
+
+
+def _receive_client_event(
+    client: Any,
+    *,
+    timeout_seconds: float | None,
+) -> dict[str, Any] | None:
+    receive_event = client.receive_event
+    if timeout_seconds is None:
+        return receive_event()
+    try:
+        signature = inspect.signature(receive_event)
+    except (TypeError, ValueError):
+        return receive_event()
+    if "timeout_seconds" in signature.parameters:
+        return receive_event(timeout_seconds=timeout_seconds)
+    return receive_event()
 
 
 def _part_from_segment(segment: dict[str, Any]) -> SocialMessagePart:

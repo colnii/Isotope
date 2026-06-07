@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any, Callable, Protocol
 
 from .onebot_adapter import OneBotConnectionState
@@ -47,11 +48,23 @@ class OneBotWebSocketClient:
         self._pending_api_responses: dict[str, dict[str, Any]] = {}
         self._api_sequence = 0
 
-    def receive_event(self) -> dict[str, Any] | None:
+    def receive_event(self, *, timeout_seconds: float | None = None) -> dict[str, Any] | None:
         if self._queued_events:
             return self._queued_events.pop(0)
+        timeout = (
+            self.receive_timeout_seconds
+            if timeout_seconds is None
+            else _positive_timeout(timeout_seconds, "timeout_seconds")
+        )
+        deadline = time.monotonic() + timeout
         while True:
-            frame = self._recv_json(timeout=self.receive_timeout_seconds)
+            remaining_seconds = deadline - time.monotonic()
+            if remaining_seconds <= 0:
+                return None
+            try:
+                frame = self._recv_json(timeout=remaining_seconds)
+            except TimeoutError:
+                return None
             if _is_api_response(frame):
                 echo = str(frame["echo"])
                 self._pending_api_responses[echo] = frame
