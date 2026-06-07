@@ -6,6 +6,7 @@ import asyncio
 from dataclasses import dataclass
 import json
 import os
+from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from mcp import ClientSession, StdioServerParameters
@@ -44,53 +45,102 @@ def list_mcp_servers(*, configs: Iterable[McpServerConfig]) -> dict[str, Any]:
     return {"kind": "mcp_server_list", "servers": servers}
 
 
-def load_mcp_server_configs() -> list[McpServerConfig]:
+def load_mcp_server_configs(*, cwd: Path | str | None = None) -> list[McpServerConfig]:
     raw = os.environ.get("ISOTOPE_MCP_SERVERS_JSON")
-    if not raw:
+    if raw:
+        return _mcp_server_configs_from_payload(
+            json.loads(raw),
+            source="ISOTOPE_MCP_SERVERS_JSON",
+        )
+    path = _mcp_server_config_path(cwd=cwd)
+    if path is None:
         return []
-    payload = json.loads(raw)
+    return _mcp_server_configs_from_payload(
+        json.loads(path.read_text(encoding="utf-8")),
+        source=str(path),
+    )
+
+
+def _mcp_server_config_path(*, cwd: Path | str | None) -> Path | None:
+    explicit = os.environ.get("ISOTOPE_MCP_SERVERS_JSON_FILE")
+    if explicit:
+        return Path(explicit).expanduser()
+    candidates: list[Path] = []
+    isotope_home = os.environ.get("ISOTOPE_HOME")
+    if isotope_home:
+        candidates.append(Path(isotope_home).expanduser() / "mcp_servers.json")
+    project_root = Path(cwd).expanduser() if cwd is not None else Path.cwd()
+    candidates.append(project_root / ".isotope" / "mcp_servers.json")
+    candidates.append(Path.home() / ".isotope" / "mcp_servers.json")
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _mcp_server_configs_from_payload(
+    payload: Any,
+    *,
+    source: str,
+) -> list[McpServerConfig]:
     if not isinstance(payload, dict):
-        raise ValueError("ISOTOPE_MCP_SERVERS_JSON must be a JSON object")
+        raise ValueError(f"{source} must be a JSON object")
+    servers = payload.get("servers")
+    if isinstance(servers, (dict, list)):
+        payload = servers
+    if isinstance(payload, list):
+        return [
+            _mcp_server_config_from_mapping(item.get("server_id"), item)
+            for item in payload
+            if isinstance(item, dict)
+        ]
+    if not isinstance(payload, dict):
+        raise ValueError(f"{source} servers must be an object or array")
     configs: list[McpServerConfig] = []
     for server_id, value in payload.items():
-        if not isinstance(server_id, str) or not server_id:
-            raise ValueError("MCP server id must be a non-empty string")
-        if not isinstance(value, dict):
-            raise ValueError("MCP server config must be an object")
-        command = value.get("command")
-        args = value.get("args", [])
-        env = value.get("env")
-        enabled = value.get("enabled", True)
-        allowed_tools = value.get("allowed_tools", [])
-        if not isinstance(command, str) or not command:
-            raise ValueError("MCP server command must be a non-empty string")
-        if not isinstance(args, list) or not all(isinstance(item, str) for item in args):
-            raise ValueError("MCP server args must be an array of strings")
-        if env is not None and (
-            not isinstance(env, dict)
-            or not all(
-                isinstance(key, str) and isinstance(item, str)
-                for key, item in env.items()
-            )
-        ):
-            raise ValueError("MCP server env must be an object of strings")
-        if not isinstance(enabled, bool):
-            raise ValueError("MCP server enabled must be a bool")
-        if not isinstance(allowed_tools, list) or not all(
-            isinstance(item, str) for item in allowed_tools
-        ):
-            raise ValueError("MCP server allowed_tools must be an array of strings")
-        configs.append(
-            McpServerConfig(
-                server_id=server_id,
-                command=command,
-                args=tuple(args),
-                env=env,
-                enabled=enabled,
-                allowed_tools=tuple(allowed_tools),
-            )
-        )
+        configs.append(_mcp_server_config_from_mapping(server_id, value))
     return configs
+
+
+def _mcp_server_config_from_mapping(
+    server_id: Any,
+    value: Any,
+) -> McpServerConfig:
+    if not isinstance(server_id, str) or not server_id:
+        raise ValueError("MCP server id must be a non-empty string")
+    if not isinstance(value, dict):
+        raise ValueError("MCP server config must be an object")
+    command = value.get("command")
+    args = value.get("args", [])
+    env = value.get("env")
+    enabled = value.get("enabled", True)
+    allowed_tools = value.get("allowed_tools", [])
+    if not isinstance(command, str) or not command:
+        raise ValueError("MCP server command must be a non-empty string")
+    if not isinstance(args, list) or not all(isinstance(item, str) for item in args):
+        raise ValueError("MCP server args must be an array of strings")
+    if env is not None and (
+        not isinstance(env, dict)
+        or not all(
+            isinstance(key, str) and isinstance(item, str)
+            for key, item in env.items()
+        )
+    ):
+        raise ValueError("MCP server env must be an object of strings")
+    if not isinstance(enabled, bool):
+        raise ValueError("MCP server enabled must be a bool")
+    if not isinstance(allowed_tools, list) or not all(
+        isinstance(item, str) for item in allowed_tools
+    ):
+        raise ValueError("MCP server allowed_tools must be an array of strings")
+    return McpServerConfig(
+        server_id=server_id,
+        command=command,
+        args=tuple(args),
+        env=env,
+        enabled=enabled,
+        allowed_tools=tuple(allowed_tools),
+    )
 
 
 def list_mcp_tools(

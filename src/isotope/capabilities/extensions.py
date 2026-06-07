@@ -49,8 +49,9 @@ def extension_capability_definitions(capability_type: type[Any]) -> list[Any]:
                     "roots": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Optional explicit skill roots.",
+                        "description": "Optional explicit skill roots for compatibility import.",
                     },
+                    "cwd": _cwd_system_input(),
                     "limit": {
                         "type": "integer",
                         "description": "Maximum returned skills.",
@@ -88,8 +89,9 @@ def extension_capability_definitions(capability_type: type[Any]) -> list[Any]:
                     "roots": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Optional explicit skill roots.",
+                        "description": "Optional explicit skill roots for compatibility import.",
                     },
+                    "cwd": _cwd_system_input(),
                     "max_body_chars": {
                         "type": "integer",
                         "description": "Maximum returned skill guide characters.",
@@ -130,7 +132,12 @@ def _mcp_capability_definitions(capability_type: type[Any]) -> list[Any]:
             maturity="v0.2",
             shelf="product_candidate",
             domain_tags=("mcp", "extensions", "discovery"),
-            input_contract={"type": "object"},
+            input_contract={
+                "type": "object",
+                "properties": {
+                    "cwd": _cwd_system_input(),
+                },
+            },
             output_contract={
                 "type": "object",
                 "fields": ["status", "runner_kind", "servers"],
@@ -165,6 +172,7 @@ def _mcp_capability_definitions(capability_type: type[Any]) -> list[Any]:
                         "description": "Optional tool search query.",
                         "default": "",
                     },
+                    "cwd": _cwd_system_input(),
                 },
             },
             output_contract={
@@ -205,6 +213,7 @@ def _mcp_capability_definitions(capability_type: type[Any]) -> list[Any]:
                         "description": "JSON arguments for the MCP tool.",
                         "default": {},
                     },
+                    "cwd": _cwd_system_input(),
                 },
             },
             output_contract={
@@ -232,6 +241,14 @@ def is_extension_capability(capability_id: str) -> bool:
     return capability_id in EXTENSION_CAPABILITIES
 
 
+def _cwd_system_input() -> dict[str, Any]:
+    return {
+        "type": "string",
+        "description": "Current project directory for project-local Isotope extensions.",
+        "x-system-input": True,
+    }
+
+
 def validate_extension_inputs(
     *,
     capability_id: str,
@@ -242,6 +259,9 @@ def validate_extension_inputs(
         return
     if missing_inputs:
         return
+    cwd = inputs.get("cwd")
+    if cwd is not None and not isinstance(cwd, str):
+        raise ValueError("cwd must be a string")
     roots = inputs.get("roots")
     if roots is not None and not isinstance(roots, list):
         raise ValueError("roots must be an array")
@@ -258,6 +278,7 @@ def run_extension_capability(
     if capability_id == SKILLS_SEARCH_CAPABILITY:
         result = discover_skills(
             roots=inputs.get("roots"),
+            cwd=inputs.get("cwd"),
             query=str(inputs.get("query", "")),
             limit=int(inputs.get("limit", 20)),
         )
@@ -270,6 +291,7 @@ def run_extension_capability(
         result = describe_skill(
             str(inputs["skill_id"]),
             roots=inputs.get("roots"),
+            cwd=inputs.get("cwd"),
             max_body_chars=int(inputs.get("max_body_chars", 12000)),
         )
         return {
@@ -281,7 +303,7 @@ def run_extension_capability(
         return {
             "status": "completed",
             "runner_kind": "extension_mcp_client",
-            **list_mcp_servers(configs=load_mcp_server_configs()),
+            **list_mcp_servers(configs=load_mcp_server_configs(cwd=inputs.get("cwd"))),
         }
     if capability_id == MCP_TOOLS_SEARCH_CAPABILITY:
         return {
@@ -289,7 +311,7 @@ def run_extension_capability(
             "runner_kind": "extension_mcp_client",
             **list_mcp_tools(
                 str(inputs["server_id"]),
-                configs=load_mcp_server_configs(),
+                configs=load_mcp_server_configs(cwd=inputs.get("cwd")),
                 query=str(inputs.get("query", "")),
             ),
         }
@@ -302,7 +324,7 @@ def run_extension_capability(
                 str(inputs["server_id"]),
                 str(inputs["tool_name"]),
                 arguments=arguments if isinstance(arguments, Mapping) else {},
-                configs=load_mcp_server_configs(),
+                configs=load_mcp_server_configs(cwd=inputs.get("cwd")),
             ),
         }
     raise PermissionError(f"extension capability is not implemented: {capability_id}")

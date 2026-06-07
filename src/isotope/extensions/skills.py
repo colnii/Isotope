@@ -1,4 +1,4 @@
-"""Public progressive discovery for local Codex skills."""
+"""Public progressive discovery for local Isotope skills."""
 
 from __future__ import annotations
 
@@ -37,18 +37,28 @@ class SkillRecord:
         }
 
 
-def default_skill_roots() -> list[Path]:
+def default_skill_roots(*, cwd: Path | str | None = None) -> list[Path]:
     roots: list[Path] = []
-    codex_home = os.environ.get("CODEX_HOME")
-    if codex_home:
-        roots.append(Path(codex_home).expanduser() / "skills")
-    roots.append(Path.home() / ".codex" / "skills")
+    env_roots = os.environ.get("ISOTOPE_SKILL_ROOTS")
+    if env_roots:
+        roots.extend(
+            Path(item).expanduser()
+            for item in env_roots.split(os.pathsep)
+            if item
+        )
+    isotope_home = os.environ.get("ISOTOPE_HOME")
+    if isotope_home:
+        roots.append(Path(isotope_home).expanduser() / "skills")
+    project_root = Path(cwd).expanduser() if cwd is not None else Path.cwd()
+    roots.append(project_root / ".isotope" / "skills")
+    roots.append(Path.home() / ".isotope" / "skills")
     return _unique_existing_roots(roots)
 
 
 def discover_skills(
     *,
     roots: Iterable[Path | str] | None = None,
+    cwd: Path | str | None = None,
     query: str = "",
     limit: int = 20,
 ) -> dict[str, Any]:
@@ -56,7 +66,7 @@ def discover_skills(
         raise ValueError("query must be a string")
     if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
         raise ValueError("limit must be a positive integer")
-    records, skipped = _load_skill_records(_normalize_roots(roots))
+    records, skipped = _load_skill_records(_normalize_roots(roots, cwd=cwd))
     normalized_query = query.strip().lower()
     matches: list[SkillRecord] = []
     for record in records:
@@ -80,6 +90,7 @@ def describe_skill(
     skill_id: str,
     *,
     roots: Iterable[Path | str] | None = None,
+    cwd: Path | str | None = None,
     max_body_chars: int = DEFAULT_SKILL_BODY_LIMIT,
 ) -> dict[str, Any]:
     if not isinstance(skill_id, str) or not skill_id.strip():
@@ -90,7 +101,7 @@ def describe_skill(
         or max_body_chars <= 0
     ):
         raise ValueError("max_body_chars must be a positive integer")
-    records, _skipped = _load_skill_records(_normalize_roots(roots))
+    records, _skipped = _load_skill_records(_normalize_roots(roots, cwd=cwd))
     for record in records:
         if record.skill_id == skill_id:
             text = record.skill_path.read_text(encoding="utf-8")
@@ -106,9 +117,13 @@ def describe_skill(
     raise ValueError(f"unknown skill_id: {skill_id}")
 
 
-def _normalize_roots(roots: Iterable[Path | str] | None) -> list[Path]:
+def _normalize_roots(
+    roots: Iterable[Path | str] | None,
+    *,
+    cwd: Path | str | None,
+) -> list[Path]:
     if roots is None:
-        return default_skill_roots()
+        return default_skill_roots(cwd=cwd)
     normalized = [Path(root).expanduser() for root in roots]
     return _unique_existing_roots(normalized)
 

@@ -714,6 +714,9 @@ def _capacity_display_inputs(capacity_id: str, inputs: dict[str, Any]) -> dict[s
         display.pop("allow_network", None)
         display.pop("tavily_max_results", None)
         return display
+    if capacity_id.startswith(("skills.", "mcp.")):
+        display.pop("cwd", None)
+        return display
     if capacity_id != "coding_task.execute":
         return display
     patch = display.get("patch")

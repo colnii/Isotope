@@ -135,3 +135,73 @@ def test_load_mcp_server_configs_from_explicit_json_mapping(monkeypatch) -> None
             allowed_tools=("echo",),
         )
     ]
+
+
+def test_load_mcp_server_configs_from_json_file(monkeypatch, tmp_path) -> None:
+    config_path = tmp_path / "mcp_servers.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "servers": {
+                    "echo": {
+                        "command": sys.executable,
+                        "args": [str(FIXTURE_SERVER)],
+                        "allowed_tools": ["echo"],
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ISOTOPE_MCP_SERVERS_JSON", raising=False)
+    monkeypatch.setenv("ISOTOPE_MCP_SERVERS_JSON_FILE", str(config_path))
+
+    configs = load_mcp_server_configs()
+
+    assert configs == [
+        McpServerConfig(
+            server_id="echo",
+            command=sys.executable,
+            args=(str(FIXTURE_SERVER),),
+            allowed_tools=("echo",),
+        )
+    ]
+
+
+def test_load_mcp_server_configs_from_project_local_json(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    project = tmp_path / "project"
+    config_dir = project / ".isotope"
+    config_dir.mkdir(parents=True)
+    (config_dir / "mcp_servers.json").write_text(
+        json.dumps(
+            {
+                "servers": [
+                    {
+                        "server_id": "echo",
+                        "command": sys.executable,
+                        "args": [str(FIXTURE_SERVER)],
+                        "allowed_tools": ["echo"],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ISOTOPE_MCP_SERVERS_JSON", raising=False)
+    monkeypatch.delenv("ISOTOPE_MCP_SERVERS_JSON_FILE", raising=False)
+    monkeypatch.delenv("ISOTOPE_HOME", raising=False)
+    monkeypatch.chdir(project)
+
+    configs = load_mcp_server_configs()
+
+    assert configs == [
+        McpServerConfig(
+            server_id="echo",
+            command=sys.executable,
+            args=(str(FIXTURE_SERVER),),
+            allowed_tools=("echo",),
+        )
+    ]

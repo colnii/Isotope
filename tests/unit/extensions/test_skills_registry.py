@@ -118,3 +118,42 @@ def test_discover_skills_skips_invalid_skill_without_failing_scan(tmp_path) -> N
             "readiness": "invalid_frontmatter",
         }
     ]
+
+
+def test_default_skill_roots_are_isotope_native_and_project_local(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    home = tmp_path / "home"
+    isotope_home = tmp_path / "isotope-home"
+    project = tmp_path / "project"
+    codex_home = tmp_path / "codex-home"
+    _write_skill(
+        isotope_home / "skills",
+        "native",
+        name="native-skill",
+        description="Isotope native skill.",
+    )
+    _write_skill(
+        project / ".isotope" / "skills",
+        "project",
+        name="project-skill",
+        description="Project local skill.",
+    )
+    _write_skill(
+        codex_home / "skills",
+        "codex",
+        name="codex-skill",
+        description="Codex compatibility skill.",
+    )
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("ISOTOPE_HOME", str(isotope_home))
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    monkeypatch.chdir(project)
+
+    result = discover_skills()
+
+    assert [skill["skill_id"] for skill in result["skills"]] == [
+        "native-skill",
+        "project-skill",
+    ]
