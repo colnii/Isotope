@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+import copy
 from typing import Any, Literal, Mapping
 
 ContractValueViolation = Literal["type", "enum"]
@@ -50,6 +51,26 @@ def public_required_contract_keys(input_contract: Any) -> list[str]:
         for key in required_contract_keys(input_contract)
         if key not in system_keys
     ]
+
+
+def projected_input_contract(
+    input_contract: Mapping[str, Any],
+    *,
+    hidden_properties: set[str] | frozenset[str],
+) -> dict[str, Any]:
+    """Return a contract copy without model-hidden input properties."""
+
+    contract = copy.deepcopy(dict(input_contract))
+    properties = contract.get("properties")
+    if isinstance(properties, dict):
+        for name in hidden_properties:
+            properties.pop(name, None)
+    required = contract.get("required")
+    if isinstance(required, list):
+        contract["required"] = [
+            name for name in required if name not in hidden_properties
+        ]
+    return contract
 
 
 def matches_contract_type(value: Any, expected_type: str) -> bool:
@@ -152,6 +173,7 @@ __all__ = [
     "duplicate_required_contract_keys",
     "matches_contract_type",
     "missing_required_input_keys",
+    "projected_input_contract",
     "public_contract_properties",
     "public_required_contract_keys",
     "required_contract_keys",

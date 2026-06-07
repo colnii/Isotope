@@ -641,14 +641,7 @@ class CapabilityRunner:
         }
 
     def _lookup_capability(self, capability_id: str) -> dict[str, Any]:
-        entries = self._catalog.list_capabilities(
-            include_diagnostics=True,
-            include_experimental=True,
-        )
-        for entry in entries:
-            if entry["capability_id"] == capability_id:
-                return entry
-        raise ValueError(f"unknown capability: {capability_id}")
+        return self._catalog.describe_capability(capability_id)
 
 
 def default_runner() -> CapabilityRunner:

@@ -13,11 +13,14 @@ import os
 import re
 from typing import Any
 
+from isotope.platform.schemas.input_contract import projected_input_contract
+
 
 _CAPABILITY_ID_RE = re.compile(r"^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$")
 _SHELVES = frozenset(
     {"product_candidate", "prototype", "diagnostic", "experimental"}
 )
+_PRIVATE_INPUT_PROPERTIES = frozenset({"prompt"})
 
 
 def _as_tuple(value: tuple[str, ...] | list[str] | None, *, field_name: str) -> tuple[str, ...]:
@@ -107,7 +110,7 @@ class Capability:
             _as_tuple(self.required_env, field_name="required_env"),
         )
 
-    def to_manifest_dict(self) -> dict[str, Any]:
+    def to_manifest_dict(self, *, include_private_inputs: bool = True) -> dict[str, Any]:
         manifest = {
             "capability_id": self.capability_id,
             "title": self.title,
@@ -115,7 +118,10 @@ class Capability:
             "maturity": self.maturity,
             "shelf": self.shelf,
             "domain_tags": list(self.domain_tags),
-            "input_contract": copy.deepcopy(dict(self.input_contract)),
+            "input_contract": _manifest_input_contract(
+                self.input_contract,
+                include_private_inputs=include_private_inputs,
+            ),
             "output_contract": copy.deepcopy(dict(self.output_contract)),
             "safety_boundaries": list(self.safety_boundaries),
             "default_enabled": self.default_enabled,
@@ -127,6 +133,19 @@ class Capability:
         if self.model is not None:
             manifest["model"] = self.model
         return manifest
+
+
+def _manifest_input_contract(
+    input_contract: Mapping[str, Any],
+    *,
+    include_private_inputs: bool,
+) -> dict[str, Any]:
+    if include_private_inputs:
+        return copy.deepcopy(dict(input_contract))
+    return projected_input_contract(
+        input_contract,
+        hidden_properties=_PRIVATE_INPUT_PROPERTIES,
+    )
 
 
 class CapabilityCatalog:
@@ -2197,7 +2216,7 @@ class CapabilityCatalog:
                             "research_context": {
                                 "type": "string",
                                 "description": (
-                                    "Optional low-sensitive research summary "
+                                    "Optional structured research projection "
                                     "from prior conversation capabilities."
                                 ),
                             },
@@ -2359,8 +2378,14 @@ class CapabilityCatalog:
                 continue
             if capability.shelf not in {"product_candidate", "prototype", "diagnostic", "experimental"}:
                 continue
-            visible.append(capability.to_manifest_dict())
+            visible.append(capability.to_manifest_dict(include_private_inputs=False))
         return sorted(visible, key=lambda entry: entry["capability_id"])
+
+    def describe_capability(self, capability_id: str) -> dict[str, Any]:
+        capability = self._capabilities.get(capability_id)
+        if capability is None:
+            raise ValueError(f"unknown capability: {capability_id}")
+        return capability.to_manifest_dict(include_private_inputs=True)
 
     def get_manifest(
         self,

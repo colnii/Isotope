@@ -77,6 +77,8 @@ def create_codex_cli_server(
             workspace_root=str(workspace_root),
             executable=config.executable,
             codex_home=config.codex_home,
+            sandbox="read-only",
+            approval_policy="never",
             max_output_bytes=config.max_output_bytes,
             skip_git_repo_check=config.skip_git_repo_check,
             inherit_proxy_env=config.inherit_proxy_env,

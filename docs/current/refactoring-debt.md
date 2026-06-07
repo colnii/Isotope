@@ -73,3 +73,9 @@
   operation modules, and move capability schema construction for supervisor
   tools out of the monolithic catalog once the next supervisor capability
   change needs more than a small enum/input addition.
+- New debt recorded on 2026-06-07: public/private capability contract projection
+  for model-hidden input fields still has to touch
+  `src/isotope/capabilities/catalog.py`, which is over 2000 lines.
+- Remaining debt: move capability schema construction and manifest projection
+  out of `catalog.py` into focused catalog definition/projection modules before
+  adding more capability metadata branches.

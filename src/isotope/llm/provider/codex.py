@@ -68,6 +68,8 @@ class CodexCliLLMProvider:
                 workspace_root=str(Path(workspace_root or Path.cwd()).expanduser()),
                 executable=executable,
                 codex_home=codex_home,
+                sandbox="read-only",
+                approval_policy="never",
                 model=model,
                 profile=profile,
                 max_output_bytes=max_output_bytes,
