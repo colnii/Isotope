@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +35,10 @@ from .replay import (
 )
 from .runtime import SocialRuntime, SocialRuntimeConfig
 from .loop import SocialDecisionLoop
-from .participation_provider import LLMSocialParticipationProvider
+from .participation_provider import (
+    LLMParticipationDecision,
+    LLMSocialParticipationProvider,
+)
 from .reply_provider import LLMSocialReplyProvider
 
 
@@ -135,6 +139,15 @@ def run_qq_replay(
         operations=operations,
         adapter=OneBotAdapter(client=client),
     )
+    replay_provider = _replay_participation_provider(replay_payload)
+    if replay_provider is not None:
+        runtime = replace(
+            runtime,
+            decision_loop=replace(
+                runtime.decision_loop,
+                participation_provider=replay_provider,
+            ),
+        )
     turns: list[dict[str, Any]] = []
     for _ in events:
         turn = runtime.process_next(dry_run=True, **overrides)
@@ -168,6 +181,76 @@ def run_qq_replay(
         "expectations": report["expectations"],
         "summary": report["summary"],
     }
+
+
+@dataclass(frozen=True)
+class _ReplayParticipationProvider:
+    decision: LLMParticipationDecision | None = None
+    provider_error: str | None = None
+
+    def decide(
+        self,
+        request: Any,
+        *,
+        wake_signals: tuple[str, ...],
+    ) -> LLMParticipationDecision:
+        if self.provider_error is not None:
+            raise ValueError(self.provider_error)
+        if self.decision is None:
+            raise ValueError("replay participation decision is not configured")
+        return self.decision
+
+
+def _replay_participation_provider(
+    replay_payload: dict[str, Any],
+) -> _ReplayParticipationProvider | None:
+    runtime = dict_field(replay_payload, "runtime", default={})
+    decision_payload = runtime.get("replay_participation_decision")
+    provider_error = runtime.get("replay_participation_error")
+    if decision_payload is not None and provider_error is not None:
+        raise ValueError(
+            "replay runtime must not set both replay_participation_decision "
+            "and replay_participation_error"
+        )
+    if provider_error is not None:
+        return _ReplayParticipationProvider(
+            provider_error=string_value(
+                provider_error,
+                "runtime.replay_participation_error",
+            )
+        )
+    if decision_payload is None:
+        return None
+    if not isinstance(decision_payload, dict):
+        raise ValueError("runtime.replay_participation_decision must be a JSON object")
+    action = string_value(
+        decision_payload.get("action"),
+        "runtime.replay_participation_decision.action",
+    )
+    reason = string_value(
+        decision_payload.get("reason"),
+        "runtime.replay_participation_decision.reason",
+    )
+    confidence = ratio(
+        decision_payload.get("confidence", 0.5),
+        "runtime.replay_participation_decision.confidence",
+    )
+    text = decision_payload.get("text")
+    if text is not None:
+        text = string_value(text, "runtime.replay_participation_decision.text")
+    return _ReplayParticipationProvider(
+        decision=LLMParticipationDecision(
+            action=action,
+            reason=reason,
+            confidence=confidence,
+            text=text,
+            metadata={
+                "provider": "qq_replay",
+                "model": "replay_participation_decision",
+                "usage": {},
+            },
+        )
+    )
 
 
 def runtime_from_adapter(

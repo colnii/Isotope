@@ -118,6 +118,30 @@ def _scenario_files(config: QQReplayScenariosConfig) -> tuple[QQReplayScenarioFi
             scenario_id="forbid_frequency_zero",
             purpose="Fail when role-card sticker frequency accidentally disables stickers.",
         ),
+        _scenario_file(
+            config,
+            filename="04-llm-participation-ordinary-silent.json",
+            scenario_id="llm_participation_ordinary_silent",
+            purpose="Require replayed LLM participation to stay silent for ordinary chatter.",
+        ),
+        _scenario_file(
+            config,
+            filename="05-llm-participation-ordinary-respond.json",
+            scenario_id="llm_participation_ordinary_respond",
+            purpose="Require replayed LLM participation to respond to a useful ordinary message.",
+        ),
+        _scenario_file(
+            config,
+            filename="06-llm-participation-mention-respond.json",
+            scenario_id="llm_participation_mention_respond",
+            purpose="Require replayed LLM participation to respond when the bot is mentioned.",
+        ),
+        _scenario_file(
+            config,
+            filename="07-llm-participation-error-silent.json",
+            scenario_id="llm_participation_error_silent",
+            purpose="Require participation provider errors to become a silent candidate.",
+        ),
     )
 
 
@@ -188,7 +212,120 @@ def _scenario_payload(
             "forbid_sticker_block_reasons": ["use_frequency_zero"],
         }
         return payload
+    if scenario_id == "llm_participation_ordinary_silent":
+        payload["events"] = [
+            _ordinary_event(
+                group_id=config.group_id,
+                text="今晚大家闲聊一下游戏更新。",
+            )
+        ]
+        payload["runtime"] = {
+            "wake_keywords": [],
+            "autonomy_score": 0.0,
+            "replay_participation_decision": {
+                "action": "silent",
+                "reason": "ordinary_chatter",
+                "confidence": 0.74,
+            },
+        }
+        payload["expectations"] = _participation_expectations(
+            min_silent_actions=1,
+            actions=["silent"],
+            reasons=["ordinary_chatter"],
+        )
+        return payload
+    if scenario_id == "llm_participation_ordinary_respond":
+        payload["events"] = [
+            _ordinary_event(
+                group_id=config.group_id,
+                text="这个 PR 今天能合吗？",
+            )
+        ]
+        payload["runtime"] = {
+            "wake_keywords": [],
+            "autonomy_score": 0.0,
+            "replay_participation_decision": {
+                "action": "respond",
+                "reason": "topic_fit",
+                "confidence": 0.83,
+                "text": "能合，先确认 CI 全绿。",
+            },
+        }
+        payload["expectations"] = _participation_expectations(
+            min_respond_actions=1,
+            actions=["respond"],
+            reasons=["topic_fit"],
+        )
+        return payload
+    if scenario_id == "llm_participation_mention_respond":
+        payload["events"] = [payload["events"][0]]
+        payload["runtime"] = {
+            "wake_keywords": [],
+            "autonomy_score": 0.0,
+            "replay_participation_decision": {
+                "action": "respond",
+                "reason": "direct_mention",
+                "confidence": 0.91,
+                "text": "我看一下，先按测试结果判断。",
+            },
+        }
+        payload["expectations"] = _participation_expectations(
+            min_respond_actions=1,
+            actions=["respond"],
+            reasons=["direct_mention"],
+        )
+        return payload
+    if scenario_id == "llm_participation_error_silent":
+        payload["events"] = [payload["events"][0]]
+        payload["runtime"] = {
+            "wake_keywords": [],
+            "autonomy_score": 0.0,
+            "replay_participation_error": "bad model output",
+        }
+        payload["expectations"] = {
+            **_participation_expectations(min_silent_actions=1),
+            "min_participation_provider_errors": 1,
+        }
+        return payload
     raise ValueError(f"unsupported replay scenario: {scenario_id}")
+
+
+def _participation_expectations(
+    *,
+    min_silent_actions: int = 0,
+    min_respond_actions: int = 0,
+    actions: list[str] | None = None,
+    reasons: list[str] | None = None,
+) -> dict[str, Any]:
+    expectations: dict[str, Any] = {
+        "require_processed_events": 1,
+        "min_proposed_actions": 1,
+        "max_send_feedback": 0,
+        "max_sent_group_messages": 0,
+        "require_all_dry_run": True,
+    }
+    if min_silent_actions:
+        expectations["min_silent_actions"] = min_silent_actions
+    if min_respond_actions:
+        expectations["min_respond_actions"] = min_respond_actions
+    if actions is not None:
+        expectations["require_participation_actions"] = actions
+    if reasons is not None:
+        expectations["require_participation_reasons"] = reasons
+    return expectations
+
+
+def _ordinary_event(*, group_id: str, text: str) -> dict[str, Any]:
+    return {
+        "message_id": 9101,
+        "message_type": "group",
+        "group_id": int(group_id),
+        "user_id": 10003,
+        "sender": {"nickname": "阿陈", "role": "member"},
+        "time": 1780560120,
+        "message": [{"type": "text", "data": {"text": text}}],
+        "raw_message": text,
+    }
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:

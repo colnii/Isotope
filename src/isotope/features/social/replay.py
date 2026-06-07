@@ -33,11 +33,16 @@ DEFAULT_REPLAY_EXPECTATIONS = {
 EXPECTATION_NAMES = (
     "require_processed_events",
     "min_proposed_actions",
+    "min_silent_actions",
+    "min_respond_actions",
     "min_sticker_candidates",
     "require_sticker_candidate_ids",
     "forbid_sticker_candidate_ids",
     "require_sticker_block_reasons",
     "forbid_sticker_block_reasons",
+    "require_participation_actions",
+    "require_participation_reasons",
+    "min_participation_provider_errors",
     "max_selected_sticker_actions",
     "max_send_feedback",
     "max_sent_group_messages",
@@ -234,6 +239,11 @@ def _summary(
     selected_sticker_ids: list[str] = []
     sticker_block_reason_counts: dict[str, int] = {}
     selected_sticker_action_count = 0
+    silent_actions = 0
+    respond_actions = 0
+    participation_actions: list[str] = []
+    participation_reasons: list[str] = []
+    participation_provider_errors = 0
     blocked = 0
     send_feedback = 0
     for turn in turns:
@@ -247,6 +257,21 @@ def _summary(
         if isinstance(proposed_items, list):
             proposed += len(proposed_items)
             for item in proposed_items:
+                if isinstance(item, dict):
+                    if item.get("kind") == "silent":
+                        silent_actions += 1
+                    elif item.get("kind") == "respond":
+                        respond_actions += 1
+                    provider = _participation_metadata_from_candidate(item)
+                    action = provider.get("action")
+                    if isinstance(action, str) and action.strip():
+                        _append_unique(participation_actions, (action.strip(),))
+                    reason = provider.get("reason")
+                    if isinstance(reason, str) and reason.strip():
+                        _append_unique(participation_reasons, (reason.strip(),))
+                    error = provider.get("provider_error")
+                    if isinstance(error, str) and error.strip():
+                        participation_provider_errors += 1
                 sticker_ids = _sticker_ids_from_candidate(item)
                 if sticker_ids:
                     sticker_candidates += 1
@@ -273,6 +298,11 @@ def _summary(
         "sticker_candidate_count": sticker_candidates,
         "sticker_candidate_ids": sticker_candidate_ids,
         "sticker_candidate_block_reason_counts": sticker_block_reason_counts,
+        "silent_action_count": silent_actions,
+        "respond_action_count": respond_actions,
+        "participation_actions": participation_actions,
+        "participation_reasons": participation_reasons,
+        "participation_provider_error_count": participation_provider_errors,
         "selected_sticker_ids": selected_sticker_ids,
         "selected_sticker_action_count": selected_sticker_action_count,
         "blocked_turn_count": blocked,
@@ -280,6 +310,18 @@ def _summary(
         "sent_group_message_count": len(sent_group_messages),
         "sent_private_message_count": len(sent_private_messages),
     }
+
+
+def _participation_metadata_from_candidate(item: object) -> dict[str, Any]:
+    if not isinstance(item, dict):
+        return {}
+    metadata = item.get("metadata", {})
+    if not isinstance(metadata, dict):
+        return {}
+    provider = metadata.get("participation_provider")
+    if not isinstance(provider, dict):
+        return {}
+    return provider
 
 
 def _sticker_ids_from_candidate(item: object) -> tuple[str, ...]:
@@ -348,12 +390,22 @@ def _expectation_actual(
         return summary["processed_events"]
     if name == "min_proposed_actions":
         return summary["proposed_action_count"]
+    if name == "min_silent_actions":
+        return summary["silent_action_count"]
+    if name == "min_respond_actions":
+        return summary["respond_action_count"]
     if name == "min_sticker_candidates":
         return summary["sticker_candidate_count"]
     if name in {"require_sticker_candidate_ids", "forbid_sticker_candidate_ids"}:
         return list(summary["sticker_candidate_ids"])
     if name in {"require_sticker_block_reasons", "forbid_sticker_block_reasons"}:
         return list(summary["sticker_candidate_block_reason_counts"])
+    if name == "require_participation_actions":
+        return list(summary["participation_actions"])
+    if name == "require_participation_reasons":
+        return list(summary["participation_reasons"])
+    if name == "min_participation_provider_errors":
+        return summary["participation_provider_error_count"]
     if name == "max_selected_sticker_actions":
         return summary["selected_sticker_action_count"]
     if name == "max_send_feedback":
@@ -368,7 +420,13 @@ def _expectation_actual(
 def _expectation_ok(name: str, *, expected: object, actual: object) -> bool:
     if name == "require_processed_events":
         return _int_value(actual, "actual") == _int_value(expected, name)
-    if name in {"min_proposed_actions", "min_sticker_candidates"}:
+    if name in {
+        "min_proposed_actions",
+        "min_silent_actions",
+        "min_respond_actions",
+        "min_sticker_candidates",
+        "min_participation_provider_errors",
+    }:
         return _int_value(actual, "actual") >= _int_value(expected, name)
     if name == "require_sticker_candidate_ids":
         actual_ids = set(_string_list_value(actual, "actual"))
@@ -382,6 +440,12 @@ def _expectation_ok(name: str, *, expected: object, actual: object) -> bool:
     if name == "forbid_sticker_block_reasons":
         actual_reasons = set(_string_list_value(actual, "actual"))
         return all(item not in actual_reasons for item in _string_list_value(expected, name))
+    if name == "require_participation_actions":
+        actual_actions = set(_string_list_value(actual, "actual"))
+        return all(item in actual_actions for item in _string_list_value(expected, name))
+    if name == "require_participation_reasons":
+        actual_reasons = set(_string_list_value(actual, "actual"))
+        return all(item in actual_reasons for item in _string_list_value(expected, name))
     if name == "max_selected_sticker_actions":
         return _int_value(actual, "actual") <= _int_value(expected, name)
     if name in {"max_send_feedback", "max_sent_group_messages"}:
