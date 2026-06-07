@@ -125,6 +125,7 @@ def _build_summary(
     operator_user_ids = _string_list(group_policy.get("operator_user_ids", []))
     runtime = dict_field(payload, "runtime", default={})
     reply_provider = str(runtime.get("reply_provider", "deterministic"))
+    participation_provider = str(runtime.get("participation_provider", "rules"))
     return {
         "platform": str(payload.get("platform", "qq")),
         "adapter": str(payload.get("adapter", "onebot")),
@@ -134,7 +135,11 @@ def _build_summary(
         "websocket_url": str(payload.get("websocket_url", "")),
         "default_dry_run": bool(group_policy.get("default_dry_run", True)),
         "reply_provider": reply_provider,
-        "llm": _llm_summary(reply_provider),
+        "participation_provider": participation_provider,
+        "llm": _llm_summary(
+            reply_provider,
+            participation_provider=participation_provider,
+        ),
         "profile": _profile_summary(payload),
         "stickers": _sticker_summary(payload),
         "replay_report": _replay_report_summary(replay_report),
@@ -189,20 +194,31 @@ def _sticker_summary(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _llm_summary(reply_provider: str) -> dict[str, Any]:
-    if reply_provider == "deterministic":
+def _llm_summary(
+    reply_provider: str,
+    *,
+    participation_provider: str = "rules",
+) -> dict[str, Any]:
+    if reply_provider == "deterministic" and participation_provider == "rules":
         return {
             "required": False,
             "configured": None,
             "provider_name": None,
             "reason_code": "deterministic_reply_provider",
         }
-    if reply_provider != "llm":
+    if reply_provider not in {"deterministic", "llm"}:
         return {
             "required": False,
             "configured": False,
             "provider_name": None,
             "reason_code": "invalid_reply_provider",
+        }
+    if participation_provider not in {"rules", "llm"}:
+        return {
+            "required": False,
+            "configured": False,
+            "provider_name": None,
+            "reason_code": "invalid_participation_provider",
         }
     resolution = resolve_llm_chat_provider()
     return {
@@ -328,9 +344,10 @@ def _next_steps(
                 "name": "fix_llm_reply_provider",
                 "command": (
                     "configure the shared Isotope LLM provider or set "
-                    'runtime.reply_provider = "deterministic" in config.json'
+                    'runtime.reply_provider = "deterministic" and '
+                    'runtime.participation_provider = "rules" in config.json'
                 ),
-                "reason": "LLM reply mode is selected but provider config is not ready",
+                "reason": "LLM reply or participation mode is selected but provider config is not ready",
             },
             _rerun_step(),
         ]

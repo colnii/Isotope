@@ -210,29 +210,42 @@ def _check_llm_reply_provider(payload: dict[str, Any]) -> dict[str, Any]:
             "name": "llm_reply_provider",
             "ok": False,
             "reply_provider": None,
+            "participation_provider": None,
             "errors": ["runtime must be a JSON object"],
         }
     reply_provider = runtime.get("reply_provider", "deterministic")
-    if reply_provider == "deterministic":
-        return {
-            "name": "llm_reply_provider",
-            "ok": True,
-            "reply_provider": "deterministic",
-            "reason_code": "deterministic_reply_provider",
-            "errors": [],
-        }
-    if reply_provider != "llm":
+    participation_provider = runtime.get("participation_provider", "rules")
+    if reply_provider not in {"deterministic", "llm"}:
         return {
             "name": "llm_reply_provider",
             "ok": False,
             "reply_provider": reply_provider,
+            "participation_provider": participation_provider,
             "errors": ["runtime.reply_provider must be deterministic or llm"],
+        }
+    if participation_provider not in {"rules", "llm"}:
+        return {
+            "name": "llm_reply_provider",
+            "ok": False,
+            "reply_provider": reply_provider,
+            "participation_provider": participation_provider,
+            "errors": ["runtime.participation_provider must be rules or llm"],
+        }
+    if reply_provider == "deterministic" and participation_provider == "rules":
+        return {
+            "name": "llm_reply_provider",
+            "ok": True,
+            "reply_provider": "deterministic",
+            "participation_provider": "rules",
+            "reason_code": "deterministic_reply_provider",
+            "errors": [],
         }
     resolution = resolve_llm_chat_provider()
     return {
         "name": "llm_reply_provider",
         "ok": resolution.status == "configured" and resolution.provider is not None,
-        "reply_provider": "llm",
+        "reply_provider": reply_provider,
+        "participation_provider": participation_provider,
         "provider_name": resolution.provider_name,
         "reason_code": resolution.reason_code,
         "errors": [] if resolution.status == "configured" else [resolution.reason_code],

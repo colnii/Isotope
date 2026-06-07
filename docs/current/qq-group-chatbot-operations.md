@@ -156,7 +156,8 @@ isotope-social qq startup-check --pack-dir .isotope/qq-beta \
 `replay_scenarios_report`. If
 `profile_assets` fails, apply the profile pack again. If `llm_reply_provider`
 fails, either switch the beta config back to `runtime.reply_provider =
-"deterministic"` or configure the shared Isotope LLM provider. If
+"deterministic"` and `runtime.participation_provider = "rules"`, or configure
+the shared Isotope LLM provider. If
 `replay_report` or `replay_scenarios_report` fails, fix the replay result before
 connecting to OneBot.
 Generated `dry-run.sh` and `send-run.sh` run `startup-check.sh` before the live
@@ -508,6 +509,10 @@ Run this checklist for each controlled beta day:
 - Run `qq startup-check` or `./first-run.sh` and require `ready: true`.
 - Confirm `./first-run.sh` reaches `./health.sh` before consuming messages.
 - Start in dry-run and review at least five representative messages.
+- For long-running personality tests, set `runtime.participation_provider =
+  "llm"` and `runtime.reply_provider = "llm"` only after the shared LLM provider
+  is configured; ordinary messages may then produce either LLM silence or LLM
+  reply candidates.
 - Run `qq review-dry-run` or `./review-dry-run.sh` and inspect warnings.
 - Run `qq export-log` or `./export-log.sh`.
 - Record observed failures with `qq record-failure` or `./record-failure.sh`.

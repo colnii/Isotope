@@ -244,6 +244,28 @@ The LLM path uses `turn.context.persona_instructions` and
 non-empty `text` field. If the configured LLM provider is missing or invalid,
 the command stops with an explicit configuration error.
 
+Longer QQ sessions can also let the LLM decide whether to participate before a
+reply is selected. This is opt-in; the default remains rule-based wake behavior
+for stable replays and conservative beta starts:
+
+```json
+{
+  "runtime": {
+    "participation_provider": "llm",
+    "reply_provider": "llm"
+  }
+}
+```
+
+With `participation_provider = "llm"`, ordinary group messages are passed to the
+configured chat provider with the active role card, current chat context, recent
+messages, memory previews, lorebook entries, wake signals, and dry-run flag. The
+model returns either a `silent` decision or a `reply_text` candidate. System
+guards still enforce group allowlists, paused groups, dry-run behavior, send-run
+flags, recent-send suppression, duplicate handling, and provider failure
+fallbacks. Start this mode in dry-run and inspect the proposed decisions before
+enabling sends.
+
 Check the WebSocket connection without consuming a group event:
 
 ```bash
