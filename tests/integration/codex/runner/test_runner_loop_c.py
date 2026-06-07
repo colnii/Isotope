@@ -193,12 +193,13 @@ def test_codex_supervisor_runner_loop_fanout_launches_parallel_active_goals(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["llm_action"] == {
+    assert payload["supervisor_action"] == {
         "kind": "fanout_launch_sessions",
         "target_name": None,
         "reason": "多个 active goals 可并行启动受控 worker。",
         "command_suggestion": None,
     }
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["fanout_plan"]["summary"] == {
         "launchable": 1,
         "skipped": 3,
@@ -514,7 +515,8 @@ def test_codex_supervisor_runner_loop_pauses_fanout_on_blocked_worker(
             "batch": "active_goals",
         }
     ]
-    assert payload["llm_action"]["kind"] == "monitor"
+    assert payload["supervisor_action"]["kind"] == "monitor"
+    assert payload["llm_action"] == payload["supervisor_action"]
     assert payload["executed"]["kind"] == "monitor"
     notifications = NotificationFlow.in_process(codex_home).list_notifications(
         notification_type="supervisor_goal_status"
@@ -1603,7 +1605,6 @@ def test_codex_supervisor_runner_loop_can_continue_multiple_lanes_with_default_b
         target="isotope-lane-b",
     )
     assert provider.calls == 2
-
 
 
 
