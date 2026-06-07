@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import tomllib
 
 import pytest
 
@@ -77,13 +78,122 @@ def test_onebot_history_backfill_skips_duplicate_events() -> None:
     assert [message.message_id for message in messages] == ["123", "124"]
 
 
-def test_real_qq_smoke_env_requires_websocket_url(monkeypatch) -> None:
+DEFAULT_REAL_SMOKE_CONFIG = Path(".isotope/dev/qq-real-smoke.toml")
+
+
+def _real_smoke_enabled() -> bool:
+    if os.environ.get("ISOTOPE_QQ_REAL_SMOKE") == "1":
+        return True
+    return _real_smoke_toml_config().get("enabled") is True
+
+
+def _real_smoke_toml_config() -> dict[str, object]:
+    path = _real_smoke_toml_path()
+    if not path.is_file():
+        return {}
+    with path.open("rb") as file:
+        payload = tomllib.load(file)
+    qq = payload.get("qq", {})
+    if not isinstance(qq, dict):
+        return {}
+    config = qq.get("real_smoke", {})
+    return config if isinstance(config, dict) else {}
+
+
+def _real_smoke_toml_path() -> Path:
+    configured = os.environ.get("ISOTOPE_QQ_REAL_SMOKE_CONFIG")
+    return Path(configured) if configured else DEFAULT_REAL_SMOKE_CONFIG
+
+
+def _write_real_smoke_toml(
+    path: Path,
+    *,
+    access_token: str = "napcat-token",
+    mode: str = "dry-run",
+    timeout: int = 7,
+) -> None:
+    path.write_text(
+        "\n".join(
+            [
+                "[qq.real_smoke]",
+                "enabled = true",
+                'onebot_url = "ws://127.0.0.1:3001"',
+                'test_group = "99999"',
+                'bot_user_id = "bot_qq"',
+                f'access_token = "{access_token}"',
+                f'mode = "{mode}"',
+                f"timeout = {timeout}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_real_qq_smoke_env_requires_websocket_url(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("ISOTOPE_QQ_REAL_SMOKE", "1")
     monkeypatch.delenv("ISOTOPE_QQ_ONEBOT_URL", raising=False)
     monkeypatch.setenv("ISOTOPE_QQ_TEST_GROUP", "99999")
 
     with pytest.raises(AssertionError, match="ISOTOPE_QQ_ONEBOT_URL is required"):
         _real_smoke_env()
+
+
+def test_real_qq_smoke_env_loads_dev_toml_config(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config = tmp_path / "qq-real-smoke.toml"
+    _write_real_smoke_toml(config)
+    monkeypatch.setenv("ISOTOPE_QQ_REAL_SMOKE_CONFIG", str(config))
+    monkeypatch.delenv("ISOTOPE_QQ_ONEBOT_URL", raising=False)
+    monkeypatch.delenv("ISOTOPE_QQ_TEST_GROUP", raising=False)
+    monkeypatch.delenv("ISOTOPE_QQ_BOT_USER_ID", raising=False)
+    monkeypatch.delenv("ISOTOPE_QQ_ACCESS_TOKEN", raising=False)
+    monkeypatch.delenv("ISOTOPE_QQ_REAL_SMOKE_MODE", raising=False)
+    monkeypatch.delenv("ISOTOPE_QQ_REAL_SMOKE_TIMEOUT", raising=False)
+
+    env = _real_smoke_env()
+
+    assert env == {
+        "onebot_url": "ws://127.0.0.1:3001",
+        "group_id": "99999",
+        "bot_user_id": "bot_qq",
+        "access_token": "napcat-token",
+        "mode": "dry-run",
+        "timeout": "7",
+    }
+
+
+def test_real_qq_smoke_env_vars_override_dev_toml_config(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config = tmp_path / "qq-real-smoke.toml"
+    _write_real_smoke_toml(config, access_token="file-token", mode="health", timeout=3)
+    monkeypatch.setenv("ISOTOPE_QQ_REAL_SMOKE_CONFIG", str(config))
+    monkeypatch.setenv("ISOTOPE_QQ_ACCESS_TOKEN", "env-token")
+    monkeypatch.setenv("ISOTOPE_QQ_REAL_SMOKE_MODE", "dry-run")
+
+    env = _real_smoke_env()
+
+    assert env["access_token"] == "env-token"
+    assert env["mode"] == "dry-run"
+
+
+def test_real_qq_smoke_collection_gate_reads_enabled_toml(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config = tmp_path / "qq-real-smoke.toml"
+    _write_real_smoke_toml(config)
+    monkeypatch.delenv("ISOTOPE_QQ_REAL_SMOKE", raising=False)
+    monkeypatch.setenv("ISOTOPE_QQ_REAL_SMOKE_CONFIG", str(config))
+
+    assert _real_smoke_enabled()
 
 
 def test_real_qq_smoke_harness_health_mode_uses_live_run(
@@ -158,10 +268,7 @@ def test_real_qq_smoke_test_body_runs_with_fake_live_client(
     test_real_qq_smoke_is_explicitly_opt_in(tmp_path, capsys)
 
 
-@pytest.mark.skipif(
-    os.environ.get("ISOTOPE_QQ_REAL_SMOKE") != "1",
-    reason="real QQ smoke is opt-in and disabled by default",
-)
+@pytest.mark.skipif(not _real_smoke_enabled(), reason="real QQ smoke is disabled")
 def test_real_qq_smoke_is_explicitly_opt_in(
     tmp_path: Path,
     capsys,
@@ -243,11 +350,12 @@ def _run_real_qq_smoke(
 
 
 def _real_smoke_env() -> dict[str, str]:
-    onebot_url = os.environ.get("ISOTOPE_QQ_ONEBOT_URL")
+    config = _real_smoke_toml_config()
+    onebot_url = _env_or_config("ISOTOPE_QQ_ONEBOT_URL", config, "onebot_url")
     assert onebot_url, "ISOTOPE_QQ_ONEBOT_URL is required for real QQ smoke"
-    group_id = os.environ.get("ISOTOPE_QQ_TEST_GROUP")
+    group_id = _env_or_config("ISOTOPE_QQ_TEST_GROUP", config, "test_group")
     assert group_id, "ISOTOPE_QQ_TEST_GROUP is required for real QQ smoke"
-    mode = os.environ.get("ISOTOPE_QQ_REAL_SMOKE_MODE", "health")
+    mode = _env_or_config("ISOTOPE_QQ_REAL_SMOKE_MODE", config, "mode", default="health")
     assert mode in {"health", "dry-run"}, (
         "ISOTOPE_QQ_REAL_SMOKE_MODE must be health or dry-run; automated smoke "
         "never sends real messages"
@@ -255,11 +363,42 @@ def _real_smoke_env() -> dict[str, str]:
     return {
         "onebot_url": onebot_url,
         "group_id": group_id,
-        "bot_user_id": os.environ.get("ISOTOPE_QQ_BOT_USER_ID", "bot_qq"),
-        "access_token": os.environ.get("ISOTOPE_QQ_ACCESS_TOKEN", ""),
+        "bot_user_id": _env_or_config(
+            "ISOTOPE_QQ_BOT_USER_ID",
+            config,
+            "bot_user_id",
+            default="bot_qq",
+        ),
+        "access_token": _env_or_config(
+            "ISOTOPE_QQ_ACCESS_TOKEN",
+            config,
+            "access_token",
+            default="",
+        ),
         "mode": mode,
-        "timeout": os.environ.get("ISOTOPE_QQ_REAL_SMOKE_TIMEOUT", "3"),
+        "timeout": _env_or_config(
+            "ISOTOPE_QQ_REAL_SMOKE_TIMEOUT",
+            config,
+            "timeout",
+            default="3",
+        ),
     }
+
+
+def _env_or_config(
+    env_key: str,
+    config: dict[str, object],
+    config_key: str,
+    *,
+    default: str | None = None,
+) -> str:
+    env_value = os.environ.get(env_key)
+    if env_value is not None:
+        return env_value
+    value = config.get(config_key)
+    if value is None:
+        return "" if default is None else default
+    return str(value)
 
 
 def _real_smoke_args(

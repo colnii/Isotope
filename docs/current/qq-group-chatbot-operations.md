@@ -496,28 +496,46 @@ Run this checklist for each controlled beta day:
 
 ## Real Smoke Guard
 
-Real QQ smoke is opt-in:
+Real QQ smoke uses developer TOML settings, not the application beta-pack
+config. Copy the example once:
 
 ```bash
-ISOTOPE_QQ_REAL_SMOKE=1 \
-ISOTOPE_QQ_ONEBOT_URL=ws://127.0.0.1:3001 \
-ISOTOPE_QQ_TEST_GROUP=<controlled_group_id> \
+mkdir -p .isotope/dev
+cp tests/integration/qq/qq_real_smoke.toml.example \
+  .isotope/dev/qq-real-smoke.toml
+```
+
+Fill `.isotope/dev/qq-real-smoke.toml`:
+
+```toml
+[qq.real_smoke]
+enabled = true
+onebot_url = "ws://127.0.0.1:3001"
+test_group = "<controlled_group_id>"
+bot_user_id = "<bot_qq>"
+access_token = ""
+mode = "health"
+timeout = 3
+```
+
+Run the health smoke:
+
+```bash
 PYTHONPATH=src .venv/bin/python -m pytest tests/integration/qq/test_fake_onebot_flow.py -q
 ```
 
-If `ISOTOPE_QQ_REAL_SMOKE` is not `1`, real QQ smoke must stay skipped.
-The default mode is health-only and uses `live-run --max-events 0`.
+If TOML `enabled` is not `true` and `ISOTOPE_QQ_REAL_SMOKE` is not `1`, real QQ
+smoke must stay skipped. The default mode is health-only and uses
+`live-run --max-events 0`.
 
-Use dry-run mode to consume at most one real event without sending:
+Use TOML dry-run mode to consume at most one real event without sending:
 
-```bash
-ISOTOPE_QQ_REAL_SMOKE=1 \
-ISOTOPE_QQ_REAL_SMOKE_MODE=dry-run \
-ISOTOPE_QQ_ONEBOT_URL=ws://127.0.0.1:3001 \
-ISOTOPE_QQ_TEST_GROUP=<controlled_group_id> \
-PYTHONPATH=src .venv/bin/python -m pytest \
-  tests/integration/qq/test_fake_onebot_flow.py::test_real_qq_smoke_is_explicitly_opt_in -q
+```toml
+[qq.real_smoke]
+mode = "dry-run"
 ```
 
+`access_token` is optional. Fill it when NapCat requires a OneBot token, or keep
+it empty and set `ISOTOPE_QQ_ACCESS_TOKEN` only for a temporary shell.
 Automated real smoke must not send messages. Use the manual `live-run --send`
 command only after reviewing dry-run decisions.

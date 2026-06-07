@@ -1,0 +1,28 @@
+# QQ real smoke developer settings -- EXAMPLE FILE
+#
+# Copy this file to .isotope/dev/qq-real-smoke.toml and fill in local values.
+# The real .isotope/dev/qq-real-smoke.toml is git-ignored and never committed.
+# This is a developer test harness config, not the application beta-pack config.
+
+[qq.real_smoke]
+# Set true only when you intentionally want pytest to connect to real NapCat.
+enabled = false
+
+# NapCat OneBot 11 WebSocket endpoint.
+onebot_url = "ws://127.0.0.1:3001"
+
+# Controlled test group and the bot QQ account in that group.
+test_group = ""
+bot_user_id = ""
+
+# Optional. Leave empty if NapCat has no access token.
+# If you prefer not to store the token in TOML, leave this empty and set
+# ISOTOPE_QQ_ACCESS_TOKEN for that one shell.
+access_token = ""
+
+# "health" connects only and consumes no group events.
+# "dry-run" consumes at most one real group event and never sends messages.
+mode = "health"
+
+# OneBot receive timeout in seconds.
+timeout = 3
