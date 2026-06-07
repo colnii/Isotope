@@ -209,7 +209,7 @@ git commit -m "feat(social): add llm participation provider"
 - Modify: `src/isotope/features/social/loop.py`
 - Create: `tests/unit/features/social/decision/test_social_decision_llm_participation.py`
 
-- [ ] **Step 1: Write failing decision-loop tests**
+- [x] **Step 1: Write failing decision-loop tests**
 
 Create tests proving:
 
@@ -218,7 +218,7 @@ Create tests proving:
 - dry-run records the LLM reply candidate and selects nothing.
 - invalid provider output degrades to a silent candidate with provider error metadata.
 
-- [ ] **Step 2: Run decision tests and verify red**
+- [x] **Step 2: Run decision tests and verify red**
 
 Run:
 
@@ -228,7 +228,7 @@ PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest tests/unit
 
 Expected: constructor does not accept `participation_provider`.
 
-- [ ] **Step 3: Implement loop support**
+- [x] **Step 3: Implement loop support**
 
 Modify `SocialDecisionLoop` to accept `participation_provider: SocialParticipationProvider | None = None`.
 
@@ -242,7 +242,7 @@ Flow:
 - dry-run keeps proposed candidates and selects nothing for send candidates.
 - provider exceptions degrade to silent with metadata containing `provider_error`.
 
-- [ ] **Step 4: Run decision tests and commit**
+- [x] **Step 4: Run decision tests and commit**
 
 Run:
 

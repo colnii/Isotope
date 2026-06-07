@@ -10,6 +10,7 @@ from .candidates import SocialActionCandidate
 from .character_card import CharacterCard
 from .decision import SocialDecisionRequest, SocialDecisionTurn
 from .messages import SocialMessagePart
+from .participation_provider import LLMParticipationDecision, SocialParticipationProvider
 from .reply_provider import DeterministicSocialReplyProvider, SocialReplyProvider
 from .replies import SocialReplyAction
 from .stickers import StickerSelectionRequest, recent_successful_sticker_ids
@@ -19,6 +20,7 @@ from .stickers import StickerSelectionRequest, recent_successful_sticker_ids
 class SocialDecisionLoop:
     arbiter: SocialArbiter = SocialArbiter()
     reply_provider: SocialReplyProvider = DeterministicSocialReplyProvider()
+    participation_provider: SocialParticipationProvider | None = None
 
     def decide(self, request: SocialDecisionRequest) -> SocialDecisionTurn:
         if not isinstance(request, SocialDecisionRequest):
@@ -35,6 +37,15 @@ class SocialDecisionLoop:
             )
 
         wake_reasons = _wake_reasons(request, character_card)
+        if self.participation_provider is not None:
+            proposed = _participation_candidates(
+                request,
+                character_card,
+                wake_reasons,
+                participation_provider=self.participation_provider,
+            )
+            return _turn_from_proposed(proposed, request, arbiter=self.arbiter)
+
         if not wake_reasons:
             silent = _silent_candidate("no_wake_reason", confidence=0.5)
             return SocialDecisionTurn(
@@ -68,6 +79,32 @@ class SocialDecisionLoop:
             rejected=result.rejected,
             dry_run=False,
         )
+
+
+def _turn_from_proposed(
+    proposed: tuple[SocialActionCandidate, ...],
+    request: SocialDecisionRequest,
+    *,
+    arbiter: SocialArbiter,
+) -> SocialDecisionTurn:
+    if request.dry_run:
+        return SocialDecisionTurn(
+            proposed=proposed,
+            selected=(),
+            rejected={
+                candidate.candidate_id: "dry_run:not selected for sending"
+                for candidate in proposed
+                if candidate.is_send_action
+            },
+            dry_run=True,
+        )
+    result = arbiter.choose(proposed)
+    return SocialDecisionTurn(
+        proposed=proposed,
+        selected=result.selected,
+        rejected=result.rejected,
+        dry_run=False,
+    )
 
 
 def _character_card_from_context(context: dict[str, Any]) -> CharacterCard:
@@ -146,6 +183,72 @@ def _reply_candidates(
     )
 
 
+def _participation_candidates(
+    request: SocialDecisionRequest,
+    character_card: CharacterCard,
+    wake_reasons: tuple[str, ...],
+    *,
+    participation_provider: SocialParticipationProvider,
+) -> tuple[SocialActionCandidate, ...]:
+    try:
+        decision = participation_provider.decide(
+            request,
+            wake_signals=wake_reasons,
+        )
+    except Exception as exc:
+        return (
+            _silent_candidate(
+                "participation_provider_error",
+                confidence=0.0,
+                metadata={
+                    "participation_provider": {
+                        "provider_error": str(exc),
+                        "wake_signals": list(wake_reasons),
+                    }
+                },
+            ),
+        )
+    return (_candidate_from_participation_decision(request, character_card, decision),)
+
+
+def _candidate_from_participation_decision(
+    request: SocialDecisionRequest,
+    character_card: CharacterCard,
+    decision: LLMParticipationDecision,
+) -> SocialActionCandidate:
+    metadata = {
+        "participation_provider": {
+            **dict(decision.metadata),
+            "action": decision.action,
+            "reason": decision.reason,
+        }
+    }
+    if decision.action == "silent":
+        return _silent_candidate(
+            decision.reason,
+            confidence=decision.confidence,
+            metadata=metadata,
+        )
+    return SocialActionCandidate(
+        candidate_id="reply_text",
+        agent_id=character_card.identity.name,
+        kind="respond",
+        reason=decision.reason,
+        confidence=decision.confidence,
+        reply_action=SocialReplyAction(
+            action_id="reply_text",
+            target=request.target,
+            parts=(
+                SocialMessagePart(
+                    kind="text",
+                    text=str(decision.text),
+                ),
+            ),
+        ),
+        metadata=metadata,
+    )
+
+
 def _sticker_candidate(
     request: SocialDecisionRequest,
     character_card: CharacterCard,
@@ -185,13 +288,19 @@ def _sticker_candidate(
     )
 
 
-def _silent_candidate(reason: str, *, confidence: float) -> SocialActionCandidate:
+def _silent_candidate(
+    reason: str,
+    *,
+    confidence: float,
+    metadata: dict[str, Any] | None = None,
+) -> SocialActionCandidate:
     return SocialActionCandidate(
         candidate_id="silent",
         agent_id="social_decision_loop",
         kind="silent",
         reason=reason,
         confidence=confidence,
+        metadata=metadata or {},
     )
 
 

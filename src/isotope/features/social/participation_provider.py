@@ -4,12 +4,22 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol
 
 from ...llm.prompts import load_system_prompt, render_json_prompt_template
 from .decision import SocialDecisionRequest
 
 from .messages import _required_string_value
+
+
+class SocialParticipationProvider(Protocol):
+    def decide(
+        self,
+        request: SocialDecisionRequest,
+        *,
+        wake_signals: tuple[str, ...],
+    ) -> "LLMParticipationDecision":
+        ...
 
 
 @dataclass(frozen=True)
