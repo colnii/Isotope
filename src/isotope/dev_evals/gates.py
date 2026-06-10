@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from typing import Any
 
@@ -43,6 +44,36 @@ def evaluate_result_status(
     }
 
 
+def evaluate_required_input_fragments(
+    scenario: CapabilityScenario,
+    steps: list[Mapping[str, Any]],
+) -> dict[str, Any]:
+    if not scenario.required_input_fragments:
+        return {
+            "gate": "required_input_fragments",
+            "passed": True,
+            "details": {"required_fragments": [], "missing_fragments": []},
+        }
+    matching_inputs = [
+        _render_searchable_value(step.get("input_summary", {}))
+        for step in steps
+        if step.get("capacity_id") in scenario.capability_ids
+    ]
+    missing_fragments = [
+        fragment
+        for fragment in scenario.required_input_fragments
+        if not any(fragment in rendered for rendered in matching_inputs)
+    ]
+    return {
+        "gate": "required_input_fragments",
+        "passed": not missing_fragments,
+        "details": {
+            "required_fragments": list(scenario.required_input_fragments),
+            "missing_fragments": missing_fragments,
+        },
+    }
+
+
 def low_sensitive_report_passed(value: Any) -> bool:
     rendered = repr(value).lower()
     forbidden = (
@@ -55,3 +86,10 @@ def low_sensitive_report_passed(value: Any) -> bool:
         "transcript_should_not_leak",
     )
     return not any(item in rendered for item in forbidden)
+
+
+def _render_searchable_value(value: Any) -> str:
+    try:
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    except TypeError:
+        return repr(value)

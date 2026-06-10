@@ -30,6 +30,7 @@ class CapabilityScenario:
         "required_capacity_called",
         "low_sensitive_report",
     )
+    required_input_fragments: tuple[str, ...] = ()
     allowed_result_statuses: tuple[str, ...] = ("ok",)
     combination_only: bool = False
     configuration_gated: bool = False

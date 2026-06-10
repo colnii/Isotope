@@ -44,8 +44,9 @@ _SCENARIOS: tuple[CapabilityScenario, ...] = (
     CapabilityScenario(
         "code_search_fixture",
         ("code.search",),
-        "Find the fixture marker in the workspace source tree.",
+        "Find the literal marker ISOTOPE_DEV_EVAL_MARKER in the workspace source tree.",
         "workspace_with_code",
+        required_input_fragments=("ISOTOPE_DEV_EVAL_MARKER",),
     ),
     CapabilityScenario(
         "coding_apply_reviewed_diff_fixture",

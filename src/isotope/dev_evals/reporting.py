@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from .gates import (
+    evaluate_required_input_fragments,
     evaluate_required_capacity_called,
     evaluate_result_status,
     low_sensitive_report_passed,
@@ -48,13 +49,22 @@ def build_case_report(
     hard_gates = [
         evaluate_required_capacity_called(scenario, sanitized_steps),
         evaluate_result_status(scenario, sanitized_steps),
+    ]
+    if scenario.required_input_fragments:
+        hard_gates.append(evaluate_required_input_fragments(scenario, sanitized_steps))
+    hard_gates.append(
         {
             "gate": "low_sensitive_report",
             "passed": low_sensitive_report_passed(sanitized_steps),
             "details": {},
-        },
-    ]
+        }
+    )
     hard_gate_passed = all(gate["passed"] for gate in hard_gates)
+    input_gate_passed = all(
+        gate["passed"]
+        for gate in hard_gates
+        if gate["gate"] == "required_input_fragments"
+    )
     return {
         "case_id": scenario.case_id,
         "capability_under_test": list(scenario.capability_ids),
@@ -64,7 +74,7 @@ def build_case_report(
         "steps": sanitized_steps,
         "scores": {
             "capacity_choice": 4 if hard_gates[0]["passed"] else 1,
-            "input_quality": 3,
+            "input_quality": 4 if input_gate_passed else 1,
             "result_grounding": 4 if hard_gate_passed else 1,
             "self_review_quality": 0,
         },

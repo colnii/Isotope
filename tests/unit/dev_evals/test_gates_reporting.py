@@ -53,3 +53,31 @@ def test_case_report_status_follows_hard_gates():
 
     assert report["status"] == "failed"
     assert report["hard_gate_passed"] is False
+
+
+def test_case_report_fails_when_required_input_fragment_is_missing():
+    scenario = CapabilityScenario(
+        case_id="code_search_fixture",
+        capability_ids=("code.search",),
+        user_message="Find the literal marker ISOTOPE_DEV_EVAL_MARKER.",
+        fixture="workspace_with_code",
+        required_input_fragments=("ISOTOPE_DEV_EVAL_MARKER",),
+    )
+
+    report = build_case_report(
+        scenario,
+        steps=[
+            {
+                "capacity_id": "code.search",
+                "status": "ok",
+                "input_summary": {"query": "fixture marker"},
+            }
+        ],
+        final_answer="No marker.",
+    )
+
+    assert report["status"] == "failed"
+    gate = next(
+        item for item in report["hard_gates"] if item["gate"] == "required_input_fragments"
+    )
+    assert gate["details"]["missing_fragments"] == ["ISOTOPE_DEV_EVAL_MARKER"]

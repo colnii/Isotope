@@ -36,3 +36,12 @@ def test_scenarios_have_mechanical_gate_contracts():
         }
         assert "required_capacity_called" in scenario.required_gates
         assert "low_sensitive_report" in scenario.required_gates
+
+
+def test_code_search_scenario_requires_literal_marker_input():
+    scenario = next(
+        item for item in scenario_catalog() if item.case_id == "code_search_fixture"
+    )
+
+    assert "ISOTOPE_DEV_EVAL_MARKER" in scenario.user_message
+    assert scenario.required_input_fragments == ("ISOTOPE_DEV_EVAL_MARKER",)
