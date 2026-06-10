@@ -10,8 +10,7 @@ from .models import SurfaceDecision
 
 SUITE = "supervisor_capacity_basic"
 RECOMMENDED_COMMAND = (
-    "PYTHONPATH=src .venv/bin/python -m "
-    "isotope.dev_evals.supervisor_capacity_eval "
+    "scripts/dev-eval supervisor_capacity_eval "
     "--suite supervisor_capacity_basic --json"
 )
 

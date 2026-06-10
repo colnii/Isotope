@@ -14,8 +14,9 @@ diff --git a/src/isotope/capabilities/catalog.py b/src/isotope/capabilities/cata
     assert result.eval_required is True
     assert result.suite == "supervisor_capacity_basic"
     assert "capability_contract_changed" in result.reason_codes
-    assert result.recommended_command.endswith(
-        "isotope.dev_evals.supervisor_capacity_eval --suite supervisor_capacity_basic --json"
+    assert result.recommended_command == (
+        "scripts/dev-eval supervisor_capacity_eval "
+        "--suite supervisor_capacity_basic --json"
     )
 
 

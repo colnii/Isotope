@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -lt 1 ]; then
+  echo "usage: scripts/dev-eval <changed_surface|supervisor_capacity_eval> [args...]" >&2
+  exit 2
+fi
+
+module="$1"
+shift
+
+case "$module" in
+  changed_surface|supervisor_capacity_eval)
+    ;;
+  *)
+    echo "unknown dev-eval module: $module" >&2
+    exit 2
+    ;;
+esac
+
+repo_root="$(git rev-parse --show-toplevel)"
+python_bin="${ISOTOPE_PYTHON:-$repo_root/.venv/bin/python}"
+
+python_usable() {
+  [ -x "$1" ] || command -v "$1" >/dev/null 2>&1
+}
+
+if ! python_usable "$python_bin"; then
+  primary_worktree="$(
+    git worktree list --porcelain 2>/dev/null \
+      | sed -n 's/^worktree //p' \
+      | head -n 1
+  )"
+  if [ -n "$primary_worktree" ]; then
+    python_bin="$primary_worktree/.venv/bin/python"
+  fi
+fi
+
+if ! python_usable "$python_bin"; then
+  python_bin="python3"
+fi
+
+if [ -n "${PYTHONPATH:-}" ]; then
+  export PYTHONPATH="$repo_root/src:$PYTHONPATH"
+else
+  export PYTHONPATH="$repo_root/src"
+fi
+
+exec "$python_bin" -m "isotope.dev_evals.$module" "$@"
