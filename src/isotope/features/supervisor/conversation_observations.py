@@ -184,6 +184,7 @@ def _capability_result_detail_label(capacity_id: str) -> str:
         "memory.recall": "Memory recall result",
         "code.search": "Code search result",
         "code.read": "Code read result",
+        "file.read": "File read result",
         "code.apply_patch": "Patch result",
         "artifact.diff_result": "Artifact result",
         "supervisor.project_status": "Project status summary",
@@ -218,6 +219,8 @@ def _capability_result_observation(
         return _code_search_observation(capability_run)
     if capacity_id == "code.read":
         return _code_read_observation(capability_run)
+    if capacity_id == "file.read":
+        return _file_read_observation(capability_run)
     if capacity_id == "code.apply_patch":
         return _patch_result_observation(capability_run)
     if capacity_id == "artifact.diff_result":
@@ -549,6 +552,27 @@ def _code_read_observation(capability_run: dict[str, Any]) -> dict[str, Any] | N
         "truncated": bool(code_read.get("truncated")),
         "code_ref": _string_dict_value(code_read.get("code_ref")),
         "content_policy": _string_value(code_read.get("content_policy")),
+    }
+
+
+def _file_read_observation(capability_run: dict[str, Any]) -> dict[str, Any] | None:
+    read = capability_run.get("read")
+    if not isinstance(read, dict):
+        return None
+    return {
+        key: value
+        for key, value in {
+            "kind": "file_read",
+            "scope": read.get("scope"),
+            "status": read.get("status"),
+            "path": read.get("path"),
+            "excerpt": read.get("excerpt"),
+            "truncated": read.get("truncated"),
+            "content_policy": read.get("content_policy"),
+            "approval_id": read.get("approval_id"),
+            "run_id": read.get("run_id"),
+        }.items()
+        if isinstance(value, (str, bool))
     }
 
 

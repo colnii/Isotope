@@ -286,6 +286,11 @@ def _conversation_context(
     capacity_runner: CapabilityRunner | None,
 ) -> dict[str, Any]:
     runner = capacity_runner if capacity_runner is not None else CapabilityRunner()
+    raw_capabilities = runner.list_capabilities()
+    has_file_read = any(
+        capability.get("capability_id") == "file.read"
+        for capability in raw_capabilities
+    )
     capabilities = [
         {
             "capability_id": capability.get("capability_id"),
@@ -295,7 +300,8 @@ def _conversation_context(
             "domain_tags": capability.get("domain_tags"),
             **_conversation_capability_projection(capability),
         }
-        for capability in runner.list_capabilities()
+        for capability in raw_capabilities
+        if not (has_file_read and capability.get("capability_id") == "code.read")
     ]
     return {
         "kind": "supervisor_conversation_context",
