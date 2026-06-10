@@ -217,11 +217,105 @@ describe('appState', () => {
             resultSummary: { result_count: 2 },
             details: [{ label: 'Results', kind: 'json', content: { result_count: 2 } }]
           }
+        ],
+        parts: [
+          {
+            kind: 'capacity',
+            id: 'chat_assistant_1_capacity_capacity_memory_query',
+            call: {
+              id: 'capacity_memory_query',
+              capacityId: 'memory.query',
+              title: 'Memory Query',
+              status: 'ok',
+              inputSummary: { query: 'loop' },
+              resultSummary: { result_count: 2 },
+              details: [{ label: 'Results', kind: 'json', content: { result_count: 2 } }]
+            }
+          },
+          { kind: 'text', id: 'chat_assistant_1_text_1', text: '后端 回答' }
         ]
       }
     ]);
     expect(get(state.isAskingDesktop)).toBe(false);
     expect(get(state.chatError)).toBe(null);
+  });
+
+  test('preserves assistant text around capacity calls in stream order', async () => {
+    const state = createAppState({
+      agentClient: {
+        loadSnapshot: async () => realSnapshot(),
+        loadScreenArtifactContent: async () => { throw new Error('not used'); },
+        resolveApproval: async () => ({
+          status: 'ok',
+          approvalId: 'decision-1',
+          resolution: 'approved',
+          runStatus: 'completed',
+          snapshot: realSnapshot()
+        }),
+        askDesktopQuestion: async (question, handlers) => {
+          handlers?.onDelta?.('我先查一下。');
+          handlers?.onCapacityStart?.({
+            id: 'capacity_research_search',
+            capacityId: 'research.search',
+            title: 'Research Search',
+            status: 'running',
+            inputSummary: { query: 'isotope' },
+            resultSummary: {},
+            details: []
+          });
+          handlers?.onCapacityResult?.({
+            id: 'capacity_research_search',
+            capacityId: 'research.search',
+            title: 'Research Search',
+            status: 'ok',
+            inputSummary: { query: 'isotope' },
+            resultSummary: { source_count: 3 },
+            details: [{ label: 'Results', kind: 'json', content: { source_count: 3 } }]
+          });
+          handlers?.onDelta?.('查完了。');
+          return {
+            question,
+            answer: '我先查一下。查完了。',
+            provider: 'deterministic_test',
+            model: 'deterministic_test',
+            capacityCalls: [
+              {
+                id: 'capacity_research_search',
+                capacityId: 'research.search',
+                title: 'Research Search',
+                status: 'ok',
+                inputSummary: { query: 'isotope' },
+                resultSummary: { source_count: 3 },
+                details: [{ label: 'Results', kind: 'json', content: { source_count: 3 } }]
+              }
+            ]
+          };
+        }
+      }
+    });
+
+    await state.initialize();
+    await state.askDesktopQuestion('帮我搜索 isotope');
+
+    const assistant = get(state.chatMessages)[1];
+    expect(assistant.content).toBe('我先查一下。查完了。');
+    expect(assistant.parts).toEqual([
+      { kind: 'text', id: 'chat_assistant_1_text_1', text: '我先查一下。' },
+      {
+        kind: 'capacity',
+        id: 'chat_assistant_1_capacity_capacity_research_search',
+        call: {
+          id: 'capacity_research_search',
+          capacityId: 'research.search',
+          title: 'Research Search',
+          status: 'ok',
+          inputSummary: { query: 'isotope' },
+          resultSummary: { source_count: 3 },
+          details: [{ label: 'Results', kind: 'json', content: { source_count: 3 } }]
+        }
+      },
+      { kind: 'text', id: 'chat_assistant_1_text_2', text: '查完了。' }
+    ]);
   });
 
   test('refreshes desktop snapshot after a successful chat turn', async () => {

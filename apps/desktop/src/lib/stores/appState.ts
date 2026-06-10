@@ -7,6 +7,10 @@ import type {
 } from '../client/agentClient';
 import type { ActivityNode, IsotopeSnapshot } from '../contracts/isotope';
 
+export type DesktopChatMessagePart =
+  | { id: string; kind: 'text'; text: string }
+  | { id: string; kind: 'capacity'; call: DesktopCapacityCall };
+
 export type DesktopChatMessage = {
   id: string;
   role: 'user' | 'assistant';
@@ -14,6 +18,7 @@ export type DesktopChatMessage = {
   provider?: string;
   model?: string;
   capacityCalls?: DesktopCapacityCall[];
+  parts?: DesktopChatMessagePart[];
 };
 
 export type AppClients = {
@@ -97,36 +102,22 @@ export function createAppState(clients: AppClients) {
         const answer = await clients.agentClient.askDesktopQuestion(cleanQuestion, {
           history,
           onCapacityStart: (call) => {
-            updateAssistantCapacityCall(chatMessages, assistantId, call);
+            updateAssistantCapacityPart(chatMessages, assistantId, call);
           },
           onCapacityUpdate: (call) => {
-            updateAssistantCapacityCall(chatMessages, assistantId, call);
+            updateAssistantCapacityPart(chatMessages, assistantId, call);
           },
           onCapacityResult: (call) => {
-            updateAssistantCapacityCall(chatMessages, assistantId, call);
+            updateAssistantCapacityPart(chatMessages, assistantId, call);
           },
           onDelta: (text) => {
-            chatMessages.update((messages) =>
-              messages.map((message) =>
-                message.id === assistantId
-                  ? { ...message, content: message.content + text }
-                  : message
-              )
-            );
+            appendAssistantTextPart(chatMessages, assistantId, text);
           }
         });
         chatMessages.update((messages) =>
           messages.map((message) =>
             message.id === assistantId
-              ? {
-                  ...message,
-                  content: answer.answer || message.content,
-                  provider: answer.provider,
-                  model: answer.model,
-                  ...(answer.capacityCalls?.length
-                    ? { capacityCalls: answer.capacityCalls }
-                    : {})
-                }
+              ? finalizeAssistantMessage(message, answer)
               : message
           )
         );
@@ -180,7 +171,38 @@ function desktopChatHistory(messages: DesktopChatMessage[]): DesktopChatHistoryM
     .slice(-12);
 }
 
-function updateAssistantCapacityCall(
+function appendAssistantTextPart(
+  chatMessages: ReturnType<typeof writable<DesktopChatMessage[]>>,
+  assistantId: string,
+  text: string
+) {
+  if (!text) return;
+  chatMessages.update((messages) =>
+    messages.map((message) => {
+      if (message.id !== assistantId) return message;
+      const parts = message.parts ?? [];
+      const lastPart = parts.at(-1);
+      const nextParts =
+        lastPart?.kind === 'text'
+          ? [...parts.slice(0, -1), { ...lastPart, text: lastPart.text + text }]
+          : [
+              ...parts,
+              {
+                id: `${assistantId}_text_${parts.filter((part) => part.kind === 'text').length + 1}`,
+                kind: 'text' as const,
+                text
+              }
+            ];
+      return {
+        ...message,
+        content: message.content + text,
+        parts: nextParts
+      };
+    })
+  );
+}
+
+function updateAssistantCapacityPart(
   chatMessages: ReturnType<typeof writable<DesktopChatMessage[]>>,
   assistantId: string,
   call: DesktopCapacityCall
@@ -192,7 +214,53 @@ function updateAssistantCapacityCall(
       const nextCalls = existing.some((item) => item.id === call.id)
         ? existing.map((item) => (item.id === call.id ? { ...item, ...call } : item))
         : [...existing, call];
-      return { ...message, capacityCalls: nextCalls };
+      return {
+        ...message,
+        capacityCalls: nextCalls,
+        parts: updateCapacityPart(message.parts ?? [], assistantId, call)
+      };
     })
   );
+}
+
+function updateCapacityPart(
+  parts: DesktopChatMessagePart[],
+  assistantId: string,
+  call: DesktopCapacityCall
+): DesktopChatMessagePart[] {
+  const partId = `${assistantId}_capacity_${call.id}`;
+  if (parts.some((part) => part.id === partId)) {
+    return parts.map((part) =>
+      part.id === partId && part.kind === 'capacity' ? { ...part, call } : part
+    );
+  }
+  return [...parts, { id: partId, kind: 'capacity', call }];
+}
+
+function finalizeAssistantMessage(
+  message: DesktopChatMessage,
+  answer: { answer: string; provider?: string; model?: string; capacityCalls?: DesktopCapacityCall[] }
+): DesktopChatMessage {
+  const capacityCalls = answer.capacityCalls ?? message.capacityCalls;
+  return {
+    ...message,
+    content: answer.answer || message.content,
+    provider: answer.provider,
+    model: answer.model,
+    ...(capacityCalls?.length ? { capacityCalls } : {}),
+    ...(message.parts?.length && capacityCalls?.length
+      ? { parts: refreshCapacityParts(message.parts, capacityCalls) }
+      : {})
+  };
+}
+
+function refreshCapacityParts(
+  parts: DesktopChatMessagePart[],
+  capacityCalls: DesktopCapacityCall[]
+): DesktopChatMessagePart[] {
+  const callsById = new Map(capacityCalls.map((call) => [call.id, call]));
+  return parts.map((part) => {
+    if (part.kind !== 'capacity') return part;
+    return callsById.has(part.call.id) ? { ...part, call: callsById.get(part.call.id)! } : part;
+  });
 }
