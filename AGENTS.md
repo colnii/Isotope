@@ -49,6 +49,15 @@ Agent and LLM features should keep the model on the main execution path while
 using rules, allowlists, budgets, and workspace boundaries as guardrails. Do not
 replace a requested product path with a diagnostic-only or disabled stub.
 
+For parallel Codex work, an existing ahead branch or worktree is treated as an
+occupied development lane, not reusable scratch space. Do not continue another
+Codex session's branch, rebase it, or add commits on top of it unless the user
+explicitly asks you to take over that exact branch/worktree. If takeover is
+requested, first perform a read-only audit of the branch owner/session state,
+worktree status, and uncommitted changes, then state the risk before editing.
+Otherwise, start a fresh topic branch/worktree from the intended base and treat
+the other lane's unmerged work only as reference.
+
 ## Testing
 
 Use `pytest` for automated tests. Run the targeted test file for your change
