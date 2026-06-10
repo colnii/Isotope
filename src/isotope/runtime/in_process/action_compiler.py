@@ -82,6 +82,18 @@ class ActionCompiler:
             payload["approval_requested"] = runtime_context.get("requires_approval") is True
         if tool == "write_memory":
             payload["approval_requested"] = runtime_context.get("requires_approval") is True
+        if tool == "local_file_read":
+            path = payload.get("path")
+            if not isinstance(path, str) or not path.strip():
+                raise ValueError("local_file_read path must be a non-empty string")
+            payload["path"] = path.strip()
+            max_excerpt_chars = intent.get("max_excerpt_chars", 2000)
+            if not isinstance(max_excerpt_chars, int) or isinstance(max_excerpt_chars, bool):
+                raise ValueError("local_file_read max_excerpt_chars must be an integer")
+            if max_excerpt_chars < 1 or max_excerpt_chars > 8000:
+                raise ValueError("local_file_read max_excerpt_chars must be between 1 and 8000")
+            payload["max_excerpt_chars"] = max_excerpt_chars
+            payload["approval_requested"] = runtime_context.get("requires_approval") is True
         if tool == "screen_observe":
             payload = self._screen_observe_payload(intent, tool)
             payload["approval_requested"] = runtime_context.get("requires_approval") is True

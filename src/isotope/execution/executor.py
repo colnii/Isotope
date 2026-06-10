@@ -18,6 +18,10 @@ from ..platform.schemas.actions import ActionExecution, ActionProposal, PolicyDe
 from ..platform.schemas.memory import MemoryRecord
 from ..platform.schemas.refs import ResourceRef
 from ..platform.schemas.tool_protocol import ToolInvocation, ToolResult
+from ..capabilities.read.runtime import (
+    execute_local_file_read_payload,
+    local_file_read_artifact_content,
+)
 from ..capabilities.tools.terminal import ControlledTerminalRunner
 from .screen.backend_adapter import ScreenBackendAdapter
 from .screen.backend_types import (
@@ -261,6 +265,27 @@ class Executor:
                     basis_event_id=completed_event.event_id,
                 )
                 return execution
+            elif tool_name == "local_file_read":
+                self.workspace_manager.get_binding(decision.grants)
+                execution = self._new_execution(execution_id, proposal, decision, status="completed")
+                read_result = execute_local_file_read_payload(proposal.payload)
+                artifact = self.artifact_store.create_artifact(
+                    run_id=proposal.run_id,
+                    execution_id=execution.execution_id,
+                    artifact_type="local_file_read",
+                    summary=f"local file read: {read_result.get('path', '')}",
+                    content=local_file_read_artifact_content(read_result),
+                    proposal_id=proposal.proposal_id,
+                    decision_id=decision.decision_id,
+                )
+                artifact_refs = [artifact.ref]
+                completion_metadata = {
+                    "local_file_read": {
+                        "status": read_result.get("status"),
+                        "path": read_result.get("path"),
+                        "truncated": read_result.get("truncated"),
+                    }
+                }
             elif tool_name != "write_artifact_tool":
                 handler = self.tool_handlers.get(tool_name)
                 if handler is None:

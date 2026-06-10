@@ -91,6 +91,7 @@ class ActionTypeRegistry:
             _terminal_exec_tool_entry(),
             _screen_observe_tool_entry(),
             _screen_control_tool_entry(),
+            _local_file_read_tool_entry(),
         ]
         if enable_codex_task:
             codex_entry = _codex_task_tool_entry()
@@ -274,6 +275,22 @@ def _terminal_exec_tool_entry() -> dict[str, Any]:
         },
         "default_workspace_mode": "shared_ro",
         "result_kind": "terminal_output",
+        "enabled": True,
+    }
+
+
+def _local_file_read_tool_entry() -> dict[str, Any]:
+    return {
+        "action_type": "call_tool",
+        "tool_name": "local_file_read",
+        "payload_requirements": {"required": ["path"]},
+        "required_capabilities": {
+            "tools": ["local_file_read"],
+            "workspace": {"mode": "shared_ro"},
+            "budget": {"seconds": 30},
+        },
+        "default_workspace_mode": "shared_ro",
+        "result_kind": "artifact",
         "enabled": True,
     }
 

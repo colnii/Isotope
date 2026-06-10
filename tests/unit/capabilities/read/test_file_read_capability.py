@@ -55,3 +55,25 @@ def test_file_read_local_file_scope_requires_root_for_approval(tmp_path) -> None
                 "path": str(tmp_path / "note.md"),
             },
         )
+
+
+def test_file_read_local_file_scope_creates_pending_approval(tmp_path) -> None:
+    target = tmp_path / "resume.md"
+    target.write_text("resume text\n", encoding="utf-8")
+
+    result = CapabilityRunner().run_capability(
+        "file.read",
+        inputs={
+            "root": str(tmp_path / "state"),
+            "cwd": str(tmp_path / "workspace"),
+            "scope": "local_file",
+            "path": str(target),
+            "max_excerpt_chars": 2000,
+        },
+    )
+
+    assert result["status"] == "pending_user_approval"
+    assert result["approval_id"].startswith("approval_")
+    assert result["read"]["scope"] == "local_file"
+    assert result["read"]["status"] == "pending_approval"
+    assert result["read"]["path"] == str(target)
