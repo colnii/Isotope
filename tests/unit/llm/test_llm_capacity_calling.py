@@ -125,7 +125,7 @@ def test_select_capacity_call_can_decline_capacity_when_allowed():
     assert selection.arguments == {}
     prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
     assert prompt_payload["required_json_shape"]["capacity_id"] == "string or null"
-    assert "set capacity_id to null" in " ".join(prompt_payload["rules"])
+    assert "capacity_id 设为 null" in " ".join(prompt_payload["rules"])
 
 
 def test_select_capacity_call_reports_missing_required_arguments_without_execution():

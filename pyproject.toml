@@ -33,7 +33,7 @@ test = ["pytest>=8.0"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"isotope.llm.prompts" = ["*.md"]
+"isotope.llm.prompts" = ["*.md", "**/*.md"]
 "isotope.builtin.extensions" = [
     "skills/**/SKILL.md",
     "mcp/*.json",

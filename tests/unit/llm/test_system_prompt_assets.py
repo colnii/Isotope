@@ -6,6 +6,7 @@ from isotope.llm.prompts import (
     PROMPT_TEMPLATE_NAMES,
     SYSTEM_PROMPT_NAMES,
     load_prompt_template,
+    load_prompt_source,
     load_system_prompt,
     render_prompt_text,
 )
@@ -54,7 +55,7 @@ def test_all_production_prompt_templates_are_registered_md_assets():
     expected_fragments = {
         "agent_loop_planner_user": "required_json_shape",
         "capacity_calling_user": "required_json_shape",
-        "capacity_calling_user_allow_no_capacity": "set capacity_id to null",
+        "capacity_calling_user_allow_no_capacity": "capacity_id 设为 null",
         "goal_planning_user": "output_schema",
         "goal_planning_repair_user": "required_json_shape",
         "social_participation_user": "required_json_shape",
@@ -65,6 +66,16 @@ def test_all_production_prompt_templates_are_registered_md_assets():
     }
     for name, fragment in expected_fragments.items():
         assert fragment in load_prompt_template(name)
+
+
+def test_prompt_sources_separate_review_notes_from_runtime_sections():
+    for name in PROMPT_TEMPLATE_NAMES:
+        source = load_prompt_source(name)
+
+        assert "# 给人看的说明，不会发送给模型" in source
+        assert "# 发送给模型的真实提示词" in source
+        assert f"<!-- prompt-section: {name} -->" in source
+        assert "<!-- /prompt-section -->" in source
 
 
 def test_supervisor_conversation_prompt_does_not_encode_fixed_intent_routes():
@@ -85,6 +96,30 @@ def test_supervisor_conversation_prompt_does_not_encode_fixed_intent_routes():
     assert "capacity_observation" in prompt
     assert "call_capability" in prompt
     assert "report_capability_gap" in prompt
+
+
+def test_capacity_calling_prompts_are_a_single_reviewable_bundle():
+    source = load_prompt_source("capacity_calling")
+
+    assert "# 给人看的说明，不会发送给模型" in source
+    assert "这个 prompt 只做一件事" in source
+    assert "重点检查" in source
+    assert "红线" in source
+    assert "# 发送给模型的真实提示词" in source
+    assert "<!-- prompt-section: capacity_calling -->" in source
+    assert "<!-- prompt-section: capacity_calling_user -->" in source
+    assert "<!-- prompt-section: capacity_calling_user_allow_no_capacity -->" in source
+
+    system_prompt = load_system_prompt("capacity_calling")
+    strict_user_prompt = load_prompt_template("capacity_calling_user")
+    optional_user_prompt = load_prompt_template("capacity_calling_user_allow_no_capacity")
+
+    assert system_prompt.startswith("你决定 Isotope 是否需要调用一个 capacity")
+    assert '"goal": {{ goal }}' in strict_user_prompt
+    assert '"capacities": {{ capacities }}' in strict_user_prompt
+    assert "必须选择一个 capacity_id" in strict_user_prompt
+    assert "可以不调用 capacity" in optional_user_prompt
+    assert "capacity_id 设为 null" in optional_user_prompt
 
 
 def test_goal_planning_prompt_reuses_conversation_research_context():

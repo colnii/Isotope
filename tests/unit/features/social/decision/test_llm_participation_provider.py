@@ -68,6 +68,6 @@ def test_llm_participation_provider_builds_prompt_and_metadata() -> None:
     assert chat_provider.calls[0]["max_tokens"] == 256
     messages = chat_provider.calls[0]["messages"]
     assert messages[0]["role"] == "system"
-    assert "QQ group chatbot participation decider" in messages[0]["content"]
+    assert "QQ 群机器人的参与决策器" in messages[0]["content"]
     assert "required_json_shape" in messages[1]["content"]
     assert "wake_signals" in messages[1]["content"]

@@ -85,7 +85,7 @@ def test_llm_social_reply_provider_builds_prompt_from_persona_and_chat_context()
     assert chat_provider.calls[0]["max_tokens"] == 256
     messages = chat_provider.calls[0]["messages"]
     assert messages[0]["role"] == "system"
-    assert "QQ group chatbot reply generator" in messages[0]["content"]
+    assert "QQ 群机器人的回复生成器" in messages[0]["content"]
     prompt_payload = json.loads(messages[1]["content"])
     assert prompt_payload["wake_reason"] == "mention:bot_qq"
     assert prompt_payload["persona_instructions"]["role_name"] == "群聊工程猫"
