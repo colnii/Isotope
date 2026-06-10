@@ -9,7 +9,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 from ..flow import _managed_process_log_excerpt, _supervisor_protocol_from_text
-from ..registry import ManagedCodexRecord, default_registry_path, read_managed_records
+from ..registry import (
+    SELF_REPAIR_WORKER_ROLE,
+    ManagedCodexRecord,
+    default_registry_path,
+    read_managed_records,
+)
 from .test_gate import collect_worker_test_gate
 
 RunCommand = Callable[..., subprocess.CompletedProcess[str]]
@@ -255,6 +260,7 @@ def _worker_integration_review(
         main_has_worker_patch=main_has_worker_patch,
         merge_conflict=merge_check["conflict"],
         merge_worker_source=merge_worker_source,
+        worker_role=record.worker_role,
         test_gate=test_gate,
     )
     validation = _not_applicable_validation()
@@ -288,6 +294,7 @@ def _worker_integration_review(
         "worker_contains_main": worker_contains_main,
         "dirty": bool(dirty_paths),
         "dirty_paths": dirty_paths,
+        "worker_role": record.worker_role,
         **test_gate,
         "supervisor_protocol": protocol,
         "merge_worker": merge_worker_source is not None,
@@ -322,6 +329,7 @@ def _classify(
     main_has_worker_patch: bool | None,
     merge_conflict: bool,
     merge_worker_source: str | None,
+    worker_role: str,
     test_gate: dict[str, Any],
 ) -> tuple[str, str, list[str]]:
     status = (protocol.get("status") or "").strip().lower()
@@ -383,6 +391,12 @@ def _classify(
             "main 已包含 worker 等价补丁；可检查后归档。",
             [*reasons, "main 已包含 worker 等价补丁"],
         )
+    if _is_self_repair_worker(worker_role):
+        return (
+            "needs_review",
+            "self-repair worker 需要人工复查；integration-review 不会自动归入 ready_to_integrate。",
+            [*reasons, "self-repair worker requires human review before integration"],
+        )
     if merge_conflict:
         return (
             "conflict_risk",
@@ -394,6 +408,10 @@ def _classify(
         "worker 已完成、分支干净、main 尚未包含且未检测到 merge conflict。",
         [*reasons, "main 尚未包含 worker 提交或等价补丁", "未检测到 merge conflict"],
     )
+
+
+def _is_self_repair_worker(worker_role: str) -> bool:
+    return worker_role.strip().lower() == SELF_REPAIR_WORKER_ROLE
 
 
 def _run_candidate_validation(

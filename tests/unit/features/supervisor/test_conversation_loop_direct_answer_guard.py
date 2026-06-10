@@ -126,6 +126,80 @@ def test_conversation_loop_rejects_unbased_direct_answer_before_observation(
     assert "answer_basis" in second_call_messages
 
 
+def test_conversation_loop_reports_missing_observation_capacity_ids(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    def fake_execute_capacity_step(**kwargs: Any) -> dict[str, Any]:
+        return _agent_loop(
+            {
+                "kind": "project_state",
+                "status": "completed",
+                "capacity_id": kwargs["capability_id"],
+            }
+        )
+
+    monkeypatch.setattr(
+        conversation_loop,
+        "_execute_capacity_step_with_timeout",
+        fake_execute_capacity_step,
+    )
+    provider = RecordingConversationProvider(
+        [
+            {
+                "kind": "direct_answer",
+                "answer": "项目状态已经正常。",
+                "answer_basis": {
+                    "kind": "observation",
+                    "capacity_ids": ["supervisor.project_status"],
+                    "reason": "manifest 里有项目状态能力。",
+                },
+            },
+            {
+                "kind": "call_capability",
+                "capacity_id": "supervisor.project_status",
+                "arguments": {},
+                "rationale": "需要先实际执行项目状态能力。",
+            },
+            {
+                "kind": "direct_answer",
+                "answer": "已基于真实项目状态 observation 回答。",
+                "answer_basis": {
+                    "kind": "observation",
+                    "capacity_ids": ["supervisor.project_status"],
+                    "reason": "已有项目状态 observation。",
+                },
+            },
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="总结项目状态",
+            provider=provider,
+            max_turns=4,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[-1].payload == {"text": "已基于真实项目状态 observation 回答。"}
+    second_call_messages = json.dumps(
+        provider.calls[1]["messages"],
+        ensure_ascii=False,
+    )
+    assert "direct_answer cited capacity observations that are not available" in (
+        second_call_messages
+    )
+    assert "missing_capacity_ids" in second_call_messages
+    assert "supervisor.project_status" in second_call_messages
+
+
 def test_conversation_loop_accepts_no_capability_direct_answer_basis(tmp_path) -> None:
     provider = RecordingConversationProvider(
         [

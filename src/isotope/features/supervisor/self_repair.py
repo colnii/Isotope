@@ -7,10 +7,7 @@ from typing import Any
 
 from .commands.llm.execution import prepare_launch_worktree
 from .planner.work_order import build_launch_work_order_prompt
-from .registry import launch_managed_codex
-
-
-SELF_REPAIR_WORKER_ROLE = "self_repair"
+from .registry import SELF_REPAIR_WORKER_ROLE, launch_managed_codex
 DEFAULT_SELF_REPAIR_NAME = "desktop-self-repair"
 
 

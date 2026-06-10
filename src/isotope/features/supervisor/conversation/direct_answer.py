@@ -17,6 +17,14 @@ def direct_answer_rejection_observation(
             basis,
             observations=capacity_observations,
         )
+    if _basis_kind(basis) == "observation":
+        return _invalid_direct_answer_observation(
+            reason="direct_answer cited capacity observations that are not available",
+            decision={
+                "answer_basis": basis,
+                "missing_capacity_ids": _basis_capacity_ids(basis),
+            },
+        )
     if _basis_kind(basis) == "no_capability_needed":
         return None
     return _invalid_direct_answer_observation(
@@ -98,7 +106,7 @@ def _invalid_direct_answer_observation(
     reason: str,
     decision: dict[str, Any],
 ) -> dict[str, Any]:
-    return {
+    observation = {
         "kind": "invalid_direct_answer",
         "status": "rejected",
         "reason": reason,
@@ -111,6 +119,10 @@ def _invalid_direct_answer_observation(
             "call_capability 或 call_capabilities。"
         ),
     }
+    missing_capacity_ids = _safe_string_list(decision.get("missing_capacity_ids"))
+    if missing_capacity_ids:
+        observation["missing_capacity_ids"] = missing_capacity_ids
+    return observation
 
 
 def _basis_kind(basis: Any) -> str:
@@ -138,6 +150,12 @@ def _safe_basis(basis: Any) -> dict[str, Any]:
         if key in {"kind", "reason", "capacity_ids"}
         and isinstance(value, (str, list))
     }
+
+
+def _safe_string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and item]
 
 
 def _clip_answer(answer: Any) -> str:

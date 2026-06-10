@@ -11,6 +11,7 @@ from typing import Any, Callable
 
 
 ARCHIVED_MANAGED_STATUS = "archived"
+SELF_REPAIR_WORKER_ROLE = "self_repair"
 
 
 @dataclass(frozen=True)

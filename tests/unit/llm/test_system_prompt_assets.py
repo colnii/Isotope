@@ -94,7 +94,10 @@ def test_supervisor_conversation_prompt_does_not_encode_fixed_intent_routes():
 
     assert "capacity_manifest" in prompt
     assert "capacity_observation" in prompt
-    assert "执行结果只能来自低敏 observation/result projection，不能来自 manifest" in prompt
+    assert (
+        "capacity_manifest 只证明能力可调用，不证明能力已经执行"
+        in prompt
+    )
     assert "call_capability" in prompt
     assert "report_capability_gap" in prompt
 
