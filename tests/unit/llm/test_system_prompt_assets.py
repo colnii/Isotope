@@ -94,12 +94,18 @@ def test_supervisor_conversation_prompt_does_not_encode_fixed_intent_routes():
 
     assert "capacity_manifest" in prompt
     assert "capacity_observation" in prompt
-    assert (
-        "capacity_manifest 只证明能力可调用，不证明能力已经执行"
-        in prompt
-    )
     assert "call_capability" in prompt
     assert "report_capability_gap" in prompt
+
+
+def test_supervisor_conversation_prompt_clarifies_manifest_runtime_evidence_boundary():
+    prompt = load_prompt_template("supervisor_conversation_loop")
+
+    assert (
+        "只有本轮已经返回的 capacity_observation / result projection 才能作为执行结果"
+        in prompt
+    )
+    assert "capacity_manifest 只证明能力可调用，不证明能力已经执行" in prompt
 
 
 def test_capacity_calling_prompts_are_a_single_reviewable_bundle():
