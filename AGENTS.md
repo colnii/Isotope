@@ -63,7 +63,7 @@ Prefer CDP, screenshot, DOM-state, or artifact evidence before changing UI code.
 For changes touching Supervisor conversation behavior, LLM prompts, capability
 contracts, capacity manifests, capacity observations, agent-loop result
 projection, or `src/isotope/dev_evals/`, run
-`PYTHONPATH=src .venv/bin/python -m isotope.dev_evals.changed_surface --base origin/main --json`
+`PYTHON_BIN=.venv/bin/python; [ -x "$PYTHON_BIN" ] || PYTHON_BIN=/home/lumber/Github/isotope/.venv/bin/python; PYTHONPATH=src "$PYTHON_BIN" -m isotope.dev_evals.changed_surface --base origin/main --json`
 before final reporting. If it returns `eval_required=true`, run the recommended
 command, read any generated `.dev-eval-runs/state/dev-evals/reviewer-prompts/*.md`,
 and report hard gates, scores, reviewer findings, and follow-up changes. If this
