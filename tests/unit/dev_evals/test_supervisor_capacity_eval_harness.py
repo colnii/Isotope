@@ -44,12 +44,14 @@ def test_harness_runs_code_search_case_through_conversation_loop(tmp_path):
     assert case["steps"][0]["capacity_id"] == "code.search"
     assert case["hard_gate_passed"] is True
     prompt_ref = case["reviewer_prompt_ref"]
+    assert case["reviewer_status"] == "prompt_generated"
+    assert report["reviewer_status"] == "prompt_generated"
     assert prompt_ref["path"].endswith(
         "state/dev-evals/reviewer-prompts/code_search_fixture.md"
     )
-    assert (tmp_path / prompt_ref["path"]).read_text().startswith(
-        "You are reviewing the current Codex development work"
-    )
+    prompt_text = (tmp_path / prompt_ref["path"]).read_text()
+    assert prompt_text.startswith("You are reviewing the current Codex development work")
+    assert '"reviewer_status": "prompt_generated"' in prompt_text
     assert "raw_response" not in json.dumps(report)
 
 
@@ -84,6 +86,37 @@ def test_harness_fails_when_provider_chooses_wrong_capacity(tmp_path):
     assert report["cases"][0]["hard_gates"][0]["details"][
         "missing_capacity_ids"
     ] == ["code.search"]
+
+
+def test_harness_reports_live_timeout_as_failed_case(tmp_path):
+    scenario = next(
+        item for item in scenario_catalog() if item.case_id == "code_search_fixture"
+    )
+
+    class TimeoutProvider:
+        def generate(self, messages, *, max_tokens=512):
+            raise TimeoutError("desktop chat response timed out")
+
+    report = run_scenarios(
+        [scenario],
+        root=tmp_path,
+        provider=TimeoutProvider(),
+        live=True,
+    )
+
+    assert report["status"] == "failed"
+    assert report["hard_gate_passed"] is False
+    assert report["execution_mode"] == "live"
+    case = report["cases"][0]
+    assert case["case_id"] == "code_search_fixture"
+    assert case["status"] == "failed"
+    assert case["hard_gate_passed"] is False
+    assert case["steps"] == []
+    assert case["failure"]["reason_code"] == "live_case_timeout"
+    assert any(
+        gate["gate"] == "case_execution_completed" and gate["passed"] is False
+        for gate in case["hard_gates"]
+    )
 
 
 def test_cli_uses_fresh_default_run_root_each_time(tmp_path, monkeypatch, capsys):

@@ -16,7 +16,11 @@ from isotope.llm.provider import LLMResponse, resolve_llm_chat_provider
 
 from .cases import scenario_catalog
 from .fixtures import prepare_fixture
-from .reporting import build_case_report, build_suite_report
+from .reporting import (
+    build_case_execution_failure_report,
+    build_case_report,
+    build_suite_report,
+)
 from .reviewer_prompt import render_reviewer_prompt
 
 
@@ -83,16 +87,27 @@ def run_scenarios(
     case_reports: list[dict[str, Any]] = []
     for scenario in scenarios:
         state_root, workspace = prepare_fixture(root / scenario.case_id, scenario.fixture)
-        events = list(
-            run_supervisor_conversation_events(
-                state_root=state_root,
-                cwd=workspace,
-                user_message=scenario.user_message,
-                provider=provider,
-                max_turns=scenario.max_turns,
-                timeout_seconds=30,
+        try:
+            events = list(
+                run_supervisor_conversation_events(
+                    state_root=state_root,
+                    cwd=workspace,
+                    user_message=scenario.user_message,
+                    provider=provider,
+                    max_turns=scenario.max_turns,
+                    timeout_seconds=30,
+                )
             )
-        )
+        except TimeoutError as exc:
+            reason_code = "live_case_timeout" if live else "deterministic_case_timeout"
+            case_reports.append(
+                build_case_execution_failure_report(
+                    scenario,
+                    reason_code=reason_code,
+                    message=str(exc),
+                )
+            )
+            break
         steps = [
             _step_from_capacity_result(event.payload)
             for event in events
@@ -106,7 +121,11 @@ def run_scenarios(
         case_reports.append(
             build_case_report(scenario, steps=steps, final_answer=final_answer)
         )
-    report = build_suite_report(suite=SUITE, cases=case_reports)
+    report = build_suite_report(
+        suite=SUITE,
+        cases=case_reports,
+        execution_mode="live" if live else "deterministic",
+    )
     _attach_reviewer_prompts(root=root, report=report)
     return report
 
@@ -195,19 +214,28 @@ def _attach_reviewer_prompts(*, root: Path, report: dict[str, Any]) -> None:
     cases = report.get("cases")
     if not isinstance(cases, list):
         return
+    prompt_generated = False
     for case in cases:
         if not isinstance(case, dict):
             continue
         case_id = str(case.get("case_id", "unknown_case"))
         prompt_path = prompt_dir / f"{case_id}.md"
-        case_report = {**report, "cases": [case]}
+        case["reviewer_prompt_ref"] = {
+            "path": str(prompt_path.relative_to(root)),
+        }
+        case["reviewer_status"] = "prompt_generated"
+        case_report = {
+            **report,
+            "cases": [case],
+            "reviewer_status": "prompt_generated",
+        }
         prompt_path.write_text(
             render_reviewer_prompt(diff_summary=diff_summary, report=case_report),
             encoding="utf-8",
         )
-        case["reviewer_prompt_ref"] = {
-            "path": str(prompt_path.relative_to(root)),
-        }
+        prompt_generated = True
+    if prompt_generated:
+        report["reviewer_status"] = "prompt_generated"
 
 
 def _git_diff_summary() -> str:

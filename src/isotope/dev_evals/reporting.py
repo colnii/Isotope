@@ -87,16 +87,64 @@ def build_case_report(
     }
 
 
+def build_case_execution_failure_report(
+    scenario: CapabilityScenario,
+    *,
+    reason_code: str,
+    message: str,
+) -> dict[str, Any]:
+    hard_gates = [
+        {
+            "gate": "case_execution_completed",
+            "passed": False,
+            "details": {
+                "reason_code": reason_code,
+                "message": message,
+            },
+        }
+    ]
+    return {
+        "case_id": scenario.case_id,
+        "capability_under_test": list(scenario.capability_ids),
+        "status": "failed",
+        "hard_gate_passed": False,
+        "hard_gates": hard_gates,
+        "steps": [],
+        "scores": {
+            "capacity_choice": 0,
+            "input_quality": 0,
+            "result_grounding": 0,
+            "self_review_quality": 0,
+        },
+        "final_answer": "",
+        "reviewer_prompt_ref": None,
+        "reviewer_status": "not_generated",
+        "failure": {
+            "reason_code": reason_code,
+            "message": message,
+        },
+        "regression_risks": [reason_code],
+        "recommendation": "Resolve the live eval failure before claiming this gate passed.",
+    }
+
+
 def build_suite_report(
     *,
     suite: str,
     cases: list[dict[str, Any]],
+    execution_mode: str | None = None,
 ) -> dict[str, Any]:
     hard_gate_passed = all(case.get("hard_gate_passed") is True for case in cases)
-    return {
+    report = {
         "kind": "supervisor_capacity_dev_eval_report",
         "suite": suite,
         "status": "passed" if hard_gate_passed else "failed",
         "hard_gate_passed": hard_gate_passed,
         "cases": cases,
     }
+    if execution_mode:
+        report["execution_mode"] = execution_mode
+        report["gate_scope"] = (
+            "live" if execution_mode == "live" else "deterministic_fallback"
+        )
+    return report
