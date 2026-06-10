@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import http.client
+import json
+import threading
+
 from isotope.features.supervisor.desktop_snapshot import build_desktop_snapshot
 from isotope.features.supervisor.web import create_dashboard_server
 from isotope.runtime.in_process import InProcessServer
@@ -76,3 +80,60 @@ def test_desktop_approval_resolve_payload_includes_local_file_read_result(tmp_pa
     assert payload["readResult"]["path"] == str(target)
     assert payload["readResult"]["excerpt"] == "resume body"
     assert payload["snapshot"]["counts"]["approvals"] == 0
+
+
+def test_desktop_approval_resolve_endpoint_returns_local_file_read_result(tmp_path) -> None:
+    target = tmp_path / "resume.md"
+    target.write_text("resume body", encoding="utf-8")
+    root = tmp_path / "state"
+    api = InProcessServer(root)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="read local file")
+    pending = api.submit_action(
+        run["run_id"],
+        {
+            "action": "call_tool",
+            "tool": "local_file_read",
+            "path": str(target),
+            "max_excerpt_chars": 2000,
+            "summary": "Read one approved local file",
+        },
+        requires_approval=True,
+    )
+    server = create_dashboard_server(
+        codex_home=root,
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        conn.request(
+            "POST",
+            f"/desktop/approvals/{pending['approval_id']}/resolve",
+            body=json.dumps(
+                {
+                    "resolution": "approved",
+                    "reason": "approve local file read",
+                    "resolver": "pytest",
+                }
+            ),
+            headers={"content-type": "application/json"},
+        )
+        response = conn.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert response.status == 200
+    assert body["readResult"]["scope"] == "local_file"
+    assert body["readResult"]["path"] == str(target)
+    assert body["readResult"]["excerpt"] == "resume body"
+    assert body["snapshot"]["counts"]["approvals"] == 0
