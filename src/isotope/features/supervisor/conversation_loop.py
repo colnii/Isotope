@@ -203,6 +203,22 @@ def run_supervisor_conversation_events(
                     model=response.model,
                 )
                 return
+            base_event_ids = [
+                _capacity_event_id(str(capacity_decision.get("capacity_id", "unknown")))
+                for capacity_decision in capacity_decisions
+            ]
+            event_id_counts = {
+                base_event_id: base_event_ids.count(base_event_id)
+                for base_event_id in set(base_event_ids)
+            }
+            seen_event_ids: dict[str, int] = {}
+            capacity_event_ids: list[str] = []
+            for base_event_id in base_event_ids:
+                seen_event_ids[base_event_id] = seen_event_ids.get(base_event_id, 0) + 1
+                event_id = base_event_id
+                if event_id_counts[base_event_id] > 1:
+                    event_id = f"{base_event_id}_{seen_event_ids[base_event_id]}"
+                capacity_event_ids.append(event_id)
             event_streams = [
                 _run_capability_decision(
                     capacity_decision,
@@ -212,8 +228,13 @@ def run_supervisor_conversation_events(
                     user_message=clean_message,
                     observations=list(observations),
                     timeout_seconds=timeout_seconds,
+                    event_id=event_id,
                 )
-                for capacity_decision in capacity_decisions
+                for capacity_decision, event_id in zip(
+                    capacity_decisions,
+                    capacity_event_ids,
+                    strict=True,
+                )
             ]
             event_iterator = (
                 event_streams[0]
@@ -456,6 +477,7 @@ def _run_capability_decision(
     user_message: str,
     observations: list[dict[str, Any]] | None,
     timeout_seconds: float | None,
+    event_id: str,
 ) -> Iterator[SupervisorConversationEvent]:
     capacity_id = _require_text(decision.get("capacity_id"), "capacity_id")
     arguments = decision.get("arguments", {})
@@ -473,7 +495,7 @@ def _run_capability_decision(
     yield SupervisorConversationEvent(
         event="capacity_start",
         payload={
-            "id": _capacity_event_id(capacity_id),
+            "id": event_id,
             "capacity_id": capacity_id,
             "title": title,
             "status": "running",
@@ -554,7 +576,7 @@ def _run_capability_decision(
     yield SupervisorConversationEvent(
         event="capacity_result",
         payload={
-            "id": _capacity_event_id(capacity_id),
+            "id": event_id,
             "capacity_id": capacity_id,
             "title": title,
             "status": status,
