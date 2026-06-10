@@ -168,14 +168,10 @@ def test_conversation_loop_prompt_separates_manifest_from_observation(
     )
 
     system_prompt = provider.calls[0]["messages"][0]["content"]
-    assert "capacity_manifest 是 discovery-only" in system_prompt
-    assert "只能用来选择合法的 capacity_id" in system_prompt
-    assert "不能作为 `answer_basis.kind=\"observation\"` 的依据" in system_prompt
-    assert (
-        "capacity_observation 是 call_capability/call_capabilities 执行后返回的运行时观测"
-        in system_prompt
-    )
-    assert "只有 capacity_observation 可以支撑 `answer_basis.kind=\"observation\"`" in system_prompt
+    assert "capacity_manifest 只能用于发现能力和构造调用" in system_prompt
+    assert "选择合法 capacity_id" in system_prompt
+    assert "capacity_observation / result projection 才是运行时证据" in system_prompt
+    assert "`answer_basis.kind=\"observation\"`" in system_prompt
 
 
 def test_conversation_loop_manifest_exposes_extension_entrypoints_without_skill_registry(

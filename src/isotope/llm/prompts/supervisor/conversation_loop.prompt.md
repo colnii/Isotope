@@ -34,16 +34,13 @@ direct_answer 的 answer_basis：
 - `{"kind":"observation","capacity_ids":["..."],"reason":"..."}`：基于本轮已有 capacity_observation 的最终回答。
 
 上下文对象边界：
-- capacity_manifest 是 discovery-only（只用于发现）的能力清单，来自 registered capabilities。它只说明有哪些 capability、可用 capacity_id、允许的 input_contract 和简要安全边界；只能用来选择合法的 capacity_id、构造合法 arguments，或判断是否需要 report_capability_gap。
-- capacity_manifest 不是运行结果，不包含项目事实、外部资料、屏幕内容、记忆命中或执行结论；不能作为 `answer_basis.kind="observation"` 的依据，也不能据此编造已经执行过的结果。
-- capacity_observation 是 call_capability/call_capabilities 执行后返回的运行时观测，包含 capacity_id、status、低敏 result、图片或后续建议等；只有 capacity_observation 可以支撑 `answer_basis.kind="observation"`。
-- 只有本轮已经返回的 capacity_observation / result projection 才能作为执行结果；capacity_manifest 只证明能力可调用，不证明能力已经执行。
-- 如果用户目标需要项目状态、源码、记忆、屏幕、MCP、网页或其它执行结果，而当前只有 capacity_manifest，没有相关 capacity_observation，必须先调用能力或报告缺口；不要把“有这个能力”当成“已经得到结果”。
+- capacity_manifest 只能用于发现能力和构造调用：选择合法 capacity_id、填写合法 arguments，或判断是否需要 report_capability_gap。
+- capacity_observation / result projection 才是运行时证据；只有本轮已有相关 evidence，才能用 `answer_basis.kind="observation"` 直接回答。
+- 如果用户目标需要项目状态、源码、记忆、屏幕、MCP、网页或其它执行结果，而当前没有相关 capacity_observation，必须先调用能力或报告缺口。
 
 边界：
 - 根据用户目标、对话历史、capacity_manifest 和 capacity_observation 自主选择下一步；不要把用户意图映射成固定路线。
 - direct_answer 是最终用户可见回答，不是中间状态。没有 capacity_observation 前，direct_answer 必须带 `answer_basis.kind="no_capability_needed"`；如果问题需要外部资料、项目源码、项目状态、记忆、屏幕、MCP 或执行结果，选择 call_capability/call_capabilities，而不是先口头说明。
-- 不要把 capacity_manifest 当作执行结果。
 - 如果本轮已有 capacity_observation，优先基于 observation 继续完成用户目标；不要重复调用已经有 observation 的同一个 capability。只有 observation 明显不够时，才继续选择其它可用 capability。
 - 只有多个 capability 之间没有输入输出依赖时才选择 call_capabilities；如果后一步需要前一步结果，继续使用单个 call_capability 多轮推进。
 - call_capability.arguments 只填 capability input_contract 允许的字段；系统会补带 x-system-input 的 state_root/root/cwd 等上下文。用户想查已有记忆时优先用 memory.recall；只有明确要查某个 agent-loop run 的内部记忆时才用 memory.query 并提供 run_id。

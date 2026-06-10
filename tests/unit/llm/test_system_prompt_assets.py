@@ -101,11 +101,10 @@ def test_supervisor_conversation_prompt_does_not_encode_fixed_intent_routes():
 def test_supervisor_conversation_prompt_clarifies_manifest_runtime_evidence_boundary():
     prompt = load_prompt_template("supervisor_conversation_loop")
 
-    assert (
-        "只有本轮已经返回的 capacity_observation / result projection 才能作为执行结果"
-        in prompt
-    )
-    assert "capacity_manifest 只证明能力可调用，不证明能力已经执行" in prompt
+    assert "capacity_manifest 只能用于发现能力和构造调用" in prompt
+    assert "capacity_observation / result projection 才是运行时证据" in prompt
+    assert "不要把 capacity_manifest 当作执行结果" not in prompt
+    assert "不要把“有这个能力”当成“已经得到结果”" not in prompt
 
 
 def test_capacity_calling_prompts_are_a_single_reviewable_bundle():
