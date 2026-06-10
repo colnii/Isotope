@@ -49,15 +49,6 @@ Agent and LLM features should keep the model on the main execution path while
 using rules, allowlists, budgets, and workspace boundaries as guardrails. Do not
 replace a requested product path with a diagnostic-only or disabled stub.
 
-For parallel Codex work, an existing ahead branch or worktree is treated as an
-occupied development lane, not reusable scratch space. Do not continue another
-Codex session's branch, rebase it, or add commits on top of it unless the user
-explicitly asks you to take over that exact branch/worktree. If takeover is
-requested, first perform a read-only audit of the branch owner/session state,
-worktree status, and uncommitted changes, then state the risk before editing.
-Otherwise, start a fresh topic branch/worktree from the intended base and treat
-the other lane's unmerged work only as reference.
-
 ## Testing
 
 Use `pytest` for automated tests. Run the targeted test file for your change
@@ -74,10 +65,12 @@ Prefer CDP, screenshot, DOM-state, or artifact evidence before changing UI code.
 Use Conventional Commits, such as `docs: polish public project guide` or
 `fix(supervisor): handle completed worker state`.
 
-Keep history linear. Prefer rebase or fast-forward updates; do not create merge
-commits unless a maintainer explicitly asks for one. Stage only files related to
-the current task. Before committing, inspect the staged diff and run the minimum
-relevant verification.
+Keep history linear. Prefer rebase or fast-forward updates in your own
+branch/worktree; do not rebase, continue, or commit on another Codex session's
+ahead branch/worktree unless the user explicitly hands it off after a read-only
+status/session audit. Do not create merge commits unless a maintainer explicitly
+asks for one. Stage only files related to the current task. Before committing,
+inspect the staged diff and run the minimum relevant verification.
 
 **Pre-commit hook active.** `.git/hooks/pre-commit` checks staged `.py` files:
 rejects files over 2000 lines; warns at 500 lines. Bypass with `git commit
