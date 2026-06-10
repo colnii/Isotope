@@ -34,3 +34,16 @@ class CapabilityScenario:
     combination_only: bool = False
     configuration_gated: bool = False
     max_turns: int = 12
+
+
+@dataclass(frozen=True)
+class EvalStep:
+    capacity_id: str
+    status: str
+    input_summary: dict[str, Any] = field(default_factory=dict)
+    result_summary: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ReviewerPromptRef:
+    path: str
