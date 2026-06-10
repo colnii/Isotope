@@ -28,6 +28,10 @@ class DirectDecisionStreamingAnswerProvider:
             content=json.dumps(
                 {
                     "kind": "direct_answer",
+                    "answer_basis": {
+                        "kind": "no_capability_needed",
+                        "reason": "测试场景只验证直接回答后的 provider 流式正文。",
+                    },
                     "answer": "决策层允许直接回答，但这段不应该作为流式正文。",
                     "rationale": "不需要能力调用。",
                 },

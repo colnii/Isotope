@@ -243,11 +243,14 @@ async function readDesktopChatStream(
       buffer += decoder.decode(value, { stream: !done });
       const blocks = buffer.split(/\r?\n\r?\n/);
       buffer = blocks.pop() ?? '';
-      for (const block of blocks) {
+      for (const [index, block] of blocks.entries()) {
         const event = parseDesktopChatEvent(block);
         if (handleEvent(event)) {
           await reader.cancel().catch(() => undefined);
           return result();
+        }
+        if (index < blocks.length - 1) {
+          await yieldToBrowserEventLoop();
         }
       }
     }
@@ -263,6 +266,12 @@ async function readDesktopChatStream(
   }
 
   return result();
+}
+
+function yieldToBrowserEventLoop(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
 }
 
 function markRunningCapacityCallsError(

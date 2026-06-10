@@ -302,6 +302,64 @@ describe('agentClient', () => {
     expect(cancelled).toBe(true);
   });
 
+  test('yields between coalesced SSE delta events so the UI can render incrementally', async () => {
+    let cancelled = false;
+    let resolveFirstDelta!: () => void;
+    const firstDeltaSeen = new Promise<void>((resolve) => {
+      resolveFirstDelta = resolve;
+    });
+    const encoder = new TextEncoder();
+    const read = vi
+      .fn()
+      .mockResolvedValueOnce({
+        value: encoder.encode(
+          [
+            'event: delta\ndata: {"text":"第一段"}',
+            'event: delta\ndata: {"text":"第二段"}',
+            'event: done\ndata: {"status":"ok","provider":"fixture","model":"fixture-model"}'
+          ].join('\n\n') + '\n\n'
+        ),
+        done: false
+      })
+      .mockReturnValue(new Promise(() => {}));
+    const body = {
+      getReader() {
+        return {
+          read,
+          cancel: () => {
+            cancelled = true;
+            return Promise.resolve();
+          }
+        };
+      }
+    } as unknown as ReadableStream<Uint8Array>;
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, body }) as Response));
+    const deltas: string[] = [];
+
+    const answerPromise = createAgentClient('http://127.0.0.1:8765').askDesktopQuestion(
+      'loop?',
+      {
+        onDelta: (text) => {
+          deltas.push(text);
+          if (deltas.length === 1) resolveFirstDelta();
+        }
+      }
+    );
+
+    await firstDeltaSeen;
+
+    expect(deltas).toEqual(['第一段']);
+
+    const answer = await answerPromise;
+    expect(answer).toEqual({
+      question: 'loop?',
+      answer: '第一段第二段',
+      provider: 'fixture',
+      model: 'fixture-model'
+    });
+    expect(cancelled).toBe(true);
+  });
+
   test('streams desktop chat answer from CRLF SSE frames', async () => {
     const stream = new ReadableStream({
       start(controller) {
