@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from hashlib import sha256
 from pathlib import Path, PurePosixPath
 import re
 from typing import Any, Mapping
 
 from ..platform.schemas.input_contract import missing_required_input_keys
+from .read.core import read_text_excerpt as _shared_read_text_excerpt
 
 
 CODE_READ_CAPABILITY = "code.read"
@@ -239,70 +239,20 @@ def _read_text_excerpt(
     path: str,
     max_excerpt_chars: int,
 ) -> dict[str, Any]:
-    if not target.exists():
-        return _code_read_status("missing", path=path)
-    if not target.is_file():
-        return _code_read_status("not_file", path=path)
-    raw = target.read_bytes()
-    digest = sha256(raw).hexdigest()
-    if b"\x00" in raw:
-        return _code_read_status(
-            "unsupported_binary",
-            path=path,
-            byte_count=len(raw),
-            sha256_hex=digest,
-        )
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        return _code_read_status(
-            "unsupported_encoding",
-            path=path,
-            byte_count=len(raw),
-            sha256_hex=digest,
-        )
-    excerpt = text[:max_excerpt_chars]
-    return {
-        "status": "readable",
-        "path": path,
-        "byte_count": len(raw),
-        "line_count": len(text.splitlines()),
-        "excerpt": excerpt,
-        "truncated": len(text) > len(excerpt),
-        "code_ref": {
+    result = _shared_read_text_excerpt(
+        target,
+        path=path,
+        scope="workspace",
+        max_excerpt_chars=max_excerpt_chars,
+    )
+    result.pop("scope", None)
+    if "ref" in result:
+        result["code_ref"] = {
+            **dict(result["ref"]),
             "ref_type": "code",
-            "scope": "workspace",
-            "path": path,
-            "sha256": digest,
-        },
-        "content_policy": "limited_excerpts_only",
-    }
-
-
-def _code_read_status(
-    status: str,
-    *,
-    path: str,
-    byte_count: int | None = None,
-    sha256_hex: str | None = None,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "status": status,
-        "path": path,
-        "excerpt": "",
-        "truncated": False,
-        "content_policy": "limited_excerpts_only",
-    }
-    if byte_count is not None:
-        payload["byte_count"] = byte_count
-    if sha256_hex is not None:
-        payload["code_ref"] = {
-            "ref_type": "code",
-            "scope": "workspace",
-            "path": path,
-            "sha256": sha256_hex,
         }
-    return payload
+        result.pop("ref", None)
+    return result
 
 
 def _iter_text_candidate_files(root: Path):

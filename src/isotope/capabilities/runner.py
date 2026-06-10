@@ -71,6 +71,12 @@ from .memory import (
     run_memory_recall,
     validate_memory_projection_inputs,
 )
+from .read import (
+    FILE_READ_CAPABILITY,
+    is_file_read_capability,
+    run_file_read,
+    validate_file_read_inputs,
+)
 from .research import (
     RESEARCH_PROMOTE_CAPABILITY,
     RESEARCH_SEARCH_CAPABILITY,
@@ -312,6 +318,11 @@ class CapabilityRunner:
             inputs=input_mapping,
             missing_inputs=missing_inputs,
         )
+        validate_file_read_inputs(
+            capability_id=capability_id,
+            inputs=input_mapping,
+            missing_inputs=missing_inputs,
+        )
         validate_code_edit_inputs(
             capability_id=capability_id,
             inputs=input_mapping,
@@ -382,6 +393,7 @@ class CapabilityRunner:
             and not is_coding_execute_capability(capability_id)
             and not is_coding_run_capability(capability_id)
             and not is_code_access_capability(capability_id)
+            and not is_file_read_capability(capability_id)
             and not is_code_edit_capability(capability_id)
             and not is_test_run_capability(capability_id)
             and not is_vcs_capability(capability_id)
@@ -507,6 +519,11 @@ class CapabilityRunner:
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
             )
+            validate_file_read_inputs(
+                capability_id=capability_id,
+                inputs=input_mapping,
+                missing_inputs=missing_inputs,
+            )
             validate_code_edit_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
@@ -590,6 +607,8 @@ class CapabilityRunner:
             return run_coding_task_apply_reviewed_diff(inputs=input_mapping)
         if capability_id == CODING_TASK_RUN_CAPABILITY:
             return reject_direct_coding_task_run()
+        if capability_id == FILE_READ_CAPABILITY:
+            return run_file_read(inputs=input_mapping)
         if capability_id == CODE_READ_CAPABILITY:
             return run_code_read(inputs=input_mapping)
         if capability_id == CODE_SEARCH_CAPABILITY:

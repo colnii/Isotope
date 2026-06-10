@@ -1019,6 +1019,61 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="file.read",
+                    title="Read",
+                    description=(
+                        "Read one bounded text excerpt from either the current "
+                        "workspace or an approval-gated local file path."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=("read", "file", "workspace", "local-file", "inspection"),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "scope", "path"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "x-system-input": True,
+                                "description": "Runtime root for approval and read artifacts.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "x-system-input": True,
+                                "description": "Workspace directory for workspace-scoped reads.",
+                            },
+                            "scope": {
+                                "type": "string",
+                                "enum": ["workspace", "local_file"],
+                                "description": "Read boundary: workspace or approval-gated local_file.",
+                            },
+                            "path": {
+                                "type": "string",
+                                "description": "Workspace-relative path or approved local file path.",
+                            },
+                            "max_excerpt_chars": {
+                                "type": "integer",
+                                "description": "Maximum returned excerpt characters.",
+                                "default": 2000,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": ["status", "runner_kind", "read", "approval_id"],
+                    },
+                    safety_boundaries=(
+                        "workspace_scope_direct",
+                        "local_file_scope_approval_required",
+                        "single_file_only",
+                        "limited_excerpts_only",
+                        "no_write_delete_or_execute",
+                        "public_result_metadata",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="code.read",
                     title="Code Read",
                     description=(
