@@ -18,3 +18,19 @@ class SurfaceDecision:
             "reason_codes": list(self.reason_codes),
             "recommended_command": self.recommended_command,
         }
+
+
+@dataclass(frozen=True)
+class CapabilityScenario:
+    case_id: str
+    capability_ids: tuple[str, ...]
+    user_message: str
+    fixture: str
+    required_gates: tuple[str, ...] = (
+        "required_capacity_called",
+        "low_sensitive_report",
+    )
+    allowed_result_statuses: tuple[str, ...] = ("ok",)
+    combination_only: bool = False
+    configuration_gated: bool = False
+    max_turns: int = 12
