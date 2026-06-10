@@ -33,6 +33,31 @@ class RecordingConversationProvider:
         )
 
 
+class PlainTextConversationProvider:
+    provider = "deterministic_test"
+    model = "plain-text-conversation"
+
+    def __init__(self, response: str) -> None:
+        self.response = response
+        self.calls: list[dict[str, Any]] = []
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        self.calls.append({"messages": messages, "max_tokens": max_tokens})
+        return LLMResponse(
+            provider=self.provider,
+            model=self.model,
+            content=self.response,
+            finish_reason="stop",
+            usage={"prompt_tokens": 1, "completion_tokens": 1},
+            raw={},
+        )
+
+
 def test_conversation_loop_rejects_unbased_direct_answer_before_observation(
     tmp_path,
     monkeypatch,
@@ -206,6 +231,67 @@ def test_repeated_invalid_direct_answer_falls_back_before_max_turns(
     assert events[0].payload == {"text": "这次退化为可见回答，不能继续空转。"}
     assert events[0].private["decision_kind"] == "direct_answer_recovered"
     assert len(provider.calls) == 3
+
+
+def test_repeated_non_json_direct_answer_is_returned_instead_of_looping(
+    tmp_path,
+) -> None:
+    provider = PlainTextConversationProvider(
+        "`code.read` 有，但只能读取 workspace 内的相对路径，不能读取 UNC 路径。"
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="你不是有 read 能力吗？",
+            provider=provider,
+            max_turns=10,
+        )
+    )
+
+    assert [event.event for event in events] == ["delta"]
+    assert events[0].payload == {
+        "text": "`code.read` 有，但只能读取 workspace 内的相对路径，不能读取 UNC 路径。"
+    }
+    assert len(provider.calls) == 2
+    second_prompt = json.dumps(provider.calls[1]["messages"], ensure_ascii=False)
+    assert "invalid_direct_answer" in second_prompt
+
+
+def test_capability_gap_answer_includes_gap_kind_and_reason(tmp_path) -> None:
+    provider = RecordingConversationProvider(
+        [
+            {
+                "kind": "report_capability_gap",
+                "gap": {
+                    "missing_capability_kind": "file_read",
+                    "reason": (
+                        "已有 code.read 只能读取 workspace 内的相对路径，"
+                        "不能读取 \\\\wsl.localhost 路径。"
+                    ),
+                    "needed_context": ["任意本地文件读取能力"],
+                },
+            }
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="读一下 \\\\wsl.localhost\\Ubuntu\\tmp\\resume62\\6.2.md",
+            provider=provider,
+            max_turns=2,
+        )
+    )
+
+    assert [event.event for event in events] == ["capability_gap", "delta"]
+    answer = events[1].payload["text"]
+    assert "file_read" in answer
+    assert "code.read" in answer
+    assert "workspace" in answer
+    assert "已记录 capability gap" in answer
 
 
 def _agent_loop(capability_run: dict[str, Any]) -> dict[str, Any]:

@@ -31,7 +31,11 @@ from isotope.platform.schemas.input_contract import (
 )
 
 from .desktop_chat_context import compact_desktop_chat_history_messages
-from .conversation.direct_answer import direct_answer_rejection_observation
+from .conversation.direct_answer import (
+    capability_gap_user_answer,
+    direct_answer_rejection_observation,
+    recovered_unstructured_direct_answer,
+)
 from .conversation.generation import generate_with_timeout as _generate_with_timeout
 from .conversation.repeated_capacity import (
     capacity_call_key,
@@ -127,6 +131,21 @@ def run_supervisor_conversation_events(
             )
             if rejection is not None:
                 invalid_direct_answer_rejections += 1
+                recovered_answer = recovered_unstructured_direct_answer(
+                    decision,
+                    rejection_count=invalid_direct_answer_rejections,
+                )
+                if recovered_answer is not None:
+                    yield SupervisorConversationEvent(
+                        event="delta",
+                        payload={"text": recovered_answer},
+                        provider=response.provider,
+                        model=response.model,
+                        private={
+                            "decision_kind": "recovered_unstructured_direct_answer"
+                        },
+                    )
+                    return
                 if (
                     invalid_direct_answer_rejections
                     < _INVALID_DIRECT_ANSWER_RECOVERY_LIMIT
@@ -150,6 +169,7 @@ def run_supervisor_conversation_events(
             )
             return
         if decision["kind"] in {"call_capability", "call_capabilities"}:
+            invalid_direct_answer_rejections = 0
             capacity_decisions: list[dict[str, Any]]
             if decision["kind"] == "call_capability":
                 capacity_decisions = [decision]
@@ -262,6 +282,7 @@ def run_supervisor_conversation_events(
                             completed_calls[call_key] = observation
             continue
         if decision["kind"] == "report_capability_gap":
+            invalid_direct_answer_rejections = 0
             gap = _record_capability_gap(
                 decision,
                 state_root=Path(state_root).expanduser(),
@@ -271,7 +292,7 @@ def run_supervisor_conversation_events(
             yield SupervisorConversationEvent(event="capability_gap", payload=gap)
             yield SupervisorConversationEvent(
                 event="delta",
-                payload={"text": "我缺少对应的基础能力，已记录 capability gap。"},
+                payload={"text": capability_gap_user_answer(gap)},
                 provider=response.provider,
                 model=response.model,
             )
@@ -433,7 +454,11 @@ def _parse_decision(content: str) -> dict[str, Any]:
     try:
         payload = json.loads(stripped)
     except json.JSONDecodeError:
-        return {"kind": "direct_answer", "answer": stripped}
+        return {
+            "kind": "direct_answer",
+            "answer": stripped,
+            "_parse_status": "non_json",
+        }
     if not isinstance(payload, dict):
         return {"kind": "direct_answer", "answer": stripped}
     kind = payload.get("kind")

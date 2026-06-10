@@ -25,6 +25,35 @@ def direct_answer_rejection_observation(
     )
 
 
+def recovered_unstructured_direct_answer(
+    decision: dict[str, Any],
+    *,
+    rejection_count: int,
+) -> str | None:
+    if rejection_count < 2:
+        return None
+    if decision.get("_parse_status") != "non_json":
+        return None
+    answer = decision.get("answer")
+    if not isinstance(answer, str) or not answer.strip():
+        return None
+    return answer.strip()
+
+
+def capability_gap_user_answer(gap: dict[str, Any]) -> str:
+    kind = gap.get("missing_capability_kind")
+    if isinstance(kind, str) and kind.strip():
+        parts = [f"我缺少 `{kind.strip()}` 能力，已记录 capability gap。"]
+    else:
+        parts = ["我缺少对应的基础能力，已记录 capability gap。"]
+
+    reason = gap.get("reason")
+    if isinstance(reason, str) and reason.strip():
+        parts.append(f"原因：{reason.strip()}")
+
+    return " ".join(parts)
+
+
 def _observation_basis_rejection(
     basis: Any,
     *,

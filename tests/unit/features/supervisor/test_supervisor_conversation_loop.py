@@ -1297,7 +1297,10 @@ def test_conversation_loop_records_public_metadata_capability_gap(tmp_path) -> N
     assert gap["missing_capability_kind"] == "supervisor.discovery.worker_list"
     assert gap["source_entrypoint"] == "desktop_chat"
     assert gap["status"] == "recorded"
-    assert events[1].payload["text"] == "我缺少对应的基础能力，已记录 capability gap。"
+    answer = events[1].payload["text"]
+    assert "supervisor.discovery.worker_list" in answer
+    assert "需要查询 worker 列表" in answer
+    assert "已记录 capability gap" in answer
     gap_files = list((tmp_path / "supervisor" / "capability-gaps").glob("*.json"))
     assert len(gap_files) == 1
     saved = json.loads(gap_files[0].read_text(encoding="utf-8"))
