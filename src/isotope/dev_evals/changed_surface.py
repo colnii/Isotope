@@ -11,6 +11,10 @@ from .models import SurfaceDecision
 SUITE = "supervisor_capacity_basic"
 RECOMMENDED_COMMAND = (
     "scripts/dev-eval supervisor_capacity_eval "
+    "--suite supervisor_capacity_basic --case-id code_search_fixture --json"
+)
+FULL_COMMAND = (
+    "scripts/dev-eval supervisor_capacity_eval "
     "--suite supervisor_capacity_basic --json"
 )
 
@@ -67,6 +71,14 @@ SEMANTIC_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "result schema",
         ),
     ),
+    (
+        "dev_eval_contract_changed",
+        (
+            "src/isotope/dev_evals/",
+            "tests/unit/dev_evals/",
+            "scripts/dev-eval",
+        ),
+    ),
 )
 
 
@@ -80,6 +92,7 @@ def detect_changed_surface(diff_text: str) -> SurfaceDecision:
         suite=SUITE if reason_codes else None,
         reason_codes=reason_codes,
         recommended_command=RECOMMENDED_COMMAND if reason_codes else None,
+        full_command=FULL_COMMAND if reason_codes else None,
     )
 
 
@@ -109,6 +122,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("reason_codes:", ", ".join(decision.reason_codes))
         if decision.recommended_command:
             print("recommended_command:", decision.recommended_command)
+        if decision.full_command:
+            print("full_command:", decision.full_command)
     return 0
 
 

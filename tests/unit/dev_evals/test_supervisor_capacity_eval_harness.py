@@ -3,6 +3,7 @@ import json
 from isotope.dev_evals.cases import scenario_catalog
 from isotope.dev_evals.supervisor_capacity_eval import (
     DeterministicScenarioProvider,
+    main,
     run_scenarios,
 )
 
@@ -83,3 +84,36 @@ def test_harness_fails_when_provider_chooses_wrong_capacity(tmp_path):
     assert report["cases"][0]["hard_gates"][0]["details"][
         "missing_capacity_ids"
     ] == ["code.search"]
+
+
+def test_cli_uses_fresh_default_run_root_each_time(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+
+    first_status = main(
+        [
+            "--deterministic-provider",
+            "--case-id",
+            "artifact_review_demo",
+            "--json",
+        ]
+    )
+    second_status = main(
+        [
+            "--deterministic-provider",
+            "--case-id",
+            "artifact_review_demo",
+            "--json",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert first_status == 0
+    assert second_status == 0
+    run_roots = sorted((tmp_path / ".dev-eval-runs").glob("run-*"))
+    assert len(run_roots) == 2
+    assert run_roots[0] != run_roots[1]
+    assert all(
+        (run_root / "state/dev-evals/reviewer-prompts/artifact_review_demo.md").exists()
+        for run_root in run_roots
+    )
+    assert '"run_root": ".dev-eval-runs/run-' in captured.out

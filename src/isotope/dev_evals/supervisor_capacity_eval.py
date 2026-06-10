@@ -4,8 +4,10 @@ import argparse
 import json
 import subprocess
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from isotope.features.supervisor.conversation_loop import (
     run_supervisor_conversation_events,
@@ -19,6 +21,7 @@ from .reviewer_prompt import render_reviewer_prompt
 
 
 SUITE = "supervisor_capacity_basic"
+DEFAULT_RUN_ROOT_BASE = Path(".dev-eval-runs")
 
 
 class DeterministicScenarioProvider:
@@ -222,6 +225,15 @@ def _git_diff_summary() -> str:
     return summary if summary else "no current git diff"
 
 
+def _fresh_default_run_root(base: Path = DEFAULT_RUN_ROOT_BASE) -> Path:
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    for _ in range(20):
+        candidate = base / f"run-{timestamp}-{uuid4().hex[:8]}"
+        if not candidate.exists():
+            return candidate
+    raise RuntimeError("could not allocate a fresh dev-eval run root")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--suite", default=SUITE)
@@ -229,9 +241,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--case-id")
     parser.add_argument("--case-limit", type=int)
     parser.add_argument("--deterministic-provider", action="store_true")
+    parser.add_argument("--run-root", type=Path)
     args = parser.parse_args(argv)
     if args.suite != SUITE:
         raise SystemExit(f"unknown suite: {args.suite}")
+    root = args.run_root or _fresh_default_run_root()
     try:
         if args.deterministic_provider:
             scenarios = _select_scenarios(
@@ -244,18 +258,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             report = run_scenarios(
                 scenarios,
-                root=Path(".dev-eval-runs"),
+                root=root,
                 provider=provider,
                 live=False,
             )
         else:
             report = run_live_suite(
-                root=Path(".dev-eval-runs"),
+                root=root,
                 case_id=args.case_id,
                 case_limit=args.case_limit,
             )
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
+    report["run_root"] = str(root)
     if args.json:
         print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     else:

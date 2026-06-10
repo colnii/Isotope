@@ -16,6 +16,10 @@ diff --git a/src/isotope/capabilities/catalog.py b/src/isotope/capabilities/cata
     assert "capability_contract_changed" in result.reason_codes
     assert result.recommended_command == (
         "scripts/dev-eval supervisor_capacity_eval "
+        "--suite supervisor_capacity_basic --case-id code_search_fixture --json"
+    )
+    assert result.full_command == (
+        "scripts/dev-eval supervisor_capacity_eval "
         "--suite supervisor_capacity_basic --json"
     )
 
@@ -47,3 +51,24 @@ diff --git a/docs/current/README.md b/docs/current/README.md
     assert result.eval_required is False
     assert result.reason_codes == []
     assert result.recommended_command is None
+    assert result.full_command is None
+
+
+def test_changed_surface_requires_eval_for_dev_eval_contract_diff():
+    diff_text = """
+diff --git a/src/isotope/dev_evals/supervisor_capacity_eval.py b/src/isotope/dev_evals/supervisor_capacity_eval.py
++ report["run_root"] = str(root)
+"""
+
+    result = detect_changed_surface(diff_text)
+
+    assert result.eval_required is True
+    assert "dev_eval_contract_changed" in result.reason_codes
+    assert result.recommended_command == (
+        "scripts/dev-eval supervisor_capacity_eval "
+        "--suite supervisor_capacity_basic --case-id code_search_fixture --json"
+    )
+    assert result.full_command == (
+        "scripts/dev-eval supervisor_capacity_eval "
+        "--suite supervisor_capacity_basic --json"
+    )

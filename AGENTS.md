@@ -65,9 +65,11 @@ contracts, capacity manifests, capacity observations, agent-loop result
 projection, or `src/isotope/dev_evals/`, run
 `scripts/dev-eval changed_surface --base origin/main --json`
 before final reporting. If it returns `eval_required=true`, run the recommended
-command, read any generated `.dev-eval-runs/state/dev-evals/reviewer-prompts/*.md`,
-and report hard gates, scores, reviewer findings, and follow-up changes. If this
-is blocked, report the exact command and output.
+smoke command, read any generated
+`.dev-eval-runs/**/state/dev-evals/reviewer-prompts/*.md`, and report hard
+gates, scores, reviewer findings, and follow-up changes. Use `full_command`
+for explicit full-suite audits, not as the default small-change gate. If this is
+blocked, report the exact command and output.
 
 ## Git Workflow
 

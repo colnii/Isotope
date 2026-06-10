@@ -42,6 +42,15 @@ _SCENARIOS: tuple[CapabilityScenario, ...] = (
         "workspace_with_code",
     ),
     CapabilityScenario(
+        "file_read_fixture",
+        ("file.read",),
+        (
+            "Use file.read with scope=workspace and path=src/app.py, then tell me "
+            "whether the fixture marker is present."
+        ),
+        "workspace_with_code",
+    ),
+    CapabilityScenario(
         "code_search_fixture",
         ("code.search",),
         "Find the literal marker ISOTOPE_DEV_EVAL_MARKER in the workspace source tree.",

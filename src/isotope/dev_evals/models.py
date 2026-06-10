@@ -10,6 +10,7 @@ class SurfaceDecision:
     suite: str | None
     reason_codes: list[str]
     recommended_command: str | None
+    full_command: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -17,6 +18,7 @@ class SurfaceDecision:
             "suite": self.suite,
             "reason_codes": list(self.reason_codes),
             "recommended_command": self.recommended_command,
+            "full_command": self.full_command,
         }
 
 
