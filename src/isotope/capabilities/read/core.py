@@ -30,6 +30,8 @@ def validate_file_read_inputs(
         return dict(inputs or {})
     input_mapping = dict(inputs or {})
     _validate_non_empty_strings(input_mapping, ("scope", "path"), missing_inputs)
+    if "scope" in missing_inputs or "path" in missing_inputs:
+        return input_mapping
     scope = input_mapping.get("scope")
     if scope not in {"workspace", "local_file"}:
         raise ValueError("scope must be workspace or local_file")
@@ -38,7 +40,7 @@ def validate_file_read_inputs(
         if "path" not in missing_inputs:
             input_mapping["path"] = safe_workspace_relative_path(input_mapping["path"])
     if scope == "local_file":
-        _validate_non_empty_strings(input_mapping, ("root",), [])
+        _validate_non_empty_strings(input_mapping, ("root",), missing_inputs)
     input_mapping["max_excerpt_chars"] = limited_int(
         input_mapping.get("max_excerpt_chars", _DEFAULT_MAX_EXCERPT_CHARS),
         field_name="max_excerpt_chars",

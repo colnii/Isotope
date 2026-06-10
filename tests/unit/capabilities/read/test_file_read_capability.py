@@ -45,6 +45,13 @@ def test_file_read_workspace_scope_rejects_workspace_escape(tmp_path) -> None:
         )
 
 
+def test_file_read_plan_reports_missing_inputs_without_raising() -> None:
+    plan = CapabilityRunner().plan_capability_run("file.read", inputs={})
+
+    assert plan["status"] == "missing_inputs"
+    assert plan["missing_inputs"] == ["root", "scope", "path"]
+
+
 def test_file_read_local_file_scope_requires_root_for_approval(tmp_path) -> None:
     with pytest.raises(ValueError, match="root must be a non-empty string"):
         CapabilityRunner().run_capability(
