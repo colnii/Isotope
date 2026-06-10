@@ -7,6 +7,7 @@ Windows-first desktop frontend for Isotope.
 ```bash
 npm install
 npm run dev:full
+npm run observe:desktop -- --plan
 npm run check
 npm run test
 npm run test:tauri-cdp
@@ -18,6 +19,11 @@ npm run tauri dev
 `npm run dev:full` writes `VITE_ISOTOPE_DESKTOP_API_BASE` to `.env.local` when
 the key is missing, starts the local Supervisor backend, then starts the Vite
 desktop frontend.
+
+`npm run observe:desktop` is the agent-facing entrypoint for desktop UI
+diagnosis. It defaults to the CDP smoke path, accepts `--mode screen` for
+screen artifact verification, and `--plan` prints the commands and setup as
+JSON for a new agent session.
 
 `npm run test:tauri-cdp` drives a running Windows Tauri WebView2 window through
 the Chrome DevTools Protocol. Start the desktop app with

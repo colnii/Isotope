@@ -56,6 +56,10 @@ plus any relevant regression tests.
 
 If verification is skipped or blocked, state that explicitly.
 
+For desktop, frontend, or Tauri UI issues, first try to reproduce through the
+existing observe/smoke entrypoints instead of asking the user to paste logs.
+Prefer CDP, screenshot, DOM-state, or artifact evidence before changing UI code.
+
 ## Git Workflow
 
 Use Conventional Commits, such as `docs: polish public project guide` or
