@@ -236,6 +236,62 @@ def test_conversation_loop_answers_instead_of_repeating_completed_capacity(
     assert "修复桌面 chat capacity loop 收束" in events[-1].payload["text"]
 
 
+def test_goal_plan_capacity_does_not_inherit_chat_timeout(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    captured_timeouts: list[float | None] = []
+
+    def fake_execute_capacity_step(**kwargs: Any) -> dict[str, Any]:
+        captured_timeouts.append(kwargs["timeout_seconds"])
+        return _agent_loop(
+            {
+                "goal_plan": {
+                    "status": "ok",
+                    "mode": "preview",
+                    "planning_trigger": "capacity",
+                    "plan_summary": "生成长期规划。",
+                    "candidates": [],
+                    "written_goals": [],
+                }
+            }
+        )
+
+    monkeypatch.setattr(
+        conversation_loop,
+        "_execute_capacity_step_with_timeout",
+        fake_execute_capacity_step,
+    )
+    provider = RecordingConversationProvider(
+        [
+            {
+                "kind": "call_capability",
+                "capacity_id": "supervisor.goal_plan",
+                "arguments": {"goal": "基于调研生成长期规划"},
+                "rationale": "需要目标规划。",
+            },
+            {
+                "kind": "direct_answer",
+                "answer": "规划已完成。",
+            },
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="请基于调研生成长期规划",
+            provider=provider,
+            max_turns=3,
+            timeout_seconds=18,
+        )
+    )
+
+    assert captured_timeouts == [None]
+    assert events[-1].payload == {"text": "规划已完成。"}
+
+
 def test_conversation_loop_default_max_turns_is_300() -> None:
     signature = inspect.signature(run_supervisor_conversation_events)
 

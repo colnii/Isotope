@@ -183,11 +183,15 @@ def _write_memory_record(memory_dir, record: MemoryRecord) -> None:
     )
 
 
-def test_conversation_loop_uses_longer_timeout_for_goal_plan_capacity() -> None:
+def test_conversation_loop_does_not_add_goal_plan_capacity_timeout() -> None:
     from isotope.features.supervisor import conversation_loop
 
     assert conversation_loop._capacity_timeout_seconds("artifact.review", 4) == 4
-    assert conversation_loop._capacity_timeout_seconds("supervisor.goal_plan", 4) >= 60
+    assert conversation_loop._capacity_timeout_seconds("supervisor.goal_plan", 4) is None
+    assert (
+        conversation_loop._capacity_timeout_seconds("supervisor.goal_plan", None)
+        is None
+    )
 
 
 def test_conversation_loop_goal_plan_write_route_respects_preview_request() -> None:

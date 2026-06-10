@@ -7,7 +7,6 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from pathlib import Path
 from typing import Any
 
-GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS = 90.0
 RESEARCH_SEARCH_CAPACITY_TIMEOUT_SECONDS = 120.0
 
 
@@ -71,17 +70,15 @@ def capacity_timeout_seconds(
     capacity_id: str,
     timeout_seconds: float | None,
 ) -> float | None:
+    if capacity_id == "supervisor.goal_plan":
+        return None
     if capacity_id == "research.search":
         if timeout_seconds is None:
             return RESEARCH_SEARCH_CAPACITY_TIMEOUT_SECONDS
         if timeout_seconds < 1:
             return timeout_seconds
         return max(timeout_seconds, RESEARCH_SEARCH_CAPACITY_TIMEOUT_SECONDS)
-    if capacity_id != "supervisor.goal_plan":
-        return timeout_seconds
-    if timeout_seconds is None:
-        return GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS
-    return max(timeout_seconds, GOAL_PLAN_CAPACITY_TIMEOUT_SECONDS)
+    return timeout_seconds
 
 
 def capacity_timeout_message(capacity_id: str, timeout_seconds: float) -> str:
