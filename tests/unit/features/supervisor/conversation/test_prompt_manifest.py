@@ -151,6 +151,33 @@ def test_conversation_loop_prompt_routes_goal_planning_to_capacity(tmp_path) -> 
     assert "不要重复调用已经有 observation 的同一个 capability" in system_prompt
 
 
+def test_conversation_loop_prompt_separates_manifest_from_observation(
+    tmp_path,
+) -> None:
+    provider = RecordingConversationProvider(
+        [no_capability_direct_answer("这条测试只检查 prompt。")]
+    )
+
+    list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=tmp_path / "repo",
+            user_message="根据项目状态总结一下",
+            provider=provider,
+        )
+    )
+
+    system_prompt = provider.calls[0]["messages"][0]["content"]
+    assert "capacity_manifest 是 discovery-only" in system_prompt
+    assert "只能用来选择合法的 capacity_id" in system_prompt
+    assert "不能作为 `answer_basis.kind=\"observation\"` 的依据" in system_prompt
+    assert (
+        "capacity_observation 是 call_capability/call_capabilities 执行后返回的运行时观测"
+        in system_prompt
+    )
+    assert "只有 capacity_observation 可以支撑 `answer_basis.kind=\"observation\"`" in system_prompt
+
+
 def test_conversation_loop_manifest_exposes_extension_entrypoints_without_skill_registry(
     tmp_path,
 ) -> None:
