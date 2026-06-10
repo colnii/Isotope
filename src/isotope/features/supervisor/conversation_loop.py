@@ -33,6 +33,11 @@ from isotope.platform.schemas.input_contract import (
 
 from .desktop_chat_context import compact_desktop_chat_history_messages
 from .conversation.direct_answer import direct_answer_rejection_observation
+from .conversation.repeated_capacity import (
+    capacity_call_key,
+    repeated_capability_observation,
+    repeated_failed_capability_answer,
+)
 from .conversation_parallel import run_parallel_event_generators
 from .conversation_observations import (
     capability_result_detail_from_agent_loop,
@@ -95,8 +100,8 @@ def run_supervisor_conversation_events(
         capacity_runner=capacity_runner,
     )
     observations: list[dict[str, Any]] = []
-    failed_capabilities: dict[str, dict[str, Any]] = {}
-    completed_capabilities: dict[str, dict[str, Any]] = {}
+    failed_calls: dict[str, dict[str, Any]] = {}
+    completed_calls: dict[str, dict[str, Any]] = {}
     for _turn_index in range(max_turns):
         response = _generate_with_timeout(
             provider,
@@ -154,55 +159,25 @@ def run_supervisor_conversation_events(
                         model=response.model,
                     )
                     return
-            repeated_completed_capacity_id = next(
-                (
-                    capacity_id
-                    for capacity_id in (
-                        decision.get("capacity_id")
-                        for decision in capacity_decisions
-                    )
-                    if isinstance(capacity_id, str)
-                    and capacity_id in completed_capabilities
-                ),
-                None,
+            repeated_failure = repeated_failed_capability_answer(
+                capacity_decisions,
+                failed_calls=failed_calls,
             )
-            if repeated_completed_capacity_id is not None:
+            if repeated_failure is not None:
                 yield SupervisorConversationEvent(
                     event="delta",
-                    payload={
-                        "text": _repeated_completed_capacity_answer(
-                            repeated_completed_capacity_id,
-                            completed_capabilities[repeated_completed_capacity_id],
-                        )
-                    },
+                    payload={"text": repeated_failure},
                     provider=response.provider,
                     model=response.model,
                 )
                 return
-            repeated_failed_capacity_id = next(
-                (
-                    capacity_id
-                    for capacity_id in (
-                        decision.get("capacity_id")
-                        for decision in capacity_decisions
-                    )
-                    if isinstance(capacity_id, str) and capacity_id in failed_capabilities
-                ),
-                None,
+            repeated_call = repeated_capability_observation(
+                capacity_decisions,
+                completed_calls=completed_calls,
             )
-            if repeated_failed_capacity_id is not None:
-                yield SupervisorConversationEvent(
-                    event="delta",
-                    payload={
-                        "text": _repeated_failed_capacity_answer(
-                            repeated_failed_capacity_id,
-                            failed_capabilities[repeated_failed_capacity_id],
-                        )
-                    },
-                    provider=response.provider,
-                    model=response.model,
-                )
-                return
+            if repeated_call is not None:
+                observations.append(repeated_call)
+                continue
             base_event_ids = [
                 _capacity_event_id(str(capacity_decision.get("capacity_id", "unknown")))
                 for capacity_decision in capacity_decisions
@@ -251,20 +226,23 @@ def run_supervisor_conversation_events(
                     observations.append(observation)
                     payload_capacity_id = event.payload.get("capacity_id")
                     if isinstance(payload_capacity_id, str):
+                        call_key = event.private.get("capacity_call_key")
+                        if not isinstance(call_key, str):
+                            call_key = payload_capacity_id
                         if event.payload.get("status") == "error":
                             result_text = event.payload.get(
                                 "result",
                                 event.payload.get("result_text"),
                             )
-                            failed_capabilities[payload_capacity_id] = (
+                            failed_calls[call_key] = (
                                 dict(result_text)
                                 if isinstance(result_text, dict)
                                 else {}
                             )
-                            completed_capabilities.pop(payload_capacity_id, None)
+                            completed_calls.pop(call_key, None)
                         else:
-                            failed_capabilities.pop(payload_capacity_id, None)
-                            completed_capabilities[payload_capacity_id] = observation
+                            failed_calls.pop(call_key, None)
+                            completed_calls[call_key] = observation
             continue
         if decision["kind"] == "report_capability_gap":
             gap = _record_capability_gap(
@@ -480,6 +458,7 @@ def _run_capability_decision(
     event_id: str,
 ) -> Iterator[SupervisorConversationEvent]:
     capacity_id = _require_text(decision.get("capacity_id"), "capacity_id")
+    call_key = capacity_call_key(decision)
     arguments = decision.get("arguments", {})
     if not isinstance(arguments, dict):
         raise ValueError("arguments must be an object")
@@ -545,6 +524,7 @@ def _run_capability_decision(
             if detail is not None
         ]
         private = {
+            "capacity_call_key": call_key,
             "model_observation": model_observation_from_agent_loop(
                 capacity_id=capacity_id,
                 status="ok",
@@ -565,6 +545,7 @@ def _run_capability_decision(
             result["timeout_seconds"] = exc.timeout_seconds
         extra_details = []
         private = {
+            "capacity_call_key": call_key,
             "model_observation": {
                 "kind": "capacity_observation",
                 "capacity_id": capacity_id,
@@ -622,61 +603,6 @@ def _scoped_coding_steps(value: Any) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         return 6
     return min(max(value, 1), 12)
-
-
-def _repeated_failed_capacity_answer(
-    capacity_id: str,
-    result_text: dict[str, Any],
-) -> str:
-    message = result_text.get("message")
-    if not isinstance(message, str) or not message.strip():
-        message = "能力执行失败"
-    return f"{capacity_id} 执行失败：{message.strip()}"
-
-
-def _repeated_completed_capacity_answer(
-    capacity_id: str,
-    observation: dict[str, Any],
-) -> str:
-    result = observation.get("result")
-    result = result if isinstance(result, dict) else {}
-    if capacity_id == "supervisor.goal_plan":
-        return _goal_plan_completed_answer(capacity_id, result)
-    status = observation.get("status")
-    status_text = f"状态：{status}。" if isinstance(status, str) and status else ""
-    return f"{capacity_id} 已完成。{status_text}".strip()
-
-
-def _goal_plan_completed_answer(capacity_id: str, result: dict[str, Any]) -> str:
-    parts = [f"{capacity_id} 已完成。"]
-    summary = result.get("plan_summary")
-    if isinstance(summary, str) and summary.strip():
-        parts.append(summary.strip())
-    candidates = result.get("candidates")
-    if isinstance(candidates, list):
-        goals = [
-            candidate.get("goal")
-            for candidate in candidates[:3]
-            if isinstance(candidate, dict)
-            and isinstance(candidate.get("goal"), str)
-            and candidate.get("goal", "").strip()
-        ]
-        if goals:
-            parts.append(
-                "候选目标："
-                + "；".join(
-                    f"{index + 1}. {goal.strip()}"
-                    for index, goal in enumerate(goals)
-                )
-            )
-    written_count = result.get("written_count")
-    if isinstance(written_count, int):
-        parts.append(
-            f"已写入目标队列 {written_count} 项。"
-            if written_count > 0
-            else "未写入目标队列。"
-        )
-    return " ".join(parts)
 
 
 def _capability_inputs_from_decision(

@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from isotope.features.supervisor.notifications.context.projection import (
+    request_context_agent_loop_result,
+)
+
 
 def agent_loop_json_result(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Return public capacity handoff fields for JSON and plain output."""
@@ -54,6 +58,7 @@ def agent_loop_json_result(payload: Mapping[str, Any]) -> dict[str, Any]:
         result.update(_agent_loop_research_search_result(capability_run))
         result.update(_agent_loop_research_promotion_result(capability_run))
         result.update(_agent_loop_project_status_result(capability_run))
+        result.update(request_context_agent_loop_result(capability_run))
         result.update(_agent_loop_self_repair_result(capability_run))
         result.update(_agent_loop_reviewed_apply_result(capability_run))
     return result

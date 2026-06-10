@@ -213,6 +213,14 @@ def test_conversation_loop_answers_instead_of_repeating_completed_capacity(
                 "arguments": {"goal": "规划下一步"},
                 "rationale": "重复调用同一能力。",
             },
+            {
+                "kind": "direct_answer",
+                "answer": "下一步应先修复桌面 chat 的收束问题。",
+                "answer_basis": {
+                    "kind": "observation",
+                    "capacity_ids": ["supervisor.goal_plan"],
+                },
+            },
         ]
     )
 
@@ -222,18 +230,18 @@ def test_conversation_loop_answers_instead_of_repeating_completed_capacity(
             cwd=tmp_path,
             user_message="规划下一步",
             provider=provider,
-            max_turns=2,
+            max_turns=3,
         )
     )
 
     assert execute_count == 1
+    assert len(provider.calls) == 3
     assert [event.event for event in events] == [
         "capacity_start",
         "capacity_result",
         "delta",
     ]
-    assert "supervisor.goal_plan 已完成" in events[-1].payload["text"]
-    assert "修复桌面 chat capacity loop 收束" in events[-1].payload["text"]
+    assert events[-1].payload["text"] == "下一步应先修复桌面 chat 的收束问题。"
 
 
 def test_goal_plan_capacity_does_not_inherit_chat_timeout(

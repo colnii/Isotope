@@ -8,6 +8,7 @@ from typing import Any
 
 from isotope.platform.schemas.refs import make_artifact_ref
 from isotope.workspace.artifacts import ArtifactStore
+from .notifications.context.projection import request_context_model_observation
 
 
 def capacity_observation_from_event_payload(
@@ -223,6 +224,8 @@ def _capability_result_observation(
         return _artifact_result_observation(capability_run)
     if capacity_id == "supervisor.project_status":
         return _project_status_observation(capability_run)
+    if capacity_id == "supervisor.request_context":
+        return request_context_model_observation(capability_run)
     if capacity_id == "isotope.self_repair":
         return _self_repair_observation(capability_run)
     if capacity_id == "supervisor.goal_plan":
