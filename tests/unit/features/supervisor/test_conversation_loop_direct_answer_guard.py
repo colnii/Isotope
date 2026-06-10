@@ -168,6 +168,46 @@ def test_invalid_direct_answer_observation_does_not_make_next_answer_based(
     assert len(provider.calls) == 3
 
 
+def test_repeated_invalid_direct_answer_falls_back_before_max_turns(
+    tmp_path,
+) -> None:
+    provider = RecordingConversationProvider(
+        [
+            {
+                "kind": "direct_answer",
+                "answer": "我可以直接回答这个普通追问。",
+            },
+            {
+                "kind": "direct_answer",
+                "answer": "我还是少了 answer_basis。",
+            },
+            {
+                "kind": "direct_answer",
+                "answer": "这次退化为可见回答，不能继续空转。",
+            },
+            {
+                "kind": "direct_answer",
+                "answer": "不应该继续请求到这里。",
+            },
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="刚才那个 goal plan 会保存吗？",
+            provider=provider,
+            max_turns=5,
+        )
+    )
+
+    assert [event.event for event in events] == ["delta"]
+    assert events[0].payload == {"text": "这次退化为可见回答，不能继续空转。"}
+    assert events[0].private["decision_kind"] == "direct_answer_recovered"
+    assert len(provider.calls) == 3
+
+
 def _agent_loop(capability_run: dict[str, Any]) -> dict[str, Any]:
     return {
         "tick_result": {

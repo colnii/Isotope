@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import os
 import re
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -33,6 +32,7 @@ from isotope.platform.schemas.input_contract import (
 
 from .desktop_chat_context import compact_desktop_chat_history_messages
 from .conversation.direct_answer import direct_answer_rejection_observation
+from .conversation.generation import generate_with_timeout as _generate_with_timeout
 from .conversation.repeated_capacity import (
     capacity_call_key,
     repeated_capability_observation,
@@ -53,6 +53,9 @@ from .conversation_timeouts import (
     capacity_timeout_seconds as _capacity_timeout_seconds,
     execute_capacity_step_with_timeout,
 )
+
+
+_INVALID_DIRECT_ANSWER_RECOVERY_LIMIT = 3
 
 
 class SupervisorConversationProvider(Protocol):
@@ -102,6 +105,7 @@ def run_supervisor_conversation_events(
     observations: list[dict[str, Any]] = []
     failed_calls: dict[str, dict[str, Any]] = {}
     completed_calls: dict[str, dict[str, Any]] = {}
+    invalid_direct_answer_rejections = 0
     for _turn_index in range(max_turns):
         response = _generate_with_timeout(
             provider,
@@ -122,14 +126,27 @@ def run_supervisor_conversation_events(
                 observations=observations,
             )
             if rejection is not None:
-                observations.append(rejection)
-                continue
+                invalid_direct_answer_rejections += 1
+                if (
+                    invalid_direct_answer_rejections
+                    < _INVALID_DIRECT_ANSWER_RECOVERY_LIMIT
+                ):
+                    observations.append(rejection)
+                    continue
+            else:
+                invalid_direct_answer_rejections = 0
             yield SupervisorConversationEvent(
                 event="delta",
                 payload={"text": answer},
                 provider=response.provider,
                 model=response.model,
-                private={"decision_kind": "direct_answer"},
+                private={
+                    "decision_kind": (
+                        "direct_answer_recovered"
+                        if rejection is not None
+                        else "direct_answer"
+                    )
+                },
             )
             return
         if decision["kind"] in {"call_capability", "call_capabilities"}:
@@ -340,28 +357,6 @@ def _history_messages(history: list[dict[str, str]] | None) -> list[dict[str, st
         if stripped:
             clean.append({"role": role, "content": stripped})
     return compact_desktop_chat_history_messages(clean)
-
-
-def _generate_with_timeout(
-    provider: SupervisorConversationProvider,
-    *,
-    messages: list[dict[str, Any]],
-    max_tokens: int,
-    timeout_seconds: float | None,
-) -> LLMResponse:
-    if timeout_seconds is None:
-        return provider.generate(messages, max_tokens=max_tokens)
-    if timeout_seconds <= 0:
-        raise TimeoutError("desktop chat response timed out")
-    executor = ThreadPoolExecutor(max_workers=1)
-    pending_call = executor.submit(provider.generate, messages, max_tokens=max_tokens)
-    try:
-        return pending_call.result(timeout=timeout_seconds)
-    except FutureTimeoutError as exc:
-        pending_call.cancel()
-        raise TimeoutError("desktop chat response timed out") from exc
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
 
 
 def _conversation_capability_projection(capability: dict[str, Any]) -> dict[str, Any]:

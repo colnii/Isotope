@@ -58,6 +58,47 @@ class DirectDecisionStreamingAnswerProvider:
             )
 
 
+class RepeatedInvalidDirectAnswerProvider:
+    provider = "deterministic_test"
+    model = "stub-invalid-direct-answer"
+
+    def __init__(self) -> None:
+        self.generate_calls: list[dict[str, Any]] = []
+        self.stream_calls: list[dict[str, Any]] = []
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        self.generate_calls.append({"messages": messages, "max_tokens": max_tokens})
+        answer = f"第 {len(self.generate_calls)} 次回答，不能让 loop 耗尽。"
+        return LLMResponse(
+            provider=self.provider,
+            model=self.model,
+            content=json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": answer,
+                },
+                ensure_ascii=False,
+            ),
+            finish_reason="stop",
+            usage={},
+            raw={},
+        )
+
+    def stream_generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ):
+        self.stream_calls.append({"messages": messages, "max_tokens": max_tokens})
+        raise AssertionError("recovered direct answers should not re-stream")
+
+
 def test_desktop_chat_direct_answer_uses_provider_stream_after_model_decision(
     tmp_path,
 ) -> None:
@@ -87,3 +128,22 @@ def test_desktop_chat_direct_answer_uses_provider_stream_after_model_decision(
     assert "capacity_manifest" in decision_prompt
     assert "你是 Isotope 的产品内 AI 助手" in answer_prompt
     assert "真实逐段返回" not in decision_prompt
+
+
+def test_desktop_chat_recovered_direct_answer_does_not_restream(
+    tmp_path,
+) -> None:
+    provider = RepeatedInvalidDirectAnswerProvider()
+
+    events = list(
+        stream_desktop_chat_events(
+            state_root=tmp_path,
+            question="刚才那个 goal plan 会保存吗？",
+            provider=provider,
+        )
+    )
+
+    deltas = [event.payload["text"] for event in events if event.event == "delta"]
+    assert "".join(deltas) == "第 3 次回答，不能让 loop 耗尽。"
+    assert len(provider.generate_calls) == 3
+    assert provider.stream_calls == []
