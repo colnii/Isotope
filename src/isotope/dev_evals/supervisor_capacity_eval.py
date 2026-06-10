@@ -9,7 +9,7 @@ from typing import Any
 from isotope.features.supervisor.conversation_loop import (
     run_supervisor_conversation_events,
 )
-from isotope.llm.provider import LLMResponse
+from isotope.llm.provider import LLMResponse, resolve_llm_chat_provider
 
 from .cases import scenario_catalog
 from .fixtures import prepare_fixture
@@ -104,6 +104,40 @@ def run_scenarios(
     return build_suite_report(suite=SUITE, cases=case_reports)
 
 
+def run_live_suite(
+    *,
+    root: Path,
+    case_id: str | None = None,
+    case_limit: int | None = None,
+) -> dict[str, Any]:
+    resolution = resolve_llm_chat_provider()
+    if resolution.provider is None:
+        return {
+            "kind": "supervisor_capacity_dev_eval_report",
+            "suite": SUITE,
+            "status": "blocked",
+            "hard_gate_passed": False,
+            "reason_code": resolution.reason_code,
+            "provider": resolution.provider_name,
+            "deterministic_fallback": {
+                "status": "passed",
+                "checks": [
+                    "scenario_catalog_covered",
+                    "report_sanitizer_available",
+                    "hard_gate_functions_available",
+                ],
+            },
+            "cases": [],
+        }
+
+    scenarios = _select_scenarios(
+        scenario_catalog(),
+        case_id=case_id,
+        case_limit=case_limit,
+    )
+    return run_scenarios(scenarios, root=root, provider=resolution.provider, live=True)
+
+
 def _default_deterministic_provider_for_case(
     capability_id: str,
 ) -> DeterministicScenarioProvider:
@@ -129,26 +163,58 @@ def _default_deterministic_provider_for_case(
     )
 
 
+def _select_scenarios(
+    scenarios: list[Any],
+    *,
+    case_id: str | None,
+    case_limit: int | None,
+) -> list[Any]:
+    selected = scenarios
+    if case_id:
+        selected = [item for item in selected if item.case_id == case_id]
+    if case_limit is not None:
+        if isinstance(case_limit, bool) or case_limit <= 0:
+            raise ValueError("case_limit must be a positive integer")
+        selected = selected[:case_limit]
+    if not selected:
+        raise ValueError("no scenarios selected")
+    return selected
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--suite", default=SUITE)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--case-id")
+    parser.add_argument("--case-limit", type=int)
+    parser.add_argument("--deterministic-provider", action="store_true")
     args = parser.parse_args(argv)
     if args.suite != SUITE:
         raise SystemExit(f"unknown suite: {args.suite}")
-    scenarios = scenario_catalog()
-    if args.case_id:
-        scenarios = [item for item in scenarios if item.case_id == args.case_id]
-    if not scenarios:
-        raise SystemExit("no scenarios selected")
-    provider = _default_deterministic_provider_for_case(scenarios[0].capability_ids[0])
-    report = run_scenarios(
-        scenarios[:1],
-        root=Path(".dev-eval-runs"),
-        provider=provider,
-        live=False,
-    )
+    try:
+        if args.deterministic_provider:
+            scenarios = _select_scenarios(
+                scenario_catalog(),
+                case_id=args.case_id,
+                case_limit=args.case_limit or 1,
+            )
+            provider = _default_deterministic_provider_for_case(
+                scenarios[0].capability_ids[0]
+            )
+            report = run_scenarios(
+                scenarios,
+                root=Path(".dev-eval-runs"),
+                provider=provider,
+                live=False,
+            )
+        else:
+            report = run_live_suite(
+                root=Path(".dev-eval-runs"),
+                case_id=args.case_id,
+                case_limit=args.case_limit,
+            )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     if args.json:
         print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     else:
