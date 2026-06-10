@@ -15,4 +15,12 @@ describe('ConversationWorkspace', () => {
       source.indexOf('{message.content}')
     );
   });
+
+  test('contains local file read approval detail branch', () => {
+    const path = join(process.cwd(), 'src/lib/components/main/ConversationWorkspace.svelte');
+    const source = readFileSync(path, 'utf8');
+
+    expect(source).toContain("tool === 'local_file_read'");
+    expect(source).toContain('最多 ${maxExcerptChars} 字符');
+  });
 });

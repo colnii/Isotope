@@ -137,7 +137,8 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
         reason: str,
         resolver: str,
     ) -> dict[str, Any]:
-        result = InProcessServer(self.codex_home).resolve_approval(
+        api = InProcessServer(self.codex_home)
+        result = api.resolve_approval(
             approval_id,
             {
                 "resolution": resolution,
@@ -146,13 +147,17 @@ class SupervisorDashboardServer(ThreadingHTTPServer):
             },
         )
         run_state = result.get("run_state")
-        return {
+        response = {
             "status": "ok",
             "approvalId": approval_id,
             "resolution": resolution,
             "runStatus": getattr(run_state, "status", str(result.get("status", "unknown"))),
             "snapshot": self.desktop_snapshot_payload(),
         }
+        read_result = _local_file_read_result_from_resolution(api, result)
+        if read_result is not None:
+            response["readResult"] = read_result
+        return response
 
     def desktop_chat_provider_or_default(self) -> DesktopChatProvider:
         if self.desktop_chat_provider is not None:
@@ -246,6 +251,25 @@ def create_dashboard_server(
         desktop_chat_provider=desktop_chat_provider,
         desktop_chat_capacity_provider=desktop_chat_capacity_provider,
     )
+
+
+def _local_file_read_result_from_resolution(
+    api: InProcessServer,
+    result: dict[str, Any],
+) -> dict[str, Any] | None:
+    artifact_ref = result.get("artifact_ref")
+    if artifact_ref is None:
+        return None
+    metadata = api.artifact_store.get_metadata(artifact_ref)
+    if metadata.get("artifact_type") != "local_file_read":
+        return None
+    try:
+        content = json.loads(api.artifact_store.get_content(artifact_ref))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(content, dict):
+        return None
+    return content
 
 
 class _DashboardRequestHandler(BaseHTTPRequestHandler):

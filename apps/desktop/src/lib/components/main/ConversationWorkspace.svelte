@@ -52,6 +52,12 @@
     const tool = typeof summary.tool === 'string' ? summary.tool : null;
     const command = typeof summary.terminal_command === 'string' ? summary.terminal_command : null;
     const argvCount = typeof summary.argv_count === 'number' ? summary.argv_count : null;
+    const path = typeof summary.path === 'string' ? summary.path : null;
+    const maxExcerptChars =
+      typeof summary.max_excerpt_chars === 'number' ? summary.max_excerpt_chars : null;
+    if (tool === 'local_file_read' && path) {
+      return maxExcerptChars === null ? path : `${path} / 最多 ${maxExcerptChars} 字符`;
+    }
     if (tool === 'terminal_exec' && command) {
       return argvCount === null ? command : `${command} / argv ${argvCount}`;
     }

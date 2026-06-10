@@ -5,7 +5,7 @@ import type {
   DesktopCapacityCall,
   DesktopChatHistoryMessage
 } from '../client/agentClient';
-import type { ActivityNode, IsotopeSnapshot } from '../contracts/isotope';
+import type { ActivityNode, DesktopReadResult, IsotopeSnapshot } from '../contracts/isotope';
 
 export type DesktopChatMessagePart =
   | { id: string; kind: 'text'; text: string }
@@ -78,6 +78,9 @@ export function createAppState(clients: AppClients) {
           defaultApprovalReason(resolution)
         );
         snapshot.set(result.snapshot);
+        if (resolution === 'approved' && result.readResult) {
+          appendApprovedReadResult(chatMessages, result.readResult);
+        }
       } catch (error) {
         approvalError.set(error instanceof Error ? error.message : '审批操作失败');
       } finally {
@@ -169,6 +172,28 @@ function desktopChatHistory(messages: DesktopChatMessage[]): DesktopChatHistoryM
     }))
     .filter((message) => message.content.length > 0)
     .slice(-12);
+}
+
+function appendApprovedReadResult(
+  chatMessages: ReturnType<typeof writable<DesktopChatMessage[]>>,
+  readResult: DesktopReadResult
+) {
+  const excerpt = typeof readResult.excerpt === 'string' ? readResult.excerpt : '';
+  const suffix = readResult.truncated ? '\n\n[内容已截断]' : '';
+  const text =
+    readResult.status === 'readable'
+      ? `已读取本地文件：${readResult.path}\n\n${excerpt}${suffix}`
+      : `本地文件读取未完成：${readResult.path} (${readResult.status})`;
+  const suffixId = Date.now();
+  chatMessages.update((messages) => [
+    ...messages,
+    {
+      id: `chat_approval_read_${suffixId}`,
+      role: 'assistant',
+      content: text,
+      parts: [{ id: `chat_approval_read_text_${suffixId}`, kind: 'text', text }]
+    }
+  ]);
 }
 
 function appendAssistantTextPart(

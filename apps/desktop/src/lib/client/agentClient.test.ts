@@ -121,6 +121,39 @@ describe('agentClient', () => {
     expect(result.snapshot.counts.approvals).toBe(1);
   });
 
+  test('returns read result from desktop approval resolution', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            status: 'ok',
+            approvalId: 'approval-1',
+            resolution: 'approved',
+            runStatus: 'completed',
+            snapshot: realSnapshot,
+            readResult: {
+              scope: 'local_file',
+              status: 'readable',
+              path: '/tmp/resume.md',
+              excerpt: 'resume text',
+              truncated: false
+            }
+          }),
+          { status: 200 }
+        )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await createAgentClient('http://127.0.0.1:8765').resolveApproval(
+      'approval-1',
+      'approved',
+      'operator approved'
+    );
+
+    expect(result.readResult?.path).toBe('/tmp/resume.md');
+    expect(result.readResult?.excerpt).toBe('resume text');
+  });
+
   test('loads original screen screenshot artifact content from configured backend', async () => {
     const fetchMock = vi.fn(
       async () =>

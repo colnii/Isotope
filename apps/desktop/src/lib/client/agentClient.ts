@@ -1,4 +1,4 @@
-import type { IsotopeSnapshot } from '../contracts/isotope';
+import type { DesktopReadResult, IsotopeSnapshot } from '../contracts/isotope';
 import { mockSnapshot } from './mockData';
 
 export type ApprovalResolution = 'approved' | 'denied';
@@ -9,6 +9,7 @@ export type DesktopApprovalResolutionResult = {
   resolution: ApprovalResolution;
   runStatus?: string;
   snapshot: IsotopeSnapshot;
+  readResult?: DesktopReadResult;
 };
 
 export type DesktopChatAnswer = {

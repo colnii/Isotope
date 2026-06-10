@@ -214,6 +214,7 @@ def _runtime_approval_card(approval: dict[str, Any]) -> dict[str, Any]:
     requested_label = _public_metadata_mapping(
         approval.get("requested_action_label"),
     )
+    requested_summary = _runtime_approval_summary(requested_label)
     title = _runtime_approval_title(requested_label)
     source_ref = {"kind": "approval", "id": approval_id, "label": title}
     return _omit_none({
@@ -226,6 +227,7 @@ def _runtime_approval_card(approval: dict[str, Any]) -> dict[str, Any]:
         "decisionId": approval.get("decision_id"),
         "reasonCodes": list(approval.get("reason_codes", [])),
         "requestedActionLabel": requested_label,
+        "requestedActionSummary": requested_summary,
         "source": {
             "kind": "derived",
             "label": "runtime_approval_request",
@@ -234,8 +236,30 @@ def _runtime_approval_card(approval: dict[str, Any]) -> dict[str, Any]:
     })
 
 
+def _runtime_approval_summary(requested_label: dict[str, Any] | None) -> dict[str, Any] | None:
+    tool = _label_string(requested_label, "tool")
+    if tool == "local_file_read":
+        path = _label_string(requested_label, "path")
+        max_excerpt_chars = (
+            requested_label.get("max_excerpt_chars")
+            if isinstance(requested_label, dict)
+            else None
+        )
+        summary: dict[str, Any] = {"tool": tool, "scope": "local_file"}
+        if path:
+            summary["path"] = path
+        if isinstance(max_excerpt_chars, int) and not isinstance(max_excerpt_chars, bool):
+            summary["max_excerpt_chars"] = max_excerpt_chars
+        return summary
+    if requested_label is None:
+        return None
+    return dict(requested_label)
+
+
 def _runtime_approval_title(requested_label: dict[str, Any] | None) -> str:
     tool = _label_string(requested_label, "tool")
+    if tool == "local_file_read":
+        return "读取本地文件"
     if tool == "terminal_exec":
         command = _label_string(requested_label, "terminal_command")
         if command:

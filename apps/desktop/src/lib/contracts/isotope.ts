@@ -99,6 +99,17 @@ export type ApprovalSummary = {
   source: DataSourceInfo;
 };
 
+export type DesktopReadResult = {
+  scope: 'workspace' | 'local_file';
+  status: string;
+  path: string;
+  excerpt?: string;
+  truncated?: boolean;
+  byte_count?: number;
+  line_count?: number;
+  content_policy?: string;
+};
+
 export type ArtifactSummary = {
   id: string;
   title: string;

@@ -435,6 +435,15 @@ class InProcessActionMixin:
             if isinstance(argv, list) and argv and isinstance(argv[0], str):
                 label["terminal_command"] = argv[0]
                 label["argv_count"] = len(argv)
+        if tool_name == "local_file_read":
+            label["tool"] = tool_name
+            path = proposal.payload.get("path")
+            if isinstance(path, str) and path:
+                label["path"] = path
+                label["scope"] = "local_file"
+            max_excerpt_chars = proposal.payload.get("max_excerpt_chars")
+            if isinstance(max_excerpt_chars, int) and not isinstance(max_excerpt_chars, bool):
+                label["max_excerpt_chars"] = max_excerpt_chars
         if tool_name in {"screen_observe", "screen_control"}:
             label["tool"] = tool_name
             target_selector = proposal.payload.get("target_selector")

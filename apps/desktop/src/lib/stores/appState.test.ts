@@ -542,4 +542,33 @@ describe('appState', () => {
     expect(get(state.isResolvingApproval)).toBe(null);
     expect(get(state.approvalError)).toBe(null);
   });
+
+  test('appends approved local file read result to desktop chat', async () => {
+    const state = createAppState({
+      agentClient: {
+        loadSnapshot: async () => realSnapshot(),
+        loadScreenArtifactContent: async () => { throw new Error('not used'); },
+        resolveApproval: async () => ({
+          status: 'ok',
+          approvalId: 'approval-1',
+          resolution: 'approved',
+          runStatus: 'completed',
+          snapshot: realSnapshot(),
+          readResult: {
+            scope: 'local_file',
+            status: 'readable',
+            path: '/tmp/resume.md',
+            excerpt: 'resume text',
+            truncated: false
+          }
+        }),
+        askDesktopQuestion: async () => ({ question: '', answer: '' })
+      }
+    });
+
+    await state.resolveApproval('approval-1', 'approved');
+
+    expect(get(state.chatMessages).at(-1)?.content).toContain('已读取本地文件：/tmp/resume.md');
+    expect(get(state.chatMessages).at(-1)?.content).toContain('resume text');
+  });
 });
