@@ -42,6 +42,13 @@ def test_harness_runs_code_search_case_through_conversation_loop(tmp_path):
     case = report["cases"][0]
     assert case["steps"][0]["capacity_id"] == "code.search"
     assert case["hard_gate_passed"] is True
+    prompt_ref = case["reviewer_prompt_ref"]
+    assert prompt_ref["path"].endswith(
+        "state/dev-evals/reviewer-prompts/code_search_fixture.md"
+    )
+    assert (tmp_path / prompt_ref["path"]).read_text().startswith(
+        "You are reviewing the current Codex development work"
+    )
     assert "raw_response" not in json.dumps(report)
 
 

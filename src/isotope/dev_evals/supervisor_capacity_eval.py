@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ from isotope.llm.provider import LLMResponse, resolve_llm_chat_provider
 from .cases import scenario_catalog
 from .fixtures import prepare_fixture
 from .reporting import build_case_report, build_suite_report
+from .reviewer_prompt import render_reviewer_prompt
 
 
 SUITE = "supervisor_capacity_basic"
@@ -101,7 +103,9 @@ def run_scenarios(
         case_reports.append(
             build_case_report(scenario, steps=steps, final_answer=final_answer)
         )
-    return build_suite_report(suite=SUITE, cases=case_reports)
+    report = build_suite_report(suite=SUITE, cases=case_reports)
+    _attach_reviewer_prompts(root=root, report=report)
+    return report
 
 
 def run_live_suite(
@@ -179,6 +183,43 @@ def _select_scenarios(
     if not selected:
         raise ValueError("no scenarios selected")
     return selected
+
+
+def _attach_reviewer_prompts(*, root: Path, report: dict[str, Any]) -> None:
+    prompt_dir = root / "state" / "dev-evals" / "reviewer-prompts"
+    prompt_dir.mkdir(parents=True, exist_ok=True)
+    diff_summary = _git_diff_summary()
+    cases = report.get("cases")
+    if not isinstance(cases, list):
+        return
+    for case in cases:
+        if not isinstance(case, dict):
+            continue
+        case_id = str(case.get("case_id", "unknown_case"))
+        prompt_path = prompt_dir / f"{case_id}.md"
+        case_report = {**report, "cases": [case]}
+        prompt_path.write_text(
+            render_reviewer_prompt(diff_summary=diff_summary, report=case_report),
+            encoding="utf-8",
+        )
+        case["reviewer_prompt_ref"] = {
+            "path": str(prompt_path.relative_to(root)),
+        }
+
+
+def _git_diff_summary() -> str:
+    try:
+        completed = subprocess.run(
+            ["git", "diff", "--stat"],
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return "git diff summary unavailable"
+    summary = completed.stdout.strip()
+    return summary if summary else "no current git diff"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
