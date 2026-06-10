@@ -60,6 +60,15 @@ For desktop, frontend, or Tauri UI issues, first try to reproduce through the
 existing observe/smoke entrypoints instead of asking the user to paste logs.
 Prefer CDP, screenshot, DOM-state, or artifact evidence before changing UI code.
 
+For changes touching Supervisor conversation behavior, LLM prompts, capability
+contracts, capacity manifests, capacity observations, agent-loop result
+projection, or `src/isotope/dev_evals/`, run
+`PYTHONPATH=src .venv/bin/python -m isotope.dev_evals.changed_surface --base origin/main --json`
+before final reporting. If it returns `eval_required=true`, run the recommended
+command, read any generated `.dev-eval-runs/state/dev-evals/reviewer-prompts/*.md`,
+and report hard gates, scores, reviewer findings, and follow-up changes. If this
+is blocked, report the exact command and output.
+
 ## Git Workflow
 
 Use Conventional Commits, such as `docs: polish public project guide` or
