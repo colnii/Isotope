@@ -12,6 +12,13 @@ from typing import Any, Callable
 from urllib.parse import urlparse
 
 from ..notifications.bell_events import default_bell_events_path, read_latest_bell_events
+from ..agent_group.codex_chat.api import (
+    agent_group_payload,
+    apply_chat_decision_payload,
+    control_payload as agent_group_control_payload,
+    list_agent_groups_payload,
+    transcript_payload,
+)
 from ..desktop_chat import (
     DesktopChatProvider,
     stream_desktop_chat_events,
@@ -50,6 +57,14 @@ from .routes.dashboard import (
 from .routes.desktop import (
     desktop_approval_resolve_id,
     desktop_chat_history,
+)
+from .routes.agent_groups import (
+    agent_group_child_id_from_path,
+    agent_group_id_from_path,
+    codex_session_id_from_transcript_path,
+    parse_agent_group_chat_payload,
+    parse_agent_group_control_payload,
+    parse_codex_transcript_query,
 )
 from .routes.desktop_artifacts import (
     desktop_screen_artifact_content_id,
@@ -304,6 +319,52 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if artifact_id is not None:
             self._send_desktop_screen_artifact_content(artifact_id)
             return
+        if path == "/desktop/agent-groups":
+            self._send_json(list_agent_groups_payload(self.server.codex_home))
+            return
+        group_id = agent_group_id_from_path(path)
+        if group_id is not None:
+            try:
+                payload = agent_group_payload(self.server.codex_home, group_id)
+            except ValueError as exc:
+                self._send_json(
+                    {
+                        "status": "error",
+                        "error": {
+                            "code": "codex_supervisor_web_error",
+                            "message": str(exc),
+                        },
+                    },
+                    status_code=404,
+                )
+                return
+            self._send_json(payload)
+            return
+        transcript_session_id = codex_session_id_from_transcript_path(path)
+        if transcript_session_id is not None:
+            try:
+                query = parse_codex_transcript_query(urlparse(self.path).query)
+                payload = transcript_payload(
+                    self.server.codex_home,
+                    session_id=transcript_session_id,
+                    offset=int(query["offset"]),
+                    limit=int(query["limit"]),
+                    include_raw=bool(query["include_raw"]),
+                )
+            except ValueError as exc:
+                self._send_json(
+                    {
+                        "status": "error",
+                        "error": {
+                            "code": "codex_supervisor_web_error",
+                            "message": str(exc),
+                        },
+                    },
+                    status_code=400,
+                )
+                return
+            self._send_json(payload)
+            return
         if path == "/events":
             self._send_events()
             return
@@ -319,6 +380,56 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/desktop/chat":
             self._send_desktop_chat()
+            return
+        chat_group_id = agent_group_child_id_from_path(path, suffix="chat")
+        if chat_group_id is not None:
+            try:
+                payload = parse_agent_group_chat_payload(self._read_json_body())
+                result = apply_chat_decision_payload(
+                    self.server.codex_home,
+                    group_id=chat_group_id,
+                    message=payload["message"],
+                    mode=payload["mode"],
+                )
+            except ValueError as exc:
+                self._send_json(
+                    {
+                        "status": "error",
+                        "error": {
+                            "code": "codex_supervisor_web_error",
+                            "message": str(exc),
+                        },
+                    },
+                    status_code=400,
+                )
+                return
+            self._send_json(result)
+            return
+        control_group_id = agent_group_child_id_from_path(path, suffix="control")
+        if control_group_id is not None:
+            try:
+                payload = parse_agent_group_control_payload(self._read_json_body())
+                result = agent_group_control_payload(
+                    self.server.codex_home,
+                    group_id=control_group_id,
+                    intent=str(payload["intent"]),
+                    target=str(payload["target"]),
+                    target_member_id=payload["target_member_id"],
+                    reason=str(payload["reason"]),
+                )
+            except ValueError as exc:
+                self._send_json(
+                    {
+                        "status": "error",
+                        "error": {
+                            "code": "codex_supervisor_web_error",
+                            "message": str(exc),
+                        },
+                    },
+                    status_code=400,
+                )
+                return
+            self._send_json(result)
             return
         approval_id = desktop_approval_resolve_id(path)
         if approval_id is not None:
