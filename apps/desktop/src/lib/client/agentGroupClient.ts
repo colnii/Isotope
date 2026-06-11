@@ -8,6 +8,11 @@ export type TranscriptRequest = {
 
 export type AgentGroupClient = {
   loadGroup(groupId: string): Promise<AgentGroupDetail>;
+  sendMessage(
+    groupId: string,
+    message: string,
+    mode: 'queue' | 'interrupt'
+  ): Promise<Record<string, unknown>>;
   stopCurrentRun(groupId: string): Promise<Record<string, unknown>>;
   stopMember(groupId: string, memberId: string): Promise<Record<string, unknown>>;
   loadTranscript(sessionId: string, request?: TranscriptRequest): Promise<CodexTranscriptPage>;
@@ -24,6 +29,19 @@ export function createAgentGroupClient(baseUrl: string | null): AgentGroupClient
       );
       if (!response.ok) throw new Error(await responseErrorMessage(response));
       return (await response.json()) as AgentGroupDetail;
+    },
+    async sendMessage(groupId, message, mode) {
+      const response = await fetch(
+        `${requiredBase(apiBaseUrl)}/desktop/agent-groups/${encodeURIComponent(groupId)}/chat`,
+        {
+          method: 'POST',
+          cache: 'no-store',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ message, mode })
+        }
+      );
+      if (!response.ok) throw new Error(await responseErrorMessage(response));
+      return (await response.json()) as Record<string, unknown>;
     },
     async stopCurrentRun(groupId) {
       return postControl(requiredBase(apiBaseUrl), groupId, {

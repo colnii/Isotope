@@ -2,6 +2,8 @@
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
   import { createIsotopeClient } from '$lib/client/isotopeClient';
+  import type { AgentGroupDetail } from '$lib/contracts/agentGroup';
+  import AgentGroupWorkspace from '$lib/components/agentGroup/AgentGroupWorkspace.svelte';
   import MainWindowShell from '$lib/components/main/MainWindowShell.svelte';
   import MiniWindow from '$lib/components/mini/MiniWindow.svelte';
   import { createAppState } from '$lib/stores/appState';
@@ -27,6 +29,49 @@
 
   let loadError = $state<string | null>(null);
   let surface = $state<DesktopWindowSurface>(browser ? resolveWindowSurface(window.location.search) : 'dev');
+  let desktopMode = $state<'chat' | 'agent-group'>('chat');
+  const agentGroupFixture: AgentGroupDetail = {
+    status: 'ok',
+    group: {
+      group_id: 'group_rna',
+      title: 'RNA Codex group',
+      goal: 'Coordinate RNA research and engineering.',
+      status: 'active'
+    },
+    connected_members: [
+      {
+        member_id: 'member_research',
+        group_id: 'group_rna',
+        display_name: 'Research Codex',
+        member_kind: 'codex_session',
+        role: 'Explore RNA strategy.',
+        goal: 'Find research directions.',
+        send_policy: 'confirm',
+        status: 'active',
+        resume_session_id: null,
+        source_path: null,
+        managed_record_id: null,
+        transcript_policy: {}
+      },
+      {
+        member_id: 'member_engineering',
+        group_id: 'group_rna',
+        display_name: 'Engineering Codex',
+        member_kind: 'codex_session',
+        role: 'Push engineering work.',
+        goal: 'Keep implementation moving.',
+        send_policy: 'auto',
+        status: 'active',
+        resume_session_id: null,
+        source_path: null,
+        managed_record_id: null,
+        transcript_policy: {}
+      }
+    ],
+    private_chat: [],
+    messages: [],
+    turns: []
+  };
 
   onMount(() => {
     surface = resolveWindowSurface(window.location.search);
@@ -66,18 +111,42 @@
     {/if}
   {:else if surface === 'main'}
     {#if $snapshot}
-      <MainWindowShell
-        snapshot={$snapshot}
-        selectedActivity={$selectedActivity}
-        chatMessages={$chatMessages}
-        chatError={$chatError}
-        isAskingDesktop={$isAskingDesktop}
-        resolvingApprovalId={$isResolvingApproval}
-        approvalError={$approvalError}
-        agentClient={isotopeClient.agentClient}
-        onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
-        onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
-      />
+      <div class="fixed right-4 top-4 z-10 flex gap-2">
+        <button
+          class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+          type="button"
+          onclick={() => (desktopMode = 'chat')}
+        >
+          Chat
+        </button>
+        <button
+          class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+          type="button"
+          onclick={() => (desktopMode = 'agent-group')}
+        >
+          Agent Group
+        </button>
+      </div>
+      {#if desktopMode === 'agent-group'}
+        <AgentGroupWorkspace
+          group={agentGroupFixture}
+          isRunning={false}
+          agentGroupClient={isotopeClient.agentGroupClient}
+        />
+      {:else}
+        <MainWindowShell
+          snapshot={$snapshot}
+          selectedActivity={$selectedActivity}
+          chatMessages={$chatMessages}
+          chatError={$chatError}
+          isAskingDesktop={$isAskingDesktop}
+          resolvingApprovalId={$isResolvingApproval}
+          approvalError={$approvalError}
+          agentClient={isotopeClient.agentClient}
+          onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
+          onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
+        />
+      {/if}
     {:else}
       <div class="border border-isotope-line bg-white p-5 text-sm text-isotope-muted">
         {loadError ? '主窗口快照不可用' : '正在加载主窗口'}
@@ -85,18 +154,42 @@
     {/if}
   {:else}
     {#if $snapshot}
-      <MainWindowShell
-        snapshot={$snapshot}
-        selectedActivity={$selectedActivity}
-        chatMessages={$chatMessages}
-        chatError={$chatError}
-        isAskingDesktop={$isAskingDesktop}
-        resolvingApprovalId={$isResolvingApproval}
-        approvalError={$approvalError}
-        agentClient={isotopeClient.agentClient}
-        onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
-        onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
-      />
+      <div class="fixed right-4 top-4 z-10 flex gap-2">
+        <button
+          class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+          type="button"
+          onclick={() => (desktopMode = 'chat')}
+        >
+          Chat
+        </button>
+        <button
+          class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+          type="button"
+          onclick={() => (desktopMode = 'agent-group')}
+        >
+          Agent Group
+        </button>
+      </div>
+      {#if desktopMode === 'agent-group'}
+        <AgentGroupWorkspace
+          group={agentGroupFixture}
+          isRunning={false}
+          agentGroupClient={isotopeClient.agentGroupClient}
+        />
+      {:else}
+        <MainWindowShell
+          snapshot={$snapshot}
+          selectedActivity={$selectedActivity}
+          chatMessages={$chatMessages}
+          chatError={$chatError}
+          isAskingDesktop={$isAskingDesktop}
+          resolvingApprovalId={$isResolvingApproval}
+          approvalError={$approvalError}
+          agentClient={isotopeClient.agentClient}
+          onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
+          onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
+        />
+      {/if}
     {:else}
       <div class="border border-isotope-line bg-white p-5 text-sm text-isotope-muted">
         {loadError ? '对话不可用' : '正在加载 Isotope 对话'}

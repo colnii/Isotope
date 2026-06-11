@@ -69,6 +69,24 @@ describe('agentGroupClient', () => {
       'http://localhost:8765/desktop/codex-sessions/session_1/transcript?offset=20&limit=50&include_raw=true'
     );
   });
+
+  it('sends queue or interrupt messages to coordinator chat', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ status: 'private_reply' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createAgentGroupClient('http://localhost:8765');
+    await client.sendMessage('group_rna', 'sync the lanes', 'interrupt');
+
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:8765/desktop/agent-groups/group_rna/chat', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        message: 'sync the lanes',
+        mode: 'interrupt'
+      })
+    });
+  });
 });
 
 function jsonResponse(payload: unknown): Response {
