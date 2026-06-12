@@ -235,7 +235,7 @@
     const candidate = selectedSession;
     if (!candidate) return;
     if (!memberDisplayName.trim()) {
-      memberDisplayName = candidate.title || candidate.short_session_id;
+      memberDisplayName = candidate.display_title || candidate.title || candidate.short_session_id;
     }
     if (!memberRole.trim()) {
       memberRole = 'Codex 会话';
@@ -246,7 +246,11 @@
     if (!workspace || !selectedConversationId || selectedConversationKind !== 'channel' || !selectedSession) {
       return;
     }
-    const displayName = memberDisplayName.trim() || selectedSession.title || selectedSession.short_session_id;
+    const displayName =
+      memberDisplayName.trim() ||
+      selectedSession.display_title ||
+      selectedSession.title ||
+      selectedSession.short_session_id;
     const role = memberRole.trim() || 'Codex 会话';
     actionError = null;
     try {
@@ -257,7 +261,7 @@
         send_policy: memberSendPolicy,
         resume_session_id: selectedSession.session_id,
         source_path: selectedSession.source_path,
-        managed_record_id: null
+        managed_record_id: selectedSession.managed_record_id ?? null
       });
       memberDisplayName = '';
       memberRole = '';

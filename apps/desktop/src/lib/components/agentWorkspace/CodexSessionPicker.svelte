@@ -79,7 +79,9 @@
           type="button"
           onclick={() => onSelectSession(candidate)}
         >
-          <div class="truncate text-xs font-semibold">{candidate.title || candidate.short_session_id}</div>
+          <div class="truncate text-xs font-semibold">
+            {candidate.display_title || candidate.title || candidate.short_session_id}
+          </div>
           <div class="mt-1 truncate text-[11px] text-isotope-muted">{candidate.cwd ?? candidate.source_path}</div>
         </button>
       {/each}

@@ -20,6 +20,12 @@ describe('CodexSessionPicker source contract', () => {
     expect(source).toContain('memberSendPolicy');
     expect(source).toContain('添加选中的 Codex');
   });
+
+  test('prefers backend display title for managed codex sessions', () => {
+    const source = readSource('CodexSessionPicker.svelte');
+
+    expect(source).toContain('candidate.display_title || candidate.title');
+  });
 });
 
 function readSource(fileName: string): string {

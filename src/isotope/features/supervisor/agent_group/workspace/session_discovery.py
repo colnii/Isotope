@@ -5,14 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from isotope.integrations.codex.session_reader import (
-    CodexSessionSnapshot,
-    find_codex_session_paths,
-    merge_recent_session_ids,
-    read_codex_session,
-    read_codex_session_index,
-    read_codex_state_threads,
-)
+from isotope.features.supervisor.flow import CodexSupervisorFlow, CodexSessionSummary
 
 
 def list_codex_session_candidates(
@@ -26,25 +19,25 @@ def list_codex_session_candidates(
         return {"status": "error", "error": {"message": "scope must be cwd or all"}}
     root = Path(codex_home).expanduser()
     workspace_path = Path(workspace_root).expanduser()
-    session_index = read_codex_session_index(root / "session_index.jsonl")
-    state_threads = read_codex_state_threads(root / "state_5.sqlite")
-    titles = {**session_index.titles, **state_threads.titles}
-    recent_ids = merge_recent_session_ids(
-        state_threads.recent_session_ids,
-        session_index.recent_session_ids,
-    )
+    report = CodexSupervisorFlow(
+        codex_home=root,
+        branch_resolver=lambda _cwd: None,
+    ).scan(limit=max(limit * 2, limit + 10, 10))
     candidates: list[dict[str, Any]] = []
-    for path in find_codex_session_paths(
-        root,
-        limit=max(limit, 1),
-        recent_session_ids=recent_ids,
-    ):
-        snapshot = read_codex_session(path)
-        if snapshot is None:
+    managed_by_resume_session_id = _managed_summaries_by_resume_session_id(
+        report.sessions
+    )
+    for summary in report.sessions:
+        if summary.managed:
             continue
-        if scope == "cwd" and not _is_under_workspace(snapshot.cwd, workspace_path):
+        if scope == "cwd" and not _is_under_workspace(summary.cwd, workspace_path):
             continue
-        candidates.append(_candidate_dict(snapshot, titles=titles))
+        candidates.append(
+            _candidate_dict(
+                summary,
+                managed_summary=managed_by_resume_session_id.get(summary.session_id),
+            )
+        )
         if len(candidates) >= limit:
             break
     return {
@@ -56,26 +49,50 @@ def list_codex_session_candidates(
 
 
 def _candidate_dict(
-    snapshot: CodexSessionSnapshot,
+    summary: CodexSessionSummary,
     *,
-    titles: dict[str, str],
+    managed_summary: CodexSessionSummary | None = None,
 ) -> dict[str, Any]:
+    title = summary.thread_name or summary.initial_user_title or summary.short_session_id
+    managed_name = managed_summary.managed_name if managed_summary is not None else None
     return {
-        "session_id": snapshot.session_id,
-        "short_session_id": _short_session_id(snapshot.session_id),
-        "title": (
-            titles.get(snapshot.session_id)
-            or _latest_thread_name(snapshot)
-            or snapshot.session_id
-        ),
-        "cwd": snapshot.cwd,
-        "source_path": str(snapshot.source_path),
-        "source_size_bytes": snapshot.source_size_bytes,
-        "last_event_at": (
-            snapshot.last_event_at.isoformat() if snapshot.last_event_at else None
-        ),
-        "preview": [message.text for message in snapshot.messages[-3:]],
+        "session_id": summary.session_id,
+        "short_session_id": summary.short_session_id,
+        "title": title,
+        "display_title": managed_name or summary.display_title,
+        "managed_name": managed_name,
+        "managed_record_id": _managed_record_id(managed_summary),
+        "managed_backend": managed_summary.managed_backend if managed_summary else None,
+        "cwd": summary.cwd,
+        "source_path": summary.source_path,
+        "source_size_bytes": summary.source_size_bytes,
+        "last_event_at": summary.last_event_at,
+        "preview": _preview(summary),
     }
+
+
+def _managed_summaries_by_resume_session_id(
+    summaries: tuple[CodexSessionSummary, ...],
+) -> dict[str, CodexSessionSummary]:
+    managed_by_resume_session_id: dict[str, CodexSessionSummary] = {}
+    for summary in summaries:
+        if summary.managed and summary.managed_resume_session_id:
+            managed_by_resume_session_id[summary.managed_resume_session_id] = summary
+    return managed_by_resume_session_id
+
+
+def _managed_record_id(summary: CodexSessionSummary | None) -> str | None:
+    if summary is None or not summary.session_id.startswith("managed:"):
+        return None
+    return summary.session_id.removeprefix("managed:")
+
+
+def _preview(summary: CodexSessionSummary) -> list[str]:
+    preview: list[str] = []
+    for message in (summary.last_user_message, summary.last_assistant_message):
+        if message and message not in preview:
+            preview.append(message)
+    return preview
 
 
 def _is_under_workspace(cwd: str, workspace_root: Path) -> bool:
@@ -87,14 +104,3 @@ def _is_under_workspace(cwd: str, workspace_root: Path) -> bool:
     except OSError:
         return False
     return session_path == root_path or root_path in session_path.parents
-
-
-def _latest_thread_name(snapshot: CodexSessionSnapshot) -> str | None:
-    if not snapshot.thread_updates:
-        return None
-    return snapshot.thread_updates[-1].thread_name
-
-
-def _short_session_id(session_id: str) -> str:
-    parts = session_id.split("-")
-    return parts[0] if parts and parts[0] else session_id

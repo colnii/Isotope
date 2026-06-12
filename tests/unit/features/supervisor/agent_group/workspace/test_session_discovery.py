@@ -7,6 +7,11 @@ from pathlib import Path
 from isotope.features.supervisor.agent_group.workspace.session_discovery import (
     list_codex_session_candidates,
 )
+from isotope.features.supervisor.registry import (
+    ManagedCodexRecord,
+    append_managed_record,
+    default_registry_path,
+)
 
 
 def test_lists_cwd_scoped_recent_sessions(tmp_path):
@@ -31,6 +36,45 @@ def test_lists_cwd_scoped_recent_sessions(tmp_path):
     assert [item["session_id"] for item in payload["sessions"]] == [matching]
     assert payload["sessions"][0]["title"] == "RNA Research"
     assert payload["sessions"][0]["preview"] == ["research update"]
+
+
+def test_cwd_scoped_sessions_reuse_managed_lane_names(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace = tmp_path / "AI_Camp_RNA_2026"
+    workspace.mkdir()
+    matching = "019e-rna"
+    _write_session(codex_home, matching, str(workspace), "research update")
+    _write_session_index(codex_home, [matching])
+    _write_state_threads(codex_home, [(matching, "RNA Research", 1_768_999_999)])
+    append_managed_record(
+        default_registry_path(codex_home),
+        ManagedCodexRecord(
+            record_id="managed-research",
+            name="科研 Codex",
+            cwd=str(workspace),
+            prompt="接管已有科研会话",
+            command=("codex", "resume", matching),
+            pid=0,
+            started_at="2026-06-12T00:00:02Z",
+            log_path=str(codex_home / "supervisor" / "logs" / "managed-research.log"),
+            status="adopted",
+            backend="codex_session",
+            resume_session_id=matching,
+        ),
+    )
+
+    payload = list_codex_session_candidates(
+        codex_home=codex_home,
+        scope="cwd",
+        workspace_root=workspace,
+        limit=10,
+    )
+
+    candidate = payload["sessions"][0]
+    assert candidate["title"] == "RNA Research"
+    assert candidate["display_title"] == "科研 Codex"
+    assert candidate["managed_name"] == "科研 Codex"
+    assert candidate["managed_record_id"] == "managed-research"
 
 
 def test_lists_all_recent_sessions_without_workspace_filter(tmp_path):

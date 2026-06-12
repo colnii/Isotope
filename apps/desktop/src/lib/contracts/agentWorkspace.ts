@@ -112,6 +112,10 @@ export type CodexSessionCandidate = {
   session_id: string;
   short_session_id: string;
   title: string;
+  display_title?: string;
+  managed_name?: string | null;
+  managed_record_id?: string | null;
+  managed_backend?: string | null;
   cwd: string | null;
   source_path: string;
   source_size_bytes: number;

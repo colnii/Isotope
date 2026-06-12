@@ -33,6 +33,7 @@ describe('AgentWorkspaceShell', () => {
     expect(source).toContain('loadTranscript');
     expect(source).toContain('CodexTranscriptPanel');
     expect(source).toContain('Math.max(policyLimit, 1000)');
+    expect(source).toContain('candidate.display_title || candidate.title');
   });
 
   test('routes composer intent between conversation chat and stop controls', () => {
