@@ -4,6 +4,9 @@ import type {
   TranscriptEvent
 } from '../../contracts/agentGroup';
 
+const RAW_STRING_PREVIEW_LIMIT = 1200;
+const RAW_ARRAY_PREVIEW_LIMIT = 80;
+
 export function readableTranscriptEvents(
   transcript: CodexTranscriptPage | null | undefined
 ): TerminalTranscriptEvent[] {
@@ -40,6 +43,10 @@ export function formatTranscriptTimestamp(
   return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
 }
 
+export function rawTranscriptPreviewText(event: TranscriptEvent): string {
+  return JSON.stringify(rawPreviewValue(event.raw ?? event), null, 2);
+}
+
 function stripRawEvent(event: TranscriptEvent): TerminalTranscriptEvent {
   return {
     event_index: event.event_index,
@@ -50,4 +57,27 @@ function stripRawEvent(event: TranscriptEvent): TerminalTranscriptEvent {
     timestamp: event.timestamp,
     role: event.role
   };
+}
+
+function rawPreviewValue(value: unknown): unknown {
+  if (typeof value === 'string') return previewString(value);
+  if (!value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    const visible = value.slice(0, RAW_ARRAY_PREVIEW_LIMIT).map((item) => rawPreviewValue(item));
+    if (value.length > RAW_ARRAY_PREVIEW_LIMIT) {
+      visible.push(`[已折叠 ${value.length - RAW_ARRAY_PREVIEW_LIMIT} 项]`);
+    }
+    return visible;
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+      key,
+      rawPreviewValue(item)
+    ])
+  );
+}
+
+function previewString(value: string): string {
+  if (value.length <= RAW_STRING_PREVIEW_LIMIT) return value;
+  return `[已折叠 ${value.length} 字符]`;
 }

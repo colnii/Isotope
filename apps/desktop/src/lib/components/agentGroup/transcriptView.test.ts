@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { formatTranscriptTimestamp, readableTranscriptEvents } from './transcriptView';
+import {
+  formatTranscriptTimestamp,
+  rawTranscriptPreviewText,
+  readableTranscriptEvents
+} from './transcriptView';
 import type { CodexTranscriptPage } from '../../contracts/agentGroup';
 
 describe('transcript terminal view helpers', () => {
@@ -56,5 +60,30 @@ describe('transcript terminal view helpers', () => {
     expect(
       readableTranscriptEvents({ ...transcript, terminal_events: [] }).map((event) => event.text)
     ).toEqual(['fallback message']);
+  });
+
+  it('folds very large raw strings before rendering JSON previews', () => {
+    const event = {
+      event_index: 10,
+      event_type: 'response_item',
+      kind: 'raw_event',
+      title: 'response_item',
+      text: '',
+      timestamp: '2026-06-11T20:40:39.602Z',
+      raw: {
+        type: 'response_item',
+        payload: {
+          type: 'reasoning',
+          encrypted_content: 'x'.repeat(20_000),
+          summary: []
+        }
+      }
+    };
+
+    const preview = rawTranscriptPreviewText(event);
+
+    expect(preview.length).toBeLessThan(5_000);
+    expect(preview).toContain('[已折叠 20000 字符]');
+    expect(preview).not.toContain('x'.repeat(1_000));
   });
 });

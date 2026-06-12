@@ -1,6 +1,10 @@
 <script lang="ts">
   import type { CodexTranscriptPage } from '../../contracts/agentGroup';
-  import { formatTranscriptTimestamp, readableTranscriptEvents } from './transcriptView';
+  import {
+    formatTranscriptTimestamp,
+    rawTranscriptPreviewText,
+    readableTranscriptEvents
+  } from './transcriptView';
 
   let { transcript = null, showRaw = false, onToggleRaw } = $props<{
     transcript?: CodexTranscriptPage | null;
@@ -45,7 +49,7 @@
             <span>{event.kind}</span>
             {#if event.timestamp}<span>{formatTranscriptTimestamp(event.timestamp)}</span>{/if}
           </div>
-          <pre class="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-isotope-text">{JSON.stringify(event.raw ?? event, null, 2)}</pre>
+          <pre class="mt-1 whitespace-pre-wrap break-words text-xs leading-5 text-isotope-text">{rawTranscriptPreviewText(event)}</pre>
         </article>
       {/each}
     {:else if readableEvents.length === 0}
