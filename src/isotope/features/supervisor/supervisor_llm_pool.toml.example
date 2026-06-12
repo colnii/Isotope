@@ -27,6 +27,12 @@ provider = "codex"
 model = "gpt-5-codex"
 max_tokens = 2048
 
+# [[agents.providers]]
+# provider = "codex-api"
+# model = "gpt-5-codex"
+# max_tokens = 2048
+# # Uses local Codex OAuth via `codex app-server`; no api_keys field.
+
 [[agents.providers]]
 base_url = "https://api.deepseek.com"
 model = "deepseek-chat"

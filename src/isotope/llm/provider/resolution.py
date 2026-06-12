@@ -11,6 +11,7 @@ from typing import Any
 from ...integrations.codex.task import CodexTaskNotConfiguredError
 from .clients import DeepSeekChatProvider, DeepSeekToolCallProvider
 from .codex import CodexCliLLMProvider
+from .codex_api import CodexApiLLMProvider
 from .parsing import _env_string, _normalized_provider_name, _resolve_provider_timeout
 from .types import LLMProviderResolution, Transport
 
@@ -123,6 +124,12 @@ def resolve_llm_chat_provider(
             process_runner=codex_process_runner,
             executable_resolver=codex_executable_resolver,
         )
+    if provider_name == "codex-api":
+        return _resolve_codex_api_provider(
+            env,
+            timeout=timeout,
+            executable_resolver=codex_executable_resolver,
+        )
     if provider_name != "deepseek":
         return LLMProviderResolution(
             status="missing_configuration",
@@ -196,6 +203,43 @@ def _resolve_codex_provider(
             status="missing_configuration",
             reason_code="llm_provider_invalid_configuration",
             provider_name="codex",
+        )
+    return LLMProviderResolution(
+        status="configured",
+        reason_code="llm_provider_configured",
+        provider_name=provider.provider,
+        provider=provider,
+    )
+
+
+def _resolve_codex_api_provider(
+    env: Mapping[str, str],
+    *,
+    timeout: int,
+    executable_resolver: Any,
+) -> LLMProviderResolution:
+    try:
+        provider = CodexApiLLMProvider(
+            workspace_root=_env_string(env, "ISOTOPE_CODEX_WORKSPACE_ROOT") or os.getcwd(),
+            executable=_env_string(env, "ISOTOPE_CODEX_EXECUTABLE") or "codex",
+            codex_home=_optional_env_string(env, "ISOTOPE_CODEX_HOME"),
+            model=_optional_env_string(env, "ISOTOPE_LLM_MODEL")
+            or _optional_env_string(env, "CODEX_MODEL"),
+            profile=_optional_env_string(env, "ISOTOPE_CODEX_PROFILE"),
+            timeout=timeout,
+            executable_resolver=executable_resolver,
+        )
+    except CodexTaskNotConfiguredError:
+        return LLMProviderResolution(
+            status="missing_configuration",
+            reason_code="llm_provider_codex_cli_missing",
+            provider_name="codex-api",
+        )
+    except ValueError:
+        return LLMProviderResolution(
+            status="missing_configuration",
+            reason_code="llm_provider_invalid_configuration",
+            provider_name="codex-api",
         )
     return LLMProviderResolution(
         status="configured",

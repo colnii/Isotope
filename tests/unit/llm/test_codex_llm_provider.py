@@ -6,6 +6,7 @@ from typing import Any
 from isotope.llm.provider import (
     CodexCliLLMProvider,
     LLMFinalAnswerResponse,
+    resolve_llm_chat_provider,
     resolve_llm_tool_call_provider,
 )
 
@@ -223,3 +224,39 @@ def test_llm_provider_resolution_configures_codex_without_api_key(tmp_path):
     assert response.tool_call.call_id == "call_from_resolver"
     assert "--model" in runner.calls[0]["argv"]
     assert "gpt-5-codex" in runner.calls[0]["argv"]
+
+
+def test_llm_chat_provider_resolution_configures_codex_api_without_api_key(tmp_path):
+    resolution = resolve_llm_chat_provider(
+        {
+            "ISOTOPE_LLM_PROVIDER": "codex-api",
+            "ISOTOPE_LLM_MODEL": "gpt-5-codex",
+            "ISOTOPE_LLM_TIMEOUT_SECONDS": "13",
+            "ISOTOPE_CODEX_WORKSPACE_ROOT": str(tmp_path),
+            "ISOTOPE_CODEX_HOME": str(tmp_path / "codex-home"),
+        },
+        codex_executable_resolver=_resolve_codex_executable,
+    )
+
+    assert resolution.status == "configured"
+    assert resolution.provider_name == "codex-api"
+    assert resolution.provider is not None
+    assert resolution.provider.provider == "codex-api"
+    assert resolution.provider.model == "gpt-5-codex"
+
+
+def test_llm_tool_call_resolution_keeps_codex_api_unsupported_until_tool_contract_exists(
+    tmp_path,
+):
+    resolution = resolve_llm_tool_call_provider(
+        {
+            "ISOTOPE_LLM_PROVIDER": "codex-api",
+            "ISOTOPE_CODEX_WORKSPACE_ROOT": str(tmp_path),
+        },
+        codex_executable_resolver=_resolve_codex_executable,
+    )
+
+    assert resolution.status == "missing_configuration"
+    assert resolution.reason_code == "llm_provider_unsupported"
+    assert resolution.provider_name == "codex-api"
+    assert resolution.provider is None
