@@ -1,5 +1,6 @@
 <script lang="ts">
   import type {
+    AgentWorkspaceMember,
     WorkspaceConversationKind,
     WorkspaceConversationMessage
   } from '../../contracts/agentWorkspace';
@@ -9,6 +10,7 @@
     conversationTitle,
     conversationSubtitle = '',
     currentMembersCount,
+    currentMembers = [],
     currentMessages = [],
     isLoading = false,
     onRefresh
@@ -17,10 +19,20 @@
     conversationTitle: string;
     conversationSubtitle?: string;
     currentMembersCount: number;
+    currentMembers?: AgentWorkspaceMember[];
     currentMessages?: WorkspaceConversationMessage[];
     isLoading?: boolean;
     onRefresh: () => void;
   }>();
+
+  function actorDisplayName(actorId: string): string {
+    if (actorId === 'user') return '我';
+    if (actorId === 'supervisor') return '系统';
+    return (
+      currentMembers.find((member: AgentWorkspaceMember) => member.member_id === actorId)?.display_name ||
+      actorId
+    );
+  }
 </script>
 
 <main class="flex min-w-0 flex-1 flex-col bg-white">
@@ -56,7 +68,9 @@
         {#each currentMessages as message (message.message_id)}
           <article class="border border-isotope-line bg-white px-4 py-3">
             <div class="flex items-center justify-between gap-3">
-              <div class="text-xs font-semibold uppercase text-isotope-muted">{message.from_actor}</div>
+              <div class="text-xs font-semibold text-isotope-muted">
+                {actorDisplayName(message.from_actor)}
+              </div>
               <time class="shrink-0 text-[11px] text-isotope-muted">{message.created_at}</time>
             </div>
             <p class="mt-2 whitespace-pre-wrap text-sm leading-6">{message.summary}</p>

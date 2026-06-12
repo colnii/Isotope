@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .dispatcher import dispatch_channel_message
+from .importer import import_channel_member_replies
 from .session_discovery import list_codex_session_candidates
 from .store import AgentWorkspaceStore
 
@@ -41,6 +42,16 @@ def workspace_payload(state_root: Path | str, workspace_id: str) -> dict[str, An
     workspace = store.load_workspace(workspace_id)
     channels = store.list_channels(workspace_id)
     direct_messages = store.list_direct_messages(workspace_id)
+    imports = [
+        imported
+        for channel in channels
+        for imported in import_channel_member_replies(
+            store=store,
+            state_root=state_root,
+            workspace=workspace,
+            channel_id=channel.channel_id,
+        )
+    ]
     messages = [
         message.to_public_dict()
         for channel in channels
@@ -61,6 +72,7 @@ def workspace_payload(state_root: Path | str, workspace_id: str) -> dict[str, An
             for member in store.list_channel_members(workspace_id, channel.channel_id)
         ],
         "messages": messages,
+        "imports": imports,
         "controls": store.list_control_events(workspace_id),
     }
 

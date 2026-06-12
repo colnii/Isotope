@@ -8,6 +8,7 @@ from typing import Any
 from isotope.features.supervisor.registry import resume_managed_codex
 
 from .contracts import AgentWorkspace, ChannelMembership
+from .importer import mark_member_reply_import_baseline
 from .store import AgentWorkspaceStore
 
 
@@ -68,6 +69,11 @@ def _send_to_auto_member(
             member=member,
             summary=f"{member.display_name} 缺少 Codex session，无法发送。",
         )
+    member = mark_member_reply_import_baseline(
+        store=store,
+        state_root=state_root,
+        member=member,
+    )
     try:
         record = resume_managed_codex(
             codex_home=state_root,

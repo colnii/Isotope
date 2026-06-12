@@ -93,6 +93,14 @@ export type WorkspaceControlEvent = {
   created_at: string;
 };
 
+export type WorkspaceReplyImport = {
+  member_id: string;
+  display_name: string;
+  status: 'imported';
+  imported_count: number;
+  last_imported_event_index: number;
+};
+
 export type AgentWorkspaceListPayload = {
   status: 'ok';
   workspaces: AgentWorkspaceSummary[];
@@ -105,6 +113,7 @@ export type AgentWorkspaceDetail = {
   direct_messages: AgentWorkspaceDirectMessage[];
   members: AgentWorkspaceMember[];
   messages: WorkspaceConversationMessage[];
+  imports: WorkspaceReplyImport[];
   controls: WorkspaceControlEvent[];
 };
 

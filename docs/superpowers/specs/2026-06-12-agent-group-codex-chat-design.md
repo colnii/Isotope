@@ -213,6 +213,20 @@ Send to Codex:
 3. If no reliable send path exists, create a draft with explicit reason rather
    than pretending the send succeeded.
 
+Import Codex replies:
+
+1. Before sending to an auto Codex member, record the member's current Codex
+   transcript tail as the import baseline.
+2. On workspace refresh, read each connected member's new terminal transcript
+   events after that baseline.
+3. Import assistant natural-language messages as public `member_observation`
+   messages whose `from_actor` is the Codex member id, not `supervisor`.
+4. Keep raw tool calls and tool output out of the group stream by default.
+   Store transcript references in message payloads so the UI can expand to the
+   relevant terminal slice.
+5. If a member has no import baseline yet, set it to the current transcript tail
+   and do not backfill old pre-channel history into the group.
+
 Stop:
 
 1. `Stop current run` targets the current active coordination/private-chat run.

@@ -413,6 +413,7 @@
       {conversationTitle}
       {conversationSubtitle}
       currentMembersCount={currentMembers.length}
+      {currentMembers}
       {currentMessages}
       {isLoading}
       onRefresh={() => void refreshWorkspace()}

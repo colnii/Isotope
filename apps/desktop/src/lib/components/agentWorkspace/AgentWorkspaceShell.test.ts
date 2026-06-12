@@ -52,6 +52,16 @@ describe('AgentWorkspaceShell', () => {
     expect(source).toContain('打断');
     expect(source).toContain('停止');
   });
+
+  test('renders member observations with member display names', () => {
+    const source = readSources('AgentWorkspaceShell.svelte', 'AgentConversationPane.svelte');
+
+    expect(source).toContain('{currentMembers}');
+    expect(source).toContain('actorDisplayName');
+    expect(source).toContain("member.member_id === actorId");
+    expect(source).toContain("return '我'");
+    expect(source).toContain("return '系统'");
+  });
 });
 
 function readSources(...fileNames: string[]): string {

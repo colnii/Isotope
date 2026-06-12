@@ -233,6 +233,7 @@ class AgentWorkspaceStore:
         role: str | None = None,
         goal: str | None = None,
         managed_record_id: str | None = None,
+        transcript_policy: dict[str, Any] | None = None,
     ) -> ChannelMembership:
         member = self._load_member(workspace_id, channel_id, member_id)
         updated = replace(
@@ -242,6 +243,11 @@ class AgentWorkspaceStore:
             role=role or member.role,
             goal=goal if goal is not None else member.goal,
             managed_record_id=managed_record_id or member.managed_record_id,
+            transcript_policy=(
+                dict(transcript_policy)
+                if transcript_policy is not None
+                else member.transcript_policy
+            ),
             updated_at=_next_timestamp_after(member.updated_at),
         )
         self.memory.append_record(record_for_member(updated))
