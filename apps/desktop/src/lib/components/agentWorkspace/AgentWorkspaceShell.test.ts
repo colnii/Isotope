@@ -4,12 +4,18 @@ import { describe, expect, test } from 'vitest';
 
 describe('AgentWorkspaceShell', () => {
   test('keeps a channel and DM sidebar with creation entry', () => {
-    const source = readSources('AgentWorkspaceShell.svelte', 'AgentWorkspaceSidebar.svelte');
+    const source = readSources(
+      'AgentWorkspaceShell.svelte',
+      'AgentWorkspaceSidebar.svelte',
+      'AgentConversationPane.svelte'
+    );
 
     expect(source).toContain('createChannel');
     expect(source).toContain('群聊');
     expect(source).toContain('私聊');
     expect(source).toContain('selectedConversationKind');
+    expect(source).toContain('conversationSubtitle');
+    expect(source).toContain('channel.topic.trim()');
     expect(source).toContain('工作区设置');
     expect(source).toContain('绑定目录');
     expect(source).toContain('保存设置');

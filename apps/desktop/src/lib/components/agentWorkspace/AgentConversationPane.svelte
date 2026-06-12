@@ -7,6 +7,7 @@
   let {
     selectedConversationKind,
     conversationTitle,
+    conversationSubtitle = '',
     currentMembersCount,
     currentMessages = [],
     isLoading = false,
@@ -14,6 +15,7 @@
   } = $props<{
     selectedConversationKind: WorkspaceConversationKind;
     conversationTitle: string;
+    conversationSubtitle?: string;
     currentMembersCount: number;
     currentMessages?: WorkspaceConversationMessage[];
     isLoading?: boolean;
@@ -28,7 +30,7 @@
         {selectedConversationKind === 'channel' ? '# ' : ''}{conversationTitle}
       </div>
       <div class="mt-1 truncate text-xs text-isotope-muted">
-        {selectedConversationKind === 'channel' ? `${currentMembersCount} 个成员` : '私聊'}
+        {conversationSubtitle || (selectedConversationKind === 'channel' ? `${currentMembersCount} 个成员` : '私聊')}
       </div>
     </div>
     <button

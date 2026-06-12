@@ -21,6 +21,9 @@ describe('Agent Workspace Chinese copy', () => {
       '>Direct messages<',
       'placeholder="+ New Group"',
       'placeholder="Topic"',
+      'placeholder="创建群聊"',
+      'placeholder="群聊主题"',
+      'placeholder="目标"',
       'aria-label="Workspace conversations"',
       'Private AI chat',
       '>Refresh<',
@@ -56,7 +59,8 @@ describe('Agent Workspace Chinese copy', () => {
 
     for (const phrase of [
       '智能体工作区',
-      '创建群聊',
+      '群聊名称',
+      '群聊目标/说明（可选）',
       '群聊',
       '私聊',
       '刷新',
@@ -70,6 +74,7 @@ describe('Agent Workspace Chinese copy', () => {
       '保存设置',
       '频道设置',
       '会话列表',
+      '成员目标/备注（可选）',
       '添加选中的 Codex',
       '查看记录',
       'Codex 会话记录',

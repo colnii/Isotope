@@ -102,7 +102,7 @@
       <input
         class="min-w-0 flex-1 border border-isotope-line bg-white px-2 py-1.5 text-xs"
         bind:value={newChannelName}
-        placeholder="创建群聊"
+        placeholder="群聊名称"
       />
       <button
         class="border border-isotope-running bg-white px-2 py-1.5 text-xs font-semibold text-isotope-running"
@@ -115,7 +115,7 @@
     <input
       class="mt-2 w-full border border-isotope-line bg-white px-2 py-1.5 text-xs"
       bind:value={newChannelTopic}
-      placeholder="群聊主题"
+      placeholder="群聊目标/说明（可选）"
     />
   </div>
 

@@ -62,6 +62,7 @@
     sessionCandidates.find((candidate) => candidate.session_id === selectedSessionId) ?? null
   );
   const conversationTitle = $derived(resolveConversationTitle());
+  const conversationSubtitle = $derived(resolveConversationSubtitle());
   const currentRunIsActive = $derived(
     selectedConversationKind === 'channel' &&
       currentMembers.some((member) => member.status === 'running')
@@ -183,6 +184,12 @@
     }
     const directMessage = directMessages.find((message) => message.dm_id === selectedConversationId);
     return directMessage ? workspaceDirectMessageTitle(directMessage.title) : '私聊';
+  }
+
+  function resolveConversationSubtitle() {
+    if (!workspace || !selectedConversationId || selectedConversationKind !== 'channel') return '';
+    const channel = channels.find((candidate) => candidate.channel_id === selectedConversationId);
+    return channel ? channel.topic.trim() : '';
   }
 
   async function createChannel() {
@@ -403,6 +410,7 @@
     <AgentConversationPane
       {selectedConversationKind}
       {conversationTitle}
+      {conversationSubtitle}
       currentMembersCount={currentMembers.length}
       {currentMessages}
       {isLoading}

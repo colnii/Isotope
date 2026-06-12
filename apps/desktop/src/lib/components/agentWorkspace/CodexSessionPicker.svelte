@@ -102,7 +102,7 @@
     <input
       class="w-full border border-isotope-line bg-white px-2 py-1.5 text-xs"
       bind:value={memberGoal}
-      placeholder="目标"
+      placeholder="成员目标/备注（可选）"
     />
     <select class="w-full border border-isotope-line bg-white px-2 py-1.5 text-xs" bind:value={memberSendPolicy}>
       <option value="auto">自动发送</option>
