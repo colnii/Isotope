@@ -355,7 +355,9 @@ class AgentWorkspaceStore:
                 messages.append(WorkspaceConversationMessage(**raw))
             except (TypeError, ValueError):
                 continue
-        return sorted(messages, key=lambda item: (item.created_at, item.message_id))
+        return _dedupe_messages(
+            sorted(messages, key=lambda item: (item.created_at, item.message_id))
+        )
 
     def record_control(
         self,
@@ -442,3 +444,39 @@ def _next_timestamp_after(previous: str) -> str:
     if now <= previous_time:
         now = previous_time + timedelta(microseconds=1)
     return now.isoformat().replace("+00:00", "Z")
+
+
+def _dedupe_messages(
+    messages: list[WorkspaceConversationMessage],
+) -> list[WorkspaceConversationMessage]:
+    seen_imports: set[tuple[str, str, str, int]] = set()
+    deduped: list[WorkspaceConversationMessage] = []
+    for message in messages:
+        key = _member_observation_import_key(message)
+        if key is not None:
+            if key in seen_imports:
+                continue
+            seen_imports.add(key)
+        deduped.append(message)
+    return deduped
+
+
+def _member_observation_import_key(
+    message: WorkspaceConversationMessage,
+) -> tuple[str, str, str, int] | None:
+    if message.message_type != "member_observation":
+        return None
+    payload = message.payload
+    transcript_ref = payload.get("transcript_ref")
+    if not isinstance(transcript_ref, dict):
+        return None
+    member_id = payload.get("member_id")
+    session_id = payload.get("resume_session_id") or transcript_ref.get("session_id")
+    event_index = payload.get("event_index", transcript_ref.get("event_index"))
+    if not isinstance(member_id, str) or not isinstance(session_id, str):
+        return None
+    try:
+        clean_event_index = int(event_index)
+    except (TypeError, ValueError):
+        return None
+    return (message.from_actor, member_id, session_id, clean_event_index)

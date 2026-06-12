@@ -123,6 +123,60 @@ def test_store_updates_member_permission_and_records_message_and_control(tmp_pat
     )
 
 
+def test_store_collapses_duplicate_member_observations_by_transcript_ref(tmp_path):
+    root_path = tmp_path / "repo"
+    root_path.mkdir()
+    store = AgentWorkspaceStore(tmp_path / ".codex")
+    workspace = store.ensure_default_workspace(root_path=root_path)
+    channel = store.list_channels(workspace.workspace_id)[0]
+    member = store.add_channel_member(
+        workspace_id=workspace.workspace_id,
+        channel_id=channel.channel_id,
+        display_name="RNA训练",
+        role="Engineering",
+        goal="Keep implementation moving.",
+        send_policy="auto",
+        resume_session_id="session_training",
+        source_path="/tmp/session_training.jsonl",
+        managed_record_id=None,
+    )
+    payload = {
+        "member_id": member.member_id,
+        "resume_session_id": "session_training",
+        "event_index": 42,
+        "transcript_ref": {
+            "session_id": "session_training",
+            "event_index": 42,
+            "offset": 42,
+            "limit": 1,
+        },
+    }
+    first = store.publish_message(
+        workspace_id=workspace.workspace_id,
+        conversation_type="channel",
+        conversation_id=channel.channel_id,
+        from_actor=member.member_id,
+        to_actor=None,
+        message_type="member_observation",
+        summary="2",
+        payload=payload,
+    )
+    store.publish_message(
+        workspace_id=workspace.workspace_id,
+        conversation_type="channel",
+        conversation_id=channel.channel_id,
+        from_actor=member.member_id,
+        to_actor=None,
+        message_type="member_observation",
+        summary="2",
+        payload=payload,
+    )
+
+    messages = store.list_messages(workspace.workspace_id, "channel", channel.channel_id)
+
+    assert [message.message_id for message in messages] == [first.message_id]
+
+
 def test_store_updates_workspace_title_and_root_path(tmp_path):
     root_path = tmp_path / "repo"
     updated_root = tmp_path / "AI_Camp_RNA_2026"
