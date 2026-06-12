@@ -62,6 +62,9 @@ def handle_agent_workspace_get(
 
 
 def handle_agent_workspace_post(handler: Any, *, path: str) -> bool:
+    workspace_id = routes.agent_workspace_tick_id_from_path(path)
+    if workspace_id is not None:
+        return _handle_workspace_tick(handler, workspace_id)
     workspace_id = routes.agent_workspace_id_from_path(path)
     if workspace_id is not None:
         return _handle_update_workspace(handler, workspace_id)
@@ -78,6 +81,19 @@ def handle_agent_workspace_post(handler: Any, *, path: str) -> bool:
     if control_ids is not None:
         return _handle_control(handler, control_ids)
     return False
+
+
+def _handle_workspace_tick(handler: Any, workspace_id: str) -> bool:
+    try:
+        result = workspace_api.workspace_tick_payload(
+            handler.server.codex_home,
+            workspace_id,
+        )
+    except ValueError as exc:
+        _send_error(handler, str(exc), status_code=404)
+        return True
+    handler._send_json(result)
+    return True
 
 
 def _handle_update_workspace(handler: Any, workspace_id: str) -> bool:

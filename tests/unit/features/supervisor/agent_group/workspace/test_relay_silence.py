@@ -11,7 +11,7 @@ from isotope.features.supervisor.agent_group.workspace.coordination.inbox import
 from isotope.features.supervisor.agent_group.workspace.store import AgentWorkspaceStore
 
 
-def test_selected_member_reply_queues_for_running_peer_without_recursive_resume(
+def test_workspace_payload_does_not_import_or_queue_running_peer(
     tmp_path,
     monkeypatch,
 ):
@@ -98,17 +98,16 @@ def test_selected_member_reply_queues_for_running_peer_without_recursive_resume(
 
     payload = api.workspace_payload(codex_home, workspace.workspace_id)
 
-    assert payload["imports"][0]["member_id"] == research_member.member_id
-    assert payload["imports"][0]["status"] == "candidate_imported"
+    assert payload["imports"] == []
+    assert payload["inbox_drains"] == []
     assert [call["session_id"] for call in resumed_calls] == []
     pending = MemberInboxStore(codex_home).list_pending(
         workspace.workspace_id,
         channel.channel_id,
         training_member.member_id,
     )
-    assert len(pending) == 1
-    assert pending[0].summary == "科研侧建议先做 schema readiness 审计。"
-    assert payload["inbox"]["pending_counts"] == {training_member.member_id: 1}
+    assert pending == []
+    assert payload["inbox"]["pending_counts"] == {}
 
 
 def _message_row(role: str, content: str, *, index: int) -> dict[str, object]:

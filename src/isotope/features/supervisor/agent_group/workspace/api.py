@@ -45,10 +45,18 @@ def list_workspaces_payload(
 
 
 def workspace_payload(state_root: Path | str, workspace_id: str) -> dict[str, Any]:
+    return _workspace_payload(
+        state_root,
+        workspace_id,
+        imports=[],
+        inbox_drains=[],
+    )
+
+
+def workspace_tick_payload(state_root: Path | str, workspace_id: str) -> dict[str, Any]:
     store = AgentWorkspaceStore(state_root)
     workspace = store.load_workspace(workspace_id)
     channels = store.list_channels(workspace_id)
-    direct_messages = store.list_direct_messages(workspace_id)
     imports: list[dict[str, Any]] = []
     inbox_drains: list[dict[str, Any]] = []
     for channel in channels:
@@ -74,6 +82,25 @@ def workspace_payload(state_root: Path | str, workspace_id: str) -> dict[str, An
                 channel_id=channel.channel_id,
             )
         )
+    return _workspace_payload(
+        state_root,
+        workspace_id,
+        imports=imports,
+        inbox_drains=inbox_drains,
+    )
+
+
+def _workspace_payload(
+    state_root: Path | str,
+    workspace_id: str,
+    *,
+    imports: list[dict[str, Any]],
+    inbox_drains: list[dict[str, Any]],
+) -> dict[str, Any]:
+    store = AgentWorkspaceStore(state_root)
+    workspace = store.load_workspace(workspace_id)
+    channels = store.list_channels(workspace_id)
+    direct_messages = store.list_direct_messages(workspace_id)
     inbox_store = MemberInboxStore(state_root)
     pending_counts: dict[str, int] = {}
     for channel in channels:
