@@ -20,20 +20,20 @@
 </script>
 
 <form
-  class="flex items-center gap-2 border border-isotope-line bg-white px-2 py-2 shadow-sm focus-within:border-isotope-running focus-within:ring-2 focus-within:ring-isotope-running/15"
+  class="iso-command-composer"
   onsubmit={(event) => {
     event.preventDefault();
     submit();
   }}
 >
   <input
-    class="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-isotope-muted disabled:cursor-not-allowed"
+    class="iso-command-input"
     {placeholder}
     bind:value
     {disabled}
   />
   <button
-    class="border border-isotope-running bg-isotope-running px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:border-isotope-line disabled:bg-isotope-panel disabled:text-isotope-muted"
+    class="iso-button-primary"
     type="submit"
     {disabled}
   >
