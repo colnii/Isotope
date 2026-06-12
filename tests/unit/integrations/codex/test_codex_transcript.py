@@ -136,6 +136,123 @@ def test_transcript_reader_projects_tool_and_error_events(tmp_path):
     assert page["events"][2]["text"] == "command failed"
 
 
+def test_transcript_reader_builds_terminal_view_without_empty_status_noise(tmp_path):
+    path = tmp_path / "rollout-terminal.jsonl"
+    write_jsonl(
+        path,
+        [
+            {"type": "session_meta", "payload": {"id": "session_terminal"}},
+            {
+                "type": "event_msg",
+                "timestamp": "2026-06-11T20:40:39.542Z",
+                "payload": {"type": "task_started", "turn_id": "turn_1"},
+            },
+            {
+                "type": "response_item",
+                "timestamp": "2026-06-11T20:40:39.602Z",
+                "payload": {
+                    "type": "message",
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": "继续科研"}],
+                },
+            },
+            {
+                "type": "event_msg",
+                "timestamp": "2026-06-11T20:40:39.602Z",
+                "payload": {"type": "user_message", "message": "继续科研"},
+            },
+            {
+                "type": "event_msg",
+                "timestamp": "2026-06-11T20:40:42.613Z",
+                "payload": {"type": "token_count", "info": {}},
+            },
+            {
+                "type": "response_item",
+                "timestamp": "2026-06-11T20:40:43.000Z",
+                "payload": {
+                    "type": "function_call",
+                    "name": "exec_command",
+                    "arguments": {"cmd": "git status"},
+                },
+            },
+            {
+                "type": "response_item",
+                "timestamp": "2026-06-11T20:40:44.000Z",
+                "payload": {
+                    "type": "function_call_output",
+                    "call_id": "call_1",
+                    "output": "## main...origin/main\n",
+                },
+            },
+            {
+                "type": "event_msg",
+                "timestamp": "2026-06-11T20:40:45.000Z",
+                "payload": {"type": "agent_message", "message": "科研继续推进。"},
+            },
+            {
+                "type": "response_item",
+                "timestamp": "2026-06-11T20:40:45.001Z",
+                "payload": {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": "科研继续推进。",
+                },
+            },
+            {
+                "type": "response_item",
+                "timestamp": "2026-06-11T20:40:46.000Z",
+                "payload": {
+                    "type": "custom_tool_call",
+                    "name": "apply_patch",
+                    "input": "*** Begin Patch\n*** End Patch",
+                },
+            },
+            {
+                "type": "response_item",
+                "timestamp": "2026-06-11T20:40:47.000Z",
+                "payload": {
+                    "type": "custom_tool_call_output",
+                    "call_id": "call_2",
+                    "output": "Success.",
+                },
+            },
+            {
+                "type": "event_msg",
+                "timestamp": "2026-06-11T20:40:48.000Z",
+                "payload": {
+                    "type": "task_complete",
+                    "last_agent_message": "科研继续推进。",
+                },
+            },
+        ],
+    )
+
+    page = read_codex_transcript_page(path, offset=0, limit=20, include_raw=True)
+
+    assert [event["kind"] for event in page["terminal_events"]] == [
+        "message",
+        "tool_call",
+        "tool_output",
+        "message",
+        "tool_call",
+        "tool_output",
+    ]
+    assert [event["title"] for event in page["terminal_events"]] == [
+        "user",
+        "exec_command",
+        "tool output",
+        "assistant",
+        "apply_patch",
+        "tool output",
+    ]
+    assert page["terminal_events"][0]["text"] == "继续科研"
+    assert page["terminal_events"][1]["text"] == '{"cmd": "git status"}'
+    assert page["terminal_events"][2]["text"] == "## main...origin/main\n"
+    assert page["terminal_events"][3]["text"] == "科研继续推进。"
+    assert all(event["text"].strip() for event in page["terminal_events"])
+    assert len(page["events"]) == 12
+
+
 def write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
     path.write_text(
         "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n",

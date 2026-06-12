@@ -58,6 +58,7 @@ export type AgentGroupDetail = {
 
 export type TranscriptEvent = {
   event_index: number;
+  event_type?: string;
   kind: string;
   title: string;
   text: string;
@@ -65,6 +66,8 @@ export type TranscriptEvent = {
   role?: string | null;
   raw?: unknown;
 };
+
+export type TerminalTranscriptEvent = Omit<TranscriptEvent, 'raw'>;
 
 export type CodexTranscriptPage = {
   status: 'ok';
@@ -79,4 +82,5 @@ export type CodexTranscriptPage = {
   has_more: boolean;
   total_events: number;
   events: TranscriptEvent[];
+  terminal_events?: TerminalTranscriptEvent[];
 };

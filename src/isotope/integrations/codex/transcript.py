@@ -50,6 +50,17 @@ def read_codex_transcript_page(
         )
         for event_index, event in enumerate(page_events, start=clean_offset)
     ]
+    terminal_events = [
+        terminal_event
+        for event_index, event in enumerate(page_events, start=clean_offset)
+        if (
+            terminal_event := _project_terminal_event(
+                event,
+                event_index=event_index,
+            )
+        )
+        is not None
+    ]
 
     next_offset = clean_offset + len(parsed_events)
     return {
@@ -65,6 +76,7 @@ def read_codex_transcript_page(
         "has_more": next_offset < total_events,
         "total_events": total_events,
         "events": parsed_events,
+        "terminal_events": terminal_events,
     }
 
 
@@ -106,12 +118,24 @@ def _project_event(
     elif event.get("type") == "response_item" and payload.get("type") in {
         "function_call",
         "tool_call",
+        "custom_tool_call",
     }:
         projected = {
             **base,
             "kind": "tool_call",
             "title": str(payload.get("name") or payload.get("type") or "tool_call"),
-            "text": _short_text(payload.get("arguments")),
+            "text": _short_text(payload.get("arguments") or payload.get("input")),
+        }
+    elif event.get("type") == "response_item" and payload.get("type") in {
+        "function_call_output",
+        "tool_call_output",
+        "custom_tool_call_output",
+    }:
+        projected = {
+            **base,
+            "kind": "tool_output",
+            "title": "tool output",
+            "text": _short_text(payload.get("output")),
         }
     elif event.get("type") == "event_msg" and payload.get("type") == "error":
         projected = {
@@ -137,6 +161,71 @@ def _project_event(
     if include_raw:
         projected["raw"] = event
     return projected
+
+
+def _project_terminal_event(
+    event: dict[str, Any],
+    *,
+    event_index: int,
+) -> dict[str, Any] | None:
+    payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+    timestamp = event.get("timestamp") if isinstance(event.get("timestamp"), str) else None
+    base: dict[str, Any] = {
+        "event_index": event_index,
+        "event_type": event.get("type") if isinstance(event.get("type"), str) else "unknown",
+        "timestamp": timestamp,
+    }
+    if event.get("type") == "response_item" and payload.get("type") == "message":
+        text = _content_text(payload.get("content"))
+        if not text.strip():
+            return None
+        role = payload.get("role") if isinstance(payload.get("role"), str) else "message"
+        return {
+            **base,
+            "kind": "message",
+            "title": role,
+            "role": role,
+            "text": text,
+        }
+    if event.get("type") == "response_item" and payload.get("type") in {
+        "function_call",
+        "tool_call",
+        "custom_tool_call",
+    }:
+        text = _short_text(payload.get("arguments") or payload.get("input"))
+        if not text.strip():
+            return None
+        return {
+            **base,
+            "kind": "tool_call",
+            "title": str(payload.get("name") or payload.get("type") or "tool_call"),
+            "text": text,
+        }
+    if event.get("type") == "response_item" and payload.get("type") in {
+        "function_call_output",
+        "tool_call_output",
+        "custom_tool_call_output",
+    }:
+        text = _short_text(payload.get("output"))
+        if not text.strip():
+            return None
+        return {
+            **base,
+            "kind": "tool_output",
+            "title": "tool output",
+            "text": text,
+        }
+    if event.get("type") == "response_item" and payload.get("type") == "reasoning":
+        text = _content_text(payload.get("summary"))
+        if not text.strip():
+            return None
+        return {**base, "kind": "reasoning", "title": "reasoning", "text": text}
+    if event.get("type") == "event_msg" and payload.get("type") == "error":
+        text = str(payload.get("message") or "")
+        if not text.strip():
+            return None
+        return {**base, "kind": "error", "title": "error", "text": text}
+    return None
 
 
 def _content_text(content: Any) -> str:
