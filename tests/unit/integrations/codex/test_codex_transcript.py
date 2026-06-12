@@ -75,6 +75,33 @@ def test_transcript_reader_pages_middle_and_preserves_late_events(tmp_path):
     assert all("raw" not in item for item in page["events"])
 
 
+def test_transcript_reader_can_return_latest_page_for_long_sessions(tmp_path):
+    path = tmp_path / "large-rollout.jsonl"
+    rows = [{"type": "session_meta", "payload": {"id": "session_large"}}]
+    rows.extend(
+        {
+            "type": "response_item",
+            "timestamp": f"2026-06-12T00:{index:02d}:00Z",
+            "payload": {
+                "type": "message",
+                "role": "assistant",
+                "content": f"message-{index}",
+            },
+        }
+        for index in range(1200)
+    )
+    write_jsonl(path, rows)
+
+    page = read_codex_transcript_page(path, limit=1000, latest=True)
+
+    assert page["offset"] == 201
+    assert page["next_offset"] == 1201
+    assert page["has_more"] is False
+    assert page["total_events"] == 1201
+    assert page["events"][0]["text"] == "message-200"
+    assert page["events"][-1]["text"] == "message-1199"
+
+
 def test_transcript_reader_projects_tool_and_error_events(tmp_path):
     path = tmp_path / "rollout-tools.jsonl"
     write_jsonl(

@@ -232,6 +232,7 @@ class AgentWorkspaceStore:
         status: str | None = None,
         role: str | None = None,
         goal: str | None = None,
+        managed_record_id: str | None = None,
     ) -> ChannelMembership:
         member = self._load_member(workspace_id, channel_id, member_id)
         updated = replace(
@@ -240,6 +241,7 @@ class AgentWorkspaceStore:
             status=status or member.status,
             role=role or member.role,
             goal=goal if goal is not None else member.goal,
+            managed_record_id=managed_record_id or member.managed_record_id,
             updated_at=_next_timestamp_after(member.updated_at),
         )
         self.memory.append_record(record_for_member(updated))
@@ -280,7 +282,7 @@ class AgentWorkspaceStore:
                 latest[member.member_id] = member
         return sorted(
             [member for member in latest.values() if member.status != "archived"],
-            key=lambda member: member.member_id,
+            key=lambda member: (member.created_at, member.member_id),
         )
 
     def publish_message(

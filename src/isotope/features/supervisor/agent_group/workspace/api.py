@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from .dispatcher import dispatch_channel_message
 from .session_discovery import list_codex_session_candidates
 from .store import AgentWorkspaceStore
 
@@ -169,6 +170,7 @@ def conversation_chat_payload(
     mode: str,
 ) -> dict[str, Any]:
     store = AgentWorkspaceStore(state_root)
+    workspace = store.load_workspace(workspace_id)
     conversation_type = _conversation_type_for(store, workspace_id, conversation_id)
     stored = store.publish_message(
         workspace_id=workspace_id,
@@ -180,7 +182,21 @@ def conversation_chat_payload(
         summary=message,
         payload={"mode": mode},
     )
-    return {"status": "ok", "message": stored.to_public_dict()}
+    dispatches: list[dict[str, Any]] = []
+    if conversation_type == "channel":
+        dispatches = dispatch_channel_message(
+            store=store,
+            state_root=state_root,
+            workspace=workspace,
+            channel_id=conversation_id,
+            user_message=message,
+            mode=mode,
+        )
+    return {
+        "status": "ok",
+        "message": stored.to_public_dict(),
+        "dispatches": dispatches,
+    }
 
 
 def conversation_control_payload(

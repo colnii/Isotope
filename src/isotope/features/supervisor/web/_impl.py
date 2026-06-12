@@ -362,6 +362,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                     offset=int(query["offset"]),
                     limit=int(query["limit"]),
                     include_raw=bool(query["include_raw"]),
+                    latest=bool(query["latest"]),
                 )
             except ValueError as exc:
                 self._send_json(

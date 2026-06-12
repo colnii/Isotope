@@ -74,6 +74,7 @@ def parse_codex_transcript_query(query: str) -> dict[str, int | bool]:
         "offset": _query_int(params, "offset", default=0),
         "limit": _query_int(params, "limit", default=200),
         "include_raw": _query_bool(params, "include_raw", default=False),
+        "latest": _query_bool(params, "latest", default=False),
     }
 
 

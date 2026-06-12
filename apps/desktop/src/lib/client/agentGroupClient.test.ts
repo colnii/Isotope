@@ -66,7 +66,7 @@ describe('agentGroupClient', () => {
     });
 
     expect(fetchMock.mock.calls[0][0]).toBe(
-      'http://localhost:8765/desktop/codex-sessions/session_1/transcript?offset=20&limit=50&include_raw=true'
+      'http://localhost:8765/desktop/codex-sessions/session_1/transcript?offset=20&limit=50&include_raw=true&latest=false'
     );
   });
 

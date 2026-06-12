@@ -78,6 +78,7 @@ def transcript_payload(
     offset: int,
     limit: int,
     include_raw: bool,
+    latest: bool = False,
 ) -> dict[str, Any]:
     snapshot = find_codex_session_snapshot(codex_home=state_root, session_id=session_id)
     if snapshot is None:
@@ -87,6 +88,7 @@ def transcript_payload(
         offset=offset,
         limit=limit,
         include_raw=include_raw,
+        latest=latest,
     )
 
 

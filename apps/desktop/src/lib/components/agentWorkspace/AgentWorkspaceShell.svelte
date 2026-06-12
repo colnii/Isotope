@@ -320,7 +320,8 @@
       transcript = await agentWorkspaceClient.loadTranscript(member.resume_session_id, {
         offset: 0,
         limit: transcriptLimit,
-        includeRaw: showRaw
+        includeRaw: showRaw,
+        latest: true
       });
       transcriptSessionId = member.resume_session_id;
     } catch (error) {

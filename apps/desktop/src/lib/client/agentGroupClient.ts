@@ -4,6 +4,7 @@ export type TranscriptRequest = {
   offset?: number;
   limit?: number;
   includeRaw?: boolean;
+  latest?: boolean;
 };
 
 export type AgentGroupClient = {
@@ -64,10 +65,11 @@ export function createAgentGroupClient(baseUrl: string | null): AgentGroupClient
       const offset = request.offset ?? 0;
       const limit = request.limit ?? 200;
       const includeRaw = request.includeRaw === true;
+      const latest = request.latest === true;
       const response = await fetch(
         `${base}/desktop/codex-sessions/${encodeURIComponent(
           sessionId
-        )}/transcript?offset=${offset}&limit=${limit}&include_raw=${includeRaw}`,
+        )}/transcript?offset=${offset}&limit=${limit}&include_raw=${includeRaw}&latest=${latest}`,
         { cache: 'no-store' }
       );
       if (!response.ok) throw new Error(await responseErrorMessage(response));

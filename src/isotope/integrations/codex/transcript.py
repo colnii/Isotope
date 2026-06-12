@@ -13,14 +13,14 @@ def read_codex_transcript_page(
     offset: int = 0,
     limit: int = 200,
     include_raw: bool = False,
+    latest: bool = False,
 ) -> dict[str, Any]:
     source_path = Path(path).expanduser()
     clean_offset = max(int(offset), 0)
     clean_limit = min(max(int(limit), 1), 1000)
-    parsed_events: list[dict[str, Any]] = []
+    raw_events: list[dict[str, Any]] = []
     session_id = source_path.stem
     last_event_at: str | None = None
-    total_events = 0
 
     with source_path.open("r", encoding="utf-8") as handle:
         for line in handle:
@@ -29,7 +29,7 @@ def read_codex_transcript_page(
             event = _loads_event(line)
             if event is None:
                 continue
-            total_events += 1
+            raw_events.append(event)
             timestamp = event.get("timestamp")
             if isinstance(timestamp, str) and timestamp:
                 last_event_at = timestamp
@@ -37,18 +37,19 @@ def read_codex_transcript_page(
                 payload = event.get("payload")
                 if isinstance(payload, dict) and isinstance(payload.get("id"), str):
                     session_id = payload["id"]
-            event_index = total_events - 1
-            if event_index < clean_offset:
-                continue
-            if len(parsed_events) >= clean_limit:
-                continue
-            parsed_events.append(
-                _project_event(
-                    event,
-                    event_index=event_index,
-                    include_raw=include_raw,
-                )
-            )
+
+    total_events = len(raw_events)
+    if latest:
+        clean_offset = max(total_events - clean_limit, 0)
+    page_events = raw_events[clean_offset : clean_offset + clean_limit]
+    parsed_events = [
+        _project_event(
+            event,
+            event_index=event_index,
+            include_raw=include_raw,
+        )
+        for event_index, event in enumerate(page_events, start=clean_offset)
+    ]
 
     next_offset = clean_offset + len(parsed_events)
     return {
@@ -59,6 +60,7 @@ def read_codex_transcript_page(
         "last_event_at": last_event_at,
         "offset": clean_offset,
         "limit": clean_limit,
+        "latest": bool(latest),
         "next_offset": next_offset,
         "has_more": next_offset < total_events,
         "total_events": total_events,

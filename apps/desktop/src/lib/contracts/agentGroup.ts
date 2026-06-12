@@ -74,6 +74,7 @@ export type CodexTranscriptPage = {
   last_event_at?: string | null;
   offset: number;
   limit: number;
+  latest?: boolean;
   next_offset: number;
   has_more: boolean;
   total_events: number;

@@ -58,7 +58,9 @@ def test_parse_codex_transcript_query():
         "offset": 20,
         "limit": 50,
         "include_raw": True,
+        "latest": False,
     }
+    assert parse_codex_transcript_query("latest=true")["latest"] is True
 
 
 @pytest.mark.parametrize(

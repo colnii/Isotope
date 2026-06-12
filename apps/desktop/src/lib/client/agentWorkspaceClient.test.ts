@@ -164,10 +164,10 @@ describe('agentWorkspaceClient', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const client = createAgentWorkspaceClient('http://localhost:8765');
-    await client.loadTranscript('session_1', { limit: 1000, includeRaw: true });
+    await client.loadTranscript('session_1', { limit: 1000, includeRaw: true, latest: true });
 
     expect(fetchMock.mock.calls[0][0]).toBe(
-      'http://localhost:8765/desktop/codex-sessions/session_1/transcript?offset=0&limit=1000&include_raw=true'
+      'http://localhost:8765/desktop/codex-sessions/session_1/transcript?offset=0&limit=1000&include_raw=true&latest=true'
     );
   });
 });

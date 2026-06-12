@@ -71,7 +71,8 @@
       transcript = await agentGroupClient.loadTranscript(member.resume_session_id, {
         offset: 0,
         limit: Number(member.transcript_policy?.page_size ?? 200),
-        includeRaw: showRaw
+        includeRaw: showRaw,
+        latest: true
       });
     } catch (error) {
       actionError = error instanceof Error ? error.message : 'Transcript load failed';
