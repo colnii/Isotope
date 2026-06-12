@@ -423,6 +423,22 @@
     }
   }
 
+  async function reactivateMember(member: AgentWorkspaceMember) {
+    if (!workspace) return;
+    actionError = null;
+    try {
+      await agentWorkspaceClient.updateMember(
+        workspace.workspace.workspace_id,
+        member.channel_id,
+        member.member_id,
+        { status: 'active' }
+      );
+      await refreshWorkspace();
+    } catch (error) {
+      actionError = errorMessage(error, '启用成员失败');
+    }
+  }
+
   function errorMessage(error: unknown, fallback: string) {
     return error instanceof Error ? error.message : fallback;
   }
@@ -489,6 +505,7 @@
     onUpdateMember={(member, sendPolicy) => void updateMember(member, sendPolicy)}
     onRemoveMember={(member) => void removeMember(member)}
     onStopMember={(member) => void stopMember(member)}
+    onReactivateMember={(member) => void reactivateMember(member)}
     onLoadTranscript={(member) => void loadTranscript(member)}
     onToggleTranscriptRaw={() => void toggleTranscriptRaw()}
   />

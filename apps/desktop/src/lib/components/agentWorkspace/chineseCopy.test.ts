@@ -80,6 +80,7 @@ describe('Agent Workspace Chinese copy', () => {
       'Codex 会话记录',
       '原始数据',
       '可读视图',
+      '启用',
       '停止',
       '移除'
     ]) {

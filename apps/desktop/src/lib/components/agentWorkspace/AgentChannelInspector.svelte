@@ -31,6 +31,7 @@
     onUpdateMember,
     onRemoveMember,
     onStopMember,
+    onReactivateMember,
     onLoadTranscript,
     onToggleTranscriptRaw
   } = $props<{
@@ -54,6 +55,7 @@
     onUpdateMember: (member: AgentWorkspaceMember, sendPolicy: WorkspaceSendPolicy) => void;
     onRemoveMember: (member: AgentWorkspaceMember) => void;
     onStopMember: (member: AgentWorkspaceMember) => void;
+    onReactivateMember: (member: AgentWorkspaceMember) => void;
     onLoadTranscript: (member: AgentWorkspaceMember) => void;
     onToggleTranscriptRaw: () => void;
   }>();
@@ -110,13 +112,23 @@
             >
               查看记录
             </button>
-            <button
-              class="border border-isotope-error/40 bg-white px-2 py-1.5 text-xs font-semibold text-isotope-error"
-              type="button"
-              onclick={() => onStopMember(member)}
-            >
-              停止
-            </button>
+            {#if member.status === 'terminated'}
+              <button
+                class="border border-isotope-running/40 bg-white px-2 py-1.5 text-xs font-semibold text-isotope-running"
+                type="button"
+                onclick={() => onReactivateMember(member)}
+              >
+                启用
+              </button>
+            {:else}
+              <button
+                class="border border-isotope-error/40 bg-white px-2 py-1.5 text-xs font-semibold text-isotope-error"
+                type="button"
+                onclick={() => onStopMember(member)}
+              >
+                停止
+              </button>
+            {/if}
             <button
               class="border border-isotope-line bg-white px-2 py-1.5 text-xs font-semibold text-isotope-muted"
               type="button"

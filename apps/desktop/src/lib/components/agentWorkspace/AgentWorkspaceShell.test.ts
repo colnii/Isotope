@@ -34,12 +34,15 @@ describe('AgentWorkspaceShell', () => {
     expect(source).toContain("sessionScope = 'all'");
     expect(source).toContain('addMember');
     expect(source).toContain('updateMember');
+    expect(source).toContain('reactivateMember');
     expect(source).toContain('removeMember');
     expect(source).toContain('send_policy');
     expect(source).toContain('loadTranscript');
     expect(source).toContain('CodexTranscriptPanel');
     expect(source).toContain('Math.max(policyLimit, 1000)');
     expect(source).toContain('candidate.display_title || candidate.title');
+    expect(source).toContain("status: 'active'");
+    expect(source).toContain('启用');
   });
 
   test('routes composer intent between conversation chat and stop controls', () => {
