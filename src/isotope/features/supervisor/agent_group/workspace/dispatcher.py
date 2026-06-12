@@ -7,7 +7,15 @@ from typing import Any
 
 from isotope.features.supervisor.registry import resume_managed_codex
 
-from .contracts import AgentWorkspace, ChannelMembership
+from .contracts import (
+    MAX_MEMBER_OBSERVATION_RELAY_DEPTH,
+    TRIGGER_KIND_MEMBER_OBSERVATION_RELAY,
+    TRIGGER_KIND_USER_MESSAGE,
+    AgentWorkspace,
+    ChannelMembership,
+    WorkspaceConversationMessage,
+    relay_depth_from_payload,
+)
 from .importer import mark_member_reply_import_baseline
 from .runtime_bridge import (
     recent_runtime_group_messages,
@@ -52,8 +60,10 @@ def dispatch_channel_message(
                     member=member,
                     trigger_actor="用户",
                     trigger_message=user_message,
+                    trigger_kind=TRIGGER_KIND_USER_MESSAGE,
                     mode=mode,
                     context_messages=context_messages,
+                    relay_depth=0,
                 )
             )
         else:
@@ -65,8 +75,10 @@ def dispatch_channel_message(
                     member=member,
                     trigger_actor="用户",
                     trigger_message=user_message,
+                    trigger_kind=TRIGGER_KIND_USER_MESSAGE,
                     mode=mode,
                     context_messages=context_messages,
+                    relay_depth=0,
                 )
             )
     return dispatches
@@ -105,8 +117,11 @@ def relay_runtime_member_observations(
             continue
         if not workspace_message_has_runtime_group(message):
             continue
+        if not _member_observation_can_relay(message):
+            continue
         source_member_id = message.from_actor
         source_name = member_names.get(source_member_id, source_member_id)
+        relay_depth = relay_depth_from_payload(message.payload) + 1
         for member in members:
             if (
                 member.member_id == source_member_id
@@ -130,9 +145,11 @@ def relay_runtime_member_observations(
                         member=member,
                         trigger_actor=source_name,
                         trigger_message=message.summary,
+                        trigger_kind=TRIGGER_KIND_MEMBER_OBSERVATION_RELAY,
                         mode="queue",
                         context_messages=context_messages,
                         relay_source_message_id=message.message_id,
+                        relay_depth=relay_depth,
                     )
                 )
             else:
@@ -144,9 +161,11 @@ def relay_runtime_member_observations(
                         member=member,
                         trigger_actor=source_name,
                         trigger_message=message.summary,
+                        trigger_kind=TRIGGER_KIND_MEMBER_OBSERVATION_RELAY,
                         mode="queue",
                         context_messages=context_messages,
                         relay_source_message_id=message.message_id,
+                        relay_depth=relay_depth,
                     )
                 )
             messages = store.list_messages(
@@ -167,9 +186,11 @@ def _send_to_auto_member(
     member: ChannelMembership,
     trigger_actor: str,
     trigger_message: str,
+    trigger_kind: str,
     mode: str,
     context_messages: list[dict[str, str]],
     relay_source_message_id: str | None = None,
+    relay_depth: int = 0,
 ) -> dict[str, Any]:
     if not member.resume_session_id:
         return _surface_send_error(
@@ -227,6 +248,8 @@ def _send_to_auto_member(
             "status": "sent",
             "managed_record_id": record.record_id,
             "resume_session_id": member.resume_session_id,
+            "trigger_kind": trigger_kind,
+            "relay_depth": relay_depth,
             **(
                 {"relay_source_message_id": relay_source_message_id}
                 if relay_source_message_id
@@ -280,9 +303,11 @@ def _surface_member_draft(
     member: ChannelMembership,
     trigger_actor: str,
     trigger_message: str,
+    trigger_kind: str,
     mode: str,
     context_messages: list[dict[str, str]],
     relay_source_message_id: str | None = None,
+    relay_depth: int = 0,
 ) -> dict[str, Any]:
     store.update_channel_member(
         workspace_id=workspace.workspace_id,
@@ -305,6 +330,8 @@ def _surface_member_draft(
             "mode": mode,
             "resume_session_id": member.resume_session_id,
             "trigger_actor": trigger_actor,
+            "trigger_kind": trigger_kind,
+            "relay_depth": relay_depth,
             "context_messages": context_messages,
             **(
                 {"relay_source_message_id": relay_source_message_id}
@@ -356,6 +383,7 @@ def _member_prompt(
             "最近群聊消息：",
             context,
             "",
+            "如果新消息只是确认、ACK、握手收尾或不需要你推进，请保持沉默，不要为了礼貌再次回复。",
             "请在当前 Codex 会话里理解上述群聊上下文；只有需要回应或推进时才简短回复群聊。",
         ]
     )
@@ -373,6 +401,15 @@ def _relay_already_sent(
         if message.payload.get("relay_source_message_id") == source_message_id:
             return True
     return False
+
+
+def _member_observation_can_relay(message: WorkspaceConversationMessage) -> bool:
+    payload = message.payload
+    if payload.get("trigger_kind") == TRIGGER_KIND_MEMBER_OBSERVATION_RELAY:
+        return False
+    if isinstance(payload.get("reply_to_relay_source_message_id"), str):
+        return False
+    return relay_depth_from_payload(payload) < MAX_MEMBER_OBSERVATION_RELAY_DEPTH
 
 
 def _format_context_messages(messages: list[dict[str, str]]) -> str:

@@ -35,6 +35,9 @@ MESSAGE_TYPES = {
 }
 CONTROL_INTENTS = {"queue", "interrupt", "terminate"}
 CONTROL_TARGETS = {"current_run", "member"}
+TRIGGER_KIND_USER_MESSAGE = "user_message"
+TRIGGER_KIND_MEMBER_OBSERVATION_RELAY = "member_observation_relay"
+MAX_MEMBER_OBSERVATION_RELAY_DEPTH = 1
 RAW_WORKSPACE_FIELDS = {
     "api_key",
     "full_content",
@@ -53,6 +56,15 @@ RAW_WORKSPACE_FIELDS = {
     "stdout",
     "token",
 }
+
+
+def relay_depth_from_payload(payload: dict[str, Any]) -> int:
+    value = payload.get("relay_depth")
+    if isinstance(value, int):
+        return max(value, 0)
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return 0
 
 
 @dataclass(frozen=True)

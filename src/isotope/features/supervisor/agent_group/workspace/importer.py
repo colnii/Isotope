@@ -10,7 +10,14 @@ from isotope.features.supervisor.registry.session_lookup import (
 )
 from isotope.integrations.codex.transcript import read_codex_transcript_page
 
-from .contracts import AgentWorkspace, ChannelMembership
+from .contracts import (
+    TRIGGER_KIND_MEMBER_OBSERVATION_RELAY,
+    TRIGGER_KIND_USER_MESSAGE,
+    AgentWorkspace,
+    ChannelMembership,
+    WorkspaceConversationMessage,
+    relay_depth_from_payload,
+)
 from .runtime_bridge import (
     publish_workspace_message_to_runtime_group,
     runtime_payload_for_channel,
@@ -119,6 +126,12 @@ def import_member_replies(
                     state_root=state_root,
                     workspace=workspace,
                     channel_id=channel_id,
+                ),
+                **_reply_trigger_metadata(
+                    store=store,
+                    workspace=workspace,
+                    channel_id=channel_id,
+                    member=member,
                 ),
                 "member_id": member.member_id,
                 "display_name": member.display_name,
@@ -264,6 +277,61 @@ def _reply_already_imported(
             return True
     return False
 
+
+def _reply_trigger_metadata(
+    *,
+    store: AgentWorkspaceStore,
+    workspace: AgentWorkspace,
+    channel_id: str,
+    member: ChannelMembership,
+) -> dict[str, Any]:
+    sent_message = _latest_sent_to_member(
+        store=store,
+        workspace=workspace,
+        channel_id=channel_id,
+        member=member,
+    )
+    if sent_message is None:
+        return {}
+    trigger_kind = sent_message.payload.get("trigger_kind")
+    if trigger_kind == TRIGGER_KIND_USER_MESSAGE:
+        return {
+            "trigger_kind": TRIGGER_KIND_USER_MESSAGE,
+            "relay_depth": 0,
+        }
+    if trigger_kind != TRIGGER_KIND_MEMBER_OBSERVATION_RELAY:
+        return {}
+    metadata: dict[str, Any] = {
+        "trigger_kind": TRIGGER_KIND_MEMBER_OBSERVATION_RELAY,
+        "relay_depth": relay_depth_from_payload(sent_message.payload),
+    }
+    relay_source_message_id = sent_message.payload.get("relay_source_message_id")
+    if isinstance(relay_source_message_id, str) and relay_source_message_id:
+        metadata["reply_to_relay_source_message_id"] = relay_source_message_id
+    return metadata
+
+
+def _latest_sent_to_member(
+    *,
+    store: AgentWorkspaceStore,
+    workspace: AgentWorkspace,
+    channel_id: str,
+    member: ChannelMembership,
+) -> WorkspaceConversationMessage | None:
+    for message in reversed(
+        store.list_messages(
+            workspace.workspace_id,
+            "channel",
+            channel_id,
+            limit=1000,
+        )
+    ):
+        if (
+            message.message_type == "sent_to_member"
+            and message.to_actor == member.member_id
+        ):
+            return message
+    return None
 
 def _group_reply_summary(text: str) -> str:
     if len(text) <= GROUP_REPLY_LIMIT:
