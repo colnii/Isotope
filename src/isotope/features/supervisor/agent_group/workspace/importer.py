@@ -10,24 +10,14 @@ from isotope.features.supervisor.registry.session_lookup import (
 )
 from isotope.integrations.codex.transcript import read_codex_transcript_page
 
-from .contracts import (
-    TRIGGER_KIND_MEMBER_OBSERVATION_RELAY,
-    TRIGGER_KIND_USER_MESSAGE,
-    AgentWorkspace,
-    ChannelMembership,
-    WorkspaceConversationMessage,
-    relay_depth_from_payload,
-)
-from .runtime_bridge import (
-    publish_workspace_message_to_runtime_group,
-    runtime_payload_for_channel,
-)
+from .contracts import AgentWorkspace, ChannelMembership
+from .coordination.candidates import parse_codex_group_candidate
+from .coordination.turns import run_channel_candidate_turn
 from .store import AgentWorkspaceStore
 
 
 LAST_IMPORTED_EVENT_INDEX = "last_imported_event_index"
 IMPORT_PAGE_LIMIT = 1000
-GROUP_REPLY_LIMIT = 6000
 
 
 def import_channel_member_replies(
@@ -93,7 +83,8 @@ def import_member_replies(
         limit=IMPORT_PAGE_LIMIT,
         include_raw=False,
     )
-    imported_count = 0
+    candidates = []
+    plain_assistant_count = 0
     has_assistant_message = _page_has_assistant_message(page)
     has_non_empty_assistant_message = False
     for event in page.get("terminal_events") or []:
@@ -101,62 +92,39 @@ def import_member_replies(
             continue
         if event.get("kind") != "message" or event.get("role") != "assistant":
             continue
-        has_non_empty_assistant_message = True
         text = str(event.get("text") or "").strip()
         if not text:
             continue
+        has_non_empty_assistant_message = True
         event_index = int(event.get("event_index") or 0)
-        if _reply_already_imported(
+        transcript_ref = {
+            "session_id": session_id,
+            "event_index": event_index,
+            "offset": event_index,
+            "limit": 1,
+        }
+        candidate = parse_codex_group_candidate(
+            text=text,
+            workspace_id=workspace.workspace_id,
+            channel_id=channel_id,
+            member_id=member.member_id,
+            display_name=member.display_name,
+            resume_session_id=session_id,
+            event_index=event_index,
+            transcript_ref=transcript_ref,
+        )
+        if candidate is None:
+            plain_assistant_count += 1
+            continue
+        if _candidate_already_imported(
             store=store,
             workspace=workspace,
             channel_id=channel_id,
             member=member,
-            session_id=session_id,
-            event_index=event_index,
+            candidate_id=candidate.candidate_id,
         ):
             continue
-        workspace_message = store.publish_message(
-            workspace_id=workspace.workspace_id,
-            conversation_type="channel",
-            conversation_id=channel_id,
-            from_actor=member.member_id,
-            to_actor=None,
-            message_type="member_observation",
-            summary=_group_reply_summary(text),
-            payload={
-                **runtime_payload_for_channel(
-                    store=store,
-                    state_root=state_root,
-                    workspace=workspace,
-                    channel_id=channel_id,
-                ),
-                **_reply_trigger_metadata(
-                    store=store,
-                    workspace=workspace,
-                    channel_id=channel_id,
-                    member=member,
-                ),
-                "member_id": member.member_id,
-                "display_name": member.display_name,
-                "resume_session_id": session_id,
-                "source_path": str(source_path),
-                "event_index": event_index,
-                "transcript_ref": {
-                    "session_id": session_id,
-                    "event_index": event_index,
-                    "offset": event_index,
-                    "limit": 1,
-                },
-            },
-        )
-        publish_workspace_message_to_runtime_group(
-            store=store,
-            state_root=state_root,
-            workspace=workspace,
-            channel_id=channel_id,
-            message=workspace_message,
-        )
-        imported_count += 1
+        candidates.append(candidate)
 
     last_seen = int(page["next_offset"]) - 1
     updated_member = _update_member_import_index(
@@ -165,23 +133,45 @@ def import_member_replies(
         last_imported_event_index=last_seen,
     )
     _mark_running_member_idle(store=store, member=updated_member)
-    if imported_count == 0:
-        if has_assistant_message and not has_non_empty_assistant_message:
-            return {
-                "member_id": member.member_id,
-                "display_name": member.display_name,
-                "status": "silent",
-                "imported_count": 0,
-                "last_imported_event_index": last_seen,
-            }
-        return None
-    return {
-        "member_id": member.member_id,
-        "display_name": member.display_name,
-        "status": "imported",
-        "imported_count": imported_count,
-        "last_imported_event_index": last_seen,
-    }
+    turn_result = None
+    if candidates:
+        turn_result = run_channel_candidate_turn(
+            store=store,
+            state_root=state_root,
+            workspace=workspace,
+            channel_id=channel_id,
+            candidates=candidates,
+            max_visible_messages=2,
+        )
+    published_count = len((turn_result or {}).get("published_messages") or [])
+    if candidates:
+        return {
+            "member_id": member.member_id,
+            "display_name": member.display_name,
+            "status": "candidate_imported",
+            "imported_count": published_count,
+            "candidate_count": len(candidates),
+            "published_count": published_count,
+            "last_imported_event_index": last_seen,
+        }
+    if plain_assistant_count:
+        return {
+            "member_id": member.member_id,
+            "display_name": member.display_name,
+            "status": "transcript_only",
+            "imported_count": 0,
+            "candidate_count": 0,
+            "last_imported_event_index": last_seen,
+        }
+    if has_assistant_message and not has_non_empty_assistant_message:
+        return {
+            "member_id": member.member_id,
+            "display_name": member.display_name,
+            "status": "silent",
+            "imported_count": 0,
+            "last_imported_event_index": last_seen,
+        }
+    return None
 
 
 def mark_member_reply_import_baseline(
@@ -279,14 +269,13 @@ def _mark_running_member_idle(
     )
 
 
-def _reply_already_imported(
+def _candidate_already_imported(
     *,
     store: AgentWorkspaceStore,
     workspace: AgentWorkspace,
     channel_id: str,
     member: ChannelMembership,
-    session_id: str,
-    event_index: int,
+    candidate_id: str,
 ) -> bool:
     for message in store.list_messages(
         workspace.workspace_id,
@@ -300,76 +289,6 @@ def _reply_already_imported(
         ):
             continue
         payload = message.payload
-        transcript_ref = payload.get("transcript_ref")
-        if not isinstance(transcript_ref, dict):
-            continue
-        if (
-            payload.get("member_id") == member.member_id
-            and payload.get("resume_session_id") == session_id
-            and int(payload.get("event_index") or -1) == event_index
-            and transcript_ref.get("session_id") == session_id
-            and int(transcript_ref.get("event_index") or -1) == event_index
-        ):
+        if payload.get("candidate_id") == candidate_id:
             return True
     return False
-
-
-def _reply_trigger_metadata(
-    *,
-    store: AgentWorkspaceStore,
-    workspace: AgentWorkspace,
-    channel_id: str,
-    member: ChannelMembership,
-) -> dict[str, Any]:
-    sent_message = _latest_sent_to_member(
-        store=store,
-        workspace=workspace,
-        channel_id=channel_id,
-        member=member,
-    )
-    if sent_message is None:
-        return {}
-    trigger_kind = sent_message.payload.get("trigger_kind")
-    if trigger_kind == TRIGGER_KIND_USER_MESSAGE:
-        return {
-            "trigger_kind": TRIGGER_KIND_USER_MESSAGE,
-            "relay_depth": 0,
-        }
-    if trigger_kind != TRIGGER_KIND_MEMBER_OBSERVATION_RELAY:
-        return {}
-    metadata: dict[str, Any] = {
-        "trigger_kind": TRIGGER_KIND_MEMBER_OBSERVATION_RELAY,
-        "relay_depth": relay_depth_from_payload(sent_message.payload),
-    }
-    relay_source_message_id = sent_message.payload.get("relay_source_message_id")
-    if isinstance(relay_source_message_id, str) and relay_source_message_id:
-        metadata["reply_to_relay_source_message_id"] = relay_source_message_id
-    return metadata
-
-
-def _latest_sent_to_member(
-    *,
-    store: AgentWorkspaceStore,
-    workspace: AgentWorkspace,
-    channel_id: str,
-    member: ChannelMembership,
-) -> WorkspaceConversationMessage | None:
-    for message in reversed(
-        store.list_messages(
-            workspace.workspace_id,
-            "channel",
-            channel_id,
-            limit=1000,
-        )
-    ):
-        if (
-            message.message_type == "sent_to_member"
-            and message.to_actor == member.member_id
-        ):
-            return message
-    return None
-
-def _group_reply_summary(text: str) -> str:
-    if len(text) <= GROUP_REPLY_LIMIT:
-        return text
-    return text[: GROUP_REPLY_LIMIT - 1] + "..."
