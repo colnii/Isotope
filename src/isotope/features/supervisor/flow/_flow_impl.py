@@ -105,10 +105,7 @@ class CodexSessionSummary:
 
     @property
     def short_session_id(self) -> str:
-        parts = self.session_id.split("-")
-        if len(parts) >= 5 and len(parts[0]) == 8:
-            return parts[0]
-        return self.session_id
+        return _short_session_id(self.session_id)
 
     @property
     def display_title(self) -> str:
@@ -258,7 +255,6 @@ class CodexSupervisorFlow:
         now = _ensure_aware_utc(self.now())
         session_index = read_codex_session_index(self.codex_home / "session_index.jsonl")
         state_threads = read_codex_state_threads(self.codex_home / "state_5.sqlite")
-        session_titles = {**session_index.titles, **state_threads.titles}
         recent_session_ids = merge_recent_session_ids(
             state_threads.recent_session_ids,
             session_index.recent_session_ids,
@@ -273,7 +269,8 @@ class CodexSupervisorFlow:
                     stale_after_seconds=stale_after_seconds,
                     active_within_seconds=active_within_seconds,
                     branch_resolver=self.branch_resolver,
-                    session_index_titles=session_titles,
+                    preferred_session_titles=session_index.titles,
+                    fallback_session_titles=state_threads.titles,
                 )
             )
             is not None
@@ -394,7 +391,8 @@ def _read_session_summary(
     stale_after_seconds: int,
     active_within_seconds: int,
     branch_resolver: Callable[[str], str | None],
-    session_index_titles: dict[str, str] | None = None,
+    preferred_session_titles: dict[str, str] | None = None,
+    fallback_session_titles: dict[str, str] | None = None,
 ) -> CodexSessionSummary | None:
     last_user_message: str | None = None
     first_user_message: str | None = None
@@ -421,12 +419,18 @@ def _read_session_summary(
             supervisor_next = protocol.get("next") or supervisor_next
             last_assistant_message = message.text
     session_id = snapshot.session_id
-    for update in snapshot.thread_updates:
-        if update.thread_id is None or update.thread_id == session_id:
-            thread_name = update.thread_name
-            thread_id = update.thread_id
-    if thread_name is None and session_index_titles:
-        thread_name = session_index_titles.get(session_id)
+    if preferred_session_titles:
+        thread_name = _useful_session_title(
+            preferred_session_titles.get(session_id),
+            session_id=session_id,
+        )
+    if thread_name is None:
+        for update in snapshot.thread_updates:
+            if update.thread_id is None or update.thread_id == session_id:
+                thread_name = update.thread_name
+                thread_id = update.thread_id
+    if thread_name is None and fallback_session_titles:
+        thread_name = fallback_session_titles.get(session_id)
     last_event_at = snapshot.last_event_at or now
     cwd = snapshot.cwd
     age_seconds = max(0, int((now - last_event_at).total_seconds()))
@@ -661,6 +665,21 @@ def _managed_failure_detail(failure: dict[str, Any]) -> str:
     if isinstance(summary, str) and summary:
         parts.append(_shorten(summary, limit=96))
     return " / ".join(parts)
+
+
+def _useful_session_title(title: str | None, *, session_id: str) -> str | None:
+    if not title:
+        return None
+    if title == session_id or title == _short_session_id(session_id):
+        return None
+    return title
+
+
+def _short_session_id(session_id: str) -> str:
+    parts = session_id.split("-")
+    if len(parts) >= 5 and len(parts[0]) == 8:
+        return parts[0]
+    return session_id
 
 
 def _managed_process_log_excerpt(log_path: str | None) -> str | None:

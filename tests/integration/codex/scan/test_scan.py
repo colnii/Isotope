@@ -362,6 +362,41 @@ def test_codex_supervisor_scan_uses_session_index_title_when_jsonl_has_no_rename
     assert session.to_dict()["display_title"] == "项目重新整理"
 
 
+def test_codex_supervisor_scan_prefers_session_index_title_over_jsonl_rename(
+    tmp_path,
+):
+    codex_home = tmp_path / ".codex"
+    session_id = "019dcdca-1d58-7f53-817d-003b9247b881"
+    _write_session_index(codex_home, session_id=session_id, thread_name="RNA训练")
+    _write_session(
+        codex_home,
+        "2026/04/27/rollout-rna-training.jsonl",
+        session_id=session_id,
+        cwd="/home/lumber/Github/AI_Camp_RNA_2026",
+        events=[
+            _event(
+                "2026-05-16T11:58:20Z",
+                "event_msg",
+                {
+                    "type": "thread_name_updated",
+                    "thread_id": session_id,
+                    "thread_name": "自动生成的很长研究任务标题",
+                },
+            ),
+            _event(
+                "2026-05-16T11:59:20Z",
+                "event_msg",
+                {"type": "agent_reasoning", "message": "running tests"},
+            ),
+        ],
+    )
+
+    session = CodexSupervisorFlow(codex_home=codex_home, now=lambda: NOW).scan().sessions[0]
+
+    assert session.thread_name == "RNA训练"
+    assert session.display_title == "RNA训练"
+
+
 
 def test_codex_supervisor_scan_uses_state_thread_title_before_first_user_message(
     tmp_path,
@@ -1179,6 +1214,5 @@ def test_codex_supervisor_recommendation_surfaces_tmux_bell_event(tmp_path):
         "target_session_id": "managed:managed-001",
         "send_text": None,
     }
-
 
 
