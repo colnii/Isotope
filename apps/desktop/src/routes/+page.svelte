@@ -68,17 +68,19 @@
     {/if}
   {:else if surface === 'main'}
     {#if $snapshot}
-      <div class="fixed right-4 top-4 z-10 flex gap-2">
+      <div class="iso-desktop-mode-switcher">
         <button
-          class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+          class={desktopMode === 'chat' ? 'iso-button-primary' : 'iso-button-muted'}
           type="button"
+          aria-pressed={desktopMode === 'chat'}
           onclick={() => (desktopMode = 'chat')}
         >
           主管聊天
         </button>
         <button
-          class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+          class={desktopMode === 'agent-workspace' ? 'iso-button-primary' : 'iso-button-muted'}
           type="button"
+          aria-pressed={desktopMode === 'agent-workspace'}
           onclick={() => (desktopMode = 'agent-workspace')}
         >
           智能体群聊
@@ -107,17 +109,19 @@
     {/if}
   {:else}
     {#if $snapshot}
-      <div class="fixed right-4 top-4 z-10 flex gap-2">
+      <div class="iso-desktop-mode-switcher">
         <button
-          class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+          class={desktopMode === 'chat' ? 'iso-button-primary' : 'iso-button-muted'}
           type="button"
+          aria-pressed={desktopMode === 'chat'}
           onclick={() => (desktopMode = 'chat')}
         >
           主管聊天
         </button>
         <button
-          class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+          class={desktopMode === 'agent-workspace' ? 'iso-button-primary' : 'iso-button-muted'}
           type="button"
+          aria-pressed={desktopMode === 'agent-workspace'}
           onclick={() => (desktopMode = 'agent-workspace')}
         >
           智能体群聊

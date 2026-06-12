@@ -132,6 +132,11 @@ textarea {
   .iso-button-muted {
     @apply rounded-full border border-isotope-line bg-isotope-panel px-3 py-1.5 text-xs font-semibold text-isotope-muted transition-colors hover:border-isotope-line-strong hover:text-isotope-text disabled:cursor-not-allowed disabled:opacity-60;
   }
+
+  .iso-desktop-mode-switcher {
+    @apply fixed top-4 z-10 flex gap-2;
+    right: 13rem;
+  }
 }
 
 @media (max-width: 640px) {
@@ -142,5 +147,9 @@ textarea {
 
   .iso-suprematist-mark {
     @apply right-4 top-4 opacity-30;
+  }
+
+  .iso-desktop-mode-switcher {
+    @apply right-4 top-20;
   }
 }
