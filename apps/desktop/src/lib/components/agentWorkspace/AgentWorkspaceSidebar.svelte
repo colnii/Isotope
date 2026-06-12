@@ -14,7 +14,12 @@
     selectedConversationId = null,
     newChannelName = $bindable(''),
     newChannelTopic = $bindable(''),
+    workspaceSettingsOpen = $bindable(false),
+    workspaceTitle = $bindable(''),
+    workspaceRootPath = $bindable(''),
+    isSavingWorkspace = false,
     onCreateChannel,
+    onSaveWorkspace,
     onSelectConversation
   } = $props<{
     workspace?: AgentWorkspaceSummary | null;
@@ -23,7 +28,12 @@
     selectedConversationId?: string | null;
     newChannelName: string;
     newChannelTopic: string;
+    workspaceSettingsOpen: boolean;
+    workspaceTitle: string;
+    workspaceRootPath: string;
+    isSavingWorkspace?: boolean;
     onCreateChannel: () => void;
+    onSaveWorkspace: () => void;
     onSelectConversation: (kind: WorkspaceConversationKind, conversationId: string) => void;
   }>();
 </script>
@@ -32,6 +42,59 @@
   <div class="border-b border-isotope-line px-4 py-4">
     <div class="truncate text-sm font-semibold">{workspace?.title ?? '智能体工作区'}</div>
     <div class="mt-1 truncate text-[11px] text-isotope-muted">{workspace?.root_path ?? '加载中'}</div>
+    <button
+      class="mt-3 w-full border border-isotope-line bg-white px-3 py-2 text-left text-xs font-semibold text-isotope-text hover:border-isotope-running"
+      type="button"
+      onclick={() => {
+        workspaceSettingsOpen = !workspaceSettingsOpen;
+      }}
+    >
+      工作区设置
+    </button>
+    {#if workspaceSettingsOpen}
+      <form
+        class="mt-3 space-y-2"
+        onsubmit={(event) => {
+          event.preventDefault();
+          onSaveWorkspace();
+        }}
+      >
+        <label class="block text-[11px] font-semibold text-isotope-muted">
+          工作区名称
+          <input
+            class="mt-1 w-full border border-isotope-line bg-white px-2 py-1.5 text-xs font-normal text-isotope-text"
+            bind:value={workspaceTitle}
+            disabled={!workspace || isSavingWorkspace}
+          />
+        </label>
+        <label class="block text-[11px] font-semibold text-isotope-muted">
+          绑定目录
+          <input
+            class="mt-1 w-full border border-isotope-line bg-white px-2 py-1.5 text-xs font-normal text-isotope-text"
+            bind:value={workspaceRootPath}
+            disabled={!workspace || isSavingWorkspace}
+          />
+        </label>
+        <div class="flex gap-2">
+          <button
+            class="flex-1 border border-isotope-running bg-isotope-running px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            type="submit"
+            disabled={!workspace || isSavingWorkspace}
+          >
+            {isSavingWorkspace ? '保存中' : '保存设置'}
+          </button>
+          <button
+            class="border border-isotope-line bg-white px-2 py-1.5 text-xs text-isotope-muted"
+            type="button"
+            onclick={() => {
+              workspaceSettingsOpen = false;
+            }}
+          >
+            取消
+          </button>
+        </div>
+      </form>
+    {/if}
   </div>
 
   <div class="border-b border-isotope-line px-3 py-3">

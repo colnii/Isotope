@@ -8,6 +8,7 @@ from isotope.features.supervisor.agent_group.workspace.api import (
     ensure_workspace_payload,
     remove_channel_member_payload,
     update_channel_member_payload,
+    update_workspace_payload,
 )
 from isotope.features.supervisor.web.routes.agent_workspaces import (
     agent_workspace_id_from_path,
@@ -20,6 +21,7 @@ from isotope.features.supervisor.web.routes.agent_workspaces import (
     parse_workspace_chat_payload,
     parse_workspace_control_payload,
     parse_workspace_member_update_payload,
+    parse_workspace_update_payload,
 )
 
 
@@ -108,6 +110,20 @@ def test_parse_channel_control_and_member_update_payloads():
     }
 
 
+def test_parse_workspace_update_payload():
+    assert parse_workspace_update_payload(
+        {
+            "title": "RNA 工作区",
+            "root_path": "/home/lumber/Github/AI_Camp_RNA_2026",
+        }
+    ) == {
+        "title": "RNA 工作区",
+        "root_path": "/home/lumber/Github/AI_Camp_RNA_2026",
+    }
+    with pytest.raises(ValueError, match="title must be a non-empty string"):
+        parse_workspace_update_payload({"title": " ", "root_path": "/tmp/repo"})
+
+
 def test_workspace_api_creates_workspace_channel_and_member(tmp_path):
     root_path = tmp_path / "AI_Camp_RNA_2026"
     root_path.mkdir()
@@ -153,3 +169,22 @@ def test_workspace_api_creates_workspace_channel_and_member(tmp_path):
     assert member_payload["member"]["display_name"] == "Research Codex"
     assert updated_payload["member"]["send_policy"] == "draft_only"
     assert removed_payload["member"]["status"] == "archived"
+
+
+def test_workspace_api_updates_title_and_root_path(tmp_path):
+    root_path = tmp_path / "isotope"
+    updated_root = tmp_path / "AI_Camp_RNA_2026"
+    root_path.mkdir()
+    updated_root.mkdir()
+    workspace_payload = ensure_workspace_payload(tmp_path / ".codex", root_path=root_path)
+    workspace_id = workspace_payload["workspace"]["workspace_id"]
+
+    updated = update_workspace_payload(
+        tmp_path / ".codex",
+        workspace_id=workspace_id,
+        title="RNA 工作区",
+        root_path=updated_root,
+    )
+
+    assert updated["workspace"]["title"] == "RNA 工作区"
+    assert updated["workspace"]["root_path"] == str(updated_root)

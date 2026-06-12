@@ -64,6 +64,22 @@ def workspace_payload(state_root: Path | str, workspace_id: str) -> dict[str, An
     }
 
 
+def update_workspace_payload(
+    state_root: Path | str,
+    *,
+    workspace_id: str,
+    title: str,
+    root_path: Path | str,
+) -> dict[str, Any]:
+    store = AgentWorkspaceStore(state_root)
+    workspace = store.update_workspace(
+        workspace_id=workspace_id,
+        title=title,
+        root_path=root_path,
+    )
+    return workspace_payload(state_root, workspace.workspace_id)
+
+
 def create_channel_payload(
     state_root: Path | str,
     *,

@@ -121,3 +121,25 @@ def test_store_updates_member_permission_and_records_message_and_control(tmp_pat
         store.list_control_events(workspace.workspace_id)[0]["payload"]["control_id"]
         == control.control_id
     )
+
+
+def test_store_updates_workspace_title_and_root_path(tmp_path):
+    root_path = tmp_path / "repo"
+    updated_root = tmp_path / "AI_Camp_RNA_2026"
+    root_path.mkdir()
+    updated_root.mkdir()
+    store = AgentWorkspaceStore(tmp_path / ".codex")
+    workspace = store.ensure_default_workspace(root_path=root_path)
+
+    updated = store.update_workspace(
+        workspace_id=workspace.workspace_id,
+        title="RNA 工作区",
+        root_path=updated_root,
+    )
+    loaded = store.load_workspace(workspace.workspace_id)
+
+    assert updated.title == "RNA 工作区"
+    assert updated.root_path == str(updated_root)
+    assert loaded.title == "RNA 工作区"
+    assert loaded.root_path == str(updated_root)
+    assert len(store.list_workspaces()) == 1

@@ -24,7 +24,7 @@ MEMBER_RECORD_KIND = "agent_workspace_channel_member"
 
 def record_for_workspace(workspace: AgentWorkspace) -> MemoryRecord:
     return _record(
-        record_id=f"agent_workspace_{workspace.workspace_id}",
+        record_id=f"agent_workspace_{workspace.workspace_id}_{new_id('rev')}",
         kind=WORKSPACE_RECORD_KIND,
         content=workspace.to_public_dict(),
         summary=f"Agent workspace {workspace.title}: {workspace.root_path}",

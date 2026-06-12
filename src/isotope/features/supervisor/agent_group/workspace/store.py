@@ -88,13 +88,20 @@ class AgentWorkspaceStore:
         return workspace
 
     def list_workspaces(self) -> list[AgentWorkspace]:
-        workspaces = [
-            workspace_from_record(record)
-            for record in self.memory.list_records(scope="session")
-            if record.content.get("kind") == WORKSPACE_RECORD_KIND
-        ]
+        latest: dict[str, AgentWorkspace] = {}
+        for record in self.memory.list_records(scope="session"):
+            if record.content.get("kind") != WORKSPACE_RECORD_KIND:
+                continue
+            workspace = workspace_from_record(record)
+            if workspace is None:
+                continue
+            current = latest.get(workspace.workspace_id)
+            if current is None or _workspace_sort_key(workspace) >= _workspace_sort_key(
+                current
+            ):
+                latest[workspace.workspace_id] = workspace
         return sorted(
-            [workspace for workspace in workspaces if workspace is not None],
+            latest.values(),
             key=lambda workspace: (workspace.created_at, workspace.workspace_id),
         )
 
@@ -103,6 +110,23 @@ class AgentWorkspaceStore:
             if workspace.workspace_id == workspace_id:
                 return workspace
         raise ValueError(f"agent workspace not found: {workspace_id}")
+
+    def update_workspace(
+        self,
+        *,
+        workspace_id: str,
+        title: str,
+        root_path: Path | str,
+    ) -> AgentWorkspace:
+        workspace = self.load_workspace(workspace_id)
+        updated = replace(
+            workspace,
+            title=title.strip(),
+            root_path=str(Path(root_path).expanduser()),
+            updated_at=_next_timestamp_after(workspace.updated_at),
+        )
+        self.memory.append_record(record_for_workspace(updated))
+        return updated
 
     def create_channel(
         self,
@@ -398,6 +422,10 @@ class AgentWorkspaceStore:
 
 def _member_sort_key(member: ChannelMembership):
     return (parse_timestamp(member.updated_at), parse_timestamp(member.created_at))
+
+
+def _workspace_sort_key(workspace: AgentWorkspace):
+    return (parse_timestamp(workspace.updated_at), parse_timestamp(workspace.created_at))
 
 
 def _next_timestamp_after(previous: str) -> str:

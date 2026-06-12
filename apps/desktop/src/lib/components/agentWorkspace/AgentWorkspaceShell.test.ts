@@ -10,6 +10,10 @@ describe('AgentWorkspaceShell', () => {
     expect(source).toContain('群聊');
     expect(source).toContain('私聊');
     expect(source).toContain('selectedConversationKind');
+    expect(source).toContain('工作区设置');
+    expect(source).toContain('绑定目录');
+    expect(source).toContain('保存设置');
+    expect(source).toContain('updateWorkspace');
   });
 
   test('contains channel settings for codex session membership and send permission', () => {

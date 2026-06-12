@@ -29,10 +29,15 @@
   let isSending = $state(false);
   let newChannelName = $state('');
   let newChannelTopic = $state('');
+  let workspaceSettingsOpen = $state(false);
+  let workspaceTitle = $state('');
+  let workspaceRootPath = $state('');
+  let isSavingWorkspace = $state(false);
   let sessionScope = $state<'cwd' | 'all'>('cwd');
   let sessionCandidates = $state<CodexSessionCandidate[]>([]);
   let selectedSessionId = $state<string | null>(null);
   let isLoadingSessions = $state(false);
+  let hasLoadedSessions = $state(false);
   let memberDisplayName = $state('');
   let memberRole = $state('');
   let memberGoal = $state('');
@@ -86,6 +91,7 @@
   async function loadWorkspace(workspaceId: string) {
     const detail = await agentWorkspaceClient.loadWorkspace(workspaceId);
     workspace = detail;
+    syncWorkspaceDraft(detail);
     selectFallbackConversation(detail);
   }
 
@@ -124,6 +130,49 @@
     selectedConversationKind = kind;
     selectedConversationId = conversationId;
     actionError = null;
+  }
+
+  function syncWorkspaceDraft(detail: AgentWorkspaceDetail) {
+    workspaceTitle = detail.workspace.title;
+    workspaceRootPath = detail.workspace.root_path;
+  }
+
+  async function saveWorkspaceSettings() {
+    if (!workspace) return;
+    const title = workspaceTitle.trim();
+    const rootPath = workspaceRootPath.trim();
+    if (!title || !rootPath) return;
+    actionError = null;
+    isSavingWorkspace = true;
+    try {
+      const updated = await agentWorkspaceClient.updateWorkspace(workspace.workspace.workspace_id, {
+        title,
+        root_path: rootPath
+      });
+      workspace = updated;
+      syncWorkspaceDraft(updated);
+      replaceWorkspaceSummary(updated);
+      selectFallbackConversation(updated);
+      workspaceSettingsOpen = false;
+      if (hasLoadedSessions) {
+        await loadCodexSessions(sessionScope);
+      }
+    } catch (error) {
+      actionError = errorMessage(error, '工作区设置保存失败');
+    } finally {
+      isSavingWorkspace = false;
+    }
+  }
+
+  function replaceWorkspaceSummary(detail: AgentWorkspaceDetail) {
+    const summary = detail.workspace;
+    if (workspaces.some((candidate) => candidate.workspace_id === summary.workspace_id)) {
+      workspaces = workspaces.map((candidate) =>
+        candidate.workspace_id === summary.workspace_id ? summary : candidate
+      );
+      return;
+    }
+    workspaces = [...workspaces, summary];
   }
 
   function resolveConversationTitle() {
@@ -168,6 +217,7 @@
       );
       sessionCandidates = payload.sessions;
       selectedSessionId = payload.sessions[0]?.session_id ?? null;
+      hasLoadedSessions = true;
       applySelectedSessionDefaults();
     } catch (error) {
       actionError = errorMessage(error, 'Codex session 加载失败');
@@ -336,7 +386,12 @@
     {selectedConversationId}
     bind:newChannelName
     bind:newChannelTopic
+    bind:workspaceSettingsOpen
+    bind:workspaceTitle
+    bind:workspaceRootPath
+    {isSavingWorkspace}
     onCreateChannel={() => void createChannel()}
+    onSaveWorkspace={() => void saveWorkspaceSettings()}
     onSelectConversation={selectConversation}
   />
 

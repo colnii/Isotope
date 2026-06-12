@@ -10,6 +10,7 @@ import type {
   CodexSessionCandidatePayload,
   CreateWorkspaceChannelRequest,
   UpdateWorkspaceMemberRequest,
+  UpdateWorkspaceRequest,
   WorkspaceConversationMessage,
   WorkspaceRuntimeControlRecord
 } from '../contracts/agentWorkspace';
@@ -27,6 +28,10 @@ export type AgentWorkspaceClient = {
     workspaceId: string,
     scope?: 'cwd' | 'all'
   ): Promise<CodexSessionCandidatePayload>;
+  updateWorkspace(
+    workspaceId: string,
+    request: UpdateWorkspaceRequest
+  ): Promise<AgentWorkspaceDetail>;
   createChannel(
     workspaceId: string,
     request: CreateWorkspaceChannelRequest
@@ -92,6 +97,13 @@ export function createAgentWorkspaceClient(baseUrl: string | null): AgentWorkspa
       );
       if (!response.ok) throw new Error(await responseErrorMessage(response));
       return (await response.json()) as CodexSessionCandidatePayload;
+    },
+    async updateWorkspace(workspaceId, request) {
+      return postJson(
+        requiredBase(apiBaseUrl),
+        `/desktop/agent-workspaces/${encodeURIComponent(workspaceId)}`,
+        request
+      ) as Promise<AgentWorkspaceDetail>;
     },
     async createChannel(workspaceId, request) {
       return postJson(

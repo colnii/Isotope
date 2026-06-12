@@ -22,6 +22,16 @@ def test_agent_workspace_http_creates_channel_adds_member_and_stops(tmp_path):
     try:
         workspaces = _request_json(host, port, "GET", "/desktop/agent-workspaces")
         workspace_id = workspaces["workspaces"][0]["workspace_id"]
+        workspace_settings = _request_json(
+            host,
+            port,
+            "POST",
+            f"/desktop/agent-workspaces/{workspace_id}",
+            {
+                "title": "RNA 工作区",
+                "root_path": str(tmp_path / "AI_Camp_RNA_2026"),
+            },
+        )
         channel = _request_json(
             host,
             port,
@@ -83,6 +93,10 @@ def test_agent_workspace_http_creates_channel_adds_member_and_stops(tmp_path):
         server.server_close()
         thread.join(timeout=2)
 
+    assert workspace_settings["workspace"]["title"] == "RNA 工作区"
+    assert workspace_settings["workspace"]["root_path"] == str(
+        tmp_path / "AI_Camp_RNA_2026"
+    )
     assert channel["channel"]["name"] == "rna-research"
     assert member["member"]["send_policy"] == "confirm"
     assert updated["member"]["send_policy"] == "draft_only"

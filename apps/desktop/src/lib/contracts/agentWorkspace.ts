@@ -130,6 +130,11 @@ export type CreateWorkspaceChannelRequest = {
   topic?: string;
 };
 
+export type UpdateWorkspaceRequest = {
+  title: string;
+  root_path: string;
+};
+
 export type AddWorkspaceMemberRequest = {
   display_name: string;
   role: string;

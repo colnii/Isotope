@@ -110,6 +110,15 @@ def parse_workspace_channel_payload(value: object) -> dict[str, str]:
     }
 
 
+def parse_workspace_update_payload(value: object) -> dict[str, str]:
+    if not isinstance(value, dict):
+        raise ValueError("payload must be an object")
+    return {
+        "title": _required_string(value.get("title"), "title"),
+        "root_path": _required_string(value.get("root_path"), "root_path"),
+    }
+
+
 def parse_workspace_control_payload(value: object) -> dict[str, str | None]:
     if not isinstance(value, dict):
         raise ValueError("payload must be an object")

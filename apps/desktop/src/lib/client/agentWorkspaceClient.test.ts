@@ -30,6 +30,44 @@ describe('agentWorkspaceClient', () => {
     expect(detail.workspace.workspace_id).toBe('workspace_rna');
   });
 
+  it('updates workspace title and root path', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: 'ok',
+        workspace: {
+          ...workspaceSummary(),
+          title: 'RNA 工作区',
+          root_path: '/home/lumber/Github/AI_Camp_RNA_2026'
+        },
+        channels: [],
+        direct_messages: [],
+        members: [],
+        messages: [],
+        controls: []
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createAgentWorkspaceClient('http://localhost:8765');
+    await client.updateWorkspace('workspace_rna', {
+      title: 'RNA 工作区',
+      root_path: '/home/lumber/Github/AI_Camp_RNA_2026'
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:8765/desktop/agent-workspaces/workspace_rna',
+      {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          title: 'RNA 工作区',
+          root_path: '/home/lumber/Github/AI_Camp_RNA_2026'
+        })
+      }
+    );
+  });
+
   it('loads recent codex sessions by cwd or all scope', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ status: 'ok', sessions: [] }));
     vi.stubGlobal('fetch', fetchMock);

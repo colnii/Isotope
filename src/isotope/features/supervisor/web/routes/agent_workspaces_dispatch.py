@@ -57,6 +57,9 @@ def handle_agent_workspace_get(
 
 
 def handle_agent_workspace_post(handler: Any, *, path: str) -> bool:
+    workspace_id = routes.agent_workspace_id_from_path(path)
+    if workspace_id is not None:
+        return _handle_update_workspace(handler, workspace_id)
     workspace_id = routes.agent_workspace_channels_id_from_path(path)
     if workspace_id is not None:
         return _handle_create_channel(handler, workspace_id)
@@ -70,6 +73,22 @@ def handle_agent_workspace_post(handler: Any, *, path: str) -> bool:
     if control_ids is not None:
         return _handle_control(handler, control_ids)
     return False
+
+
+def _handle_update_workspace(handler: Any, workspace_id: str) -> bool:
+    try:
+        payload = routes.parse_workspace_update_payload(handler._read_json_body())
+        result = workspace_api.update_workspace_payload(
+            handler.server.codex_home,
+            workspace_id=workspace_id,
+            title=payload["title"],
+            root_path=payload["root_path"],
+        )
+    except ValueError as exc:
+        _send_error(handler, str(exc), status_code=400)
+        return True
+    handler._send_json(result)
+    return True
 
 
 def _handle_create_channel(handler: Any, workspace_id: str) -> bool:
