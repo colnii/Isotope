@@ -6,14 +6,28 @@ export default {
     extend: {
       colors: {
         isotope: {
-          bg: '#f6f7f9',
-          panel: '#ffffff',
-          text: '#1f2933',
-          muted: '#667085',
-          line: '#d9dee7',
-          attention: '#b42318',
-          running: '#175cd3',
-          done: '#067647'
+          bg: '#f7f1e3',
+          canvas: '#f7f1e3',
+          panel: '#fffcf4',
+          'panel-raised': '#fff8ec',
+          text: '#202020',
+          ink: '#202020',
+          muted: '#7d7467',
+          line: '#d6cdbd',
+          'line-strong': '#bdb4a4',
+          red: '#c9342c',
+          'red-dark': '#8f1512',
+          yellow: '#e2b631',
+          'yellow-surface': '#fff2c8',
+          blue: '#1d58a8',
+          'blue-surface': '#edf3f9',
+          green: '#26734d',
+          'green-surface': '#e8f3ea',
+          attention: '#c9342c',
+          running: '#1d58a8',
+          warning: '#e2b631',
+          done: '#26734d',
+          error: '#c9342c'
         }
       },
       borderRadius: {
