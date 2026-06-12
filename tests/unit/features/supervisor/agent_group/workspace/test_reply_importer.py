@@ -118,6 +118,93 @@ def test_import_channel_member_replies_adds_member_observation_once(tmp_path):
     }
 
 
+def test_import_channel_member_replies_skips_existing_transcript_ref(tmp_path):
+    codex_home = tmp_path / ".codex"
+    workspace_root = tmp_path / "AI_Camp_RNA_2026"
+    workspace_root.mkdir()
+    session_path = tmp_path / "session.jsonl"
+    write_jsonl(
+        session_path,
+        [
+            {"type": "session_meta", "payload": {"id": "session_research"}},
+            {
+                "type": "response_item",
+                "timestamp": "2026-06-12T00:00:01Z",
+                "payload": {
+                    "type": "message",
+                    "role": "user",
+                    "content": "请同步当前进展。",
+                },
+            },
+            {
+                "type": "response_item",
+                "timestamp": "2026-06-12T00:00:02Z",
+                "payload": {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": "科研侧已经完成 readiness 审计。",
+                },
+            },
+        ],
+    )
+    store = AgentWorkspaceStore(codex_home)
+    workspace = store.ensure_default_workspace(root_path=workspace_root)
+    channel = store.list_channels(workspace.workspace_id)[0]
+    member = store.add_channel_member(
+        workspace_id=workspace.workspace_id,
+        channel_id=channel.channel_id,
+        display_name="rna探索",
+        role="科研探索",
+        goal="给工程侧提供判断。",
+        send_policy="auto",
+        resume_session_id="session_research",
+        source_path=str(session_path),
+        managed_record_id=None,
+    )
+    store.update_channel_member(
+        workspace_id=workspace.workspace_id,
+        channel_id=channel.channel_id,
+        member_id=member.member_id,
+        transcript_policy={
+            **member.transcript_policy,
+            "last_imported_event_index": 1,
+        },
+    )
+    store.publish_message(
+        workspace_id=workspace.workspace_id,
+        conversation_type="channel",
+        conversation_id=channel.channel_id,
+        from_actor=member.member_id,
+        to_actor=None,
+        message_type="member_observation",
+        summary="科研侧已经完成 readiness 审计。",
+        payload={
+            "member_id": member.member_id,
+            "resume_session_id": "session_research",
+            "event_index": 2,
+            "transcript_ref": {
+                "session_id": "session_research",
+                "event_index": 2,
+                "offset": 2,
+                "limit": 1,
+            },
+        },
+    )
+
+    imports = import_channel_member_replies(
+        store=store,
+        state_root=codex_home,
+        workspace=workspace,
+        channel_id=channel.channel_id,
+    )
+
+    assert imports == []
+    messages = store.list_messages(workspace.workspace_id, "channel", channel.channel_id)
+    assert len(messages) == 1
+    loaded = store.list_channel_members(workspace.workspace_id, channel.channel_id)[0]
+    assert loaded.transcript_policy["last_imported_event_index"] == 2
+
+
 def test_import_channel_member_replies_sets_initial_baseline_without_old_messages(
     tmp_path,
 ):

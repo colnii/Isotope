@@ -62,6 +62,14 @@ describe('AgentWorkspaceShell', () => {
     expect(source).toContain("return '我'");
     expect(source).toContain("return '系统'");
   });
+
+  test('hides supervisor delivery status messages from the chat stream', () => {
+    const source = readSources('AgentWorkspaceShell.svelte');
+
+    expect(source).toContain('visibleConversationMessages');
+    expect(source).toContain("message.message_type !== 'sent_to_member'");
+    expect(source).toContain("message.message_type !== 'status'");
+  });
 });
 
 function readSources(...fileNames: string[]): string {

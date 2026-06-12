@@ -11,6 +11,7 @@ from isotope.features.supervisor.agent_group.workspace.api import (
     update_workspace_payload,
 )
 from isotope.features.supervisor.web.routes.agent_workspaces import (
+    agent_workspace_events_id_from_path,
     agent_workspace_id_from_path,
     channel_members_path_ids,
     conversation_chat_path_ids,
@@ -42,6 +43,12 @@ def test_route_helpers_parse_workspace_channel_and_conversation_paths():
     assert conversation_control_path_ids(
         "/desktop/agent-workspaces/workspace_rna/conversations/channel_research/control"
     ) == ("workspace_rna", "channel_research")
+    assert (
+        agent_workspace_events_id_from_path(
+            "/desktop/agent-workspaces/workspace_rna/events"
+        )
+        == "workspace_rna"
+    )
 
 
 def test_parse_codex_session_scope():

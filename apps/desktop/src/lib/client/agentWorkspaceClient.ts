@@ -25,6 +25,10 @@ export type TranscriptRequest = {
 export type AgentWorkspaceClient = {
   listWorkspaces(): Promise<AgentWorkspaceListPayload>;
   loadWorkspace(workspaceId: string): Promise<AgentWorkspaceDetail>;
+  watchWorkspace(
+    workspaceId: string,
+    handlers: AgentWorkspaceEventHandlers
+  ): () => void;
   listCodexSessions(
     workspaceId: string,
     scope?: 'cwd' | 'all'
@@ -71,6 +75,11 @@ export type AgentWorkspaceClient = {
   loadTranscript(sessionId: string, request?: TranscriptRequest): Promise<CodexTranscriptPage>;
 };
 
+export type AgentWorkspaceEventHandlers = {
+  onUpdate?: (payload: AgentWorkspaceDetail) => void;
+  onError?: (error: Error) => void;
+};
+
 export function createAgentWorkspaceClient(baseUrl: string | null): AgentWorkspaceClient {
   const apiBaseUrl = normalizeBaseUrl(baseUrl);
   return {
@@ -88,6 +97,23 @@ export function createAgentWorkspaceClient(baseUrl: string | null): AgentWorkspa
       );
       if (!response.ok) throw new Error(await responseErrorMessage(response));
       return (await response.json()) as AgentWorkspaceDetail;
+    },
+    watchWorkspace(workspaceId, handlers) {
+      const base = requiredBase(apiBaseUrl);
+      if (typeof EventSource === 'undefined') {
+        throw new Error('当前浏览器不支持智能体工作区实时更新');
+      }
+      const source = new EventSource(
+        `${base}/desktop/agent-workspaces/${encodeURIComponent(workspaceId)}/events`
+      );
+      source.addEventListener('workspace_update', (event) => {
+        try {
+          handlers.onUpdate?.(JSON.parse((event as MessageEvent).data) as AgentWorkspaceDetail);
+        } catch (error) {
+          handlers.onError?.(errorMessage(error, '智能体工作区实时更新解析失败'));
+        }
+      });
+      return () => source.close();
     },
     async listCodexSessions(workspaceId, scope = 'cwd') {
       const response = await fetch(
@@ -235,4 +261,8 @@ async function responseErrorMessage(response: Response): Promise<string> {
     return `智能体工作区请求失败：HTTP ${response.status}`;
   }
   return `智能体工作区请求失败：HTTP ${response.status}`;
+}
+
+function errorMessage(error: unknown, fallback: string): Error {
+  return error instanceof Error ? error : new Error(fallback);
 }

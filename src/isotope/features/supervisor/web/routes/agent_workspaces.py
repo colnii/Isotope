@@ -17,6 +17,16 @@ def agent_workspace_id_from_path(path: str) -> str | None:
     return unquote(rest)
 
 
+def agent_workspace_events_id_from_path(path: str) -> str | None:
+    suffix = "/events"
+    if not path.startswith(WORKSPACE_PREFIX) or not path.endswith(suffix):
+        return None
+    workspace_id = path[len(WORKSPACE_PREFIX) : -len(suffix)]
+    if "/" in workspace_id or not workspace_id:
+        return None
+    return unquote(workspace_id)
+
+
 def agent_workspace_codex_sessions_id_from_path(path: str) -> str | None:
     suffix = "/codex-sessions"
     if not path.startswith(WORKSPACE_PREFIX) or not path.endswith(suffix):

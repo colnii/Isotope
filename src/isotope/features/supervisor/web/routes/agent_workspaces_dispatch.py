@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,10 @@ def handle_agent_workspace_get(
                 root_path=root_path,
             )
         )
+        return True
+    workspace_id = routes.agent_workspace_events_id_from_path(path)
+    if workspace_id is not None:
+        _handle_workspace_events(handler, workspace_id)
         return True
     workspace_id = routes.agent_workspace_codex_sessions_id_from_path(path)
     if workspace_id is not None:
@@ -198,6 +203,98 @@ def _handle_control(handler: Any, ids: tuple[str, str]) -> bool:
         return True
     handler._send_json(result)
     return True
+
+
+def _handle_workspace_events(handler: Any, workspace_id: str) -> None:
+    handler.send_response(200)
+    handler.send_header("content-type", "text/event-stream; charset=utf-8")
+    handler.send_header("cache-control", "no-store")
+    handler.send_header("connection", "keep-alive")
+    handler._send_cors_headers()
+    handler.end_headers()
+    handler._write_sse("ready", {"status": "ok", "workspace_id": workspace_id})
+    try:
+        payload = workspace_api.workspace_payload(handler.server.codex_home, workspace_id)
+    except ValueError as exc:
+        handler._write_sse(
+            "error",
+            {"status": "error", "code": ERROR_CODE, "message": str(exc)},
+        )
+        return
+    previous_signature = _workspace_event_signature(payload)
+    if not _safe_write_sse(handler, "workspace_update", payload):
+        return
+    last_heartbeat = time.monotonic()
+    while True:
+        time.sleep(1.0)
+        if time.monotonic() - last_heartbeat >= 15:
+            if not _safe_write_sse(
+                handler,
+                "heartbeat",
+                {"status": "ok", "workspace_id": workspace_id},
+            ):
+                return
+            last_heartbeat = time.monotonic()
+        try:
+            payload = workspace_api.workspace_payload(handler.server.codex_home, workspace_id)
+        except ValueError as exc:
+            _safe_write_sse(
+                handler,
+                "error",
+                {"status": "error", "code": ERROR_CODE, "message": str(exc)},
+            )
+            return
+        signature = _workspace_event_signature(payload)
+        if signature == previous_signature:
+            continue
+        previous_signature = signature
+        if not _safe_write_sse(handler, "workspace_update", payload):
+            return
+
+
+def _safe_write_sse(handler: Any, event: str, payload: dict[str, Any]) -> bool:
+    try:
+        handler._write_sse(event, payload)
+    except OSError:
+        return False
+    return True
+
+
+def _workspace_event_signature(payload: dict[str, Any]) -> tuple[tuple[str, ...], ...]:
+    workspace = payload.get("workspace") if isinstance(payload.get("workspace"), dict) else {}
+    return (
+        (str(workspace.get("updated_at") or ""),),
+        tuple(
+            f"{item.get('channel_id')}:{item.get('updated_at')}"
+            for item in payload.get("channels") or []
+            if isinstance(item, dict)
+        ),
+        tuple(
+            f"{item.get('dm_id')}:{item.get('updated_at')}"
+            for item in payload.get("direct_messages") or []
+            if isinstance(item, dict)
+        ),
+        tuple(
+            f"{item.get('member_id')}:{item.get('updated_at')}"
+            for item in payload.get("members") or []
+            if isinstance(item, dict)
+        ),
+        tuple(
+            str(item.get("message_id") or "")
+            for item in payload.get("messages") or []
+            if isinstance(item, dict)
+        ),
+        tuple(
+            _control_event_signature(item)
+            for item in payload.get("controls") or []
+            if isinstance(item, dict)
+        ),
+    )
+
+
+def _control_event_signature(event: dict[str, Any]) -> str:
+    payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+    return str(payload.get("control_id") or event.get("event_id") or "")
 
 
 def _send_error(handler: Any, message: str, *, status_code: int) -> None:

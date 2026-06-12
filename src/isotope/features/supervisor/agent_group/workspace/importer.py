@@ -92,6 +92,15 @@ def import_member_replies(
         if not text:
             continue
         event_index = int(event.get("event_index") or 0)
+        if _reply_already_imported(
+            store=store,
+            workspace=workspace,
+            channel_id=channel_id,
+            member=member,
+            session_id=session_id,
+            event_index=event_index,
+        ):
+            continue
         store.publish_message(
             workspace_id=workspace.workspace_id,
             conversation_type="channel",
@@ -202,6 +211,41 @@ def _update_member_import_index(
             LAST_IMPORTED_EVENT_INDEX: last_imported_event_index,
         },
     )
+
+
+def _reply_already_imported(
+    *,
+    store: AgentWorkspaceStore,
+    workspace: AgentWorkspace,
+    channel_id: str,
+    member: ChannelMembership,
+    session_id: str,
+    event_index: int,
+) -> bool:
+    for message in store.list_messages(
+        workspace.workspace_id,
+        "channel",
+        channel_id,
+        limit=1000,
+    ):
+        if (
+            message.message_type != "member_observation"
+            or message.from_actor != member.member_id
+        ):
+            continue
+        payload = message.payload
+        transcript_ref = payload.get("transcript_ref")
+        if not isinstance(transcript_ref, dict):
+            continue
+        if (
+            payload.get("member_id") == member.member_id
+            and payload.get("resume_session_id") == session_id
+            and int(payload.get("event_index") or -1) == event_index
+            and transcript_ref.get("session_id") == session_id
+            and int(transcript_ref.get("event_index") or -1) == event_index
+        ):
+            return True
+    return False
 
 
 def _group_reply_summary(text: str) -> str:

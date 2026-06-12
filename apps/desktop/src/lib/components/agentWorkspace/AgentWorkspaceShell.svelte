@@ -6,6 +6,7 @@
     AgentWorkspaceDetail,
     AgentWorkspaceMember,
     CodexSessionCandidate,
+    WorkspaceConversationMessage,
     WorkspaceConversationKind,
     WorkspaceSendPolicy
   } from '../../contracts/agentWorkspace';
@@ -45,6 +46,8 @@
   let transcript = $state<CodexTranscriptPage | null>(null);
   let transcriptSessionId = $state<string | null>(null);
   let showRaw = $state(false);
+  let disposeWorkspaceWatch: (() => void) | null = null;
+  let watchedWorkspaceId: string | null = null;
 
   const channels = $derived(workspace?.channels.filter((channel) => channel.status !== 'archived') ?? []);
   const directMessages = $derived(
@@ -56,7 +59,10 @@
     ) ?? []
   );
   const currentMessages = $derived(
-    workspace?.messages.filter((message) => message.conversation_id === selectedConversationId) ?? []
+    workspace?.messages.filter(
+      (message) =>
+        message.conversation_id === selectedConversationId && visibleConversationMessages(message)
+    ) ?? []
   );
   const selectedSession = $derived(
     sessionCandidates.find((candidate) => candidate.session_id === selectedSessionId) ?? null
@@ -70,6 +76,9 @@
 
   onMount(() => {
     void initializeWorkspace();
+    return () => {
+      disposeWorkspaceWatch?.();
+    };
   });
 
   async function initializeWorkspace() {
@@ -91,9 +100,8 @@
 
   async function loadWorkspace(workspaceId: string) {
     const detail = await agentWorkspaceClient.loadWorkspace(workspaceId);
-    workspace = detail;
-    syncWorkspaceDraft(detail);
-    selectFallbackConversation(detail);
+    applyWorkspaceDetail(detail);
+    connectWorkspaceStream(detail.workspace.workspace_id);
   }
 
   async function refreshWorkspace() {
@@ -136,6 +144,36 @@
   function syncWorkspaceDraft(detail: AgentWorkspaceDetail) {
     workspaceTitle = detail.workspace.title;
     workspaceRootPath = detail.workspace.root_path;
+  }
+
+  function applyWorkspaceDetail(detail: AgentWorkspaceDetail) {
+    workspace = detail;
+    syncWorkspaceDraft(detail);
+    replaceWorkspaceSummary(detail);
+    selectFallbackConversation(detail);
+  }
+
+  function connectWorkspaceStream(workspaceId: string) {
+    if (watchedWorkspaceId === workspaceId && disposeWorkspaceWatch) return;
+    disposeWorkspaceWatch?.();
+    watchedWorkspaceId = workspaceId;
+    try {
+      disposeWorkspaceWatch = agentWorkspaceClient.watchWorkspace(workspaceId, {
+        onUpdate: (detail: AgentWorkspaceDetail) => {
+          applyWorkspaceDetail(detail);
+        },
+        onError: (error: Error) => {
+          actionError = error.message;
+        }
+      });
+    } catch (error) {
+      disposeWorkspaceWatch = null;
+      actionError = errorMessage(error, '实时更新启动失败');
+    }
+  }
+
+  function visibleConversationMessages(message: WorkspaceConversationMessage) {
+    return message.message_type !== 'sent_to_member' && message.message_type !== 'status';
   }
 
   async function saveWorkspaceSettings() {

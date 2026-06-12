@@ -170,6 +170,49 @@ describe('agentWorkspaceClient', () => {
       'http://localhost:8765/desktop/codex-sessions/session_1/transcript?offset=0&limit=1000&include_raw=true&latest=true'
     );
   });
+
+  it('opens workspace SSE updates and closes the stream', () => {
+    const listeners = new Map<string, (event: MessageEvent) => void>();
+    const close = vi.fn();
+    class FakeEventSource {
+      constructor(public url: string) {}
+
+      addEventListener(name: string, listener: (event: MessageEvent) => void) {
+        listeners.set(name, listener);
+      }
+
+      close() {
+        close();
+      }
+    }
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const updates: string[] = [];
+
+    const dispose = createAgentWorkspaceClient('http://localhost:8765').watchWorkspace(
+      'workspace_rna',
+      {
+        onUpdate: (payload) => updates.push(payload.workspace.workspace_id)
+      }
+    );
+    listeners.get('workspace_update')?.(
+      new MessageEvent('workspace_update', {
+        data: JSON.stringify({
+          status: 'ok',
+          workspace: workspaceSummary(),
+          channels: [],
+          direct_messages: [],
+          members: [],
+          messages: [],
+          imports: [],
+          controls: []
+        })
+      })
+    );
+    dispose();
+
+    expect(updates).toEqual(['workspace_rna']);
+    expect(close).toHaveBeenCalledOnce();
+  });
 });
 
 function workspaceSummary() {
