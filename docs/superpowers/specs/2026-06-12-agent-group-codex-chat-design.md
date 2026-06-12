@@ -56,6 +56,9 @@ Reuse:
 
 - `src/isotope/features/supervisor/agent_group/*` for group, member, message,
   turn contracts, storage, public worker-event messages, and state projection.
+- `AgentConversationMessage` and `arbitrate_agent_conversation_turn(...)` for
+  public group speech selection. Codex members must feed this contract instead
+  of bypassing it with direct public replies.
 - `worker_event_channel` as the public group-message ledger.
 - `FileMemoryStore` for durable group/member/turn and control records.
 - Existing Codex session adoption by session id from
@@ -74,6 +77,22 @@ Do not reuse as-is:
 - Current `AgentGroupRuntime._member_prompt(...)` context clipping. It takes a
   small recent public-message window and is not enough for Codex transcript
   observation.
+- Direct workspace relay from one Codex member's imported reply to another
+  member's `codex resume` process. It was useful as a prototype bridge, but it
+  bypasses the agent-group turn contract and should be removed rather than
+  extended.
+
+Migration stance:
+
+- Reuse valuable storage, transcript, discovery, status, and UI pieces from the
+  current workspace implementation.
+- Do not keep the direct relay path as a compatibility layer that future work
+  depends on. If it remains during migration, it must be isolated as legacy
+  fallback with explicit removal criteria in the implementation plan. New
+  behavior must target the unified agent-group turn runtime.
+- The durable public truth is the core `AgentGroup` ledger plus turn records.
+  Workspace records are the UI/session-control projection around that runtime,
+  not a second conversation runtime.
 
 ## Core Contracts
 
@@ -136,6 +155,38 @@ Policy handling:
 - `draft_only`: never send automatically; only present text for user copy or
   manual approval.
 
+### Codex Group Candidate
+
+A Codex session's normal assistant answer is work output for that session, not
+automatically a public group-chat message. To speak in the public group, the
+Codex adapter must import an explicit candidate:
+
+- `intent`: `respond`, `interrupt`, `internal_note`, or `silent`.
+- `summary`: public candidate text or a short reason for silence/internal note.
+- `priority`: integer priority for arbiter ordering.
+- `state_lock`: optional stable lock string when the candidate touches a
+  mutually exclusive state or workflow.
+- `transcript_ref`: the Codex transcript event range that produced the
+  candidate.
+
+The candidate maps directly to `AgentConversationMessage`. Only candidates
+selected by `arbitrate_agent_conversation_turn(...)` become public group
+messages. `silent` and `internal_note` are turn metadata; they are not displayed
+as empty chat bubbles and do not wake other Codex members.
+
+Codex prompt output should use a small explicit marker block when it wants to
+produce a group candidate:
+
+```text
+GROUP_CHAT_INTENT: respond|interrupt|internal_note|silent
+GROUP_CHAT_SUMMARY: concise public message or reason
+GROUP_CHAT_PRIORITY: 0-100
+GROUP_CHAT_STATE_LOCK: optional
+```
+
+If the marker is absent, the importer treats the Codex answer as normal session
+work/status only and does not create a public group candidate.
+
 ### Runtime Control
 
 Use three separate control intents:
@@ -194,15 +245,19 @@ Create or open a group:
 
 Run coordination:
 
-1. Load group state, member statuses, private chat, public group messages, and
-   transcript refs.
-2. Build a coordination-model prompt that describes available members, send
-   policies, recent public/private context, and transcript refs.
-3. Let the model choose a `SendDecision`.
-4. Apply policy gates.
-5. Emit SSE events for private replies, group messages, drafts, sends,
-   transcript updates, and runtime-control results.
-6. Persist low-sensitive public messages and private chat messages separately.
+1. Persist every public channel input as a core `AgentGroupMessage`.
+2. Build a turn input from recent public group messages, pending Codex member
+   inbox items, member statuses, private chat refs, and transcript refs.
+3. Ask eligible internal agents and Codex adapters for
+   `AgentConversationMessage` candidates.
+4. Pass all candidates through `arbitrate_agent_conversation_turn(...)`.
+5. Persist the `AgentTurn` with selected, queued, dropped, and silent/internal
+   candidates.
+6. Persist selected visible messages to the public group stream.
+7. Deliver selected visible messages to other Codex members as pending inbox
+   items, subject to send policy and member status.
+8. Emit SSE events for turn metadata, private replies, group messages, drafts,
+   sends, transcript updates, and runtime-control results.
 
 Send to Codex:
 
@@ -212,6 +267,14 @@ Send to Codex:
    `codex resume <session-id>` path when available.
 3. If no reliable send path exists, create a draft with explicit reason rather
    than pretending the send succeeded.
+4. If the member is already `running`, do not start another `codex resume`
+   process. Store the delivery as a pending member inbox item.
+5. When a member returns to `idle`, drain its pending inbox in order and send a
+   single compact prompt containing the unprocessed group messages and
+   transcript references.
+6. `queue` means pending inbox delivery. `interrupt` may start an interrupting
+   send only when the member/run backend has a supported interruption path;
+   otherwise it is recorded as a blocked or draft control action.
 
 Workspace runtime bridge:
 
@@ -219,13 +282,16 @@ Workspace runtime bridge:
    The workspace owns UI, Codex session membership, transcript inspection, and
    runtime controls; the core AgentGroup owns the public group-message ledger.
 2. Sync workspace Codex members into the core AgentGroup member set by member id.
-3. Persist user channel messages as core runtime `task` messages and imported
-   Codex replies as core runtime `reply` messages.
-4. Build Codex resume prompts from the core AgentGroup recent-message ledger,
-   so every member can see recent user and peer Codex messages.
-5. Relay newly imported Codex member replies to the other connected Codex
-   sessions according to send policy. Mark relay sends with the source workspace
-   message id so refresh/SSE polling cannot resend the same peer message.
+3. Persist user channel messages as core runtime `task` messages.
+4. Import explicit Codex group candidates from transcript markers and pass them
+   into the core turn arbiter.
+5. Persist only arbiter-selected visible candidates as core runtime `reply` or
+   `interrupt` messages.
+6. Deliver selected visible messages to other connected Codex sessions through
+   pending inbox records, not immediate recursive relay.
+7. Build Codex resume prompts from unread inbox items plus referenced recent
+   core group messages. Do not repeat the same new message both as a trigger
+   and inside a duplicated recent-history block.
 
 Import Codex replies:
 
@@ -233,16 +299,22 @@ Import Codex replies:
    transcript tail as the import baseline.
 2. On workspace refresh or workspace SSE polling, read each connected member's
    new terminal transcript events after that baseline.
-3. Import assistant natural-language messages as public `member_observation`
-   messages whose `from_actor` is the Codex member id, not `supervisor`.
-4. Keep raw tool calls and tool output out of the group stream by default.
+3. Keep normal assistant natural-language messages in the member transcript
+   view. They are not public group messages by default.
+4. Parse explicit `GROUP_CHAT_*` marker blocks as Codex group candidates and
+   store transcript refs with those candidates.
+5. Convert explicit candidates into `AgentConversationMessage` objects and let
+   the core arbiter decide public visibility.
+6. Keep raw tool calls and tool output out of the group stream by default.
    Store transcript references in message payloads so the UI can expand to the
    relevant terminal slice.
-5. If a member has no import baseline yet, set it to the current transcript tail
+7. If a member has no import baseline yet, set it to the current transcript tail
    and do not backfill old pre-channel history into the group.
-6. Treat `(member_id, resume_session_id, transcript event_index)` as the import
-   idempotency key so manual refreshes, POST refreshes, and SSE refreshes cannot
-   duplicate the same Codex reply in the group stream.
+8. Treat `(member_id, resume_session_id, transcript event_index, candidate
+   intent)` as the candidate import idempotency key so manual refreshes, POST
+   refreshes, and SSE refreshes cannot duplicate the same candidate.
+9. Empty assistant output can close a run and return the member to `idle`, but
+   it must not be interpreted as the semantic representation of group silence.
 
 Stop:
 
@@ -299,8 +371,12 @@ runtime controls as distinct concepts.
   state instead of disappearing.
 - If a member is terminated while a send is queued, queued sends are cancelled
   or moved back to draft state.
+- If a member is running when a public group message is selected, the message is
+  queued in that member's inbox instead of launching another `codex resume`.
 - If the model requests an action blocked by policy, emit a visible blocked
   draft instead of silently dropping the action.
+- If a Codex response lacks a `GROUP_CHAT_*` marker, it remains visible in the
+  transcript inspector but does not enter the public group stream.
 - If the browser reconnects, state must be reconstructable from persisted group
   messages, private chat, member metadata, and control events.
 
@@ -314,6 +390,15 @@ Backend tests:
   truncation.
 - Coordination action policy converts `auto`, `confirm`, and `draft_only` into
   the correct send or draft result.
+- Running Codex members receive selected group messages as pending inbox items
+  instead of a new `codex resume` process.
+- Idle Codex members drain pending inbox items in order.
+- Codex transcript import without a `GROUP_CHAT_*` marker does not create a
+  public group message.
+- `GROUP_CHAT_INTENT: silent` records a silent candidate/turn result and does
+  not produce an empty public message.
+- `GROUP_CHAT_INTENT: respond` becomes an `AgentConversationMessage` candidate
+  and only appears publicly after arbiter selection.
 - `terminate` marks members terminated and prevents later auto-send.
 - `Stop current run` records a runtime-control event.
 
@@ -346,18 +431,25 @@ gates and findings.
 
 ## Implementation Slices
 
-1. Backend contracts and transcript reader:
-   connected-member contract, transcript paging, unit tests.
-2. Group runtime extension:
-   private chat channel, send decision contract, policy handling, terminate
-   state.
-3. Desktop API and SSE:
-   route handlers, stream events, snapshot projection.
-4. Frontend page:
-   navigation entry, member list, group stream, private chat, transcript panel,
-   queue/interrupt/stop controls.
-5. Product smoke:
-   fake two-session scenario, then a local real Codex session read-only smoke.
+1. Runtime migration contracts:
+   member inbox records, Codex group candidate parser, candidate idempotency,
+   and tests proving direct relay is no longer the new path.
+2. Arbiter integration:
+   convert imported Codex candidates into `AgentConversationMessage`, persist
+   `AgentTurn`, and publish only selected visible messages.
+3. Delivery drain:
+   queue selected visible messages for running members, drain pending inbox for
+   idle members, and preserve `confirm` / `draft_only` gates.
+4. Workspace API and SSE projection:
+   expose inbox counts, turn results, candidate reasons, and member status
+   without reintroducing supervisor delivery messages as public chat content.
+5. Frontend alignment:
+   show selected group messages, silent/internal turn metadata, pending inbox
+   state, private chat, transcript panel, queue/interrupt/stop controls.
+6. Product smoke:
+   fake two-session scenario, then a local real Codex session smoke where one
+   Codex continues work without public speech and another emits an explicit
+   public group candidate.
 
 ## References
 
