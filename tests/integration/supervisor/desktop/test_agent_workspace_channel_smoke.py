@@ -1,0 +1,108 @@
+from __future__ import annotations
+
+import http.client
+import json
+import threading
+
+from isotope.features.supervisor.web import create_dashboard_server
+
+
+def test_agent_workspace_http_creates_channel_adds_member_and_stops(tmp_path):
+    server = create_dashboard_server(
+        codex_home=tmp_path / ".codex",
+        host="127.0.0.1",
+        port=0,
+        limit=5,
+        stale_after_seconds=999999,
+        active_within_seconds=180,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    try:
+        workspaces = _request_json(host, port, "GET", "/desktop/agent-workspaces")
+        workspace_id = workspaces["workspaces"][0]["workspace_id"]
+        channel = _request_json(
+            host,
+            port,
+            "POST",
+            f"/desktop/agent-workspaces/{workspace_id}/channels",
+            {"name": "rna-research", "topic": "Research direction"},
+        )
+        channel_id = channel["channel"]["channel_id"]
+        member = _request_json(
+            host,
+            port,
+            "POST",
+            f"/desktop/agent-workspaces/{workspace_id}/channels/{channel_id}/members",
+            {
+                "display_name": "Research Codex",
+                "role": "Explore RNA strategy.",
+                "goal": "Find research directions.",
+                "send_policy": "confirm",
+                "resume_session_id": "session_research",
+            },
+        )
+        updated = _request_json(
+            host,
+            port,
+            "POST",
+            f"/desktop/agent-workspaces/{workspace_id}/channels/{channel_id}/members/"
+            f"{member['member']['member_id']}",
+            {"action": "update", "send_policy": "draft_only"},
+        )
+        message = _request_json(
+            host,
+            port,
+            "POST",
+            f"/desktop/agent-workspaces/{workspace_id}/conversations/{channel_id}/chat",
+            {"message": "sync lanes", "mode": "queue"},
+        )
+        stop = _request_json(
+            host,
+            port,
+            "POST",
+            f"/desktop/agent-workspaces/{workspace_id}/conversations/{channel_id}/control",
+            {
+                "intent": "terminate",
+                "target": "member",
+                "target_member_id": member["member"]["member_id"],
+                "reason": "User pressed member Stop.",
+            },
+        )
+        removed = _request_json(
+            host,
+            port,
+            "POST",
+            f"/desktop/agent-workspaces/{workspace_id}/channels/{channel_id}/members/"
+            f"{member['member']['member_id']}",
+            {"action": "remove"},
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert channel["channel"]["name"] == "rna-research"
+    assert member["member"]["send_policy"] == "confirm"
+    assert updated["member"]["send_policy"] == "draft_only"
+    assert message["message"]["summary"] == "sync lanes"
+    assert stop["control"]["target_member_id"] == member["member"]["member_id"]
+    assert removed["member"]["status"] == "archived"
+
+
+def _request_json(
+    host: str,
+    port: int,
+    method: str,
+    path: str,
+    payload: dict | None = None,
+) -> dict:
+    body = json.dumps(payload).encode("utf-8") if payload is not None else None
+    headers = {"content-type": "application/json"} if payload is not None else {}
+    conn = http.client.HTTPConnection(host, port, timeout=5)
+    conn.request(method, path, body=body, headers=headers)
+    response = conn.getresponse()
+    raw = response.read().decode("utf-8")
+    assert response.status < 400, raw
+    return json.loads(raw)

@@ -66,6 +66,10 @@ from .routes.agent_groups import (
     parse_agent_group_control_payload,
     parse_codex_transcript_query,
 )
+from .routes.agent_workspaces_dispatch import (
+    handle_agent_workspace_get,
+    handle_agent_workspace_post,
+)
 from .routes.desktop_artifacts import (
     desktop_screen_artifact_content_id,
     screen_screenshot_artifact_payload,
@@ -297,7 +301,8 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self) -> None:
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
         if path in {"/", "/index.html"}:
             self._send_text(dashboard_page_html(), content_type="text/html; charset=utf-8")
             return
@@ -322,6 +327,13 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/desktop/agent-groups":
             self._send_json(list_agent_groups_payload(self.server.codex_home))
             return
+        if handle_agent_workspace_get(
+            self,
+            path=path,
+            query=parsed.query,
+            root_path=Path.cwd(),
+        ):
+            return
         group_id = agent_group_id_from_path(path)
         if group_id is not None:
             try:
@@ -343,7 +355,7 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         transcript_session_id = codex_session_id_from_transcript_path(path)
         if transcript_session_id is not None:
             try:
-                query = parse_codex_transcript_query(urlparse(self.path).query)
+                query = parse_codex_transcript_query(parsed.query)
                 payload = transcript_payload(
                     self.server.codex_home,
                     session_id=transcript_session_id,
@@ -380,6 +392,8 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/desktop/chat":
             self._send_desktop_chat()
+            return
+        if handle_agent_workspace_post(self, path=path):
             return
         chat_group_id = agent_group_child_id_from_path(path, suffix="chat")
         if chat_group_id is not None:
