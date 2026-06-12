@@ -1,5 +1,6 @@
 import { createAgentClient } from './agentClient';
 import { createAgentGroupClient } from './agentGroupClient';
+import { createAgentWorkspaceClient } from './agentWorkspaceClient';
 
 export function resolveDesktopApiBaseUrl(): string | null {
   const configured = import.meta.env.VITE_ISOTOPE_DESKTOP_API_BASE as string | undefined;
@@ -14,7 +15,8 @@ export function createIsotopeClient(baseUrl: string | null = resolveDesktopApiBa
     apiBaseUrl,
     hasRealApiBaseUrl: apiBaseUrl !== null,
     agentClient: createAgentClient(apiBaseUrl),
-    agentGroupClient: createAgentGroupClient(apiBaseUrl)
+    agentGroupClient: createAgentGroupClient(apiBaseUrl),
+    agentWorkspaceClient: createAgentWorkspaceClient(apiBaseUrl)
   };
 }
 

@@ -1,0 +1,150 @@
+<script lang="ts">
+  import type { CodexTranscriptPage } from '../../contracts/agentGroup';
+  import type {
+    AgentWorkspaceMember,
+    CodexSessionCandidate,
+    WorkspaceConversationKind,
+    WorkspaceSendPolicy
+  } from '../../contracts/agentWorkspace';
+  import CodexTranscriptPanel from '../agentGroup/CodexTranscriptPanel.svelte';
+  import CodexSessionPicker from './CodexSessionPicker.svelte';
+
+  let {
+    selectedConversationKind,
+    conversationTitle,
+    currentMembers = [],
+    sessionScope = $bindable<'cwd' | 'all'>('cwd'),
+    sessionCandidates = [],
+    selectedSessionId = $bindable<string | null>(null),
+    selectedSession = null,
+    isLoadingSessions = false,
+    memberDisplayName = $bindable(''),
+    memberRole = $bindable(''),
+    memberGoal = $bindable(''),
+    memberSendPolicy = $bindable<WorkspaceSendPolicy>('confirm'),
+    transcript = null,
+    showRaw = false,
+    onLoadCodexSessions,
+    onSelectSession,
+    onAddMember,
+    onUpdateMember,
+    onRemoveMember,
+    onStopMember,
+    onLoadTranscript,
+    onToggleTranscriptRaw
+  } = $props<{
+    selectedConversationKind: WorkspaceConversationKind;
+    conversationTitle: string;
+    currentMembers?: AgentWorkspaceMember[];
+    sessionScope: 'cwd' | 'all';
+    sessionCandidates?: CodexSessionCandidate[];
+    selectedSessionId: string | null;
+    selectedSession?: CodexSessionCandidate | null;
+    isLoadingSessions?: boolean;
+    memberDisplayName: string;
+    memberRole: string;
+    memberGoal: string;
+    memberSendPolicy: WorkspaceSendPolicy;
+    transcript?: CodexTranscriptPage | null;
+    showRaw?: boolean;
+    onLoadCodexSessions: (scope: 'cwd' | 'all') => void;
+    onSelectSession: (candidate: CodexSessionCandidate) => void;
+    onAddMember: () => void;
+    onUpdateMember: (member: AgentWorkspaceMember, sendPolicy: WorkspaceSendPolicy) => void;
+    onRemoveMember: (member: AgentWorkspaceMember) => void;
+    onStopMember: (member: AgentWorkspaceMember) => void;
+    onLoadTranscript: (member: AgentWorkspaceMember) => void;
+    onToggleTranscriptRaw: () => void;
+  }>();
+</script>
+
+<aside class="hidden w-[23rem] shrink-0 overflow-y-auto border-l border-isotope-line bg-[#f6f7f9] p-4 xl:block">
+  <div class="mb-4 flex items-center justify-between gap-3">
+    <div>
+      <div class="text-sm font-semibold">Channel settings</div>
+      <div class="mt-1 text-xs text-isotope-muted">{conversationTitle}</div>
+    </div>
+    <button
+      class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+      type="button"
+      onclick={() => onLoadCodexSessions(sessionScope)}
+    >
+      Sessions
+    </button>
+  </div>
+
+  {#if selectedConversationKind !== 'channel'}
+    <div class="border border-isotope-line bg-white px-3 py-3 text-sm text-isotope-muted">
+      Private chat has no channel members.
+    </div>
+  {:else}
+    <div class="space-y-3">
+      {#each currentMembers as member (member.member_id)}
+        <article class="border border-isotope-line bg-white px-3 py-3">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="truncate text-sm font-semibold">{member.display_name}</div>
+              <div class="mt-1 truncate text-xs text-isotope-muted">{member.resume_session_id}</div>
+            </div>
+            <span class="shrink-0 border border-isotope-line px-2 py-0.5 text-[11px] text-isotope-muted">
+              {member.status}
+            </span>
+          </div>
+          <div class="mt-3 grid grid-cols-[1fr_auto_auto_auto] gap-2">
+            <select
+              class="min-w-0 border border-isotope-line bg-white px-2 py-1.5 text-xs"
+              value={member.send_policy}
+              onchange={(event) =>
+                onUpdateMember(member, (event.currentTarget as HTMLSelectElement).value as WorkspaceSendPolicy)}
+            >
+              <option value="auto">auto</option>
+              <option value="confirm">confirm</option>
+              <option value="draft_only">draft_only</option>
+            </select>
+            <button
+              class="border border-isotope-line bg-white px-2 py-1.5 text-xs font-semibold text-isotope-muted"
+              type="button"
+              disabled={!member.resume_session_id}
+              onclick={() => onLoadTranscript(member)}
+            >
+              Transcript
+            </button>
+            <button
+              class="border border-isotope-error/40 bg-white px-2 py-1.5 text-xs font-semibold text-isotope-error"
+              type="button"
+              onclick={() => onStopMember(member)}
+            >
+              Stop
+            </button>
+            <button
+              class="border border-isotope-line bg-white px-2 py-1.5 text-xs font-semibold text-isotope-muted"
+              type="button"
+              onclick={() => onRemoveMember(member)}
+            >
+              Remove
+            </button>
+          </div>
+        </article>
+      {/each}
+    </div>
+
+    <CodexSessionPicker
+      bind:sessionScope
+      {sessionCandidates}
+      bind:selectedSessionId
+      {selectedSession}
+      {isLoadingSessions}
+      bind:memberDisplayName
+      bind:memberRole
+      bind:memberGoal
+      bind:memberSendPolicy
+      {onLoadCodexSessions}
+      {onSelectSession}
+      {onAddMember}
+    />
+
+    <div class="mt-5">
+      <CodexTranscriptPanel {transcript} {showRaw} onToggleRaw={() => onToggleTranscriptRaw()} />
+    </div>
+  {/if}
+</aside>
