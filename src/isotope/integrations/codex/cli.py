@@ -20,6 +20,10 @@ from .task import (
     CodexTaskRequest,
     CodexTaskResult,
 )
+from .runtime import (
+    codex_runtime_summary_artifact_payload,
+    project_codex_jsonl_stdout,
+)
 from .cli_supervisor import (
     CodexSupervisorCliConfig,
     build_supervisor_codex_option_args,
@@ -284,19 +288,36 @@ class CodexCliBackend:
             "argv": self._argv(),
             "stdin_prompt_bytes": len(request.task_request["prompt"].encode("utf-8")),
         }
+        projection = project_codex_jsonl_stdout(
+            stdout=stdout,
+            stderr=stderr,
+            status=status,
+            reason_code=reason_code,
+        )
+        summary_payload = codex_runtime_summary_artifact_payload(projection)
+        summary_content = json.dumps(summary_payload, ensure_ascii=False)
+        output_artifacts = [
+            CodexTaskOutputArtifact(
+                artifact_type="codex_task_transcript",
+                summary="codex cli transcript captured",
+                content=json.dumps(transcript, sort_keys=True),
+            )
+        ]
+        if _captures_summary(request.artifact_policy):
+            output_artifacts.append(
+                CodexTaskOutputArtifact(
+                    artifact_type="codex_task_summary",
+                    summary="codex cli runtime summary captured",
+                    content=summary_content,
+                )
+            )
         return CodexTaskResult(
             adapter_session_id=f"codex_cli:{request.execution_id}",
             status=status,
             started_at=started_at,
             finished_at=finished_at,
-            summary=_summary_for(status),
-            output_artifacts=[
-                CodexTaskOutputArtifact(
-                    artifact_type="codex_task_transcript",
-                    summary="codex cli transcript captured",
-                    content=json.dumps(transcript, sort_keys=True),
-                )
-            ],
+            summary=summary_content,
+            output_artifacts=output_artifacts,
             reason_code=reason_code,
             retryable=retryable,
             resource_usage={
@@ -363,12 +384,9 @@ def _timeout_text(value: Any) -> str:
     return str(value)
 
 
-def _summary_for(status: str) -> str:
-    if status == "completed":
-        return "codex cli completed"
-    if status == "timeout":
-        return "codex cli timed out"
-    return "codex cli failed"
+def _captures_summary(artifact_policy: dict[str, Any]) -> bool:
+    capture = artifact_policy.get("capture", [])
+    return isinstance(capture, list) and "summary" in capture
 
 
 def _duration_ms(started_monotonic: float) -> int:

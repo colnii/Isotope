@@ -93,8 +93,17 @@ def test_codex_cli_backend_invokes_codex_exec_with_stdin_and_isotope_limits(tmp_
     monkeypatch.setenv("OPENAI_API_KEY", "SECRET_ENV_SHOULD_NOT_BE_INHERITED")
     workspace_root = tmp_path / "workspace"
     codex_home = tmp_path / "codex-home"
+    stdout = (
+        json.dumps(
+            {
+                "type": "item.completed",
+                "item": {"type": "agent_message", "text": "Codex answer"},
+            }
+        )
+        + "\n"
+    )
     runner = RecordingProcessRunner(
-        StubCompletedProcess(stdout='{"event":"task_complete"}\n', stderr="diagnostic\n")
+        StubCompletedProcess(stdout=stdout, stderr="diagnostic\n")
     )
     backend = codex_cli.CodexCliBackend(
         codex_cli.CodexCliBackendConfig(
@@ -110,14 +119,20 @@ def test_codex_cli_backend_invokes_codex_exec_with_stdin_and_isotope_limits(tmp_
 
     assert result.status == "completed"
     assert result.reason_code == "codex_cli_completed"
-    assert len(result.output_artifacts) == 1
+    assert result.summary.startswith('{"kind": "codex_runtime_summary"')
+    assert "Codex answer" in result.summary
+    assert len(result.output_artifacts) == 2
     transcript = json.loads(result.output_artifacts[0].content)
     assert transcript["exit_code"] == 0
-    assert transcript["stdout"] == '{"event":"task_complete"}\n'
+    assert transcript["stdout"] == stdout
     assert transcript["stderr"] == "diagnostic\n"
     assert transcript["shell"] is False
+    assert result.output_artifacts[1].artifact_type == "codex_task_summary"
+    summary_artifact = json.loads(result.output_artifacts[1].content)
+    assert summary_artifact["summary"]["last_agent_message"] == "Codex answer"
     assert "Inspect the repo" not in result.summary
     assert "Inspect the repo" not in result.output_artifacts[0].content
+    assert "Inspect the repo" not in result.output_artifacts[1].content
 
     call = runner.calls[0]
     argv = call["argv"]
@@ -148,6 +163,36 @@ def test_codex_cli_backend_invokes_codex_exec_with_stdin_and_isotope_limits(tmp_
     assert kwargs["env"]["CODEX_HOME"] == str(codex_home.resolve())
     assert kwargs["env"]["LANG"] == "C.UTF-8"
     assert "OPENAI_API_KEY" not in kwargs["env"]
+
+
+def test_codex_cli_backend_omits_summary_artifact_when_policy_excludes_summary(tmp_path):
+    runner = RecordingProcessRunner(
+        StubCompletedProcess(
+            stdout=json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {"type": "agent_message", "text": "Codex answer"},
+                }
+            )
+            + "\n"
+        )
+    )
+    backend = codex_cli.CodexCliBackend(
+        codex_cli.CodexCliBackendConfig(
+            executable="/opt/codex/bin/codex",
+            workspace_root=str(tmp_path),
+        ),
+        process_runner=runner,
+    )
+    request = _request(tmp_path)
+    request.artifact_policy["capture"] = ["transcript"]
+
+    result = backend.run(request)
+
+    assert [artifact.artifact_type for artifact in result.output_artifacts] == [
+        "codex_task_transcript"
+    ]
+    assert "Codex answer" in result.summary
 
 
 def test_supervisor_launch_exec_argv_builder_matches_managed_registry_shape(tmp_path):
