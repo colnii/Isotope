@@ -8,6 +8,7 @@ from .clients import (
     OpenAICompatibleChatProvider,
 )
 from .codex import CodexCliLLMProvider
+from .codex_api import CodexApiLLMProvider
 from .flow import submit_llm_chat_turn, submit_llm_tool_call
 from .factory import create_chat_provider_from_pool_entry
 from .resolution import resolve_llm_chat_provider, resolve_llm_tool_call_provider
@@ -33,6 +34,7 @@ from .types import (
 __all__ = [
     "DeepSeekChatProvider",
     "DeepSeekToolCallProvider",
+    "CodexApiLLMProvider",
     "CodexCliLLMProvider",
     "LLMChatTurnResponse",
     "LLMFinalAnswerResponse",

@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from ..pool import PoolEntry
 from .clients import DeepSeekChatProvider, OpenAICompatibleChatProvider
 from .codex import CODEX_DEFAULT_MODEL_LABEL, CodexCliLLMProvider
+from .codex_api import CodexApiLLMProvider
 from .parsing import _normalized_provider_name
 from .types import StreamTransport, Transport
 
@@ -37,6 +38,16 @@ def create_chat_provider_from_pool_entry(
             executable_resolver=codex_executable_resolver,
             skip_git_repo_check=_option_bool(entry, "skip_git_repo_check", default=True),
             inherit_proxy_env=_option_bool(entry, "inherit_proxy_env", default=False),
+        )
+    if _normalized_provider_name(entry.provider) == "codex-api":
+        return CodexApiLLMProvider(
+            workspace_root=_option_string(entry, "workspace_root"),
+            executable=_option_string(entry, "executable") or "codex",
+            codex_home=_option_string(entry, "codex_home"),
+            model=None if entry.model == CODEX_DEFAULT_MODEL_LABEL else entry.model,
+            profile=_option_string(entry, "profile"),
+            timeout=timeout,
+            executable_resolver=codex_executable_resolver,
         )
     if _is_deepseek_entry(entry):
         return DeepSeekChatProvider(

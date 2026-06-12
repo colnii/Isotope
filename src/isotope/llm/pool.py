@@ -11,6 +11,7 @@ from typing import Any
 
 DEFAULT_LLM_MAX_TOKENS = 512
 CODEX_POOL_BASE_URL = "codex://cli"
+CODEX_API_POOL_BASE_URL = "codex://app-server"
 
 
 @dataclass(frozen=True)
@@ -119,6 +120,18 @@ def _append_entries_from_toml_item(
                 provider="codex",
                 api_key="",
                 base_url=CODEX_POOL_BASE_URL,
+                model=_optional_toml_str(item, "model") or "codex-default",
+                max_tokens=max_tokens_val,
+                options=_codex_options_from_toml_item(item),
+            )
+        )
+        return
+    if provider.strip().lower() == "codex-api":
+        entries.append(
+            PoolEntry(
+                provider="codex-api",
+                api_key="",
+                base_url=CODEX_API_POOL_BASE_URL,
                 model=_optional_toml_str(item, "model") or "codex-default",
                 max_tokens=max_tokens_val,
                 options=_codex_options_from_toml_item(item),
