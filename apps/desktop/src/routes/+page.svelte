@@ -74,14 +74,14 @@
           type="button"
           onclick={() => (desktopMode = 'chat')}
         >
-          Chat
+          主管聊天
         </button>
         <button
           class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted"
           type="button"
           onclick={() => (desktopMode = 'agent-workspace')}
         >
-          Agent Group
+          智能体群聊
         </button>
       </div>
       {#if desktopMode === 'agent-workspace'}
@@ -113,14 +113,14 @@
           type="button"
           onclick={() => (desktopMode = 'chat')}
         >
-          Chat
+          主管聊天
         </button>
         <button
           class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted"
           type="button"
           onclick={() => (desktopMode = 'agent-workspace')}
         >
-          Agent Group
+          智能体群聊
         </button>
       </div>
       {#if desktopMode === 'agent-workspace'}

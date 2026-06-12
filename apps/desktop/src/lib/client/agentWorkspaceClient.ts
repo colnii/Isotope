@@ -208,7 +208,7 @@ function normalizeBaseUrl(baseUrl: string | null): string | null {
 }
 
 function requiredBase(baseUrl: string | null): string {
-  if (!baseUrl) throw new Error('Agent Workspace 需要配置后端 URL');
+  if (!baseUrl) throw new Error('智能体工作区需要配置后端 URL');
   return baseUrl;
 }
 
@@ -218,7 +218,7 @@ async function responseErrorMessage(response: Response): Promise<string> {
     const message = payload?.error?.message;
     if (typeof message === 'string' && message) return message;
   } catch {
-    return `Agent Workspace 请求失败：HTTP ${response.status}`;
+    return `智能体工作区请求失败：HTTP ${response.status}`;
   }
-  return `Agent Workspace 请求失败：HTTP ${response.status}`;
+  return `智能体工作区请求失败：HTTP ${response.status}`;
 }

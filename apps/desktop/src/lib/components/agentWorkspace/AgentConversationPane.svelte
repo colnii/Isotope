@@ -28,7 +28,7 @@
         {selectedConversationKind === 'channel' ? '# ' : ''}{conversationTitle}
       </div>
       <div class="mt-1 truncate text-xs text-isotope-muted">
-        {selectedConversationKind === 'channel' ? `${currentMembersCount} members` : 'Private AI chat'}
+        {selectedConversationKind === 'channel' ? `${currentMembersCount} 个成员` : '私聊'}
       </div>
     </div>
     <button
@@ -36,18 +36,18 @@
       type="button"
       onclick={() => onRefresh()}
     >
-      Refresh
+      刷新
     </button>
   </header>
 
   <div class="min-h-0 flex-1 overflow-y-auto bg-[#fbfcfd] px-5 py-4">
     {#if isLoading}
       <div class="border border-isotope-line bg-white px-3 py-2 text-sm text-isotope-muted">
-        Loading Agent Workspace
+        正在加载智能体工作区
       </div>
     {:else if currentMessages.length === 0}
       <div class="border border-dashed border-isotope-line bg-white px-3 py-3 text-sm text-isotope-muted">
-        No messages yet
+        暂无消息
       </div>
     {:else}
       <div class="space-y-3">

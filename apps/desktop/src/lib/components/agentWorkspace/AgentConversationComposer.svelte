@@ -34,7 +34,7 @@
     <input
       class="min-w-0 flex-1 border border-isotope-line px-3 py-2 text-sm"
       bind:value={composerText}
-      placeholder={selectedConversationKind === 'channel' ? 'Message current group' : 'Message coordinator AI'}
+      placeholder={selectedConversationKind === 'channel' ? '发送到当前群聊' : '发送给协调 AI'}
       disabled={!selectedConversationId || isSending}
     />
     {#if currentRunIsActive && composerIsEmpty}
@@ -43,7 +43,7 @@
         type="button"
         onclick={() => onStopCurrentRun()}
       >
-        Stop
+        停止
       </button>
     {:else if currentRunIsActive}
       <button
@@ -52,7 +52,7 @@
         disabled={isSending}
         onclick={() => onSendMessage('queue')}
       >
-        Queue
+        排队
       </button>
       <button
         class="border border-isotope-running bg-isotope-running px-4 py-2 text-sm font-semibold text-white"
@@ -60,7 +60,7 @@
         disabled={isSending}
         onclick={() => onSendMessage('interrupt')}
       >
-        Interrupt
+        打断
       </button>
     {:else}
       <button
@@ -69,7 +69,7 @@
         disabled={!composerText.trim() || isSending}
         onclick={() => onSendMessage('queue')}
       >
-        Send
+        发送
       </button>
     {/if}
   </div>

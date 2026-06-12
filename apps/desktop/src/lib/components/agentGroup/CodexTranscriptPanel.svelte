@@ -8,10 +8,10 @@
   }>();
 </script>
 
-<section class="border-t border-isotope-line bg-white px-4 py-3" aria-label="Codex transcript">
+<section class="border-t border-isotope-line bg-white px-4 py-3" aria-label="Codex 会话记录">
   <div class="flex items-center justify-between gap-3">
     <div>
-      <div class="text-xs font-semibold uppercase text-isotope-muted">Codex transcript</div>
+      <div class="text-xs font-semibold uppercase text-isotope-muted">Codex 会话记录</div>
       <div class="mt-1 text-sm font-semibold text-isotope-text">
         {transcript?.session_id ?? '未选择会话'}
       </div>
@@ -21,12 +21,12 @@
       type="button"
       onclick={() => onToggleRaw?.()}
     >
-      {showRaw ? 'Readable' : 'Raw'}
+      {showRaw ? '可读视图' : '原始数据'}
     </button>
   </div>
   <div class="mt-3 max-h-80 overflow-auto border border-isotope-line bg-isotope-panel">
     {#if !transcript}
-      <p class="px-3 py-2 text-sm text-isotope-muted">选择一个 Codex 成员查看 transcript。</p>
+      <p class="px-3 py-2 text-sm text-isotope-muted">选择一个 Codex 成员查看会话记录。</p>
     {:else}
       {#each transcript.events as event (event.event_index)}
         <article class="border-b border-isotope-line px-3 py-2">

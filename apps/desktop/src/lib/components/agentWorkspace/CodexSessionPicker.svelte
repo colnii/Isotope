@@ -32,7 +32,7 @@
 
 <section class="mt-5 border-t border-isotope-line pt-4">
   <div class="mb-3 flex items-center justify-between gap-2">
-    <div class="text-sm font-semibold">Codex sessions</div>
+    <div class="text-sm font-semibold">Codex 会话列表</div>
     <div class="flex gap-1">
       <button
         class={`border px-2 py-1 text-xs font-semibold ${
@@ -46,7 +46,7 @@
           onLoadCodexSessions(sessionScope);
         }}
       >
-        cwd
+        当前目录
       </button>
       <button
         class={`border px-2 py-1 text-xs font-semibold ${
@@ -60,14 +60,14 @@
           onLoadCodexSessions(sessionScope);
         }}
       >
-        all
+        全部
       </button>
     </div>
   </div>
 
   <div class="max-h-44 space-y-2 overflow-y-auto">
     {#if isLoadingSessions}
-      <div class="border border-isotope-line bg-white px-3 py-2 text-xs text-isotope-muted">Loading</div>
+      <div class="border border-isotope-line bg-white px-3 py-2 text-xs text-isotope-muted">加载中</div>
     {:else}
       {#each sessionCandidates as candidate (candidate.session_id)}
         <button
@@ -90,22 +90,22 @@
     <input
       class="w-full border border-isotope-line bg-white px-2 py-1.5 text-xs"
       bind:value={memberDisplayName}
-      placeholder="Display name"
+      placeholder="显示名称"
     />
     <input
       class="w-full border border-isotope-line bg-white px-2 py-1.5 text-xs"
       bind:value={memberRole}
-      placeholder="Role"
+      placeholder="角色"
     />
     <input
       class="w-full border border-isotope-line bg-white px-2 py-1.5 text-xs"
       bind:value={memberGoal}
-      placeholder="Goal"
+      placeholder="目标"
     />
     <select class="w-full border border-isotope-line bg-white px-2 py-1.5 text-xs" bind:value={memberSendPolicy}>
-      <option value="auto">auto</option>
-      <option value="confirm">confirm</option>
-      <option value="draft_only">draft_only</option>
+      <option value="auto">自动发送</option>
+      <option value="confirm">发送前确认</option>
+      <option value="draft_only">只写草稿</option>
     </select>
     <button
       class="w-full border border-isotope-running bg-isotope-running px-3 py-2 text-xs font-semibold text-white"
@@ -113,7 +113,7 @@
       disabled={!selectedSession}
       onclick={() => onAddMember()}
     >
-      Add selected Codex
+      添加选中的 Codex
     </button>
   </div>
 </section>

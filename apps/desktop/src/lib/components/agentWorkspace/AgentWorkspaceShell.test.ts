@@ -7,8 +7,8 @@ describe('AgentWorkspaceShell', () => {
     const source = readSources('AgentWorkspaceShell.svelte', 'AgentWorkspaceSidebar.svelte');
 
     expect(source).toContain('createChannel');
-    expect(source).toContain('Channels');
-    expect(source).toContain('Direct messages');
+    expect(source).toContain('群聊');
+    expect(source).toContain('私聊');
     expect(source).toContain('selectedConversationKind');
   });
 
@@ -37,9 +37,9 @@ describe('AgentWorkspaceShell', () => {
     expect(source).toContain('sendConversation');
     expect(source).toContain('stopCurrentRun');
     expect(source).toContain('stopMember');
-    expect(source).toContain('Queue');
-    expect(source).toContain('Interrupt');
-    expect(source).toContain('Stop');
+    expect(source).toContain('排队');
+    expect(source).toContain('打断');
+    expect(source).toContain('停止');
   });
 });
 

@@ -8,6 +8,7 @@
   } from '../../contracts/agentWorkspace';
   import CodexTranscriptPanel from '../agentGroup/CodexTranscriptPanel.svelte';
   import CodexSessionPicker from './CodexSessionPicker.svelte';
+  import { workspaceMemberStatusLabel } from './labels';
 
   let {
     selectedConversationKind,
@@ -61,7 +62,7 @@
 <aside class="hidden w-[23rem] shrink-0 overflow-y-auto border-l border-isotope-line bg-[#f6f7f9] p-4 xl:block">
   <div class="mb-4 flex items-center justify-between gap-3">
     <div>
-      <div class="text-sm font-semibold">Channel settings</div>
+      <div class="text-sm font-semibold">频道设置</div>
       <div class="mt-1 text-xs text-isotope-muted">{conversationTitle}</div>
     </div>
     <button
@@ -69,13 +70,13 @@
       type="button"
       onclick={() => onLoadCodexSessions(sessionScope)}
     >
-      Sessions
+      会话列表
     </button>
   </div>
 
   {#if selectedConversationKind !== 'channel'}
     <div class="border border-isotope-line bg-white px-3 py-3 text-sm text-isotope-muted">
-      Private chat has no channel members.
+      私聊没有群聊成员。
     </div>
   {:else}
     <div class="space-y-3">
@@ -87,7 +88,7 @@
               <div class="mt-1 truncate text-xs text-isotope-muted">{member.resume_session_id}</div>
             </div>
             <span class="shrink-0 border border-isotope-line px-2 py-0.5 text-[11px] text-isotope-muted">
-              {member.status}
+              {workspaceMemberStatusLabel(member.status)}
             </span>
           </div>
           <div class="mt-3 grid grid-cols-[1fr_auto_auto_auto] gap-2">
@@ -97,9 +98,9 @@
               onchange={(event) =>
                 onUpdateMember(member, (event.currentTarget as HTMLSelectElement).value as WorkspaceSendPolicy)}
             >
-              <option value="auto">auto</option>
-              <option value="confirm">confirm</option>
-              <option value="draft_only">draft_only</option>
+              <option value="auto">自动发送</option>
+              <option value="confirm">发送前确认</option>
+              <option value="draft_only">只写草稿</option>
             </select>
             <button
               class="border border-isotope-line bg-white px-2 py-1.5 text-xs font-semibold text-isotope-muted"
@@ -107,21 +108,21 @@
               disabled={!member.resume_session_id}
               onclick={() => onLoadTranscript(member)}
             >
-              Transcript
+              查看记录
             </button>
             <button
               class="border border-isotope-error/40 bg-white px-2 py-1.5 text-xs font-semibold text-isotope-error"
               type="button"
               onclick={() => onStopMember(member)}
             >
-              Stop
+              停止
             </button>
             <button
               class="border border-isotope-line bg-white px-2 py-1.5 text-xs font-semibold text-isotope-muted"
               type="button"
               onclick={() => onRemoveMember(member)}
             >
-              Remove
+              移除
             </button>
           </div>
         </article>

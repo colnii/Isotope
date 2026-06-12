@@ -13,6 +13,7 @@
   import AgentConversationComposer from './AgentConversationComposer.svelte';
   import AgentConversationPane from './AgentConversationPane.svelte';
   import AgentWorkspaceSidebar from './AgentWorkspaceSidebar.svelte';
+  import { workspaceChannelDisplayName, workspaceDirectMessageTitle } from './labels';
 
   let { agentWorkspaceClient } = $props<{
     agentWorkspaceClient: AgentWorkspaceClient;
@@ -76,7 +77,7 @@
         await loadWorkspace(firstWorkspaceId);
       }
     } catch (error) {
-      actionError = errorMessage(error, 'Agent Workspace 加载失败');
+      actionError = errorMessage(error, '智能体工作区加载失败');
     } finally {
       isLoading = false;
     }
@@ -126,11 +127,13 @@
   }
 
   function resolveConversationTitle() {
-    if (!workspace || !selectedConversationId) return 'Agent Workspace';
+    if (!workspace || !selectedConversationId) return '智能体工作区';
     if (selectedConversationKind === 'channel') {
-      return channels.find((channel) => channel.channel_id === selectedConversationId)?.name ?? 'channel';
+      const channel = channels.find((candidate) => candidate.channel_id === selectedConversationId);
+      return channel ? workspaceChannelDisplayName(channel.name) : '群聊';
     }
-    return directMessages.find((message) => message.dm_id === selectedConversationId)?.title ?? 'direct message';
+    const directMessage = directMessages.find((message) => message.dm_id === selectedConversationId);
+    return directMessage ? workspaceDirectMessageTitle(directMessage.title) : '私聊';
   }
 
   async function createChannel() {
@@ -185,7 +188,7 @@
       memberDisplayName = candidate.title || candidate.short_session_id;
     }
     if (!memberRole.trim()) {
-      memberRole = 'Codex session';
+      memberRole = 'Codex 会话';
     }
   }
 
@@ -194,7 +197,7 @@
       return;
     }
     const displayName = memberDisplayName.trim() || selectedSession.title || selectedSession.short_session_id;
-    const role = memberRole.trim() || 'Codex session';
+    const role = memberRole.trim() || 'Codex 会话';
     actionError = null;
     try {
       await agentWorkspaceClient.addMember(workspace.workspace.workspace_id, selectedConversationId, {
@@ -260,7 +263,7 @@
       });
       transcriptSessionId = member.resume_session_id;
     } catch (error) {
-      actionError = errorMessage(error, 'Transcript 加载失败');
+      actionError = errorMessage(error, '会话记录加载失败');
     }
   }
 
@@ -325,7 +328,7 @@
   }
 </script>
 
-<section class="flex min-h-screen bg-[#f6f7f9] text-isotope-text" aria-label="Agent Workspace">
+<section class="flex min-h-screen bg-[#f6f7f9] text-isotope-text" aria-label="智能体工作区">
   <AgentWorkspaceSidebar
     workspace={workspace?.workspace ?? null}
     {channels}

@@ -18,7 +18,7 @@ describe('CodexSessionPicker source contract', () => {
     expect(source).toContain('memberRole');
     expect(source).toContain('memberGoal');
     expect(source).toContain('memberSendPolicy');
-    expect(source).toContain('Add selected Codex');
+    expect(source).toContain('添加选中的 Codex');
   });
 });
 
