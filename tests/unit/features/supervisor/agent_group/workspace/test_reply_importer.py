@@ -6,6 +6,7 @@ from pathlib import Path
 from isotope.features.supervisor.agent_group.workspace.importer import (
     import_channel_member_replies,
 )
+from isotope.features.supervisor.agent_group.workspace.runtime_bridge import runtime_group_id
 from isotope.features.supervisor.agent_group.workspace.store import AgentWorkspaceStore
 
 
@@ -108,6 +109,7 @@ def test_import_channel_member_replies_adds_member_observation_once(tmp_path):
         "display_name": "rna探索",
         "resume_session_id": "session_research",
         "source_path": str(session_path),
+        "runtime_group_id": runtime_group_id(workspace.workspace_id, channel.channel_id),
         "event_index": 3,
         "transcript_ref": {
             "session_id": "session_research",

@@ -101,6 +101,15 @@ export type WorkspaceReplyImport = {
   last_imported_event_index: number;
 };
 
+export type WorkspaceReplyRelay = {
+  member_id: string;
+  display_name: string;
+  send_policy: WorkspaceSendPolicy;
+  status: string;
+  managed_record_id: string | null;
+  resume_session_id: string | null;
+};
+
 export type AgentWorkspaceListPayload = {
   status: 'ok';
   workspaces: AgentWorkspaceSummary[];
@@ -114,6 +123,7 @@ export type AgentWorkspaceDetail = {
   members: AgentWorkspaceMember[];
   messages: WorkspaceConversationMessage[];
   imports: WorkspaceReplyImport[];
+  relays: WorkspaceReplyRelay[];
   controls: WorkspaceControlEvent[];
 };
 

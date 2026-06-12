@@ -11,6 +11,10 @@ from isotope.features.supervisor.registry.session_lookup import (
 from isotope.integrations.codex.transcript import read_codex_transcript_page
 
 from .contracts import AgentWorkspace, ChannelMembership
+from .runtime_bridge import (
+    publish_workspace_message_to_runtime_group,
+    runtime_payload_for_channel,
+)
 from .store import AgentWorkspaceStore
 
 
@@ -101,7 +105,7 @@ def import_member_replies(
             event_index=event_index,
         ):
             continue
-        store.publish_message(
+        workspace_message = store.publish_message(
             workspace_id=workspace.workspace_id,
             conversation_type="channel",
             conversation_id=channel_id,
@@ -110,6 +114,12 @@ def import_member_replies(
             message_type="member_observation",
             summary=_group_reply_summary(text),
             payload={
+                **runtime_payload_for_channel(
+                    store=store,
+                    state_root=state_root,
+                    workspace=workspace,
+                    channel_id=channel_id,
+                ),
                 "member_id": member.member_id,
                 "display_name": member.display_name,
                 "resume_session_id": session_id,
@@ -122,6 +132,13 @@ def import_member_replies(
                     "limit": 1,
                 },
             },
+        )
+        publish_workspace_message_to_runtime_group(
+            store=store,
+            state_root=state_root,
+            workspace=workspace,
+            channel_id=channel_id,
+            message=workspace_message,
         )
         imported_count += 1
 

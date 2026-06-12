@@ -5,6 +5,7 @@ from pathlib import Path
 
 from isotope.features.supervisor.agent_group.workspace import api
 from isotope.features.supervisor.agent_group.workspace import dispatcher
+from isotope.features.supervisor.agent_group.store import AgentGroupStore
 from isotope.features.supervisor.agent_group.workspace.store import AgentWorkspaceStore
 from isotope.features.supervisor.registry.records import ManagedCodexRecord
 
@@ -254,6 +255,175 @@ def test_conversation_chat_marks_import_baseline_before_auto_resume(
     )
 
     assert calls == [f"baseline:{member.member_id}", "resume:session_training"]
+
+
+def test_conversation_chat_records_agent_group_runtime_context(
+    tmp_path,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace_root = tmp_path / "AI_Camp_RNA_2026"
+    workspace_root.mkdir()
+    store = AgentWorkspaceStore(codex_home)
+    workspace = store.ensure_default_workspace(root_path=workspace_root)
+    channel = store.create_channel(
+        workspace_id=workspace.workspace_id,
+        name="rna",
+        topic="同步科研和训练进展。",
+    )
+    member = store.add_channel_member(
+        workspace_id=workspace.workspace_id,
+        channel_id=channel.channel_id,
+        display_name="RNA训练",
+        role="工程推进",
+        goal="继续训练和提交链路。",
+        send_policy="auto",
+        resume_session_id="session_training",
+        source_path=None,
+        managed_record_id=None,
+    )
+    resumed_calls: list[dict[str, object]] = []
+
+    def fake_resume_managed_codex(**kwargs):
+        resumed_calls.append(kwargs)
+        return ManagedCodexRecord(
+            record_id="managed-training",
+            name=str(kwargs["name"]),
+            cwd=str(kwargs["cwd"]),
+            prompt=str(kwargs["prompt"]),
+            command=("codex", "resume", "session_training"),
+            pid=1234,
+            started_at="2026-06-12T00:00:00Z",
+            log_path=str(codex_home / "supervisor" / "logs" / "managed-training.log"),
+            status="resumed",
+            backend="codex_exec_resume",
+            resume_session_id=str(kwargs["session_id"]),
+        )
+
+    monkeypatch.setattr(dispatcher, "resume_managed_codex", fake_resume_managed_codex)
+
+    api.conversation_chat_payload(
+        codex_home,
+        workspace_id=workspace.workspace_id,
+        conversation_id=channel.channel_id,
+        message="请同步当前进展。",
+        mode="queue",
+    )
+
+    runtime_store = AgentGroupStore(codex_home)
+    groups = runtime_store.list_groups()
+    assert len(groups) == 1
+    assert groups[0].title == "AI_Camp_RNA_2026 / rna"
+    assert [runtime_member.member_id for runtime_member in runtime_store.list_members(groups[0].group_id)] == [
+        member.member_id
+    ]
+    runtime_messages = runtime_store.list_group_messages(groups[0].group_id)
+    assert [(message.from_member, message.message_type, message.summary) for message in runtime_messages[-1:]] == [
+        ("supervisor", "task", "请同步当前进展。")
+    ]
+    assert runtime_messages[-1].payload["workspace_message_type"] == "user"
+    assert "最近群聊消息" in str(resumed_calls[0]["prompt"])
+    assert "用户：请同步当前进展。" in str(resumed_calls[0]["prompt"])
+
+
+def test_workspace_payload_relays_imported_member_reply_to_other_codex_members(
+    tmp_path,
+    monkeypatch,
+):
+    codex_home = tmp_path / ".codex"
+    workspace_root = tmp_path / "AI_Camp_RNA_2026"
+    workspace_root.mkdir()
+    session_path = tmp_path / "research.jsonl"
+    write_jsonl(
+        session_path,
+        [
+            {"type": "session_meta", "payload": {"id": "session_research"}},
+            {
+                "type": "response_item",
+                "timestamp": "2026-06-12T00:00:00Z",
+                "payload": {
+                    "type": "message",
+                    "role": "user",
+                    "content": "请同步当前进展。",
+                },
+            },
+            {
+                "type": "response_item",
+                "timestamp": "2026-06-12T00:00:01Z",
+                "payload": {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": "科研侧建议先做 schema readiness 审计。",
+                },
+            },
+        ],
+    )
+    store = AgentWorkspaceStore(codex_home)
+    workspace = store.ensure_default_workspace(root_path=workspace_root)
+    channel = store.list_channels(workspace.workspace_id)[0]
+    research_member = store.add_channel_member(
+        workspace_id=workspace.workspace_id,
+        channel_id=channel.channel_id,
+        display_name="rna探索",
+        role="科研探索",
+        goal="寻找全局优化点。",
+        send_policy="auto",
+        resume_session_id="session_research",
+        source_path=str(session_path),
+        managed_record_id=None,
+    )
+    training_member = store.add_channel_member(
+        workspace_id=workspace.workspace_id,
+        channel_id=channel.channel_id,
+        display_name="RNA训练",
+        role="工程推进",
+        goal="继续训练和提交链路。",
+        send_policy="auto",
+        resume_session_id="session_training",
+        source_path=None,
+        managed_record_id=None,
+    )
+    store.update_channel_member(
+        workspace_id=workspace.workspace_id,
+        channel_id=channel.channel_id,
+        member_id=research_member.member_id,
+        transcript_policy={
+            **research_member.transcript_policy,
+            "last_imported_event_index": 1,
+        },
+    )
+    resumed_calls: list[dict[str, object]] = []
+
+    def fake_resume_managed_codex(**kwargs):
+        resumed_calls.append(kwargs)
+        return ManagedCodexRecord(
+            record_id=f"managed-{len(resumed_calls)}",
+            name=str(kwargs["name"]),
+            cwd=str(kwargs["cwd"]),
+            prompt=str(kwargs["prompt"]),
+            command=("codex", "resume", str(kwargs["session_id"])),
+            pid=1234 + len(resumed_calls),
+            started_at="2026-06-12T00:00:00Z",
+            log_path=str(codex_home / "supervisor" / "logs" / f"managed-{len(resumed_calls)}.log"),
+            status="resumed",
+            backend="codex_exec_resume",
+            resume_session_id=str(kwargs["session_id"]),
+        )
+
+    monkeypatch.setattr(dispatcher, "resume_managed_codex", fake_resume_managed_codex)
+
+    payload = api.workspace_payload(codex_home, workspace.workspace_id)
+
+    assert payload["imports"][0]["member_id"] == research_member.member_id
+    runtime_store = AgentGroupStore(codex_home)
+    group = runtime_store.list_groups()[0]
+    runtime_messages = runtime_store.list_group_messages(group.group_id)
+    assert [(message.from_member, message.message_type, message.summary) for message in runtime_messages[-1:]] == [
+        (research_member.member_id, "reply", "科研侧建议先做 schema readiness 审计。")
+    ]
+    assert [call["session_id"] for call in resumed_calls] == [training_member.resume_session_id]
+    assert "rna探索：科研侧建议先做 schema readiness 审计。" in str(resumed_calls[0]["prompt"])
+    assert "session_research" not in [call["session_id"] for call in resumed_calls]
 
 
 def write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:

@@ -61,6 +61,40 @@ class AgentGroupStore:
         )
         return group
 
+    def ensure_group(
+        self,
+        *,
+        group_id: str,
+        title: str,
+        goal: str,
+        initial_message: str | None = None,
+    ) -> AgentGroup:
+        try:
+            return self.load_group(group_id)
+        except ValueError:
+            pass
+        now = _utc_now()
+        group = AgentGroup(
+            group_id=group_id,
+            title=title.strip(),
+            goal=goal.strip(),
+            status="active",
+            created_at=now,
+            updated_at=now,
+        )
+        self.memory.append_record(_memory_record_for_group(group))
+        if initial_message:
+            self.publish_message(
+                group_id=group.group_id,
+                turn_id="turn_initial",
+                from_member="supervisor",
+                to_member=None,
+                message_type="summary",
+                summary=initial_message,
+                payload={"source": "agent_workspace_bridge"},
+            )
+        return group
+
     def list_groups(self) -> list[AgentGroup]:
         groups = [
             _group_from_record(record)
@@ -79,16 +113,32 @@ class AgentGroupStore:
         raise ValueError(f"agent group not found: {group_id}")
 
     def list_members(self, group_id: str) -> list[AgentMember]:
-        members = [
-            _member_from_record(record)
-            for record in self.memory.list_records(scope="session")
-            if record.content.get("kind") == MEMBER_RECORD_KIND
-            and record.content.get("group_id") == group_id
-        ]
+        latest: dict[str, tuple[AgentMember, str]] = {}
+        for record in self.memory.list_records(scope="session"):
+            if (
+                record.content.get("kind") != MEMBER_RECORD_KIND
+                or record.content.get("group_id") != group_id
+            ):
+                continue
+            member = _member_from_record(record)
+            if member is None:
+                continue
+            current = latest.get(member.member_id)
+            if current is None or record.created_at >= current[1]:
+                latest[member.member_id] = (member, record.created_at)
         return sorted(
-            [member for member in members if member is not None],
+            [member for member, _created_at in latest.values()],
             key=lambda member: member.member_id,
         )
+
+    def ensure_member(self, member: AgentMember) -> AgentMember:
+        for existing in self.list_members(member.group_id):
+            if existing.member_id == member.member_id:
+                if existing == member:
+                    return existing
+                break
+        self.memory.append_record(_memory_record_for_member(member))
+        return member
 
     def publish_message(
         self,
@@ -198,7 +248,7 @@ def _memory_record_for_group(group: AgentGroup) -> MemoryRecord:
 
 def _memory_record_for_member(member: AgentMember) -> MemoryRecord:
     return _record(
-        record_id=f"agent_group_member_{member.group_id}_{member.member_id}",
+        record_id=f"agent_group_member_{member.group_id}_{member.member_id}_{_new_id('rev')}",
         kind=MEMBER_RECORD_KIND,
         content=member.to_public_dict(),
         summary=f"Agent group member {member.name}: {member.role}",

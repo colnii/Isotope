@@ -6,7 +6,13 @@ from pathlib import Path
 from typing import Any
 
 from .dispatcher import dispatch_channel_message
+from .dispatcher import relay_runtime_member_observations
 from .importer import import_channel_member_replies
+from .runtime_bridge import (
+    publish_workspace_message_to_runtime_group,
+    runtime_payload_for_channel,
+    sync_channel_runtime_group,
+)
 from .session_discovery import list_codex_session_candidates
 from .store import AgentWorkspaceStore
 
@@ -42,16 +48,31 @@ def workspace_payload(state_root: Path | str, workspace_id: str) -> dict[str, An
     workspace = store.load_workspace(workspace_id)
     channels = store.list_channels(workspace_id)
     direct_messages = store.list_direct_messages(workspace_id)
-    imports = [
-        imported
-        for channel in channels
-        for imported in import_channel_member_replies(
+    imports: list[dict[str, Any]] = []
+    relays: list[dict[str, Any]] = []
+    for channel in channels:
+        sync_channel_runtime_group(
             store=store,
             state_root=state_root,
             workspace=workspace,
             channel_id=channel.channel_id,
         )
-    ]
+        imports.extend(
+            import_channel_member_replies(
+                store=store,
+                state_root=state_root,
+                workspace=workspace,
+                channel_id=channel.channel_id,
+            )
+        )
+        relays.extend(
+            relay_runtime_member_observations(
+                store=store,
+                state_root=state_root,
+                workspace=workspace,
+                channel_id=channel.channel_id,
+            )
+        )
     messages = [
         message.to_public_dict()
         for channel in channels
@@ -73,6 +94,7 @@ def workspace_payload(state_root: Path | str, workspace_id: str) -> dict[str, An
         ],
         "messages": messages,
         "imports": imports,
+        "relays": relays,
         "controls": store.list_control_events(workspace_id),
     }
 
@@ -184,6 +206,16 @@ def conversation_chat_payload(
     store = AgentWorkspaceStore(state_root)
     workspace = store.load_workspace(workspace_id)
     conversation_type = _conversation_type_for(store, workspace_id, conversation_id)
+    message_payload: dict[str, Any] = {"mode": mode}
+    if conversation_type == "channel":
+        message_payload.update(
+            runtime_payload_for_channel(
+                store=store,
+                state_root=state_root,
+                workspace=workspace,
+                channel_id=conversation_id,
+            )
+        )
     stored = store.publish_message(
         workspace_id=workspace_id,
         conversation_type=conversation_type,
@@ -192,10 +224,17 @@ def conversation_chat_payload(
         to_actor=None,
         message_type="user",
         summary=message,
-        payload={"mode": mode},
+        payload=message_payload,
     )
     dispatches: list[dict[str, Any]] = []
     if conversation_type == "channel":
+        publish_workspace_message_to_runtime_group(
+            store=store,
+            state_root=state_root,
+            workspace=workspace,
+            channel_id=conversation_id,
+            message=stored,
+        )
         dispatches = dispatch_channel_message(
             store=store,
             state_root=state_root,

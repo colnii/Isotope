@@ -75,6 +75,41 @@ def test_store_publishes_directed_and_broadcast_messages(tmp_path):
     assert messages[-1].to_member == "member_b"
 
 
+def test_store_ensure_member_updates_existing_member_snapshot(tmp_path):
+    store = AgentGroupStore(tmp_path)
+    group = store.ensure_group(
+        group_id="group_workspace",
+        title="Workspace group",
+        goal="Coordinate workspace agents.",
+    )
+    store.ensure_member(
+        AgentMember(
+            member_id="member_training",
+            group_id=group.group_id,
+            name="RNA训练",
+            role="工程推进",
+            goal="训练",
+            status="active",
+        )
+    )
+
+    store.ensure_member(
+        AgentMember(
+            member_id="member_training",
+            group_id=group.group_id,
+            name="RNA训练",
+            role="工程推进",
+            goal="训练",
+            status="done",
+        )
+    )
+
+    members = store.list_members(group.group_id)
+
+    assert len(members) == 1
+    assert members[0].status == "done"
+
+
 def test_store_records_turn(tmp_path):
     store = AgentGroupStore(tmp_path)
     group = store.create_group(

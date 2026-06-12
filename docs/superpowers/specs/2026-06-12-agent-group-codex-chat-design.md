@@ -213,6 +213,20 @@ Send to Codex:
 3. If no reliable send path exists, create a draft with explicit reason rather
    than pretending the send succeeded.
 
+Workspace runtime bridge:
+
+1. Treat each Agent Workspace channel as a deterministic core `AgentGroup`.
+   The workspace owns UI, Codex session membership, transcript inspection, and
+   runtime controls; the core AgentGroup owns the public group-message ledger.
+2. Sync workspace Codex members into the core AgentGroup member set by member id.
+3. Persist user channel messages as core runtime `task` messages and imported
+   Codex replies as core runtime `reply` messages.
+4. Build Codex resume prompts from the core AgentGroup recent-message ledger,
+   so every member can see recent user and peer Codex messages.
+5. Relay newly imported Codex member replies to the other connected Codex
+   sessions according to send policy. Mark relay sends with the source workspace
+   message id so refresh/SSE polling cannot resend the same peer message.
+
 Import Codex replies:
 
 1. Before sending to an auto Codex member, record the member's current Codex
