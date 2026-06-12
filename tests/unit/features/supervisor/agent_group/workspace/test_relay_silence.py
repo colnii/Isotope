@@ -5,11 +5,16 @@ from pathlib import Path
 
 from isotope.features.supervisor.agent_group.workspace import api
 from isotope.features.supervisor.agent_group.workspace import dispatcher
+from isotope.features.supervisor.agent_group.workspace.coordination.inbox import (
+    MemberInboxStore,
+)
 from isotope.features.supervisor.agent_group.workspace.store import AgentWorkspaceStore
-from isotope.features.supervisor.registry.records import ManagedCodexRecord
 
 
-def test_relayed_member_reply_is_not_relayed_back_to_source(tmp_path, monkeypatch):
+def test_selected_member_reply_queues_for_running_peer_without_recursive_resume(
+    tmp_path,
+    monkeypatch,
+):
     codex_home = tmp_path / ".codex"
     workspace_root = tmp_path / "AI_Camp_RNA_2026"
     workspace_root.mkdir()
@@ -20,7 +25,16 @@ def test_relayed_member_reply_is_not_relayed_back_to_source(tmp_path, monkeypatc
         [
             {"type": "session_meta", "payload": {"id": "session_research"}},
             _message_row("user", "请和训练侧完成三次握手。", index=1),
-            _message_row("assistant", "科研侧 SYN：我已准备好同步 schema 判断。", index=2),
+            _message_row(
+                "assistant",
+                (
+                    "科研侧建议先做 schema readiness 审计。\n\n"
+                    "GROUP_CHAT_INTENT: respond\n"
+                    "GROUP_CHAT_SUMMARY: 科研侧建议先做 schema readiness 审计。\n"
+                    "GROUP_CHAT_PRIORITY: 80\n"
+                ),
+                index=2,
+            ),
         ],
     )
     write_jsonl(
@@ -53,7 +67,7 @@ def test_relayed_member_reply_is_not_relayed_back_to_source(tmp_path, monkeypatc
         send_policy="auto",
         resume_session_id="session_training",
         source_path=str(training_path),
-        managed_record_id=None,
+        managed_record_id="managed-training",
     )
     store.update_channel_member(
         workspace_id=workspace.workspace_id,
@@ -68,6 +82,7 @@ def test_relayed_member_reply_is_not_relayed_back_to_source(tmp_path, monkeypatc
         workspace_id=workspace.workspace_id,
         channel_id=channel.channel_id,
         member_id=training_member.member_id,
+        status="running",
         transcript_policy={
             **training_member.transcript_policy,
             "last_imported_event_index": 1,
@@ -77,87 +92,23 @@ def test_relayed_member_reply_is_not_relayed_back_to_source(tmp_path, monkeypatc
 
     def fake_resume_managed_codex(**kwargs):
         resumed_calls.append(kwargs)
-        return ManagedCodexRecord(
-            record_id=f"managed-{len(resumed_calls)}",
-            name=str(kwargs["name"]),
-            cwd=str(kwargs["cwd"]),
-            prompt=str(kwargs["prompt"]),
-            command=("codex", "resume", str(kwargs["session_id"])),
-            pid=1234 + len(resumed_calls),
-            started_at="2026-06-12T00:00:00Z",
-            log_path=str(
-                codex_home
-                / "supervisor"
-                / "logs"
-                / f"managed-{len(resumed_calls)}.log"
-            ),
-            status="resumed",
-            backend="codex_exec_resume",
-            resume_session_id=str(kwargs["session_id"]),
-        )
+        raise AssertionError("running peer must receive inbox queue, not resume")
 
     monkeypatch.setattr(dispatcher, "resume_managed_codex", fake_resume_managed_codex)
 
-    first_payload = api.workspace_payload(codex_home, workspace.workspace_id)
+    payload = api.workspace_payload(codex_home, workspace.workspace_id)
 
-    assert first_payload["imports"][0]["member_id"] == research_member.member_id
-    assert [call["session_id"] for call in resumed_calls] == ["session_training"]
-    store = AgentWorkspaceStore(codex_home)
-    messages = store.list_messages(workspace.workspace_id, "channel", channel.channel_id)
-    research_observation = next(
-        message
-        for message in messages
-        if message.message_type == "member_observation"
-        and message.from_actor == research_member.member_id
+    assert payload["imports"][0]["member_id"] == research_member.member_id
+    assert payload["imports"][0]["status"] == "candidate_imported"
+    assert [call["session_id"] for call in resumed_calls] == []
+    pending = MemberInboxStore(codex_home).list_pending(
+        workspace.workspace_id,
+        channel.channel_id,
+        training_member.member_id,
     )
-    sent_to_training = next(
-        message
-        for message in messages
-        if message.message_type == "sent_to_member"
-        and message.to_actor == training_member.member_id
-    )
-    assert (
-        sent_to_training.payload["relay_source_message_id"]
-        == research_observation.message_id
-    )
-    assert sent_to_training.payload["relay_depth"] == 1
-    assert sent_to_training.payload["trigger_kind"] == "member_observation_relay"
-
-    write_jsonl(
-        training_path,
-        [
-            {"type": "session_meta", "payload": {"id": "session_training"}},
-            _message_row("user", "等待群聊转发。", index=1),
-            _message_row("assistant", "训练侧 ACK：已收到科研侧 schema 判断。", index=2),
-        ],
-    )
-
-    second_payload = api.workspace_payload(codex_home, workspace.workspace_id)
-
-    assert second_payload["imports"][0]["member_id"] == training_member.member_id
-    assert second_payload["relays"] == []
-    assert [call["session_id"] for call in resumed_calls] == ["session_training"]
-    store = AgentWorkspaceStore(codex_home)
-    messages = store.list_messages(workspace.workspace_id, "channel", channel.channel_id)
-    training_observation = next(
-        message
-        for message in messages
-        if message.message_type == "member_observation"
-        and message.from_actor == training_member.member_id
-    )
-    assert training_observation.payload["relay_depth"] == 1
-    assert (
-        training_observation.payload["reply_to_relay_source_message_id"]
-        == research_observation.message_id
-    )
-    assert not [
-        message
-        for message in messages
-        if message.message_type == "sent_to_member"
-        and message.to_actor == research_member.member_id
-        and message.payload.get("relay_source_message_id")
-        == training_observation.message_id
-    ]
+    assert len(pending) == 1
+    assert pending[0].summary == "科研侧建议先做 schema readiness 审计。"
+    assert payload["inbox"]["pending_counts"] == {training_member.member_id: 1}
 
 
 def _message_row(role: str, content: str, *, index: int) -> dict[str, object]:

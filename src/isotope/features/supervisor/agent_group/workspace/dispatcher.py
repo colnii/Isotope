@@ -8,21 +8,20 @@ from typing import Any
 from isotope.features.supervisor.registry import resume_managed_codex
 
 from .contracts import (
-    MAX_MEMBER_OBSERVATION_RELAY_DEPTH,
-    TRIGGER_KIND_MEMBER_OBSERVATION_RELAY,
     TRIGGER_KIND_USER_MESSAGE,
     AgentWorkspace,
     ChannelMembership,
-    WorkspaceConversationMessage,
-    relay_depth_from_payload,
 )
+from .coordination.inbox import MemberInboxItem, MemberInboxStore
 from .importer import mark_member_reply_import_baseline
 from .runtime_bridge import (
     recent_runtime_group_messages,
     sync_channel_runtime_group,
-    workspace_message_has_runtime_group,
 )
 from .store import AgentWorkspaceStore
+
+
+TRIGGER_KIND_MEMBER_INBOX = "member_inbox"
 
 
 def dispatch_channel_message(
@@ -31,10 +30,11 @@ def dispatch_channel_message(
     state_root: Path | str,
     workspace: AgentWorkspace,
     channel_id: str,
+    source_message_id: str,
     user_message: str,
     mode: str,
 ) -> list[dict[str, Any]]:
-    sync_channel_runtime_group(
+    group_id = sync_channel_runtime_group(
         store=store,
         state_root=state_root,
         workspace=workspace,
@@ -52,18 +52,21 @@ def dispatch_channel_message(
             continue
         if member.send_policy == "auto":
             dispatches.append(
-                _send_to_auto_member(
+                _enqueue_and_maybe_drain_member(
                     store=store,
                     state_root=state_root,
                     workspace=workspace,
                     channel_id=channel_id,
                     member=member,
-                    trigger_actor="用户",
-                    trigger_message=user_message,
-                    trigger_kind=TRIGGER_KIND_USER_MESSAGE,
+                    source_message_id=source_message_id,
+                    from_actor="用户",
+                    summary=user_message,
                     mode=mode,
-                    context_messages=context_messages,
-                    relay_depth=0,
+                    payload={
+                        "source": "workspace_user_message",
+                        "runtime_group_id": group_id,
+                        "mode": mode,
+                    },
                 )
             )
         else:
@@ -78,18 +81,18 @@ def dispatch_channel_message(
                     trigger_kind=TRIGGER_KIND_USER_MESSAGE,
                     mode=mode,
                     context_messages=context_messages,
-                    relay_depth=0,
                 )
             )
     return dispatches
 
 
-def relay_runtime_member_observations(
+def drain_channel_member_inboxes(
     *,
     store: AgentWorkspaceStore,
     state_root: Path | str,
     workspace: AgentWorkspace,
     channel_id: str,
+    mode: str = "queue",
 ) -> list[dict[str, Any]]:
     sync_channel_runtime_group(
         store=store,
@@ -97,84 +100,140 @@ def relay_runtime_member_observations(
         workspace=workspace,
         channel_id=channel_id,
     )
-    relays: list[dict[str, Any]] = []
-    messages = store.list_messages(
-        workspace.workspace_id,
-        "channel",
-        channel_id,
-        limit=1000,
+    drains: list[dict[str, Any]] = []
+    inbox = MemberInboxStore(state_root)
+    for member in store.list_channel_members(workspace.workspace_id, channel_id):
+        if (
+            member.member_kind != "codex_session"
+            or member.send_policy != "auto"
+            or member.status == "terminated"
+        ):
+            continue
+        pending = inbox.list_pending(
+            workspace.workspace_id,
+            channel_id,
+            member.member_id,
+        )
+        if not pending:
+            continue
+        if member.status == "running" and mode != "interrupt":
+            drains.append(
+                {
+                    **_dispatch_result(
+                        member,
+                        status="queued",
+                        managed_record_id=member.managed_record_id,
+                    ),
+                    "pending_count": len(pending),
+                }
+            )
+            continue
+        drains.append(
+            _drain_member_inbox(
+                store=store,
+                state_root=state_root,
+                workspace=workspace,
+                channel_id=channel_id,
+                member=member,
+                mode=mode,
+            )
+        )
+    return drains
+
+
+def _enqueue_and_maybe_drain_member(
+    *,
+    store: AgentWorkspaceStore,
+    state_root: Path | str,
+    workspace: AgentWorkspace,
+    channel_id: str,
+    member: ChannelMembership,
+    source_message_id: str,
+    from_actor: str,
+    summary: str,
+    mode: str,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    inbox = MemberInboxStore(state_root)
+    inbox.enqueue(
+        workspace_id=workspace.workspace_id,
+        channel_id=channel_id,
+        target_member_id=member.member_id,
+        source_message_id=source_message_id,
+        from_actor=from_actor,
+        summary=summary,
+        payload=payload,
     )
-    members = store.list_channel_members(workspace.workspace_id, channel_id)
-    member_names = {member.member_id: member.display_name for member in members}
-    context_messages = recent_runtime_group_messages(
+    pending_count = len(
+        inbox.list_pending(workspace.workspace_id, channel_id, member.member_id)
+    )
+    if member.status == "running" and mode != "interrupt":
+        return {
+            **_dispatch_result(
+                member,
+                status="queued",
+                managed_record_id=member.managed_record_id,
+            ),
+            "pending_count": pending_count,
+        }
+    return _drain_member_inbox(
         store=store,
         state_root=state_root,
         workspace=workspace,
         channel_id=channel_id,
+        member=member,
+        mode=mode,
     )
-    for message in messages:
-        if message.message_type != "member_observation":
-            continue
-        if not workspace_message_has_runtime_group(message):
-            continue
-        if not _member_observation_can_relay(message):
-            continue
-        source_member_id = message.from_actor
-        source_name = member_names.get(source_member_id, source_member_id)
-        relay_depth = relay_depth_from_payload(message.payload) + 1
-        for member in members:
-            if (
-                member.member_id == source_member_id
-                or member.member_kind != "codex_session"
-                or member.status == "terminated"
-            ):
-                continue
-            if _relay_already_sent(
-                messages,
-                source_message_id=message.message_id,
-                target_member_id=member.member_id,
-            ):
-                continue
-            if member.send_policy == "auto":
-                relays.append(
-                    _send_to_auto_member(
-                        store=store,
-                        state_root=state_root,
-                        workspace=workspace,
-                        channel_id=channel_id,
-                        member=member,
-                        trigger_actor=source_name,
-                        trigger_message=message.summary,
-                        trigger_kind=TRIGGER_KIND_MEMBER_OBSERVATION_RELAY,
-                        mode="queue",
-                        context_messages=context_messages,
-                        relay_source_message_id=message.message_id,
-                        relay_depth=relay_depth,
-                    )
-                )
-            else:
-                relays.append(
-                    _surface_member_draft(
-                        store=store,
-                        workspace=workspace,
-                        channel_id=channel_id,
-                        member=member,
-                        trigger_actor=source_name,
-                        trigger_message=message.summary,
-                        trigger_kind=TRIGGER_KIND_MEMBER_OBSERVATION_RELAY,
-                        mode="queue",
-                        context_messages=context_messages,
-                        relay_source_message_id=message.message_id,
-                        relay_depth=relay_depth,
-                    )
-                )
-            messages = store.list_messages(
-                workspace.workspace_id,
-                "channel",
-                channel_id,
-                limit=1000,
-            )
-    return relays
+
+
+def _drain_member_inbox(
+    *,
+    store: AgentWorkspaceStore,
+    state_root: Path | str,
+    workspace: AgentWorkspace,
+    channel_id: str,
+    member: ChannelMembership,
+    mode: str,
+) -> dict[str, Any]:
+    inbox = MemberInboxStore(state_root)
+    pending = inbox.list_pending(workspace.workspace_id, channel_id, member.member_id)
+    if not pending:
+        return {
+            **_dispatch_result(
+                member,
+                status="idle",
+                managed_record_id=member.managed_record_id,
+            ),
+            "pending_count": 0,
+        }
+    result = _send_to_auto_member(
+        store=store,
+        state_root=state_root,
+        workspace=workspace,
+        channel_id=channel_id,
+        member=member,
+        trigger_actor="群聊",
+        trigger_message=_short_summary("; ".join(item.summary for item in pending)),
+        trigger_kind=TRIGGER_KIND_MEMBER_INBOX,
+        mode=mode,
+        context_messages=[],
+        prompt_override=_member_inbox_prompt(member, mode=mode, pending=pending),
+        delivery_payload={
+            "inbox_item_ids": [item.inbox_item_id for item in pending],
+            "inbox_source_message_ids": [item.source_message_id for item in pending],
+        },
+    )
+    managed_record_id = result.get("managed_record_id")
+    if result.get("status") == "sent" and isinstance(managed_record_id, str):
+        inbox.mark_dispatched(
+            workspace_id=workspace.workspace_id,
+            channel_id=channel_id,
+            target_member_id=member.member_id,
+            inbox_item_ids=tuple(item.inbox_item_id for item in pending),
+            managed_record_id=managed_record_id,
+        )
+        return {**result, "pending_count": 0}
+    return {**result, "pending_count": len(pending)}
 
 
 def _send_to_auto_member(
@@ -189,8 +248,8 @@ def _send_to_auto_member(
     trigger_kind: str,
     mode: str,
     context_messages: list[dict[str, str]],
-    relay_source_message_id: str | None = None,
-    relay_depth: int = 0,
+    prompt_override: str | None = None,
+    delivery_payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if not member.resume_session_id:
         return _surface_send_error(
@@ -210,12 +269,16 @@ def _send_to_auto_member(
             codex_home=state_root,
             cwd=workspace.root_path,
             name=member.display_name,
-            prompt=_member_prompt(
-                member,
-                trigger_actor=trigger_actor,
-                trigger_message=trigger_message,
-                mode=mode,
-                context_messages=context_messages,
+            prompt=(
+                prompt_override
+                if prompt_override is not None
+                else _member_prompt(
+                    member,
+                    trigger_actor=trigger_actor,
+                    trigger_message=trigger_message,
+                    mode=mode,
+                    context_messages=context_messages,
+                )
             ),
             session_id=member.resume_session_id,
         )
@@ -249,12 +312,7 @@ def _send_to_auto_member(
             "managed_record_id": record.record_id,
             "resume_session_id": member.resume_session_id,
             "trigger_kind": trigger_kind,
-            "relay_depth": relay_depth,
-            **(
-                {"relay_source_message_id": relay_source_message_id}
-                if relay_source_message_id
-                else {}
-            ),
+            **(delivery_payload or {}),
         },
     )
     return _dispatch_result(
@@ -306,8 +364,6 @@ def _surface_member_draft(
     trigger_kind: str,
     mode: str,
     context_messages: list[dict[str, str]],
-    relay_source_message_id: str | None = None,
-    relay_depth: int = 0,
 ) -> dict[str, Any]:
     store.update_channel_member(
         workspace_id=workspace.workspace_id,
@@ -331,13 +387,7 @@ def _surface_member_draft(
             "resume_session_id": member.resume_session_id,
             "trigger_actor": trigger_actor,
             "trigger_kind": trigger_kind,
-            "relay_depth": relay_depth,
             "context_messages": context_messages,
-            **(
-                {"relay_source_message_id": relay_source_message_id}
-                if relay_source_message_id
-                else {}
-            ),
         },
     )
     return _dispatch_result(member, status="draft", managed_record_id=None)
@@ -384,32 +434,42 @@ def _member_prompt(
             context,
             "",
             "如果新消息只是确认、ACK、握手收尾或不需要你推进，请保持沉默，不要为了礼貌再次回复。",
-            "请在当前 Codex 会话里理解上述群聊上下文；只有需要回应或推进时才简短回复群聊。",
+            "请在当前 Codex 会话里理解上述群聊上下文；只有需要公开回应或推进时才简短回复群聊。",
+            "如果需要公开群聊发言，请在回复末尾追加 GROUP_CHAT_INTENT、GROUP_CHAT_SUMMARY、GROUP_CHAT_PRIORITY 标记块。",
         ]
     )
 
 
-def _relay_already_sent(
-    messages,
+def _member_inbox_prompt(
+    member: ChannelMembership,
     *,
-    source_message_id: str,
-    target_member_id: str,
-) -> bool:
-    for message in messages:
-        if message.message_type != "sent_to_member" or message.to_actor != target_member_id:
-            continue
-        if message.payload.get("relay_source_message_id") == source_message_id:
-            return True
-    return False
-
-
-def _member_observation_can_relay(message: WorkspaceConversationMessage) -> bool:
-    payload = message.payload
-    if payload.get("trigger_kind") == TRIGGER_KIND_MEMBER_OBSERVATION_RELAY:
-        return False
-    if isinstance(payload.get("reply_to_relay_source_message_id"), str):
-        return False
-    return relay_depth_from_payload(payload) < MAX_MEMBER_OBSERVATION_RELAY_DEPTH
+    mode: str,
+    pending: list[MemberInboxItem],
+) -> str:
+    role = member.role.strip() or "Codex 会话成员"
+    goal = member.goal.strip() or "继续当前会话目标"
+    lines = [
+        f"你正在 Agent Workspace 群聊中以“{member.display_name}”身份工作。",
+        f"角色：{role}",
+        f"成员目标：{goal}",
+        f"发送模式：{mode}",
+        "",
+        "待处理群聊消息：",
+    ]
+    for item in pending:
+        lines.append(f"- {item.from_actor}：{item.summary}")
+    lines.extend(
+        [
+            "",
+            "这些是你尚未处理的群聊输入。请继续你的当前工作。",
+            "如果需要公开群聊发言，请在回复末尾追加以下标记块：",
+            "GROUP_CHAT_INTENT: respond",
+            "GROUP_CHAT_SUMMARY: <给群聊看的简短内容>",
+            "GROUP_CHAT_PRIORITY: <0-100>",
+            "如果不需要公开发言，不要输出空字符串；正常继续工作即可。",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def _format_context_messages(messages: list[dict[str, str]]) -> str:

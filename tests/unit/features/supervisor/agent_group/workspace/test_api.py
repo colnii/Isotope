@@ -84,6 +84,7 @@ def test_conversation_chat_dispatches_auto_members_and_surfaces_drafts(
             "status": "sent",
             "managed_record_id": "managed-training",
             "resume_session_id": "session_training",
+            "pending_count": 0,
         },
         {
             "member_id": draft_member.member_id,
@@ -99,6 +100,7 @@ def test_conversation_chat_dispatches_auto_members_and_surfaces_drafts(
     assert resumed_calls[0]["name"] == "RNA训练"
     assert resumed_calls[0]["session_id"] == "session_training"
     assert "请同步当前进展。" in resumed_calls[0]["prompt"]
+    assert "待处理群聊消息" in resumed_calls[0]["prompt"]
 
     members = {
         member.member_id: member
@@ -144,7 +146,12 @@ def test_workspace_payload_imports_codex_member_replies(tmp_path):
                 "payload": {
                     "type": "message",
                     "role": "assistant",
-                    "content": "工程侧已经开始验证训练链路。",
+                    "content": (
+                        "工程侧已经开始验证训练链路。\n\n"
+                        "GROUP_CHAT_INTENT: respond\n"
+                        "GROUP_CHAT_SUMMARY: 工程侧已经开始验证训练链路。\n"
+                        "GROUP_CHAT_PRIORITY: 50\n"
+                    ),
                 },
             },
         ],
@@ -179,8 +186,10 @@ def test_workspace_payload_imports_codex_member_replies(tmp_path):
         {
             "member_id": member.member_id,
             "display_name": "RNA训练",
-            "status": "imported",
+            "status": "candidate_imported",
             "imported_count": 1,
+            "candidate_count": 1,
+            "published_count": 1,
             "last_imported_event_index": 2,
         }
     ]
@@ -322,7 +331,7 @@ def test_conversation_chat_records_agent_group_runtime_context(
         ("supervisor", "task", "请同步当前进展。")
     ]
     assert runtime_messages[-1].payload["workspace_message_type"] == "user"
-    assert "最近群聊消息" in str(resumed_calls[0]["prompt"])
+    assert "待处理群聊消息" in str(resumed_calls[0]["prompt"])
     assert "用户：请同步当前进展。" in str(resumed_calls[0]["prompt"])
 
 
@@ -353,7 +362,12 @@ def test_workspace_payload_relays_imported_member_reply_to_other_codex_members(
                 "payload": {
                     "type": "message",
                     "role": "assistant",
-                    "content": "科研侧建议先做 schema readiness 审计。",
+                    "content": (
+                        "科研侧建议先做 schema readiness 审计。\n\n"
+                        "GROUP_CHAT_INTENT: respond\n"
+                        "GROUP_CHAT_SUMMARY: 科研侧建议先做 schema readiness 审计。\n"
+                        "GROUP_CHAT_PRIORITY: 80\n"
+                    ),
                 },
             },
         ],
@@ -415,6 +429,7 @@ def test_workspace_payload_relays_imported_member_reply_to_other_codex_members(
     payload = api.workspace_payload(codex_home, workspace.workspace_id)
 
     assert payload["imports"][0]["member_id"] == research_member.member_id
+    assert payload["imports"][0]["status"] == "candidate_imported"
     runtime_store = AgentGroupStore(codex_home)
     group = runtime_store.list_groups()[0]
     runtime_messages = runtime_store.list_group_messages(group.group_id)
@@ -422,7 +437,9 @@ def test_workspace_payload_relays_imported_member_reply_to_other_codex_members(
         (research_member.member_id, "reply", "科研侧建议先做 schema readiness 审计。")
     ]
     assert [call["session_id"] for call in resumed_calls] == [training_member.resume_session_id]
-    assert "rna探索：科研侧建议先做 schema readiness 审计。" in str(resumed_calls[0]["prompt"])
+    assert "待处理群聊消息" in str(resumed_calls[0]["prompt"])
+    assert "科研侧建议先做 schema readiness 审计。" in str(resumed_calls[0]["prompt"])
+    assert payload["inbox"]["pending_counts"].get(training_member.member_id, 0) == 0
     assert "session_research" not in [call["session_id"] for call in resumed_calls]
 
 

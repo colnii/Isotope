@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from .dispatcher import dispatch_channel_message
-from .dispatcher import relay_runtime_member_observations
+from .dispatcher import drain_channel_member_inboxes
+from .coordination.inbox import MemberInboxStore
 from .importer import import_channel_member_replies
 from .runtime_bridge import (
     publish_workspace_message_to_runtime_group,
@@ -49,7 +50,7 @@ def workspace_payload(state_root: Path | str, workspace_id: str) -> dict[str, An
     channels = store.list_channels(workspace_id)
     direct_messages = store.list_direct_messages(workspace_id)
     imports: list[dict[str, Any]] = []
-    relays: list[dict[str, Any]] = []
+    inbox_drains: list[dict[str, Any]] = []
     for channel in channels:
         sync_channel_runtime_group(
             store=store,
@@ -65,14 +66,22 @@ def workspace_payload(state_root: Path | str, workspace_id: str) -> dict[str, An
                 channel_id=channel.channel_id,
             )
         )
-        relays.extend(
-            relay_runtime_member_observations(
+        inbox_drains.extend(
+            drain_channel_member_inboxes(
                 store=store,
                 state_root=state_root,
                 workspace=workspace,
                 channel_id=channel.channel_id,
             )
         )
+    inbox_store = MemberInboxStore(state_root)
+    pending_counts: dict[str, int] = {}
+    for channel in channels:
+        for member_id, count in inbox_store.pending_counts_by_member(
+            workspace_id,
+            channel.channel_id,
+        ).items():
+            pending_counts[member_id] = pending_counts.get(member_id, 0) + count
     messages = [
         message.to_public_dict()
         for channel in channels
@@ -94,7 +103,9 @@ def workspace_payload(state_root: Path | str, workspace_id: str) -> dict[str, An
         ],
         "messages": messages,
         "imports": imports,
-        "relays": relays,
+        "inbox_drains": inbox_drains,
+        "inbox": {"pending_counts": pending_counts},
+        "relays": [],
         "controls": store.list_control_events(workspace_id),
     }
 
@@ -240,6 +251,7 @@ def conversation_chat_payload(
             state_root=state_root,
             workspace=workspace,
             channel_id=conversation_id,
+            source_message_id=stored.message_id,
             user_message=message,
             mode=mode,
         )
