@@ -23,4 +23,31 @@ describe('ConversationWorkspace', () => {
     expect(source).toContain("tool === 'local_file_read'");
     expect(source).toContain('最多 ${maxExcerptChars} 字符');
   });
+
+  test('keeps header copy separated from the suprematist mark', () => {
+    const path = join(process.cwd(), 'src/lib/components/main/ConversationWorkspace.svelte');
+    const source = readFileSync(path, 'utf8');
+
+    expect(source).toContain('<section class="iso-chat-shell"');
+    expect(source).toContain('<header class="iso-chat-header">');
+    expect(source).toContain('<div class="iso-chat-header-copy">');
+    expect(source).toContain('<div class="iso-suprematist-mark" aria-hidden="true">');
+    expect(source).toContain('class="iso-chat-subtitle"');
+    expect(source.indexOf('<div class="iso-chat-header-copy">')).toBeLessThan(
+      source.indexOf('<div class="iso-suprematist-mark" aria-hidden="true">')
+    );
+  });
+
+  test('uses shared visual classes for conversation surfaces', () => {
+    const path = join(process.cwd(), 'src/lib/components/main/ConversationWorkspace.svelte');
+    const source = readFileSync(path, 'utf8');
+
+    expect(source).toContain('class="iso-chat-scroll"');
+    expect(source).toContain('class="iso-approval-card"');
+    expect(source).toContain('iso-message-avatar');
+    expect(source).toContain('iso-message-bubble');
+    expect(source).toContain('iso-message-bubble-user');
+    expect(source).toContain('iso-message-bubble-assistant');
+    expect(source).toContain('class="iso-error-card"');
+  });
 });

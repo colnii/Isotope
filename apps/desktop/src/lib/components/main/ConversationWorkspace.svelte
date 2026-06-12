@@ -66,37 +66,39 @@
   }
 </script>
 
-<section class="flex min-h-screen min-w-0 flex-col bg-white" aria-label="Conversation workspace">
-  <header class="border-b border-isotope-line px-7 py-5">
-    <div class="flex items-center justify-between gap-4">
-      <div class="min-w-0">
-        <div class="text-xs font-semibold uppercase text-isotope-muted">{eyebrow}</div>
-        <h1 class="mt-1 truncate text-xl font-semibold text-isotope-text">{title}</h1>
-      </div>
+<section class="iso-chat-shell" aria-label="Conversation workspace">
+  <header class="iso-chat-header">
+    <div class="iso-chat-header-copy">
+      <div class="iso-chat-eyebrow">{eyebrow}</div>
+      <h1 class="iso-chat-title">{title}</h1>
       {#if subtitle}
-        <div class="shrink-0 border border-isotope-line bg-isotope-panel px-2 py-1 text-xs text-isotope-muted">
-          {subtitle}
-        </div>
+        <div class="iso-chat-subtitle">{subtitle}</div>
       {/if}
+    </div>
+    <div class="iso-suprematist-mark" aria-hidden="true">
+      <span class="iso-suprematist-red"></span>
+      <span class="iso-suprematist-blue"></span>
+      <span class="iso-suprematist-yellow"></span>
+      <span class="iso-suprematist-ink"></span>
     </div>
   </header>
 
-  <div class="min-h-0 flex flex-1 flex-col overflow-y-auto px-7 py-6" aria-live="polite">
+  <div class="iso-chat-scroll" aria-live="polite">
     {#if approvals.length}
-      <div class="mx-auto mb-5 w-full max-w-3xl border border-isotope-warning/50 bg-isotope-warning/10">
-        <div class="flex items-center justify-between gap-3 border-b border-isotope-warning/30 px-4 py-3">
+      <div class="iso-approval-card">
+        <div class="flex items-center justify-between gap-3 border-b border-isotope-yellow/40 px-4 py-3">
           <div class="min-w-0">
-            <div class="text-xs font-semibold uppercase text-isotope-warning">Pending approval</div>
+            <div class="text-xs font-semibold uppercase text-isotope-red">Pending approval</div>
             <div class="mt-1 text-sm font-semibold text-isotope-text">有 {approvals.length} 个操作等待批准</div>
           </div>
         </div>
-        <div class="divide-y divide-isotope-warning/20">
+        <div class="divide-y divide-isotope-yellow/40">
           {#each approvals as approval (approval.id)}
             <article class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="truncate text-sm font-semibold text-isotope-text">{approval.title}</span>
-                  <span class="border border-isotope-warning/40 bg-white px-2 py-0.5 text-[11px] uppercase text-isotope-warning">
+                  <span class="iso-status-chip border-isotope-yellow bg-isotope-panel-raised text-isotope-red">
                     {approvalSourceLabel(approval)}
                   </span>
                 </div>
@@ -107,7 +109,7 @@
               <div class="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
-                  class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted disabled:cursor-not-allowed disabled:opacity-50"
+                  class="iso-button-muted"
                   disabled={resolvingApprovalId === approval.id}
                   onclick={() => onResolveApproval(approval.id, 'denied')}
                 >
@@ -115,7 +117,7 @@
                 </button>
                 <button
                   type="button"
-                  class="border border-isotope-running bg-isotope-running px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  class="iso-button-primary"
                   disabled={resolvingApprovalId === approval.id}
                   onclick={() => onResolveApproval(approval.id, 'approved')}
                 >
@@ -130,16 +132,16 @@
     {#if chatMessages.length === 0}
       <div class="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-4">
         <article class="flex items-start gap-3">
-          <div class="grid h-9 w-9 shrink-0 place-items-center border border-isotope-line bg-isotope-bg text-xs font-semibold text-isotope-running">
+          <div class="iso-message-avatar">
             AI
           </div>
-          <div class="min-w-0 flex-1 border border-isotope-line bg-isotope-bg px-4 py-3">
+          <div class="iso-message-bubble iso-message-bubble-assistant flex-1">
             <div class="text-sm font-semibold text-isotope-text">{emptyTitle}</div>
             {#if emptyBody}
               <p class="mt-2 text-sm leading-6 text-isotope-muted">{emptyBody}</p>
             {/if}
             {#if body}
-              <div class="mt-3 border-l-2 border-isotope-line pl-3 text-sm leading-6 text-isotope-muted">
+              <div class="mt-3 border-l border-isotope-line pl-3 text-sm leading-6 text-isotope-muted">
                 {body}
               </div>
             {/if}
@@ -156,16 +158,15 @@
             ]}
           >
             {#if message.role === 'assistant'}
-              <div class="grid h-8 w-8 shrink-0 place-items-center border border-isotope-line bg-isotope-bg text-xs font-semibold text-isotope-running">
+              <div class="iso-message-avatar">
                 AI
               </div>
             {/if}
             <div
               class={[
-                'min-w-0 border px-4 py-3 text-sm leading-6 shadow-sm',
                 message.role === 'user'
-                  ? 'max-w-[min(72%,32rem)] border-isotope-running bg-isotope-running text-white'
-                  : 'max-w-[min(82%,40rem)] border-isotope-line bg-isotope-bg text-isotope-text'
+                  ? 'iso-message-bubble-user'
+                  : 'iso-message-bubble iso-message-bubble-assistant'
               ]}
             >
               {#if message.role === 'assistant'}
@@ -207,19 +208,19 @@
     {/if}
   </div>
 
-  <div class="border-t border-isotope-line bg-white px-7 py-4">
+  <div class="border-t border-isotope-line bg-isotope-panel px-7 py-4">
     <div class="mx-auto max-w-3xl">
-    {#if chatError}
-      <div class="mb-3 border border-isotope-error/40 bg-white px-3 py-2 text-xs text-isotope-error" role="alert">
-        {chatError}
-      </div>
-    {/if}
-    {#if approvalError}
-      <div class="mb-3 border border-isotope-error/40 bg-white px-3 py-2 text-xs text-isotope-error" role="alert">
-        {approvalError}
-      </div>
-    {/if}
-    <CommandComposer placeholder={composerPlaceholder} disabled={isAsking} onSubmit={onAsk} />
+      {#if chatError}
+        <div class="iso-error-card" role="alert">
+          {chatError}
+        </div>
+      {/if}
+      {#if approvalError}
+        <div class="iso-error-card" role="alert">
+          {approvalError}
+        </div>
+      {/if}
+      <CommandComposer placeholder={composerPlaceholder} disabled={isAsking} onSubmit={onAsk} />
     </div>
   </div>
 </section>
