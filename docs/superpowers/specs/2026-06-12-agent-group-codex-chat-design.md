@@ -94,6 +94,15 @@ Migration stance:
   Workspace records are the UI/session-control projection around that runtime,
   not a second conversation runtime.
 
+Legacy direct relay removal criteria:
+
+- `workspace_payload(...)` no longer imports or calls
+  `relay_runtime_member_observations(...)`.
+- Selected public Codex replies are delivered through member inbox records.
+- A regression test fails if workspace payload reintroduces direct relay.
+- The frontend reads public messages and inbox/turn metadata from the migrated
+  projection.
+
 ## Core Contracts
 
 ### Connected Member

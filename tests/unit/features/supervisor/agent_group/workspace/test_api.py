@@ -443,6 +443,10 @@ def test_workspace_payload_relays_imported_member_reply_to_other_codex_members(
     assert "session_research" not in [call["session_id"] for call in resumed_calls]
 
 
+def test_workspace_payload_does_not_expose_direct_relay_helper() -> None:
+    assert not hasattr(api, "relay_runtime_member_observations")
+
+
 def write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
     path.write_text(
         "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n",
