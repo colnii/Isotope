@@ -116,8 +116,10 @@ Existing files to touch narrowly:
 
 - `src/isotope/llm/provider/__init__.py`: export `CodexApiLLMProvider`.
 - `src/isotope/llm/provider/factory.py`: construct it from pool entries.
-- `src/isotope/llm/provider/resolution.py`: support env provider
-  `ISOTOPE_LLM_PROVIDER=codex-api`.
+- `src/isotope/llm/provider/resolution.py`: support
+  `ISOTOPE_LLM_PROVIDER=codex-api` for chat provider resolution. Tool-call
+  resolution remains unsupported until this provider implements
+  `select_tool(...)`.
 - `src/isotope/llm/pool.py`: parse `provider = "codex-api"`.
 - `src/isotope/features/supervisor/supervisor_llm_pool.toml.example`: document
   the new pool option.
@@ -134,7 +136,8 @@ Required coverage:
 - JSON-RPC error responses become safe provider failures.
 - Pool TOML accepts `provider = "codex-api"` without `api_keys`.
 - Factory creates `CodexApiLLMProvider` for a `codex-api` pool entry.
-- Env resolution supports `ISOTOPE_LLM_PROVIDER=codex-api`.
+- Chat env resolution supports `ISOTOPE_LLM_PROVIDER=codex-api`, while
+  tool-call env resolution does not claim support in this first slice.
 - Existing `codex` CLI provider tests still pass.
 
 ## Success Criteria

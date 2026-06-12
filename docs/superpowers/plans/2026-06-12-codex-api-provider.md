@@ -16,7 +16,9 @@
 - Create `tests/unit/llm/test_codex_api_llm_provider.py`: fake process tests for app-server `generate()` and failure handling.
 - Modify `src/isotope/llm/provider/__init__.py`: export `CodexApiLLMProvider`.
 - Modify `src/isotope/llm/provider/factory.py`: instantiate `CodexApiLLMProvider` for `PoolEntry(provider="codex-api")`.
-- Modify `src/isotope/llm/provider/resolution.py`: resolve `ISOTOPE_LLM_PROVIDER=codex-api`.
+- Modify `src/isotope/llm/provider/resolution.py`: resolve
+  `ISOTOPE_LLM_PROVIDER=codex-api` for chat providers only; tool-call
+  resolution stays unsupported until `select_tool(...)` exists.
 - Modify `src/isotope/llm/pool.py`: parse `provider = "codex-api"` without `api_keys`, using `codex://app-server`.
 - Modify `tests/unit/llm/test_llm_pool.py`: cover TOML and factory behavior.
 - Modify `tests/unit/llm/test_codex_llm_provider.py`: add env resolution regression for `codex-api`.
@@ -767,11 +769,12 @@ git commit -m "feat(codex): wire app-server provider into pool"
 
 - [ ] **Step 1: Write failing env resolver test**
 
-Add to `tests/unit/llm/test_codex_llm_provider.py`:
+Update the import block in `tests/unit/llm/test_codex_llm_provider.py` to include
+`resolve_llm_chat_provider`, then add:
 
 ```python
-def test_llm_provider_resolution_configures_codex_api_without_api_key(tmp_path):
-    resolution = resolve_llm_tool_call_provider(
+def test_llm_chat_provider_resolution_configures_codex_api_without_api_key(tmp_path):
+    resolution = resolve_llm_chat_provider(
         {
             "ISOTOPE_LLM_PROVIDER": "codex-api",
             "ISOTOPE_LLM_MODEL": "gpt-5-codex",
@@ -787,6 +790,23 @@ def test_llm_provider_resolution_configures_codex_api_without_api_key(tmp_path):
     assert resolution.provider is not None
     assert resolution.provider.provider == "codex-api"
     assert resolution.provider.model == "gpt-5-codex"
+
+
+def test_llm_tool_call_resolution_keeps_codex_api_unsupported_until_tool_contract_exists(
+    tmp_path,
+):
+    resolution = resolve_llm_tool_call_provider(
+        {
+            "ISOTOPE_LLM_PROVIDER": "codex-api",
+            "ISOTOPE_CODEX_WORKSPACE_ROOT": str(tmp_path),
+        },
+        codex_executable_resolver=_resolve_codex_executable,
+    )
+
+    assert resolution.status == "missing_configuration"
+    assert resolution.reason_code == "llm_provider_unsupported"
+    assert resolution.provider_name == "codex-api"
+    assert resolution.provider is None
 ```
 
 - [ ] **Step 2: Run resolver test and verify RED**
@@ -795,19 +815,22 @@ Run:
 
 ```bash
 PYTHONPATH=src /home/lumber/Github/isotope/.venv/bin/python -m pytest \
-  tests/unit/llm/test_codex_llm_provider.py::test_llm_provider_resolution_configures_codex_api_without_api_key -q
+  tests/unit/llm/test_codex_llm_provider.py::test_llm_chat_provider_resolution_configures_codex_api_without_api_key \
+  tests/unit/llm/test_codex_llm_provider.py::test_llm_tool_call_resolution_keeps_codex_api_unsupported_until_tool_contract_exists -q
 ```
 
-Expected: unsupported provider resolution.
+Expected: the chat resolver test fails with unsupported provider resolution,
+while the tool-call resolver test already passes as unsupported.
 
 - [ ] **Step 3: Implement resolver branch**
 
 Modify `src/isotope/llm/provider/resolution.py`:
 
 - import `CodexApiLLMProvider`.
-- in both `resolve_llm_tool_call_provider(...)` and
-  `resolve_llm_chat_provider(...)`, route `provider_name == "codex-api"` to a
-  new `_resolve_codex_api_provider(...)`.
+- in `resolve_llm_chat_provider(...)`, route `provider_name == "codex-api"` to
+  a new `_resolve_codex_api_provider(...)`.
+- keep `resolve_llm_tool_call_provider(...)` unchanged for `codex-api`, so it
+  returns `llm_provider_unsupported`.
 - implement:
 
 ```python
