@@ -94,11 +94,14 @@ def import_member_replies(
         include_raw=False,
     )
     imported_count = 0
+    has_assistant_message = _page_has_assistant_message(page)
+    has_non_empty_assistant_message = False
     for event in page.get("terminal_events") or []:
         if not isinstance(event, dict):
             continue
         if event.get("kind") != "message" or event.get("role") != "assistant":
             continue
+        has_non_empty_assistant_message = True
         text = str(event.get("text") or "").strip()
         if not text:
             continue
@@ -156,12 +159,21 @@ def import_member_replies(
         imported_count += 1
 
     last_seen = int(page["next_offset"]) - 1
-    _update_member_import_index(
+    updated_member = _update_member_import_index(
         store=store,
         member=member,
         last_imported_event_index=last_seen,
     )
+    _mark_running_member_idle(store=store, member=updated_member)
     if imported_count == 0:
+        if has_assistant_message and not has_non_empty_assistant_message:
+            return {
+                "member_id": member.member_id,
+                "display_name": member.display_name,
+                "status": "silent",
+                "imported_count": 0,
+                "last_imported_event_index": last_seen,
+            }
         return None
     return {
         "member_id": member.member_id,
@@ -226,6 +238,15 @@ def _last_imported_index(member: ChannelMembership) -> int | None:
     return None
 
 
+def _page_has_assistant_message(page: dict[str, Any]) -> bool:
+    for event in page.get("events") or []:
+        if not isinstance(event, dict):
+            continue
+        if event.get("kind") == "message" and event.get("role") == "assistant":
+            return True
+    return False
+
+
 def _update_member_import_index(
     *,
     store: AgentWorkspaceStore,
@@ -240,6 +261,21 @@ def _update_member_import_index(
             **member.transcript_policy,
             LAST_IMPORTED_EVENT_INDEX: last_imported_event_index,
         },
+    )
+
+
+def _mark_running_member_idle(
+    *,
+    store: AgentWorkspaceStore,
+    member: ChannelMembership,
+) -> ChannelMembership:
+    if member.status != "running":
+        return member
+    return store.update_channel_member(
+        workspace_id=member.workspace_id,
+        channel_id=member.channel_id,
+        member_id=member.member_id,
+        status="idle",
     )
 
 
