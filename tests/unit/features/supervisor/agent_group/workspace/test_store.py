@@ -177,6 +177,79 @@ def test_store_collapses_duplicate_member_observations_by_transcript_ref(tmp_pat
     assert [message.message_id for message in messages] == [first.message_id]
 
 
+def test_store_hides_messages_superseded_by_codex_rollback_by_default(tmp_path):
+    root_path = tmp_path / "repo"
+    root_path.mkdir()
+    store = AgentWorkspaceStore(tmp_path / ".codex")
+    workspace = store.ensure_default_workspace(root_path=root_path)
+    channel = store.list_channels(workspace.workspace_id)[0]
+    member = store.add_channel_member(
+        workspace_id=workspace.workspace_id,
+        channel_id=channel.channel_id,
+        display_name="RNA训练",
+        role="Engineering",
+        goal="Keep implementation moving.",
+        send_policy="auto",
+        resume_session_id="session_training",
+        source_path="/tmp/session_training.jsonl",
+        managed_record_id=None,
+    )
+    old_message = store.publish_message(
+        workspace_id=workspace.workspace_id,
+        conversation_type="channel",
+        conversation_id=channel.channel_id,
+        from_actor=member.member_id,
+        to_actor=None,
+        message_type="member_observation",
+        summary="旧分支回复。",
+        payload={
+            "member_id": member.member_id,
+            "resume_session_id": "session_training",
+            "event_index": 42,
+            "transcript_ref": {
+                "session_id": "session_training",
+                "event_index": 42,
+                "offset": 42,
+                "limit": 1,
+            },
+        },
+    )
+    rollback_status = store.publish_message(
+        workspace_id=workspace.workspace_id,
+        conversation_type="channel",
+        conversation_id=channel.channel_id,
+        from_actor=member.member_id,
+        to_actor=None,
+        message_type="status",
+        summary="Codex thread rolled back.",
+        payload={
+            "status_kind": "codex_thread_rolled_back",
+            "member_id": member.member_id,
+            "resume_session_id": "session_training",
+            "rollback_event_index": 43,
+            "superseded_message_ids": [old_message.message_id],
+        },
+    )
+
+    default_messages = store.list_messages(
+        workspace.workspace_id,
+        "channel",
+        channel.channel_id,
+    )
+    audit_messages = store.list_messages(
+        workspace.workspace_id,
+        "channel",
+        channel.channel_id,
+        include_superseded=True,
+    )
+
+    assert default_messages == []
+    assert [message.message_id for message in audit_messages] == [
+        old_message.message_id,
+        rollback_status.message_id,
+    ]
+
+
 def test_store_updates_workspace_title_and_root_path(tmp_path):
     root_path = tmp_path / "repo"
     updated_root = tmp_path / "AI_Camp_RNA_2026"

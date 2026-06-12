@@ -137,6 +137,15 @@ def _project_event(
             "title": "tool output",
             "text": _short_text(payload.get("output")),
         }
+    elif event.get("type") == "event_msg" and payload.get("type") == "thread_rolled_back":
+        projected = {
+            **base,
+            "kind": "rollback",
+            "title": "thread rolled back",
+            "text": _rollback_text(payload),
+            "num_turns": _rollback_num_turns(payload),
+            "reason": _rollback_reason(payload),
+        }
     elif event.get("type") == "event_msg" and payload.get("type") == "error":
         projected = {
             **base,
@@ -225,6 +234,15 @@ def _project_terminal_event(
         if not text.strip():
             return None
         return {**base, "kind": "error", "title": "error", "text": text}
+    if event.get("type") == "event_msg" and payload.get("type") == "thread_rolled_back":
+        return {
+            **base,
+            "kind": "rollback",
+            "title": "thread rolled back",
+            "text": _rollback_text(payload),
+            "num_turns": _rollback_num_turns(payload),
+            "reason": _rollback_reason(payload),
+        }
     return None
 
 
@@ -246,3 +264,35 @@ def _short_text(value: Any) -> str:
     if value is None:
         return ""
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _rollback_num_turns(payload: dict[str, Any]) -> int | None:
+    value = payload.get("num_turns")
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
+
+
+def _rollback_reason(payload: dict[str, Any]) -> str | None:
+    reason = payload.get("reason")
+    if isinstance(reason, str) and reason.strip():
+        return reason.strip()
+    return None
+
+
+def _rollback_text(payload: dict[str, Any]) -> str:
+    num_turns = _rollback_num_turns(payload)
+    reason = _rollback_reason(payload)
+    if num_turns is None:
+        base = "Thread rolled back"
+    elif num_turns == 1:
+        base = "Rolled back 1 turn"
+    else:
+        base = f"Rolled back {num_turns} turns"
+    if reason:
+        return f"{base}: {reason}"
+    return base

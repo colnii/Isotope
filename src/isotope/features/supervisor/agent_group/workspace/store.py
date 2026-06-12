@@ -38,6 +38,10 @@ from ._records import (
     utc_now,
     workspace_from_record,
 )
+from .coordination.rollback import (
+    codex_rollback_superseded_message_ids,
+    is_codex_rollback_status,
+)
 
 
 MESSAGE_EVENT_CHANNEL = "agent-workspace"
@@ -333,6 +337,7 @@ class AgentWorkspaceStore:
         conversation_id: str,
         *,
         limit: int = 100,
+        include_superseded: bool = False,
     ) -> list[WorkspaceConversationMessage]:
         payload = list_worker_events(
             root=self.root,
@@ -355,9 +360,18 @@ class AgentWorkspaceStore:
                 messages.append(WorkspaceConversationMessage(**raw))
             except (TypeError, ValueError):
                 continue
-        return _dedupe_messages(
+        deduped = _dedupe_messages(
             sorted(messages, key=lambda item: (item.created_at, item.message_id))
         )
+        if include_superseded:
+            return deduped
+        superseded_message_ids = codex_rollback_superseded_message_ids(deduped)
+        return [
+            message
+            for message in deduped
+            if message.message_id not in superseded_message_ids
+            and not is_codex_rollback_status(message)
+        ]
 
     def record_control(
         self,

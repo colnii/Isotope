@@ -136,6 +136,53 @@ def test_transcript_reader_projects_tool_and_error_events(tmp_path):
     assert page["events"][2]["text"] == "command failed"
 
 
+def test_transcript_reader_projects_thread_rollback_event(tmp_path):
+    path = tmp_path / "rollout-rollback.jsonl"
+    write_jsonl(
+        path,
+        [
+            {"type": "session_meta", "payload": {"id": "session_rollback"}},
+            {
+                "type": "response_item",
+                "timestamp": "2026-06-12T00:00:01Z",
+                "payload": {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": "旧分支回复。",
+                },
+            },
+            {
+                "type": "event_msg",
+                "timestamp": "2026-06-12T00:00:02Z",
+                "payload": {
+                    "type": "thread_rolled_back",
+                    "num_turns": 2,
+                    "reason": "user selected an earlier turn",
+                },
+            },
+        ],
+    )
+
+    page = read_codex_transcript_page(path, offset=0, limit=10, include_raw=False)
+
+    rollback = page["events"][2]
+    assert rollback["kind"] == "rollback"
+    assert rollback["title"] == "thread rolled back"
+    assert rollback["text"] == "Rolled back 2 turns: user selected an earlier turn"
+    assert rollback["num_turns"] == 2
+    assert rollback["reason"] == "user selected an earlier turn"
+    assert page["terminal_events"][-1] == {
+        "event_index": 2,
+        "event_type": "event_msg",
+        "timestamp": "2026-06-12T00:00:02Z",
+        "kind": "rollback",
+        "title": "thread rolled back",
+        "text": "Rolled back 2 turns: user selected an earlier turn",
+        "num_turns": 2,
+        "reason": "user selected an earlier turn",
+    }
+
+
 def test_transcript_reader_builds_terminal_view_without_empty_status_noise(tmp_path):
     path = tmp_path / "rollout-terminal.jsonl"
     write_jsonl(
