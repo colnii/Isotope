@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from ...integrations.codex.cli import CodexCliBackend, CodexCliBackendConfig
-from ...integrations.codex.jsonl import extract_codex_agent_message_text
+from ...integrations.codex.runtime import project_codex_jsonl_stdout
 from ...integrations.codex.task import CodexTaskConfig, CodexTaskRequest
 from .parsing import (
     _require_non_empty_string,
@@ -300,12 +300,29 @@ def _extract_output_text(content: str) -> str | None:
     try:
         transcript = json.loads(content)
     except json.JSONDecodeError:
-        return extract_codex_agent_message_text(content) or _plain_text_or_none(content)
+        return _runtime_agent_message(content, stderr="") or _plain_text_or_none(content)
     if not isinstance(transcript, dict):
         return None
     stdout = transcript.get("stdout")
+    stderr = transcript.get("stderr")
     if isinstance(stdout, str):
-        return extract_codex_agent_message_text(stdout) or _plain_text_or_none(stdout)
+        return _runtime_agent_message(
+            stdout,
+            stderr=stderr if isinstance(stderr, str) else "",
+        ) or _plain_text_or_none(stdout)
+    return None
+
+
+def _runtime_agent_message(stdout: str, *, stderr: str) -> str | None:
+    projection = project_codex_jsonl_stdout(
+        stdout=stdout,
+        stderr=stderr,
+        status="completed",
+        reason_code="codex_cli_completed",
+    )
+    message = projection.summary.last_agent_message
+    if isinstance(message, str) and message.strip():
+        return message.strip()
     return None
 
 

@@ -399,6 +399,48 @@ def test_codex_cli_provider_generates_from_agent_message(tmp_path):
     assert '"role": "user"' in call["kwargs"]["input"]
 
 
+def test_codex_cli_provider_uses_latest_runtime_agent_message(tmp_path):
+    stdout = "\n".join(
+        [
+            json.dumps(
+                {
+                    "type": "item.completed",
+                    "item": {"type": "agent_message", "text": "First"},
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "response_item",
+                    "payload": {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": "Second",
+                    },
+                }
+            ),
+        ]
+    )
+
+    class Runner:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def __call__(self, argv, **kwargs):
+            self.calls.append({"argv": list(argv), "kwargs": dict(kwargs)})
+            return _StubCompletedProcess(stdout=stdout + "\n")
+
+    provider = CodexCliLLMProvider(
+        workspace_root=str(tmp_path),
+        executable="codex",
+        process_runner=Runner(),
+        executable_resolver=_resolve_codex_executable,
+    )
+
+    response = provider.generate([{"role": "user", "content": "hello"}])
+
+    assert response.content == "Second"
+
+
 def test_codex_cli_provider_selects_required_tool_from_json_agent_message(tmp_path):
     runner = _RecordingCodexRunner(
         json.dumps(
