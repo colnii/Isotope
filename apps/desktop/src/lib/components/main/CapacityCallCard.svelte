@@ -29,14 +29,23 @@
   const productTitle = $derived(capacityCallProductTitle(call));
   const summary = $derived(capacityCallSummary(call));
   const screenArtifacts = $derived(screenArtifactsForCapacityCall(call));
-  const statusClass = $derived(
+  const capacityToneClass = $derived(
     call.status === 'ok'
-      ? 'border-isotope-done text-isotope-done'
+      ? 'border-isotope-green bg-isotope-green-surface text-isotope-green'
       : call.status === 'running'
-        ? 'border-isotope-running text-isotope-running'
+        ? 'border-isotope-blue bg-isotope-blue-surface text-isotope-blue'
         : call.status === 'error'
-          ? 'border-isotope-attention text-isotope-attention'
-          : 'border-isotope-line text-isotope-muted'
+          ? 'border-isotope-red bg-isotope-panel-raised text-isotope-red'
+          : 'border-isotope-line bg-isotope-panel-raised text-isotope-muted'
+  );
+  const capacityStatusDotClass = $derived(
+    call.status === 'ok'
+      ? 'bg-isotope-green'
+      : call.status === 'running'
+        ? 'bg-isotope-blue'
+        : call.status === 'error'
+          ? 'bg-isotope-red'
+          : 'bg-isotope-muted'
   );
 
   function closeFullscreen() {
@@ -130,19 +139,22 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<section class="border border-isotope-line bg-white text-isotope-text shadow-sm" aria-label={`能力动作 ${productTitle}`}>
-  <div class="flex items-start justify-between gap-3 px-3 py-2">
+<section class="iso-capacity-card" aria-label={`能力动作 ${productTitle}`}>
+  <div class="flex items-start justify-between gap-3 px-3.5 py-3">
     <div class="min-w-0">
       <div class="flex flex-wrap items-center gap-2">
         <span class="text-xs font-semibold uppercase text-isotope-muted">action</span>
-        <span class={`border px-1.5 py-0.5 text-[11px] font-semibold uppercase ${statusClass}`}>{statusLabel}</span>
+        <span class={`iso-status-chip ${capacityToneClass}`}>
+          <span class={`iso-capacity-status-dot ${capacityStatusDotClass}`} aria-hidden="true"></span>
+          {statusLabel}
+        </span>
       </div>
       <div class="mt-1 truncate text-sm font-semibold">{productTitle}</div>
       <div class="mt-1 break-words text-xs leading-5 text-isotope-muted">{summary}</div>
     </div>
     <div class="flex shrink-0 items-center gap-1">
       <button
-        class="grid h-7 w-7 place-items-center border border-isotope-line bg-isotope-panel text-xs"
+        class="iso-capacity-actions"
         type="button"
         title={expanded ? '收起' : '展开'}
         aria-label={expanded ? '收起动作详情' : '展开动作详情'}
@@ -151,7 +163,7 @@
         {expanded ? '-' : '+'}
       </button>
       <button
-        class="grid h-7 w-7 place-items-center border border-isotope-line bg-isotope-panel text-xs"
+        class="iso-capacity-actions"
         type="button"
         title="全屏"
         aria-label="全屏查看动作详情"
@@ -163,9 +175,9 @@
   </div>
 
   {#if expanded}
-    <div class="space-y-3 border-t border-isotope-line px-3 py-3">
+    <div class="space-y-3 border-t border-isotope-line bg-isotope-panel-raised px-3 py-3">
       {#if screenArtifacts.length}
-        <div class="border border-isotope-line bg-isotope-panel px-3 py-2">
+        <div class="iso-card px-3 py-2">
           <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div class="min-w-0">
               <div class="text-xs font-semibold uppercase text-isotope-muted">screen screenshot</div>
@@ -173,7 +185,7 @@
             </div>
             <div class="flex shrink-0 flex-wrap items-center gap-2">
               <button
-                class="border border-isotope-running bg-white px-2.5 py-1.5 text-xs font-semibold text-isotope-running disabled:opacity-50"
+                class="iso-button-primary"
                 type="button"
                 disabled={loadingArtifactId === screenArtifacts[0].artifactId}
                 onclick={() => viewOriginal(screenArtifacts[0].artifactId)}
@@ -181,7 +193,7 @@
                 原图
               </button>
               <button
-                class="border border-isotope-line bg-white px-2.5 py-1.5 text-xs font-semibold text-isotope-muted disabled:opacity-50"
+                class="iso-button-muted"
                 type="button"
                 disabled={loadingArtifactId === screenArtifacts[0].artifactId}
                 onclick={() => openArtifactFolder(screenArtifacts[0].artifactId)}
@@ -189,7 +201,7 @@
                 文件夹
               </button>
               <button
-                class="border border-isotope-line bg-white px-2.5 py-1.5 text-xs font-semibold text-isotope-muted disabled:opacity-50"
+                class="iso-button-muted"
                 type="button"
                 disabled={loadingArtifactId === screenArtifacts[0].artifactId}
                 onclick={() => downloadArtifact(screenArtifacts[0].artifactId)}
@@ -204,7 +216,7 @@
             </div>
           {/if}
           {#if screenArtifactError}
-            <div class="mt-2 border border-isotope-error/40 bg-white px-2 py-1 text-xs text-isotope-error">
+            <div class="iso-error-card mt-2">
               {screenArtifactError}
             </div>
           {/if}
@@ -216,8 +228,8 @@
 </section>
 
 {#if fullscreen}
-  <div class="fixed inset-0 z-50 bg-isotope-text/35 p-4" role="dialog" aria-modal="true" aria-label={`动作详情 ${productTitle}`}>
-    <section class="mx-auto flex h-full max-w-5xl flex-col border border-isotope-line bg-white shadow-xl">
+  <div class="fixed inset-0 z-50 bg-isotope-ink/40 p-4" role="dialog" aria-modal="true" aria-label={`动作详情 ${productTitle}`}>
+    <section class="mx-auto flex h-full max-w-5xl flex-col rounded-panel border border-isotope-line bg-isotope-panel shadow-xl">
       <header class="flex items-start justify-between gap-3 border-b border-isotope-line px-4 py-3">
         <div class="min-w-0">
           <div class="text-xs font-semibold uppercase text-isotope-muted">action detail</div>
@@ -225,7 +237,7 @@
           <p class="mt-1 text-sm text-isotope-muted">{summary}</p>
         </div>
         <button
-          class="grid h-8 w-8 place-items-center border border-isotope-line bg-isotope-panel text-sm"
+          class="iso-capacity-actions"
           type="button"
           aria-label="关闭全屏动作详情"
           onclick={closeFullscreen}
@@ -233,7 +245,7 @@
           x
         </button>
       </header>
-      <div class="min-h-0 flex-1 overflow-auto p-4">
+      <div class="min-h-0 flex-1 overflow-auto bg-isotope-canvas p-4">
         <CapacityCallDetails details={call.details} fullscreen />
       </div>
     </section>
@@ -242,7 +254,7 @@
 
 {#if imageFullscreen && selectedScreenArtifact}
   <div class="fixed inset-0 z-[60] bg-black/80 p-3" role="dialog" aria-modal="true" aria-label="screen screenshot 原图">
-    <section class="flex h-full flex-col border border-isotope-line bg-white shadow-xl">
+    <section class="flex h-full flex-col rounded-panel border border-isotope-line bg-isotope-panel shadow-xl">
       <header class="flex items-center justify-between gap-3 border-b border-isotope-line px-4 py-3">
         <div class="min-w-0">
           <div class="text-xs font-semibold uppercase text-isotope-muted">screen screenshot</div>
@@ -250,21 +262,21 @@
         </div>
         <div class="flex shrink-0 items-center gap-2">
           <button
-            class="border border-isotope-line bg-isotope-panel px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+            class="iso-button-muted"
             type="button"
             onclick={() => openArtifactFolder(selectedScreenArtifact!.artifact.ref.artifact_id)}
           >
             文件夹
           </button>
           <button
-            class="border border-isotope-line bg-isotope-panel px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+            class="iso-button-muted"
             type="button"
             onclick={() => downloadArtifact(selectedScreenArtifact!.artifact.ref.artifact_id)}
           >
             下载
           </button>
           <button
-            class="grid h-8 w-8 place-items-center border border-isotope-line bg-isotope-panel text-sm"
+            class="iso-capacity-actions"
             type="button"
             aria-label="关闭截图原图"
             onclick={closeImageFullscreen}

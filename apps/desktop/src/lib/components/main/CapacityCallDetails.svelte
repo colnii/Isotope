@@ -13,19 +13,19 @@
 </script>
 
 {#if details.length === 0}
-  <p class="border border-isotope-line bg-isotope-panel px-3 py-2 text-sm text-isotope-muted">
+  <p class="iso-card-raised px-3 py-2 text-sm text-isotope-muted">
     本次动作没有返回详情载荷。
   </p>
 {:else}
   <div class="space-y-3">
     {#each details as section}
       {@const sourcePreviews = researchSourcePreviewsForDetailSection(section)}
-      <section class="border border-isotope-line bg-isotope-panel">
-        <div class="border-b border-isotope-line px-3 py-2 text-xs font-semibold uppercase text-isotope-muted">
+      <section class="iso-card-raised overflow-hidden">
+        <div class="border-b border-isotope-line bg-isotope-panel px-3 py-2 text-xs font-semibold uppercase text-isotope-muted">
           {capacityDetailLabel(section.label)}
         </div>
         {#if sourcePreviews.length}
-          <ol class="divide-y divide-isotope-line">
+          <ol class="divide-y divide-isotope-line bg-isotope-panel">
             {#each sourcePreviews as source, index}
               <li class="px-3 py-2.5">
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -37,7 +37,7 @@
                       {/if}
                     </div>
                     <a
-                      class="mt-1 block break-words text-sm font-semibold text-isotope-running hover:underline"
+                      class="mt-1 block break-words text-sm font-semibold text-isotope-blue hover:underline"
                       href={source.url}
                       target="_blank"
                       rel="noreferrer"
@@ -46,7 +46,7 @@
                     </a>
                   </div>
                   <a
-                    class="break-all text-xs leading-5 text-isotope-muted hover:text-isotope-text"
+                    class="break-all text-xs leading-5 text-isotope-muted hover:text-isotope-blue"
                     href={source.url}
                     target="_blank"
                     rel="noreferrer"
@@ -63,11 +63,11 @@
               </li>
             {/each}
           </ol>
-          <details class="border-t border-isotope-line px-3 py-2">
+          <details class="border-t border-isotope-line bg-isotope-panel px-3 py-2">
             <summary class="cursor-pointer text-xs font-semibold text-isotope-muted">结果原文</summary>
             <pre
               class={[
-                'mt-2 overflow-auto whitespace-pre-wrap break-words text-xs leading-5 text-isotope-text',
+                'mt-2 overflow-auto whitespace-pre-wrap break-words rounded-panel bg-isotope-canvas p-3 text-xs leading-5 text-isotope-text',
                 fullscreen ? 'max-h-[70vh]' : 'max-h-64'
               ]}
             >{formatCapacityDetailContent(section)}</pre>
@@ -75,7 +75,7 @@
         {:else}
           <pre
             class={[
-              'overflow-auto whitespace-pre-wrap break-words px-3 py-2 text-xs leading-5 text-isotope-text',
+              'overflow-auto whitespace-pre-wrap break-words rounded-panel bg-isotope-canvas px-3 py-2 text-xs leading-5 text-isotope-text',
               fullscreen ? 'max-h-[70vh]' : 'max-h-64'
             ]}
           >{formatCapacityDetailContent(section)}</pre>
