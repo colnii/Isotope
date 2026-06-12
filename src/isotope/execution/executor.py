@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from ..platform.registry.actions import ActionTypeRegistry
@@ -134,7 +135,7 @@ class Executor:
                         if isinstance(self.terminal_backend_config, dict):
                             backend_id = self.terminal_backend_config.get("backend_id")
                         raise TerminalBackendNotConfiguredError(details={"backend_id": backend_id})
-                    result = self.terminal_runner.run(
+                    result = self._terminal_runner_for_payload(proposal.payload).run(
                         proposal.payload.get("argv"),
                         grants=decision.grants,
                         timeout_seconds=int(decision.grants.get("budget", {}).get("seconds", 0)),
@@ -341,6 +342,12 @@ class Executor:
         self._append_artifacts_created(proposal.run_id, artifact_refs)
         self._append_action_completed(proposal.run_id, execution, artifact_refs, metadata=completion_metadata)
         return execution
+
+    def _terminal_runner_for_payload(self, payload: dict[str, Any]) -> ControlledTerminalRunner:
+        cwd = payload.get("cwd")
+        if isinstance(cwd, str) and cwd.strip():
+            return ControlledTerminalRunner(Path(cwd).expanduser())
+        return self.terminal_runner
 
     def _new_execution(
         self,

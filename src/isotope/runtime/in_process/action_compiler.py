@@ -5,7 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from ...capabilities.tools.terminal import validate_argv
+from ...capabilities.tools.terminal import TERMINAL_APPROVAL_MODES, validate_argv
 from ...execution.screen.backend_types import (
     ALLOWED_CAPTURE_KINDS,
     SUPPORTED_EXECUTION_MODES,
@@ -74,6 +74,7 @@ class ActionCompiler:
         payload = self._payload_from_intent(intent, tool, registry_entry.payload_requirements)
         if tool == "terminal_exec":
             payload["argv"] = validate_argv(payload.get("argv"))
+            payload.update(_terminal_exec_optional_payload(intent))
             payload["approval_requested"] = runtime_context.get("requires_approval") is True
         if tool == "codex_task":
             prompt = payload.get("prompt")
@@ -248,3 +249,31 @@ def _normalized_screen_actions(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list) or not value:
         raise ValueError("screen actions must be a non-empty list")
     return [ScreenAction.from_dict(action).to_dict() for action in value]
+
+
+def _terminal_exec_optional_payload(intent: dict[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    cwd = intent.get("cwd")
+    if cwd is not None:
+        if not isinstance(cwd, str) or not cwd.strip():
+            raise ValueError("terminal_exec cwd must be a non-empty string")
+        payload["cwd"] = cwd.strip()
+    approval_mode = intent.get("terminal_approval_mode")
+    if approval_mode is not None:
+        if not isinstance(approval_mode, str) or approval_mode not in TERMINAL_APPROVAL_MODES:
+            supported = ", ".join(TERMINAL_APPROVAL_MODES)
+            raise ValueError(f"terminal_exec terminal_approval_mode must be one of: {supported}")
+        payload["terminal_approval_mode"] = approval_mode
+    allowed_commands = intent.get("terminal_allowed_commands")
+    if allowed_commands is not None:
+        if not isinstance(allowed_commands, list) or not all(
+            isinstance(item, str) and item.strip() for item in allowed_commands
+        ):
+            raise ValueError("terminal_exec terminal_allowed_commands must be a list of strings")
+        payload["terminal_allowed_commands"] = [item.strip() for item in allowed_commands]
+    max_output_bytes = intent.get("terminal_max_output_bytes")
+    if max_output_bytes is not None:
+        if not isinstance(max_output_bytes, int) or isinstance(max_output_bytes, bool) or max_output_bytes <= 0:
+            raise ValueError("terminal_exec terminal_max_output_bytes must be a positive integer")
+        payload["terminal_max_output_bytes"] = max_output_bytes
+    return payload

@@ -160,11 +160,13 @@ def test_model_tool_bridge_approval_resolution_runs_existing_codex_http_path(tmp
     assert approved["status"] == "completed"
     assert len(runner.calls) == 1
     assert runner.calls[0]["kwargs"]["timeout"] == 17
+    artifacts = app.server.artifact_store.list_artifacts(run_id)
     artifact_ref = approved["artifact_ref"]
-    transcript = json.loads(
-        app.server.artifact_store.get_content(app.server.artifact_store.list_artifacts(run_id)[-1].ref)
+    transcript_artifact = next(
+        artifact for artifact in artifacts if artifact.artifact_type == "codex_task_transcript"
     )
-    assert artifact_ref["artifact_id"] == app.server.artifact_store.list_artifacts(run_id)[-1].ref.artifact_id
+    transcript = json.loads(app.server.artifact_store.get_content(transcript_artifact.ref))
+    assert artifact_ref["artifact_id"] == artifacts[-1].ref.artifact_id
     assert transcript["stdout"] == '{"event":"task_complete","message":"ok"}\n'
 
 

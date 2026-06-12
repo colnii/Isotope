@@ -1265,6 +1265,91 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="terminal.exec",
+                    title="Terminal Exec",
+                    description=(
+                        "Run an argv-only terminal command in the active workspace "
+                        "through runtime approval controls."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "terminal",
+                        "command",
+                        "approval",
+                        "workspace",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "cwd", "argv"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "x-system-input": True,
+                                "description": "Runtime root for approval and artifacts.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "x-system-input": True,
+                                "description": "Workspace directory where the command runs.",
+                            },
+                            "argv": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Shell-free argv command to run.",
+                            },
+                            "approval_mode": {
+                                "type": "string",
+                                "enum": ["single_approval", "allowlist", "yolo"],
+                                "x-system-input": True,
+                                "description": "Frontend-selected terminal approval mode.",
+                                "default": "allowlist",
+                            },
+                            "allowed_commands": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "x-system-input": True,
+                                "description": "Frontend-maintained command-name allowlist.",
+                                "default": ["echo", "printf", "pwd", "true", "false", "sleep"],
+                            },
+                            "timeout_seconds": {
+                                "type": "integer",
+                                "x-system-input": True,
+                                "description": "Maximum command runtime.",
+                                "default": 30,
+                            },
+                            "max_output_bytes": {
+                                "type": "integer",
+                                "x-system-input": True,
+                                "description": "Combined stdout/stderr artifact budget.",
+                                "default": 4096,
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "terminal_exec",
+                            "artifact_ref",
+                            "approval_id",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "argv_only",
+                        "shell_false",
+                        "runtime_approval_gated",
+                        "exact_argv_single_approval",
+                        "frontend_allowlist",
+                        "yolo_explicit_frontend_toggle",
+                        "workspace_cwd_required",
+                        "full_output_in_artifact_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="test.run",
                     title="Test Run",
                     description=(

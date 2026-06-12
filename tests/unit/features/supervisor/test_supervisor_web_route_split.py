@@ -9,6 +9,8 @@ def test_desktop_route_helpers_parse_public_desktop_paths():
     from isotope.features.supervisor.web.routes.desktop import (
         desktop_approval_resolve_id,
         desktop_chat_history,
+        desktop_terminal_allowed_commands,
+        desktop_terminal_approval_mode,
     )
     from isotope.features.supervisor.web.routes.desktop_artifacts import (
         desktop_screen_artifact_content_id,
@@ -38,6 +40,16 @@ def test_desktop_route_helpers_parse_public_desktop_paths():
         {"role": "user", "content": "hello"},
         {"role": "assistant", "content": "ok"},
     ]
+    assert desktop_terminal_approval_mode(None) == "allowlist"
+    assert desktop_terminal_approval_mode("yolo") == "yolo"
+    assert desktop_terminal_allowed_commands([" python3 ", "python3", "git"]) == [
+        "python3",
+        "git",
+    ]
+    with pytest.raises(ValueError, match="terminal_approval_mode"):
+        desktop_terminal_approval_mode("unsafe")
+    with pytest.raises(ValueError, match="terminal_allowed_commands"):
+        desktop_terminal_allowed_commands([""])
 
 
 def test_goal_route_helpers_validate_candidate_write_payloads():

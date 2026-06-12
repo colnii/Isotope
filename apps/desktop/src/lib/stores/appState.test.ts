@@ -318,6 +318,80 @@ describe('appState', () => {
     ]);
   });
 
+  test('sends yolo terminal approval policy with desktop chat when enabled', async () => {
+    const calls: unknown[] = [];
+    const state = createAppState({
+      agentClient: {
+        loadSnapshot: async () => realSnapshot(),
+        loadScreenArtifactContent: async () => { throw new Error('not used'); },
+        resolveApproval: async () => ({
+          status: 'ok',
+          approvalId: 'decision-1',
+          resolution: 'approved',
+          runStatus: 'completed',
+          snapshot: realSnapshot()
+        }),
+        askDesktopQuestion: async (_question, handlers) => {
+          calls.push(handlers?.terminalApproval);
+          return { question: 'run', answer: 'done' };
+        }
+      }
+    });
+
+    state.toggleTerminalYolo();
+    await state.askDesktopQuestion('run terminal');
+
+    expect(get(state.terminalYoloEnabled)).toBe(true);
+    expect(calls).toEqual([
+      {
+        mode: 'yolo',
+        allowedCommands: ['echo', 'printf', 'pwd', 'true', 'false', 'sleep']
+      }
+    ]);
+  });
+
+  test('allowlist terminal approval stores command and approves with audit reason', async () => {
+    const resolved: Array<{ approvalId: string; resolution: string; reason?: string }> = [];
+    const calls: unknown[] = [];
+    const state = createAppState({
+      agentClient: {
+        loadSnapshot: async () => realSnapshot(),
+        loadScreenArtifactContent: async () => { throw new Error('not used'); },
+        resolveApproval: async (approvalId, resolution, reason) => {
+          resolved.push({ approvalId, resolution, reason });
+          return {
+            status: 'ok',
+            approvalId,
+            resolution,
+            runStatus: 'completed',
+            snapshot: realSnapshot()
+          };
+        },
+        askDesktopQuestion: async (_question, handlers) => {
+          calls.push(handlers?.terminalApproval);
+          return { question: 'run', answer: 'done' };
+        }
+      }
+    });
+
+    await state.allowlistTerminalApproval('approval-1', 'python3');
+    await state.askDesktopQuestion('run python');
+
+    expect(resolved).toEqual([
+      {
+        approvalId: 'approval-1',
+        resolution: 'approved',
+        reason: 'desktop operator approved and allowlisted terminal command: python3'
+      }
+    ]);
+    expect(calls).toEqual([
+      {
+        mode: 'allowlist',
+        allowedCommands: ['echo', 'printf', 'pwd', 'true', 'false', 'sleep', 'python3']
+      }
+    ]);
+  });
+
   test('refreshes desktop snapshot after a successful chat turn', async () => {
     const before = realSnapshot();
     const after: IsotopeSnapshot = {

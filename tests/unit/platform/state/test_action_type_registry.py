@@ -52,6 +52,7 @@ def test_default_registry_contains_current_controlled_tool_slices():
         "terminal_exec",
         "screen_observe",
         "screen_control",
+        "local_file_read",
         "codex_task",
     ]
     entry = registry.get_tool("write_artifact_tool")
@@ -65,6 +66,7 @@ def test_default_registry_contains_current_controlled_tool_slices():
     assert terminal_entry.tool_name == "terminal_exec"
     assert registry.get_tool("screen_observe").result_kind == "screen_observation"
     assert registry.get_tool("screen_control").result_kind == "screen_control_result"
+    assert registry.get_tool("local_file_read").result_kind == "artifact"
     assert registry.get_tool("codex_task").action_type == "delegate_agent_task"
 
 

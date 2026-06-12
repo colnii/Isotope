@@ -6,7 +6,10 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
-from ...capabilities.tools.terminal import default_terminal_capabilities
+from ...capabilities.tools.terminal import (
+    TERMINAL_APPROVAL_MODES,
+    default_terminal_capabilities,
+)
 from ...execution.screen.backend_types import (
     ALLOWED_CAPTURE_KINDS,
     ALLOWED_SCREEN_ACTION_TYPES,
@@ -154,6 +157,14 @@ def _validate_terminal_capabilities(capabilities: Any) -> None:
         isinstance(command, str) and command for command in approval_required
     ):
         raise ValueError("terminal.approval_required_commands must be a list of non-empty strings")
+    approval_mode = capabilities.get("approval_mode", "allowlist")
+    if not isinstance(approval_mode, str) or approval_mode not in TERMINAL_APPROVAL_MODES:
+        raise ValueError("terminal.approval_mode must be a supported string")
+    approval_modes = capabilities.get("approval_modes", list(TERMINAL_APPROVAL_MODES))
+    if not isinstance(approval_modes, list) or not all(
+        isinstance(mode, str) and mode in TERMINAL_APPROVAL_MODES for mode in approval_modes
+    ):
+        raise ValueError("terminal.approval_modes must be supported strings")
 
 
 def _validate_screen_capabilities(capabilities: Any) -> None:
@@ -427,6 +438,8 @@ def _model_tool_entry(entry: ActionTypeEntry) -> dict[str, Any]:
         tool["constraints"].update({
             "shell": terminal.get("shell", False),
             "argv_policy": terminal.get("argv_policy", "allowlist"),
+            "approval_mode": terminal.get("approval_mode", "allowlist"),
+            "approval_modes": list(terminal.get("approval_modes", [])),
             "allowed_commands": list(terminal.get("allowed_commands", [])),
             "approval_required_commands": list(terminal.get("approval_required_commands", [])),
             "max_output_bytes": terminal.get("max_output_bytes"),

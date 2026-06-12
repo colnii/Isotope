@@ -286,6 +286,46 @@ describe('agentClient', () => {
     });
   });
 
+  test('sends terminal approval policy with desktop chat request when configured', async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder();
+        controller.enqueue(encoder.encode('event: start\ndata: {"status":"ok"}\n\n'));
+        controller.enqueue(
+          encoder.encode('event: done\ndata: {"status":"ok","provider":"fixture","model":"fixture-model"}\n\n')
+        );
+        controller.close();
+      }
+    });
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(stream, {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream; charset=utf-8' }
+        })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await createAgentClient('http://127.0.0.1:8765').askDesktopQuestion('run terminal', {
+      terminalApproval: {
+        mode: 'yolo',
+        allowedCommands: ['python3', 'git']
+      }
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:8765/desktop/chat', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        question: 'run terminal',
+        history: [],
+        terminal_approval_mode: 'yolo',
+        terminal_allowed_commands: ['python3', 'git']
+      })
+    });
+  });
+
   test('resolves desktop chat when done arrives before the stream closes', async () => {
     let cancelled = false;
     const encoder = new TextEncoder();

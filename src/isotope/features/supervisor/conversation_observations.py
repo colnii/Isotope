@@ -225,6 +225,8 @@ def _capability_result_observation(
         return _patch_result_observation(capability_run)
     if capacity_id == "artifact.diff_result":
         return _artifact_result_observation(capability_run)
+    if capacity_id == "terminal.exec":
+        return _terminal_exec_observation(capability_run)
     if capacity_id == "supervisor.project_status":
         return _project_status_observation(capability_run)
     if capacity_id == "supervisor.request_context":
@@ -605,6 +607,20 @@ def _artifact_result_observation(
         "ref": _string_dict_value(artifact.get("ref")),
         "artifact_write": _string_value(artifact.get("artifact_write")),
         "content_policy": _string_value(artifact.get("content_policy")),
+    }
+
+
+def _terminal_exec_observation(capability_run: dict[str, Any]) -> dict[str, Any] | None:
+    terminal = capability_run.get("terminal_exec")
+    if not isinstance(terminal, dict):
+        return None
+    return {
+        "kind": "terminal_exec_result",
+        "status": _string_value(terminal.get("status")),
+        "argv0": _string_value(terminal.get("argv0")),
+        "approval_mode": _string_value(terminal.get("approval_mode")),
+        "approval_id": _string_value(terminal.get("approval_id")),
+        "artifact_ref": _safe_mapping(terminal.get("artifact_ref")),
     }
 
 

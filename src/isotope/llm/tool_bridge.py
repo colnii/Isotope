@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..platform.errors import IsotopeError
-from ..capabilities.tools.terminal import validate_argv
+from ..capabilities.tools.terminal import TERMINAL_APPROVAL_MODES, validate_argv
 
 _KERNEL_ERROR_CATEGORIES = {
     "validation",
@@ -151,10 +151,31 @@ def _terminal_exec_requires_approval(
     approval_required_commands = constraints.get("approval_required_commands", [])
     if not isinstance(approval_required_commands, list):
         approval_required_commands = []
+    allowed_commands = constraints.get("allowed_commands", [])
+    if not isinstance(allowed_commands, list):
+        allowed_commands = []
+    approval_mode = arguments.get(
+        "terminal_approval_mode",
+        constraints.get("approval_mode", "allowlist"),
+    )
+    if approval_mode not in TERMINAL_APPROVAL_MODES:
+        approval_mode = "allowlist"
+    if approval_mode == "yolo":
+        return requested is True
+    if approval_mode == "single_approval":
+        if requested is False:
+            raise _invalid_call(
+                "requires_approval",
+                "terminal_exec command requires approval",
+            )
+        return True
     command_requires_approval = argv[0] in {
         command for command in approval_required_commands if isinstance(command, str)
     }
-    if command_requires_approval:
+    command_not_allowlisted = argv[0] not in {
+        command for command in allowed_commands if isinstance(command, str)
+    }
+    if command_requires_approval or command_not_allowlisted:
         if requested is False:
             raise _invalid_call(
                 "requires_approval",
@@ -208,6 +229,28 @@ def _terminal_exec_intent(arguments: dict[str, Any]) -> dict[str, Any]:
             "workspace_mode",
             arguments.get("workspace_mode"),
         )
+    if "cwd" in arguments:
+        intent["cwd"] = _require_non_empty_string("cwd", arguments.get("cwd"))
+    if "terminal_approval_mode" in arguments:
+        approval_mode = _require_non_empty_string(
+            "terminal_approval_mode",
+            arguments.get("terminal_approval_mode"),
+        )
+        if approval_mode not in TERMINAL_APPROVAL_MODES:
+            raise _invalid_call("terminal_approval_mode", "unsupported terminal approval mode")
+        intent["terminal_approval_mode"] = approval_mode
+    if "terminal_allowed_commands" in arguments:
+        allowed_commands = arguments.get("terminal_allowed_commands")
+        if not isinstance(allowed_commands, list) or not all(
+            isinstance(item, str) and item.strip() for item in allowed_commands
+        ):
+            raise _invalid_call("terminal_allowed_commands", "must be a list of strings")
+        intent["terminal_allowed_commands"] = [item.strip() for item in allowed_commands]
+    if "terminal_max_output_bytes" in arguments:
+        max_output_bytes = arguments.get("terminal_max_output_bytes")
+        if not isinstance(max_output_bytes, int) or isinstance(max_output_bytes, bool) or max_output_bytes <= 0:
+            raise _invalid_call("terminal_max_output_bytes", "must be a positive integer")
+        intent["terminal_max_output_bytes"] = max_output_bytes
     return intent
 
 

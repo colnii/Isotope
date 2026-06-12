@@ -64,4 +64,15 @@ describe('ConversationWorkspace', () => {
     expect(source).toContain('iso-message-bubble-assistant');
     expect(source).toContain('class="iso-error-card"');
   });
+
+  test('contains terminal approval controls for yolo, single approval, and allowlist', () => {
+    const path = join(process.cwd(), 'src/lib/components/main/ConversationWorkspace.svelte');
+    const source = readFileSync(path, 'utf8');
+
+    expect(source).toContain('terminalYoloEnabled');
+    expect(source).toContain('onToggleTerminalYolo');
+    expect(source).toContain('本次批准');
+    expect(source).toContain('加入 allowlist');
+    expect(source).toContain('onAllowlistTerminalApproval');
+  });
 });

@@ -295,6 +295,13 @@ class CodexCliBackend:
             reason_code=reason_code,
         )
         summary_payload = codex_runtime_summary_artifact_payload(projection)
+        result_summary = json.dumps(
+            {
+                "kind": "codex_runtime_summary",
+                "summary": projection.summary.to_dict(),
+            },
+            ensure_ascii=False,
+        )
         summary_content = json.dumps(summary_payload, ensure_ascii=False)
         output_artifacts = [
             CodexTaskOutputArtifact(
@@ -316,7 +323,7 @@ class CodexCliBackend:
             status=status,
             started_at=started_at,
             finished_at=finished_at,
-            summary=summary_content,
+            summary=result_summary,
             output_artifacts=output_artifacts,
             reason_code=reason_code,
             retryable=retryable,

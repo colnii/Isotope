@@ -3,9 +3,12 @@ import type {
   AgentClient,
   ApprovalResolution,
   DesktopCapacityCall,
-  DesktopChatHistoryMessage
+  DesktopChatHistoryMessage,
+  DesktopTerminalApprovalPolicy
 } from '../client/agentClient';
 import type { ActivityNode, DesktopReadResult, IsotopeSnapshot } from '../contracts/isotope';
+
+const DEFAULT_TERMINAL_ALLOWED_COMMANDS = ['echo', 'printf', 'pwd', 'true', 'false', 'sleep'];
 
 export type DesktopChatMessagePart =
   | { id: string; kind: 'text'; text: string }
@@ -34,6 +37,8 @@ export function createAppState(clients: AppClients) {
   const chatError = writable<string | null>(null);
   const isResolvingApproval = writable<string | null>(null);
   const approvalError = writable<string | null>(null);
+  const terminalYoloEnabled = writable(false);
+  const terminalAllowedCommands = writable<string[]>([...DEFAULT_TERMINAL_ALLOWED_COMMANDS]);
   let chatTurnCount = 0;
   const selectedActivity = derived(
     [snapshot, selectedActivityId],
@@ -42,6 +47,51 @@ export function createAppState(clients: AppClients) {
       return $snapshot.activities.find((activity) => activity.id === $selectedActivityId) ?? null;
     }
   );
+
+  async function resolveApproval(
+    approvalId: string,
+    resolution: ApprovalResolution,
+    reason: string = defaultApprovalReason(resolution)
+  ) {
+    const cleanApprovalId = approvalId.trim();
+    if (!cleanApprovalId) return;
+    isResolvingApproval.set(cleanApprovalId);
+    approvalError.set(null);
+    try {
+      const result = await clients.agentClient.resolveApproval(cleanApprovalId, resolution, reason);
+      snapshot.set(result.snapshot);
+      if (resolution === 'approved' && result.readResult) {
+        appendApprovedReadResult(chatMessages, result.readResult);
+      }
+    } catch (error) {
+      approvalError.set(error instanceof Error ? error.message : '审批操作失败');
+    } finally {
+      isResolvingApproval.set(null);
+    }
+  }
+
+  async function allowlistTerminalApproval(approvalId: string, command: string) {
+    const cleanCommand = command.trim();
+    if (!cleanCommand) {
+      await resolveApproval(approvalId, 'approved');
+      return;
+    }
+    terminalAllowedCommands.update((commands) =>
+      commands.includes(cleanCommand) ? commands : [...commands, cleanCommand]
+    );
+    await resolveApproval(
+      approvalId,
+      'approved',
+      `desktop operator approved and allowlisted terminal command: ${cleanCommand}`
+    );
+  }
+
+  function terminalApprovalPolicy(): DesktopTerminalApprovalPolicy {
+    return {
+      mode: get(terminalYoloEnabled) ? 'yolo' : 'allowlist',
+      allowedCommands: get(terminalAllowedCommands)
+    };
+  }
 
   return {
     snapshot,
@@ -53,6 +103,7 @@ export function createAppState(clients: AppClients) {
     chatError,
     isResolvingApproval,
     approvalError,
+    terminalYoloEnabled,
     async initialize() {
       isLoading.set(true);
       try {
@@ -66,26 +117,10 @@ export function createAppState(clients: AppClients) {
     selectActivity(activityId: string) {
       selectedActivityId.set(activityId);
     },
-    async resolveApproval(approvalId: string, resolution: ApprovalResolution) {
-      const cleanApprovalId = approvalId.trim();
-      if (!cleanApprovalId) return;
-      isResolvingApproval.set(cleanApprovalId);
-      approvalError.set(null);
-      try {
-        const result = await clients.agentClient.resolveApproval(
-          cleanApprovalId,
-          resolution,
-          defaultApprovalReason(resolution)
-        );
-        snapshot.set(result.snapshot);
-        if (resolution === 'approved' && result.readResult) {
-          appendApprovedReadResult(chatMessages, result.readResult);
-        }
-      } catch (error) {
-        approvalError.set(error instanceof Error ? error.message : '审批操作失败');
-      } finally {
-        isResolvingApproval.set(null);
-      }
+    resolveApproval,
+    allowlistTerminalApproval,
+    toggleTerminalYolo() {
+      terminalYoloEnabled.update((enabled) => !enabled);
     },
     async askDesktopQuestion(question: string) {
       const cleanQuestion = question.trim();
@@ -104,6 +139,7 @@ export function createAppState(clients: AppClients) {
       try {
         const answer = await clients.agentClient.askDesktopQuestion(cleanQuestion, {
           history,
+          terminalApproval: terminalApprovalPolicy(),
           onCapacityStart: (call) => {
             updateAssistantCapacityPart(chatMessages, assistantId, call);
           },

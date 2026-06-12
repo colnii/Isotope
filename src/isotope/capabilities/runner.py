@@ -127,6 +127,12 @@ from .testing import (
     run_test_run,
     validate_test_run_inputs,
 )
+from .tools.terminal import (
+    TERMINAL_EXEC_CAPABILITY,
+    is_terminal_exec_capability,
+    run_terminal_exec,
+    validate_terminal_exec_inputs,
+)
 from .vcs import (
     VCS_DIFF_CAPABILITY,
     VCS_STATUS_CAPABILITY,
@@ -333,6 +339,11 @@ class CapabilityRunner:
             inputs=input_mapping,
             missing_inputs=missing_inputs,
         )
+        validate_terminal_exec_inputs(
+            capability_id=capability_id,
+            inputs=input_mapping,
+            missing_inputs=missing_inputs,
+        )
         validate_vcs_inputs(
             capability_id=capability_id,
             inputs=input_mapping,
@@ -396,6 +407,7 @@ class CapabilityRunner:
             and not is_file_read_capability(capability_id)
             and not is_code_edit_capability(capability_id)
             and not is_test_run_capability(capability_id)
+            and not is_terminal_exec_capability(capability_id)
             and not is_vcs_capability(capability_id)
             and not is_workspace_capability(capability_id)
             and not is_workspace_file_capability(capability_id)
@@ -460,6 +472,7 @@ class CapabilityRunner:
             or is_code_access_capability(capability_id)
             or is_code_edit_capability(capability_id)
             or is_test_run_capability(capability_id)
+            or is_terminal_exec_capability(capability_id)
             or is_vcs_capability(capability_id)
             or is_workspace_capability(capability_id)
             or is_workspace_file_capability(capability_id)
@@ -530,6 +543,11 @@ class CapabilityRunner:
                 missing_inputs=missing_inputs,
             )
             validate_test_run_inputs(
+                capability_id=capability_id,
+                inputs=input_mapping,
+                missing_inputs=missing_inputs,
+            )
+            validate_terminal_exec_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
@@ -617,6 +635,8 @@ class CapabilityRunner:
             return run_code_apply_patch(inputs=input_mapping)
         if capability_id == TEST_RUN_CAPABILITY:
             return run_test_run(inputs=input_mapping)
+        if capability_id == TERMINAL_EXEC_CAPABILITY:
+            return run_terminal_exec(inputs=input_mapping)
         if capability_id == VCS_STATUS_CAPABILITY:
             return run_vcs_status(inputs=input_mapping)
         if capability_id == VCS_DIFF_CAPABILITY:
@@ -771,6 +791,8 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "deterministic_local"
     if is_test_run_capability(str(capability.get("capability_id", ""))):
         return "deterministic_local"
+    if is_terminal_exec_capability(str(capability.get("capability_id", ""))):
+        return "runtime_terminal"
     if is_vcs_capability(str(capability.get("capability_id", ""))):
         return "deterministic_projection"
     if capability.get("capability_id") == WORKSPACE_MATERIALIZE_CAPABILITY:

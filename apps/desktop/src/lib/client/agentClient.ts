@@ -67,8 +67,16 @@ export type DesktopChatHistoryMessage = {
   content: string;
 };
 
+export type TerminalApprovalMode = 'single_approval' | 'allowlist' | 'yolo';
+
+export type DesktopTerminalApprovalPolicy = {
+  mode: TerminalApprovalMode;
+  allowedCommands?: string[];
+};
+
 export type DesktopChatHandlers = {
   history?: DesktopChatHistoryMessage[];
+  terminalApproval?: DesktopTerminalApprovalPolicy;
   onDelta?: (text: string) => void;
   onCapacityStart?: (call: DesktopCapacityCall) => void;
   onCapacityUpdate?: (call: DesktopCapacityCall) => void;
@@ -152,14 +160,12 @@ export function createAgentClient(baseUrl: string | null = null): AgentClient {
       if (!cleanQuestion) {
         throw new Error('问题不能为空');
       }
+      const requestBody = desktopChatRequestBody(cleanQuestion, handlers);
       const response = await fetch(`${apiBaseUrl}/desktop/chat`, {
         method: 'POST',
         cache: 'no-store',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          question: cleanQuestion,
-          history: normalizeChatHistory(handlers.history)
-        })
+        body: JSON.stringify(requestBody)
       });
       if (!response.ok) {
         throw new Error(await responseErrorMessage(response));
@@ -170,6 +176,37 @@ export function createAgentClient(baseUrl: string | null = null): AgentClient {
       return readDesktopChatStream(response.body, cleanQuestion, handlers);
     }
   };
+}
+
+function desktopChatRequestBody(
+  question: string,
+  handlers: DesktopChatHandlers
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    question,
+    history: normalizeChatHistory(handlers.history)
+  };
+  const terminalApproval = normalizeTerminalApprovalPolicy(handlers.terminalApproval);
+  if (terminalApproval) {
+    body.terminal_approval_mode = terminalApproval.mode;
+    body.terminal_allowed_commands = terminalApproval.allowedCommands;
+  }
+  return body;
+}
+
+function normalizeTerminalApprovalPolicy(
+  terminalApproval: DesktopTerminalApprovalPolicy | undefined
+): { mode: TerminalApprovalMode; allowedCommands: string[] } | null {
+  if (!terminalApproval) return null;
+  const mode = terminalApproval.mode;
+  const normalizedMode: TerminalApprovalMode =
+    mode === 'single_approval' || mode === 'yolo' ? mode : 'allowlist';
+  const allowedCommands = [...new Set(
+    (terminalApproval.allowedCommands ?? [])
+      .map((command) => command.trim())
+      .filter((command) => command.length > 0)
+  )];
+  return { mode: normalizedMode, allowedCommands };
 }
 
 function defaultApprovalReason(resolution: ApprovalResolution): string {

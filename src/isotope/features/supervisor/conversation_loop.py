@@ -13,6 +13,11 @@ from typing import Any, Protocol
 from uuid import uuid4
 
 from isotope.capabilities.runner import CapabilityRunner
+from isotope.capabilities.tools.terminal import (
+    DEFAULT_ALLOWED_COMMANDS,
+    DEFAULT_TERMINAL_APPROVAL_MODE,
+    TERMINAL_APPROVAL_MODES,
+)
 from isotope.features.supervisor.commands.handlers.capacity import (
     _execute_agent_loop_capacity_step,
     agent_loop_json_result,
@@ -95,6 +100,8 @@ def run_supervisor_conversation_events(
     capacity_runner: CapabilityRunner | None = None,
     max_turns: int = 300,
     timeout_seconds: float | None = None,
+    terminal_approval_mode: str = DEFAULT_TERMINAL_APPROVAL_MODE,
+    terminal_allowed_commands: list[str] | None = None,
 ) -> Iterator[SupervisorConversationEvent]:
     clean_message = _require_text(user_message, "user_message")
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
@@ -105,6 +112,8 @@ def run_supervisor_conversation_events(
         state_root=Path(state_root).expanduser(),
         cwd=Path(cwd).expanduser(),
         capacity_runner=capacity_runner,
+        terminal_approval_mode=terminal_approval_mode,
+        terminal_allowed_commands=terminal_allowed_commands,
     )
     observations: list[dict[str, Any]] = []
     failed_calls: dict[str, dict[str, Any]] = {}
@@ -305,6 +314,8 @@ def _conversation_context(
     state_root: Path,
     cwd: Path,
     capacity_runner: CapabilityRunner | None,
+    terminal_approval_mode: str,
+    terminal_allowed_commands: list[str] | None,
 ) -> dict[str, Any]:
     runner = capacity_runner if capacity_runner is not None else CapabilityRunner()
     raw_capabilities = runner.list_capabilities()
@@ -331,6 +342,8 @@ def _conversation_context(
             "state_root": str(state_root),
             "root": str(state_root),
             "cwd": str(cwd),
+            "terminal_approval_mode": _terminal_approval_mode(terminal_approval_mode),
+            "terminal_allowed_commands": _terminal_allowed_commands(terminal_allowed_commands),
         },
         "capacity_manifest": {
             "kind": "capacity_manifest",
@@ -650,7 +663,10 @@ def _capability_inputs_from_decision(
     system_context = context.get("system_context")
     if isinstance(system_context, dict):
         for key, value in system_context.items():
-            if key in allowed_inputs:
+            if key in allowed_inputs or (
+                capacity_id == "terminal.exec"
+                and key in {"terminal_approval_mode", "terminal_allowed_commands"}
+            ):
                 inputs[key] = value
     inputs = _apply_conversation_goal_plan_write_route(
         capacity_id,
@@ -732,6 +748,13 @@ def _normalize_conversation_capability_inputs(
     capacity_id: str,
     inputs: dict[str, Any],
 ) -> dict[str, Any]:
+    if capacity_id == "terminal.exec":
+        normalized = dict(inputs)
+        approval_mode = normalized.pop("terminal_approval_mode", DEFAULT_TERMINAL_APPROVAL_MODE)
+        allowed_commands = normalized.pop("terminal_allowed_commands", list(DEFAULT_ALLOWED_COMMANDS))
+        normalized.setdefault("approval_mode", _terminal_approval_mode(approval_mode))
+        normalized.setdefault("allowed_commands", _terminal_allowed_commands(allowed_commands))
+        return normalized
     if capacity_id == "coding_task.execute":
         normalized = dict(inputs)
         normalized.setdefault("run_id", "conversation_loop")
@@ -759,6 +782,18 @@ def _configured_tavily_research_available() -> bool:
         return False
 
 
+def _terminal_approval_mode(value: Any) -> str:
+    if isinstance(value, str) and value in TERMINAL_APPROVAL_MODES:
+        return value
+    return DEFAULT_TERMINAL_APPROVAL_MODE
+
+
+def _terminal_allowed_commands(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return list(DEFAULT_ALLOWED_COMMANDS)
+    return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+
+
 def _capability_input_names(capacity_id: str) -> set[str]:
     try:
         capability = CapabilityRunner().describe_capability(capacity_id)
@@ -777,6 +812,13 @@ def _capacity_event_id(capacity_id: str) -> str:
 
 
 def _capacity_result_status(result: dict[str, Any]) -> str:
+    terminal_status = result.get("agent_loop_terminal_exec_status")
+    if terminal_status == "completed":
+        return "ok"
+    if terminal_status == "pending_user_approval":
+        return "blocked"
+    if terminal_status in {"failed", "denied"}:
+        return "error"
     research_status = result.get("agent_loop_research_search_status")
     if research_status in {"provider_failed", "validation_failed"}:
         return "blocked"
@@ -813,6 +855,11 @@ def _capacity_display_inputs(capacity_id: str, inputs: dict[str, Any]) -> dict[s
         display.pop("cwd", None)
         display.pop("workspace_id", None)
         display.pop("expected_source_digests", None)
+        return display
+    if capacity_id == "terminal.exec":
+        display.pop("root", None)
+        display.pop("cwd", None)
+        display.pop("allowed_commands", None)
         return display
     if capacity_id in {"supervisor.project_status", "isotope.self_repair"}:
         display.pop("state_root", None)

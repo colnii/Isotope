@@ -57,6 +57,8 @@ from .routes.dashboard import (
 from .routes.desktop import (
     desktop_approval_resolve_id,
     desktop_chat_history,
+    desktop_terminal_allowed_commands,
+    desktop_terminal_approval_mode,
 )
 from .routes.agent_groups import (
     agent_group_child_id_from_path,
@@ -550,6 +552,12 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             max_tokens = _positive_int(payload.get("max_tokens"), "max_tokens", default=512)
             history = desktop_chat_history(payload.get("history"))
             workspace_cwd = _workspace_cwd(payload.get("workspace_cwd"))
+            terminal_approval_mode = desktop_terminal_approval_mode(
+                payload.get("terminal_approval_mode")
+            )
+            terminal_allowed_commands = desktop_terminal_allowed_commands(
+                payload.get("terminal_allowed_commands")
+            )
         except ValueError as exc:
             self._send_json(
                 {
@@ -588,6 +596,8 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
                     "ISOTOPE_DESKTOP_CHAT_TIMEOUT_SECONDS",
                     default=18,
                 ),
+                terminal_approval_mode=terminal_approval_mode,
+                terminal_allowed_commands=terminal_allowed_commands,
             ):
                 if event.event == "delta":
                     provider_name = event.provider

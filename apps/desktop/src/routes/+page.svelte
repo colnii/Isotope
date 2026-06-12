@@ -24,7 +24,8 @@
     isAskingDesktop,
     chatError,
     isResolvingApproval,
-    approvalError
+    approvalError,
+    terminalYoloEnabled
   } = appState;
 
   let loadError = $state<string | null>(null);
@@ -86,9 +87,13 @@
             isAskingDesktop={$isAskingDesktop}
             resolvingApprovalId={$isResolvingApproval}
             approvalError={$approvalError}
+            terminalYoloEnabled={$terminalYoloEnabled}
             agentClient={isotopeClient.agentClient}
             onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
             onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
+            onToggleTerminalYolo={() => appState.toggleTerminalYolo()}
+            onAllowlistTerminalApproval={(approvalId, command) =>
+              void appState.allowlistTerminalApproval(approvalId, command)}
           />
         {/if}
       </div>
@@ -112,9 +117,13 @@
             isAskingDesktop={$isAskingDesktop}
             resolvingApprovalId={$isResolvingApproval}
             approvalError={$approvalError}
+            terminalYoloEnabled={$terminalYoloEnabled}
             agentClient={isotopeClient.agentClient}
             onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
             onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
+            onToggleTerminalYolo={() => appState.toggleTerminalYolo()}
+            onAllowlistTerminalApproval={(approvalId, command) =>
+              void appState.allowlistTerminalApproval(approvalId, command)}
           />
         {/if}
       </div>

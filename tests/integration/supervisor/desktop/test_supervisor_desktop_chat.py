@@ -494,6 +494,80 @@ def test_desktop_chat_stream_uses_conversation_loop_for_model_capacity_choice(
     assert len(provider.calls) == 2
 
 
+def test_desktop_chat_stream_injects_terminal_yolo_policy_for_capacity_call(
+    tmp_path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    provider = MultiResponseDesktopChatProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "terminal.exec",
+                    "arguments": {
+                        "argv": [
+                            "python3",
+                            "-c",
+                            (
+                                "from pathlib import Path\n"
+                                "p=Path('tmp/desktop-terminal.txt')\n"
+                                "p.parent.mkdir(exist_ok=True)\n"
+                                "p.write_text('created', encoding='utf-8')\n"
+                                "p.write_text(p.read_text(encoding='utf-8') + '-updated', encoding='utf-8')\n"
+                            ),
+                        ],
+                    },
+                    "rationale": "用户要求通过终端操作 tmp 目录。",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "终端命令已经完成。",
+                },
+                ensure_ascii=False,
+            ),
+        ]
+    )
+
+    events = list(
+        stream_desktop_chat_events(
+            state_root=tmp_path / "state",
+            cwd=workspace,
+            question="在 tmp/ 下创建再修改文件。",
+            provider=provider,
+            terminal_approval_mode="yolo",
+            terminal_allowed_commands=[],
+        )
+    )
+
+    assert [event.event for event in events[:3]] == [
+        "capacity_start",
+        "capacity_update",
+        "capacity_result",
+    ]
+    capacity_result = events[2].payload
+    assert capacity_result["capacity_id"] == "terminal.exec"
+    assert capacity_result["status"] == "ok"
+    assert capacity_result["result"]["agent_loop_terminal_exec_status"] == "completed"
+    assert (workspace / "tmp" / "desktop-terminal.txt").read_text(encoding="utf-8") == (
+        "created-updated"
+    )
+    assert "".join(event.payload["text"] for event in events[3:]) == "终端命令已经完成。"
+
+    first_prompt = provider.calls[0]["messages"][0]["content"]
+    capacity_manifest = _system_json_section(first_prompt, "capacity_manifest")
+    terminal = next(
+        item
+        for item in capacity_manifest["capabilities"]
+        if item["capability_id"] == "terminal.exec"
+    )
+    assert terminal["required_inputs"] == ["argv"]
+    assert "approval_mode" not in terminal["input_properties"]
+    assert "allowed_commands" not in terminal["input_properties"]
+
+
 def test_desktop_chat_endpoint_can_call_goal_plan_capacity(
     tmp_path,
     monkeypatch,

@@ -13,9 +13,12 @@
     isAskingDesktop = false,
     resolvingApprovalId = null,
     approvalError = null,
+    terminalYoloEnabled = false,
     agentClient,
     onAskDesktop,
-    onResolveApproval
+    onResolveApproval,
+    onToggleTerminalYolo,
+    onAllowlistTerminalApproval
   } = $props<{
     snapshot: IsotopeSnapshot;
     selectedActivity: ActivityNode | null;
@@ -24,9 +27,12 @@
     isAskingDesktop?: boolean;
     resolvingApprovalId?: string | null;
     approvalError?: string | null;
+    terminalYoloEnabled?: boolean;
     agentClient: AgentClient;
     onAskDesktop: (question: string) => void;
     onResolveApproval: (approvalId: string, resolution: ApprovalResolution) => void;
+    onToggleTerminalYolo: () => void;
+    onAllowlistTerminalApproval: (approvalId: string, command: string) => void;
   }>();
 
   const view = $derived(buildMainWindowProductView(snapshot, selectedActivity));
@@ -53,8 +59,11 @@
     {chatMessages}
     {chatError}
     isAsking={isAskingDesktop}
+    {terminalYoloEnabled}
     {agentClient}
     onAsk={onAskDesktop}
     onResolveApproval={onResolveApproval}
+    onToggleTerminalYolo={onToggleTerminalYolo}
+    onAllowlistTerminalApproval={onAllowlistTerminalApproval}
   />
 </section>

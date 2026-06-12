@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from ..capabilities.tools.terminal import validate_argv
+from ..capabilities.tools.terminal import (
+    DEFAULT_TERMINAL_APPROVAL_MODE,
+    TERMINAL_APPROVAL_MODES,
+    validate_argv,
+)
 from ..execution.screen.backend_types import ScreenAction, ScreenTargetSelector
 from ..platform.ids import new_id
 from ..platform.registry.actions import ActionTypeRegistry
@@ -70,11 +74,10 @@ class PolicyEngine:
             terminal_capabilities = required_capabilities.get("terminal")
             if not isinstance(terminal_capabilities, dict):
                 raise ValueError("registry required_capabilities.terminal must be a dict")
-            allowed_commands = terminal_capabilities.get("allowed_commands", [])
-            if not isinstance(allowed_commands, list) or not all(
-                isinstance(item, str) for item in allowed_commands
-            ):
-                raise ValueError("registry terminal.allowed_commands must be a list of strings")
+            allowed_commands = _terminal_allowed_commands(
+                proposal.payload.get("terminal_allowed_commands"),
+                terminal_capabilities,
+            )
             approval_required_commands = terminal_capabilities.get("approval_required_commands", [])
             if not isinstance(approval_required_commands, list) or not all(
                 isinstance(item, str) for item in approval_required_commands
@@ -84,15 +87,24 @@ class PolicyEngine:
             command = argv[0]
             allowed_command_set = set(allowed_commands)
             approval_required_command_set = set(approval_required_commands)
-            if command in approval_required_command_set and proposal.payload.get("approval_requested") is not True:
+            approval_mode = _terminal_approval_mode(proposal.payload, terminal_capabilities)
+            approval_requested = proposal.payload.get("approval_requested") is True
+            requires_approval = command in approval_required_command_set
+            if approval_mode == "single_approval":
+                requires_approval = True
+            elif approval_mode == "allowlist":
+                requires_approval = requires_approval or command not in allowed_command_set
+            elif approval_mode == "yolo":
+                requires_approval = False
+            if requires_approval and not approval_requested:
                 return self._denied(proposal, "terminal_approval_required")
-            if command not in allowed_command_set and command not in approval_required_command_set:
-                return self._denied(proposal, "terminal_command_not_allowed")
-            granted_commands = list(allowed_commands)
-            if command in approval_required_command_set and command not in granted_commands:
-                granted_commands.append(command)
             try:
-                max_output_bytes = int(terminal_capabilities.get("max_output_bytes", 4096))
+                max_output_bytes = int(
+                    proposal.payload.get(
+                        "terminal_max_output_bytes",
+                        terminal_capabilities.get("max_output_bytes", 4096),
+                    )
+                )
             except (TypeError, ValueError) as exc:
                 raise ValueError("registry terminal.max_output_bytes must be int-like") from exc
             if max_output_bytes <= 0:
@@ -101,12 +113,13 @@ class PolicyEngine:
                 raise ValueError("registry terminal.shell must be false")
             if terminal_capabilities.get("argv_policy", "allowlist") != "allowlist":
                 raise ValueError("registry terminal.argv_policy must be allowlist")
-            grants["terminal"] = {
-                "shell": False,
-                "argv_policy": "allowlist",
-                "allowed_commands": granted_commands,
-                "max_output_bytes": max_output_bytes,
-            }
+            grants["terminal"] = _terminal_grant(
+                argv,
+                approval_mode=approval_mode,
+                allowed_commands=allowed_commands,
+                requires_approval=requires_approval,
+                max_output_bytes=max_output_bytes,
+            )
         if tool_name == "codex_task":
             codex_capabilities = required_capabilities.get("codex_task")
             if not isinstance(codex_capabilities, dict):
@@ -275,6 +288,52 @@ def _screen_grant_from_capabilities(capabilities: dict) -> dict:
             "full_content_in_events": artifact_policy.get("full_content_in_events", False),
             "full_content_in_read_model": artifact_policy.get("full_content_in_read_model", False),
         },
+    }
+
+
+def _terminal_allowed_commands(payload_value: object, capabilities: dict) -> list[str]:
+    value = payload_value if payload_value is not None else capabilities.get("allowed_commands", [])
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ValueError("registry terminal.allowed_commands must be a list of strings")
+    return [item for item in value if item]
+
+
+def _terminal_approval_mode(payload: dict, capabilities: dict) -> str:
+    value = payload.get(
+        "terminal_approval_mode",
+        capabilities.get("approval_mode", DEFAULT_TERMINAL_APPROVAL_MODE),
+    )
+    if not isinstance(value, str) or value not in TERMINAL_APPROVAL_MODES:
+        raise ValueError("terminal approval mode is not supported")
+    return value
+
+
+def _terminal_grant(
+    argv: list[str],
+    *,
+    approval_mode: str,
+    allowed_commands: list[str],
+    requires_approval: bool,
+    max_output_bytes: int,
+) -> dict[str, object]:
+    if approval_mode == "yolo":
+        return {
+            "shell": False,
+            "argv_policy": "unrestricted",
+            "max_output_bytes": max_output_bytes,
+        }
+    if requires_approval:
+        return {
+            "shell": False,
+            "argv_policy": "exact_argv",
+            "allowed_argv": list(argv),
+            "max_output_bytes": max_output_bytes,
+        }
+    return {
+        "shell": False,
+        "argv_policy": "allowlist",
+        "allowed_commands": list(allowed_commands),
+        "max_output_bytes": max_output_bytes,
     }
 
 

@@ -58,6 +58,7 @@ def agent_loop_json_result(payload: Mapping[str, Any]) -> dict[str, Any]:
         result.update(_agent_loop_research_search_result(capability_run))
         result.update(_agent_loop_research_promotion_result(capability_run))
         result.update(_agent_loop_project_status_result(capability_run))
+        result.update(_agent_loop_terminal_exec_result(capability_run))
         result.update(request_context_agent_loop_result(capability_run))
         result.update(_agent_loop_self_repair_result(capability_run))
         result.update(_agent_loop_reviewed_apply_result(capability_run))
@@ -252,6 +253,29 @@ def _agent_loop_research_promotion_result(
             "quality_gate_status"
         ),
     }
+
+
+def _agent_loop_terminal_exec_result(
+    capability_run: Mapping[str, Any],
+) -> dict[str, Any]:
+    if capability_run.get("capability_id") != "terminal.exec":
+        return {}
+    terminal = capability_run.get("terminal_exec")
+    if not isinstance(terminal, Mapping):
+        return {}
+    result: dict[str, Any] = {
+        "agent_loop_terminal_exec_status": terminal.get("status"),
+        "agent_loop_terminal_exec_argv0": terminal.get("argv0"),
+        "agent_loop_terminal_exec_approval_mode": terminal.get("approval_mode"),
+    }
+    for source_key, result_key in (
+        ("approval_id", "agent_loop_terminal_exec_approval_id"),
+        ("artifact_ref", "agent_loop_terminal_exec_artifact_ref"),
+    ):
+        value = terminal.get(source_key)
+        if value:
+            result[result_key] = value
+    return result
 
 
 def _agent_loop_reviewed_apply_result(

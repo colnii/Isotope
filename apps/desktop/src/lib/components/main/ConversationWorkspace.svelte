@@ -19,9 +19,12 @@
     chatMessages = [],
     chatError = null,
     isAsking = false,
+    terminalYoloEnabled = false,
     agentClient,
     onAsk,
-    onResolveApproval
+    onResolveApproval,
+    onToggleTerminalYolo = () => undefined,
+    onAllowlistTerminalApproval = () => undefined
   } = $props<{
     eyebrow: string;
     title: string;
@@ -36,9 +39,12 @@
     chatMessages?: DesktopChatMessage[];
     chatError?: string | null;
     isAsking?: boolean;
+    terminalYoloEnabled?: boolean;
     agentClient: AgentClient;
     onAsk: (question: string) => void;
     onResolveApproval: (approvalId: string, resolution: ApprovalResolution) => void;
+    onToggleTerminalYolo?: () => void;
+    onAllowlistTerminalApproval?: (approvalId: string, command: string) => void;
   }>();
 
   function approvalSourceLabel(approval: ApprovalSummary): string {
@@ -64,6 +70,19 @@
     if (tool) return tool;
     return approval.reasonCodes?.join(', ') || '等待人工确认';
   }
+
+  function terminalApprovalCommand(approval: ApprovalSummary): string | null {
+    const summary = approval.requestedActionSummary ?? {};
+    return summary.tool === 'terminal_exec' && typeof summary.terminal_command === 'string'
+      ? summary.terminal_command
+      : null;
+  }
+
+  function allowlistTerminalApproval(approval: ApprovalSummary) {
+    const command = terminalApprovalCommand(approval);
+    if (!command) return;
+    onAllowlistTerminalApproval(approval.id, command);
+  }
 </script>
 
 <section class="iso-chat-shell" aria-label="Conversation workspace">
@@ -71,9 +90,24 @@
     <div class="iso-chat-header-copy">
       <div class="iso-chat-eyebrow">{eyebrow}</div>
       <h1 class="iso-chat-title">{title}</h1>
-      {#if subtitle}
-        <div class="iso-chat-subtitle">{subtitle}</div>
-      {/if}
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        {#if subtitle}
+          <div class="iso-chat-subtitle">{subtitle}</div>
+        {/if}
+        <button
+          type="button"
+          aria-pressed={terminalYoloEnabled}
+          class={[
+            'rounded-full border px-3 py-1 text-xs font-semibold transition-colors',
+            terminalYoloEnabled
+              ? 'border-isotope-error bg-isotope-error text-white shadow-sm'
+              : 'border-isotope-line bg-isotope-panel text-isotope-muted hover:border-isotope-line-strong hover:text-isotope-text'
+          ]}
+          onclick={onToggleTerminalYolo}
+        >
+          {terminalYoloEnabled ? '终端 YOLO 已开' : '终端 YOLO'}
+        </button>
+      </div>
     </div>
     <div class="iso-suprematist-mark" aria-hidden="true">
       <span class="iso-suprematist-square"></span>
@@ -118,14 +152,33 @@
                 >
                   拒绝
                 </button>
-                <button
-                  type="button"
-                  class="iso-button-primary"
-                  disabled={resolvingApprovalId === approval.id}
-                  onclick={() => onResolveApproval(approval.id, 'approved')}
-                >
-                  {resolvingApprovalId === approval.id ? '处理中' : '批准'}
-                </button>
+                {#if terminalApprovalCommand(approval)}
+                  <button
+                    type="button"
+                    class="iso-button-primary"
+                    disabled={resolvingApprovalId === approval.id}
+                    onclick={() => onResolveApproval(approval.id, 'approved')}
+                  >
+                    {resolvingApprovalId === approval.id ? '处理中' : '本次批准'}
+                  </button>
+                  <button
+                    type="button"
+                    class="iso-button-muted"
+                    disabled={resolvingApprovalId === approval.id}
+                    onclick={() => allowlistTerminalApproval(approval)}
+                  >
+                    加入 allowlist
+                  </button>
+                {:else}
+                  <button
+                    type="button"
+                    class="iso-button-primary"
+                    disabled={resolvingApprovalId === approval.id}
+                    onclick={() => onResolveApproval(approval.id, 'approved')}
+                  >
+                    {resolvingApprovalId === approval.id ? '处理中' : '批准'}
+                  </button>
+                {/if}
               </div>
             </article>
           {/each}

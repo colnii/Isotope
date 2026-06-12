@@ -12,6 +12,11 @@ from time import monotonic
 from typing import Any, Protocol
 
 from isotope.capabilities.runner import CapabilityRunner
+from isotope.capabilities.tools.terminal import (
+    DEFAULT_ALLOWED_COMMANDS,
+    DEFAULT_TERMINAL_APPROVAL_MODE,
+    TERMINAL_APPROVAL_MODES,
+)
 from isotope.features.supervisor.commands.handlers.capacity import (
     build_supervisor_capacity_plan,
     _capacity_manifests_from_runner,
@@ -102,6 +107,8 @@ def stream_desktop_chat_events(
     capacity_timeout_seconds: float = 3.0,
     chat_timeout_seconds: float = 18.0,
     history: list[dict[str, str]] | None = None,
+    terminal_approval_mode: str = DEFAULT_TERMINAL_APPROVAL_MODE,
+    terminal_allowed_commands: list[str] | None = None,
 ) -> Iterator[DesktopChatStreamEvent]:
     clean_question = _require_question(question)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or max_tokens <= 0:
@@ -118,6 +125,8 @@ def stream_desktop_chat_events(
             history=history,
             capacity_runner=capacity_runner,
             timeout_seconds=chat_timeout_seconds,
+            terminal_approval_mode=_terminal_approval_mode(terminal_approval_mode),
+            terminal_allowed_commands=_terminal_allowed_commands(terminal_allowed_commands),
         ):
             if event.event == "capacity_result":
                 chat_context["capacity_result"] = event.payload
@@ -202,6 +211,18 @@ def _desktop_chat_response(
     if not response.content.strip():
         raise ValueError("provider returned empty answer")
     return response
+
+
+def _terminal_approval_mode(value: Any) -> str:
+    if isinstance(value, str) and value in TERMINAL_APPROVAL_MODES:
+        return value
+    return DEFAULT_TERMINAL_APPROVAL_MODE
+
+
+def _terminal_allowed_commands(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return list(DEFAULT_ALLOWED_COMMANDS)
+    return [item.strip() for item in value if isinstance(item, str) and item.strip()]
 
 
 def stream_desktop_chat(

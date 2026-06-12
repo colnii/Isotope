@@ -852,6 +852,107 @@ def test_test_run_rejects_not_allowlisted_command_without_side_effects(tmp_path)
 
 
 
+def test_terminal_exec_capacity_yolo_runs_crud_command_in_workspace_tmp(tmp_path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    state_root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "terminal.exec",
+        inputs={
+            "root": str(state_root),
+            "cwd": str(workspace),
+            "argv": [
+                "python3",
+                "-c",
+                (
+                    "from pathlib import Path\n"
+                    "p=Path('tmp/terminal-capacity.txt')\n"
+                    "p.parent.mkdir(exist_ok=True)\n"
+                    "p.write_text('created', encoding='utf-8')\n"
+                    "assert p.read_text(encoding='utf-8') == 'created'\n"
+                    "p.write_text('updated', encoding='utf-8')\n"
+                    "assert p.read_text(encoding='utf-8') == 'updated'\n"
+                    "p.unlink()\n"
+                    "assert not p.exists()\n"
+                ),
+            ],
+            "approval_mode": "yolo",
+        },
+    )
+
+    assert result["kind"] == "capability_run_result"
+    assert result["capability_id"] == "terminal.exec"
+    assert result["status"] == "completed"
+    assert result["runner_kind"] == "runtime_terminal"
+    terminal = result["terminal_exec"]
+    assert terminal["status"] == "completed"
+    assert terminal["argv0"] == "python3"
+    assert terminal["approval_mode"] == "yolo"
+    assert terminal["artifact_ref"]["ref_type"] == "artifact"
+    assert not (workspace / "tmp" / "terminal-capacity.txt").exists()
+    json.dumps(result)
+    for mapping in _walk_mapping(result):
+        assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
+
+
+
+def test_terminal_exec_capacity_allowlist_request_creates_visible_pending_approval(tmp_path):
+    from isotope.features.supervisor.desktop_snapshot import build_desktop_snapshot
+    from isotope.runtime.in_process import InProcessServer
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    state_root = tmp_path / "state"
+
+    result = _runner().run_capability(
+        "terminal.exec",
+        inputs={
+            "root": str(state_root),
+            "cwd": str(workspace),
+            "argv": [
+                "python3",
+                "-c",
+                (
+                    "from pathlib import Path; "
+                    "p=Path('tmp/pending.txt'); "
+                    "p.parent.mkdir(exist_ok=True); "
+                    "p.write_text('ok')"
+                ),
+            ],
+            "approval_mode": "allowlist",
+            "allowed_commands": ["printf"],
+        },
+    )
+
+    assert result["status"] == "pending_user_approval"
+    terminal = result["terminal_exec"]
+    assert terminal["status"] == "pending_user_approval"
+    assert terminal["approval_id"]
+    assert terminal["argv0"] == "python3"
+    assert not (workspace / "tmp" / "pending.txt").exists()
+
+    snapshot = build_desktop_snapshot(state_root=state_root)
+    assert snapshot["counts"]["approvals"] == 1
+    approval = snapshot["approvals"][0]
+    assert approval["id"] == terminal["approval_id"]
+    assert approval["requestedActionSummary"]["tool"] == "terminal_exec"
+    assert approval["requestedActionSummary"]["terminal_command"] == "python3"
+
+    resolved = InProcessServer(state_root).resolve_approval(
+        terminal["approval_id"],
+        {
+            "resolution": "approved",
+            "reason": "test approved terminal command",
+            "resolver": "pytest",
+        },
+    )
+
+    assert resolved["status"] == "completed"
+    assert (workspace / "tmp" / "pending.txt").read_text(encoding="utf-8") == "ok"
+
+
+
 def test_test_run_plan_stops_when_required_inputs_are_missing():
     plan = _runner().plan_capability_run(
         "test.run",
@@ -1670,6 +1771,4 @@ def test_integration_review_capability_runs_existing_review_collection(monkeypat
     assert "PRIVATE" not in json.dumps(result)
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
-
-
 

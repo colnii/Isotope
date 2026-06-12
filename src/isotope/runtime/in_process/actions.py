@@ -435,6 +435,9 @@ class InProcessActionMixin:
             if isinstance(argv, list) and argv and isinstance(argv[0], str):
                 label["terminal_command"] = argv[0]
                 label["argv_count"] = len(argv)
+            approval_mode = proposal.payload.get("terminal_approval_mode")
+            if isinstance(approval_mode, str) and approval_mode:
+                label["terminal_approval_mode"] = approval_mode
         if tool_name == "local_file_read":
             label["tool"] = tool_name
             path = proposal.payload.get("path")

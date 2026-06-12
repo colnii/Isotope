@@ -58,6 +58,7 @@ def _terminal_registry(
     *,
     allowed_commands: list[str],
     approval_required_commands: list[str],
+    approval_mode: str = "allowlist",
 ) -> action_registry.ActionTypeRegistry:
     return action_registry.ActionTypeRegistry(
         entries=[
@@ -72,6 +73,7 @@ def _terminal_registry(
                     "terminal": {
                         "shell": False,
                         "argv_policy": "allowlist",
+                        "approval_mode": approval_mode,
                         "allowed_commands": allowed_commands,
                         "approval_required_commands": approval_required_commands,
                         "max_output_bytes": 4096,
@@ -103,6 +105,7 @@ def test_default_registry_exposes_terminal_exec_as_controlled_tool():
     assert entry.required_capabilities["workspace"] == {"mode": "shared_ro"}
     assert entry.required_capabilities["terminal"]["shell"] is False
     assert entry.required_capabilities["terminal"]["argv_policy"] == "allowlist"
+    assert entry.required_capabilities["terminal"]["approval_mode"] == "allowlist"
     assert "bash" in entry.required_capabilities["terminal"]["approval_required_commands"]
 
 
@@ -338,3 +341,81 @@ def test_terminal_exec_approval_required_command_runs_after_approval(tmp_path):
         "action.completed",
         "run.completed",
     ]
+
+
+def test_terminal_exec_non_allowlisted_command_requires_approval_by_default(tmp_path):
+    api, run_id = _new_run(tmp_path)
+
+    result = api.submit_action(
+        run_id,
+        _terminal_intent(["python3", "-c", "print('needs approval')"]),
+    )
+
+    assert result["status"] == "denied"
+    assert result["decision"].reason_codes == ["terminal_approval_required"]
+    assert "action.started" not in _event_types(api, run_id)
+    assert api.artifact_store.list_artifacts(run_id) == []
+
+
+def test_terminal_exec_non_allowlisted_command_runs_once_after_single_approval(tmp_path):
+    api, run_id = _new_run(tmp_path)
+
+    pending = api.submit_action(
+        run_id,
+        _terminal_intent(
+            ["python3", "-c", "print('single approval')"],
+            terminal_approval_mode="single_approval",
+        ),
+        requires_approval=True,
+    )
+
+    assert pending["status"] == "pending_user_approval"
+    grant = pending["decision"].grants["terminal"]
+    assert grant["argv_policy"] == "exact_argv"
+    assert grant["allowed_argv"] == ["python3", "-c", "print('single approval')"]
+
+    result = api.resolve_approval(pending["approval_id"], _approved_body())
+
+    assert result["status"] == "completed"
+    content = _artifact_content(api, result)
+    assert content["argv"] == ["python3", "-c", "print('single approval')"]
+    assert content["stdout"] == "single approval\n"
+
+
+def test_terminal_exec_yolo_mode_runs_unallowlisted_argv_without_pending_approval(tmp_path):
+    api, run_id = _new_run(tmp_path)
+
+    result = api.submit_action(
+        run_id,
+        _terminal_intent(
+            ["python3", "-c", "print('yolo terminal')"],
+            terminal_approval_mode="yolo",
+        ),
+    )
+
+    assert result["status"] == "completed"
+    assert "approval.requested" not in _event_types(api, run_id)
+    content = _artifact_content(api, result)
+    assert content["argv"] == ["python3", "-c", "print('yolo terminal')"]
+    assert content["stdout"] == "yolo terminal\n"
+
+
+def test_terminal_exec_allowlist_mode_uses_frontend_command_list(tmp_path):
+    registry = _terminal_registry(
+        allowed_commands=["printf"],
+        approval_required_commands=[],
+    )
+    api, run_id = _new_run_with_registry(tmp_path, registry)
+
+    result = api.submit_action(
+        run_id,
+        _terminal_intent(
+            ["python3", "-c", "print('allowed by frontend')"],
+            terminal_approval_mode="allowlist",
+            terminal_allowed_commands=["python3"],
+        ),
+    )
+
+    assert result["status"] == "completed"
+    content = _artifact_content(api, result)
+    assert content["stdout"] == "allowed by frontend\n"

@@ -11,7 +11,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from isotope.capabilities.tools.terminal import cap_terminal_output, terminal_grant_from, validate_argv
+from isotope.capabilities.tools.terminal import (
+    cap_terminal_output,
+    terminal_grant_from,
+    terminal_grant_policy_violation,
+    validate_argv,
+)
 
 from .backend_types import (
     TerminalBackendOutputArtifact,
@@ -218,15 +223,11 @@ def _system_runner_result(
 
 
 def _ensure_windows_system_terminal_grant(command: list[str], terminal_grant: dict[str, Any]) -> None:
-    if terminal_grant.get("shell") is not False:
-        raise ValueError("windows system terminal runner requires shell=False")
-    if terminal_grant.get("argv_policy") != "allowlist":
-        raise ValueError("windows system terminal runner requires argv allowlist policy")
-    allowed = terminal_grant.get("allowed_commands", [])
-    if not isinstance(allowed, list) or not all(isinstance(item, str) for item in allowed):
-        raise ValueError("windows system terminal runner allowed_commands grant is malformed")
-    if command[0] not in set(allowed):
-        raise PermissionError("windows system terminal command is not allowed by grants")
+    violation = terminal_grant_policy_violation(command, terminal_grant)
+    if violation is not None:
+        if violation["reason_code"] in {"terminal_command_not_allowed", "terminal_shell_not_granted"}:
+            raise PermissionError(violation["message"])
+        raise ValueError(violation["message"])
     if command[0].lower() in WINDOWS_PROFILE_BACKED_COMMANDS:
         raise PermissionError("windows package manager commands are profile-backed, not arbitrary exec_argv")
 
