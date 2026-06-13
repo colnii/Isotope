@@ -94,6 +94,7 @@ def test_policy_grants_screen_observe_with_artifact_policy():
     assert decision.grants["tools"] == ["screen_observe"]
     assert decision.grants["screen"]["observe"] is True
     assert decision.grants["screen"]["control"] is False
+    assert decision.grants["screen"]["artifact_policy"]["max_screenshot_bytes"] >= 2_000_000
     assert decision.grants["screen"]["artifact_policy"]["full_content_in_events"] is False
 
 

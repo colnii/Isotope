@@ -323,7 +323,7 @@ def _local_file_read_tool_entry() -> dict[str, Any]:
 def _default_screen_artifact_policy() -> dict[str, Any]:
     return {
         "capture": ["screenshot", "metadata", "control_plan", "control_result", "diagnostic"],
-        "max_screenshot_bytes": 500000,
+        "max_screenshot_bytes": 2000000,
         "max_screenshot_width": 1600,
         "max_screenshot_height": 1200,
         "full_content_in_events": False,

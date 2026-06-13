@@ -262,7 +262,7 @@ def _validate_action_policy(
 def _default_artifact_policy() -> dict[str, Any]:
     return {
         "capture": ["screenshot", "metadata", "control_plan", "control_result", "diagnostic"],
-        "max_screenshot_bytes": 500000,
+        "max_screenshot_bytes": 2000000,
         "max_screenshot_width": 1600,
         "max_screenshot_height": 1200,
         "full_content_in_events": False,
