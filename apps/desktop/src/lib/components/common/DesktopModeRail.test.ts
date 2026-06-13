@@ -28,7 +28,8 @@ describe('DesktopModeRail', () => {
     expect(source).toContain('iso-desktop-mode-label');
 
     const styles = readFileSync(join(process.cwd(), 'src/app.css'), 'utf8');
-    expect(styles).toContain('bg-isotope-rail');
-    expect(styles).not.toContain('bg-isotope-ink px-3 py-4');
+    expect(styles).toContain('bg-isotope-rail px-3 py-4 text-isotope-text');
+    expect(styles).toContain('bg-isotope-rail-dark');
+    expect(styles).not.toContain('bg-isotope-rail px-3 py-4 text-isotope-panel');
   });
 });

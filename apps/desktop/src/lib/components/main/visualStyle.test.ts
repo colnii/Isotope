@@ -17,7 +17,8 @@ describe('desktop Canvas Suprematist visual system', () => {
     expect(source).toContain("red: '#c9342c'");
     expect(source).toContain("blue: '#1d58a8'");
     expect(source).toContain("yellow: '#e2b631'");
-    expect(source).toContain("rail: '#2b251f'");
+    expect(source).toContain("rail: '#efe5d2'");
+    expect(source).toContain("'rail-dark': '#2b251f'");
     expect(source).toContain("umber: '#9a4f1c'");
     expect(source).toContain("line: '#d6cdbd'");
     expect(source).toContain("'line-strong': '#bdb4a4'");

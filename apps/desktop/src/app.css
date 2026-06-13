@@ -155,7 +155,7 @@ textarea {
   }
 
   .iso-desktop-mode-rail {
-    @apply fixed bottom-0 left-0 top-0 z-30 flex flex-col items-center border-r border-[#3a3329] bg-isotope-rail px-3 py-4 text-isotope-panel;
+    @apply fixed bottom-0 left-0 top-0 z-30 flex flex-col items-center border-r border-isotope-line bg-isotope-rail px-3 py-4 text-isotope-text;
     width: 5.25rem;
   }
 
@@ -186,11 +186,11 @@ textarea {
   }
 
   .iso-desktop-mode-button {
-    @apply flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-panel border border-transparent text-isotope-panel/70 transition-colors hover:border-isotope-panel/20 hover:bg-isotope-panel/10 hover:text-isotope-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-isotope-yellow focus-visible:ring-offset-2 focus-visible:ring-offset-isotope-rail;
+    @apply flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-panel border border-transparent text-isotope-muted transition-colors hover:border-isotope-line-strong hover:bg-isotope-panel hover:text-isotope-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-isotope-red focus-visible:ring-offset-2 focus-visible:ring-offset-isotope-rail;
   }
 
   .iso-desktop-mode-button-active {
-    @apply border-isotope-panel bg-isotope-panel text-isotope-red shadow-sm;
+    @apply border-isotope-line bg-isotope-panel text-isotope-red shadow-sm;
   }
 
   .iso-desktop-mode-glyph {
@@ -199,6 +199,21 @@ textarea {
 
   .iso-desktop-mode-label {
     @apply text-[11px] font-semibold leading-none;
+  }
+
+  .iso-theme-dark .iso-desktop-mode-rail,
+  [data-theme='dark'] .iso-desktop-mode-rail {
+    @apply border-[#3a3329] bg-isotope-rail-dark text-isotope-panel;
+  }
+
+  .iso-theme-dark .iso-desktop-mode-button,
+  [data-theme='dark'] .iso-desktop-mode-button {
+    @apply text-isotope-panel/70 hover:border-isotope-panel/20 hover:bg-isotope-panel/10 hover:text-isotope-panel focus-visible:ring-isotope-yellow focus-visible:ring-offset-isotope-rail-dark;
+  }
+
+  .iso-theme-dark .iso-desktop-mode-button-active,
+  [data-theme='dark'] .iso-desktop-mode-button-active {
+    @apply border-isotope-panel bg-isotope-panel text-isotope-red;
   }
 }
 
