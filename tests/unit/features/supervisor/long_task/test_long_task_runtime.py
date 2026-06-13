@@ -125,6 +125,12 @@ def test_run_long_task_ticks_advances_bounded_ticks_without_raw_payload(tmp_path
     assert len(result["ticks"]) == 2
     assert result["ticks"][0]["planner_summary"]["selected_step"] == "record_turn_memory"
     assert "raw_response" not in json.dumps(result)
+    prompt_payload = json.loads(provider.calls[0]["messages"][1]["content"])
+    assert prompt_payload["default_context"]["long_task"] == {
+        "task_id": task_id,
+        "goal": "Run bounded ticks.",
+        "allowed_steps": ["record_turn_memory", "query_memory", "promote_run_memory"],
+    }
 
 
 def test_run_long_task_ticks_honors_pause_before_next_tick(tmp_path):

@@ -58,6 +58,22 @@ def safe_agent_loop_default_context(
             }
             and isinstance(value, (str, list))
         }
+    long_task = default_context.get("long_task")
+    if isinstance(long_task, dict):
+        safe_long_task: dict[str, Any] = {}
+        for key in ("task_id", "goal"):
+            value = long_task.get(key)
+            if isinstance(value, str) and value.strip():
+                safe_long_task[key] = value.strip()
+        allowed_steps = long_task.get("allowed_steps")
+        if isinstance(allowed_steps, list):
+            safe_long_task["allowed_steps"] = [
+                step.strip()
+                for step in allowed_steps
+                if isinstance(step, str) and step.strip()
+            ]
+        if safe_long_task:
+            safe["long_task"] = safe_long_task
     return safe
 
 

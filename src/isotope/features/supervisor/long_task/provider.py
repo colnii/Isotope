@@ -15,6 +15,7 @@ from isotope.llm.provider import (
     Transport,
     create_chat_provider_from_pool_entry,
 )
+from isotope.llm.provider.parsing import _normalized_provider_name
 
 
 class PooledLongTaskPlannerProvider:
@@ -81,6 +82,20 @@ def resolve_long_task_planner_provider_from_env(
             Path(__file__).resolve().parents[1] / "supervisor_llm_pool.toml",
         ),
     )
+    provider_filter = _normalized_provider_name(
+        _env_string(env, "ISOTOPE_LONG_TASK_LLM_PROVIDER")
+    )
+    if provider_filter:
+        entries = tuple(
+            entry
+            for entry in entries
+            if _normalized_provider_name(entry.provider) == provider_filter
+        )
+        if not entries:
+            raise ValueError(
+                "No long-task planner LLM pool entries found for provider "
+                f"{provider_filter}. Check SUPERVISOR_LLM_POOL_TOML_FILES."
+            )
     if not entries:
         raise ValueError(
             "No long-task planner LLM pool entries found. "
@@ -93,3 +108,10 @@ def resolve_long_task_planner_provider_from_env(
         codex_process_runner=codex_process_runner,
         codex_executable_resolver=codex_executable_resolver,
     )
+
+
+def _env_string(env: Mapping[str, str], name: str) -> str | None:
+    value = env.get(name)
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value.strip()

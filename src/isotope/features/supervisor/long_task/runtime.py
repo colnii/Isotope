@@ -136,6 +136,7 @@ def run_long_task_ticks(
                 "ticks_used": tick_index,
                 "budget_basis": f"long_task:{task_id}",
             },
+            default_context_extra=_long_task_default_context(current_task),
             max_tokens=max_tokens,
         )
         public_tick = _public_tick_summary(task_id, tick_index, tick)
@@ -261,6 +262,20 @@ def _existing_tick_count(task: dict[str, Any]) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         return 0
     return value
+
+
+def _long_task_default_context(task: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "long_task": {
+            "task_id": str(task["task_id"]),
+            "goal": str(task["goal"]),
+            "allowed_steps": [
+                "record_turn_memory",
+                "query_memory",
+                "promote_run_memory",
+            ],
+        }
+    }
 
 
 def _status_after_ticks(run_status: str, stop_reason: object) -> str:
