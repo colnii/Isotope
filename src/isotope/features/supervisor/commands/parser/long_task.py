@@ -31,6 +31,16 @@ def add_long_task_command_parser(subparsers: argparse._SubParsersAction) -> None
     add_state_root_arg(list_parser)
     list_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    run = task_subparsers.add_parser(
+        "run",
+        help="Advance a long task by bounded ticks.",
+    )
+    add_state_root_arg(run)
+    run.add_argument("--task-id", required=True)
+    run.add_argument("--max-ticks", type=int, default=1)
+    run.add_argument("--max-tokens", type=int, default=512)
+    run.add_argument("--json", action="store_true", help="Print JSON output.")
+
     for command in ("pause", "resume", "stop"):
         control = task_subparsers.add_parser(command, help=f"{command.title()} one long task.")
         add_state_root_arg(control)

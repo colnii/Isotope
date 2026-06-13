@@ -6,11 +6,15 @@ import argparse
 from pathlib import Path
 from typing import Any
 
+from isotope.features.supervisor.long_task.provider import (
+    resolve_long_task_planner_provider_from_env,
+)
 from isotope.features.supervisor.long_task.runtime import (
     create_long_task,
     list_long_tasks,
     pause_long_task,
     resume_long_task,
+    run_long_task_ticks,
     status_long_task,
     stop_long_task,
 )
@@ -24,6 +28,14 @@ def handle_long_task_command(args: argparse.Namespace, *, api: Any) -> int:
         payload = status_long_task(root, args.task_id)
     elif args.long_task_command == "list":
         payload = list_long_tasks(root)
+    elif args.long_task_command == "run":
+        payload = run_long_task_ticks(
+            root,
+            args.task_id,
+            provider=resolve_long_task_planner_provider_from_env(),
+            max_ticks=args.max_ticks,
+            max_tokens=args.max_tokens,
+        )
     elif args.long_task_command == "pause":
         payload = pause_long_task(root, args.task_id, reason=args.reason)
     elif args.long_task_command == "resume":

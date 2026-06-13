@@ -8,6 +8,7 @@ from .runtime import (
     list_long_tasks,
     pause_long_task,
     resume_long_task,
+    run_long_task_ticks,
     status_long_task,
     stop_long_task,
 )
@@ -29,6 +30,7 @@ __all__ = [
     "long_task_projection",
     "pause_long_task",
     "resume_long_task",
+    "run_long_task_ticks",
     "status_long_task",
     "stop_long_task",
 ]
