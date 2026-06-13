@@ -5,6 +5,7 @@ import pytest
 from isotope.llm.provider import (
     DeepSeekChatProvider,
     OpenAICompatibleChatProvider,
+    resolve_llm_chat_provider,
 )
 
 
@@ -323,3 +324,101 @@ def test_openai_compatible_provider_rejects_empty_configuration():
             model="custom-chat",
         )
 
+
+def test_resolve_chat_provider_can_select_openai_compatible_pool_entry_by_provider(
+    tmp_path,
+):
+    pool_path = tmp_path / "llm-pool.toml"
+    pool_path.write_text(
+        "\n".join(
+            [
+                "[[agents]]",
+                'name = "supervisor"',
+                "",
+                "[[agents.providers]]",
+                'provider = "mimo"',
+                'base_url = "https://token-plan-cn.xiaomimimo.com/v1"',
+                'model = "mimo-v2.5-pro"',
+                'api_keys = ["tp-test-key"]',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    resolution = resolve_llm_chat_provider(
+        {
+            "ISOTOPE_LLM_PROVIDER": "mimo",
+            "ISOTOPE_LLM_POOL_TOML_FILES": str(pool_path),
+        }
+    )
+
+    assert resolution.status == "configured"
+    assert resolution.reason_code == "llm_provider_configured"
+    assert resolution.provider_name == "mimo"
+    assert isinstance(resolution.provider, OpenAICompatibleChatProvider)
+    assert resolution.provider.provider == "mimo"
+    assert resolution.provider.model == "mimo-v2.5-pro"
+    assert resolution.provider.base_url == "https://token-plan-cn.xiaomimimo.com/v1"
+
+
+def test_resolve_chat_provider_reports_unsupported_when_pool_provider_is_missing(
+    tmp_path,
+):
+    pool_path = tmp_path / "llm-pool.toml"
+    pool_path.write_text(
+        "\n".join(
+            [
+                "[[agents]]",
+                'name = "supervisor"',
+                "",
+                "[[agents.providers]]",
+                'provider = "other"',
+                'base_url = "https://api.other.example.com/v1"',
+                'model = "other-chat"',
+                'api_keys = ["other-test-key"]',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    resolution = resolve_llm_chat_provider(
+        {
+            "ISOTOPE_LLM_PROVIDER": "mimo",
+            "ISOTOPE_LLM_POOL_TOML_FILES": str(pool_path),
+        }
+    )
+
+    assert resolution.status == "missing_configuration"
+    assert resolution.reason_code == "llm_provider_unsupported"
+    assert resolution.provider_name == "mimo"
+    assert resolution.provider is None
+
+
+def test_resolve_chat_provider_accepts_supervisor_pool_toml_env_alias(tmp_path):
+    pool_path = tmp_path / "supervisor-pool.toml"
+    pool_path.write_text(
+        "\n".join(
+            [
+                "[[agents]]",
+                'name = "supervisor"',
+                "",
+                "[[agents.providers]]",
+                'provider = "mimo"',
+                'base_url = "https://token-plan-cn.xiaomimimo.com/v1"',
+                'model = "mimo-v2.5-pro"',
+                'api_keys = ["tp-test-key"]',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    resolution = resolve_llm_chat_provider(
+        {
+            "ISOTOPE_LLM_PROVIDER": "mimo",
+            "SUPERVISOR_LLM_POOL_TOML_FILES": str(pool_path),
+        }
+    )
+
+    assert resolution.status == "configured"
+    assert resolution.provider_name == "mimo"
+    assert isinstance(resolution.provider, OpenAICompatibleChatProvider)

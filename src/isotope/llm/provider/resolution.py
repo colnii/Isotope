@@ -6,14 +6,24 @@ import os
 import shutil
 import subprocess
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 from ...integrations.codex.task import CodexTaskNotConfiguredError
+from ..pool import resolve_pool_entries_from_env
 from .clients import DeepSeekChatProvider, DeepSeekToolCallProvider
 from .codex import CodexCliLLMProvider
 from .codex_api import CodexApiLLMProvider
+from .factory import create_chat_provider_from_pool_entry
 from .parsing import _env_string, _normalized_provider_name, _resolve_provider_timeout
 from .types import LLMProviderResolution, Transport
+
+DEFAULT_CHAT_POOL_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "features"
+    / "supervisor"
+    / "supervisor_llm_pool.toml"
+)
 
 
 def resolve_llm_tool_call_provider(
@@ -131,10 +141,13 @@ def resolve_llm_chat_provider(
             executable_resolver=codex_executable_resolver,
         )
     if provider_name != "deepseek":
-        return LLMProviderResolution(
-            status="missing_configuration",
-            reason_code="llm_provider_unsupported",
+        return _resolve_pool_chat_provider(
+            env,
             provider_name=provider_name,
+            timeout=timeout,
+            transport=transport,
+            codex_process_runner=codex_process_runner,
+            codex_executable_resolver=codex_executable_resolver,
         )
 
     api_key = _env_string(env, "ISOTOPE_LLM_API_KEY") or _env_string(env, "DEEPSEEK_API_KEY")
@@ -160,6 +173,62 @@ def resolve_llm_chat_provider(
         reason_code="llm_provider_configured",
         provider_name=provider.provider,
         provider=provider,
+    )
+
+
+def _resolve_pool_chat_provider(
+    env: Mapping[str, str],
+    *,
+    provider_name: str,
+    timeout: int,
+    transport: Transport | None,
+    codex_process_runner: Any,
+    codex_executable_resolver: Any,
+) -> LLMProviderResolution:
+    pool_env = dict(env)
+    if "ISOTOPE_LLM_POOL_TOML_FILES" not in pool_env:
+        supervisor_pool_files = _env_string(pool_env, "SUPERVISOR_LLM_POOL_TOML_FILES")
+        if supervisor_pool_files:
+            pool_env["ISOTOPE_LLM_POOL_TOML_FILES"] = supervisor_pool_files
+    try:
+        entries = resolve_pool_entries_from_env(
+            pool_env,
+            env_var="ISOTOPE_LLM_POOL_TOML_FILES",
+            default_paths=(DEFAULT_CHAT_POOL_PATH,),
+        )
+    except ValueError:
+        return LLMProviderResolution(
+            status="missing_configuration",
+            reason_code="llm_provider_invalid_configuration",
+            provider_name=provider_name,
+        )
+    for entry in entries:
+        if _normalized_provider_name(entry.provider) != provider_name:
+            continue
+        try:
+            provider = create_chat_provider_from_pool_entry(
+                entry,
+                timeout=timeout,
+                transport=transport,
+                codex_process_runner=codex_process_runner,
+                codex_executable_resolver=codex_executable_resolver,
+            )
+        except ValueError:
+            return LLMProviderResolution(
+                status="missing_configuration",
+                reason_code="llm_provider_invalid_configuration",
+                provider_name=provider_name,
+            )
+        return LLMProviderResolution(
+            status="configured",
+            reason_code="llm_provider_configured",
+            provider_name=provider.provider,
+            provider=provider,
+        )
+    return LLMProviderResolution(
+        status="missing_configuration",
+        reason_code="llm_provider_unsupported",
+        provider_name=provider_name,
     )
 
 

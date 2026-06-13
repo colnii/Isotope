@@ -101,3 +101,25 @@ def test_llm_social_reply_provider_rejects_empty_or_malformed_model_output() -> 
             _request(),
             wake_reason="mention:bot_qq",
         )
+
+
+def test_llm_social_reply_provider_accepts_quoted_json_model_output() -> None:
+    chat_provider = RecordingChatProvider('\'{\n  "text": "外层单引号也能解析。"\n}\'')
+
+    draft = LLMSocialReplyProvider(chat_provider=chat_provider).generate_reply(
+        _request(),
+        wake_reason="mention:bot_qq",
+    )
+
+    assert draft.text == "外层单引号也能解析。"
+
+
+def test_llm_social_reply_provider_accepts_fenced_json_model_output() -> None:
+    chat_provider = RecordingChatProvider('```json\n{"text":"代码块里的 JSON 也能解析。"}\n```')
+
+    draft = LLMSocialReplyProvider(chat_provider=chat_provider).generate_reply(
+        _request(),
+        wake_reason="mention:bot_qq",
+    )
+
+    assert draft.text == "代码块里的 JSON 也能解析。"

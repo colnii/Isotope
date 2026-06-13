@@ -46,6 +46,26 @@ def test_participation_decision_rejects_respond_without_text() -> None:
         raise AssertionError("expected ValueError")
 
 
+def test_participation_decision_accepts_quoted_json_object() -> None:
+    decision = participation_decision_from_content(
+        '\'{"action":"silent","reason":"外层单引号","confidence":0.61}\''
+    )
+
+    assert decision.action == "silent"
+    assert decision.reason == "外层单引号"
+    assert decision.confidence == 0.61
+
+
+def test_participation_decision_accepts_fenced_json_object() -> None:
+    decision = participation_decision_from_content(
+        '```json\n{"action":"silent","reason":"代码块","confidence":0.62}\n```'
+    )
+
+    assert decision.action == "silent"
+    assert decision.reason == "代码块"
+    assert decision.confidence == 0.62
+
+
 def test_llm_participation_provider_builds_prompt_and_metadata() -> None:
     chat_provider = RecordingChatProvider(
         '{"action":"respond","reason":"topic fit","confidence":0.73,"text":"可以，我补一句。"}'

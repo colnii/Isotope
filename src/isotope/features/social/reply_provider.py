@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from ...llm.provider.parsing import parse_model_json_object_content
 from ...llm.prompts import load_system_prompt, render_json_prompt_template
 from .decision import SocialDecisionRequest
 from .messages import _required_string_value
@@ -120,12 +120,8 @@ def _dict_field(value: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def _reply_text_from_content(content: object) -> str:
-    if not isinstance(content, str) or not content.strip():
-        raise ValueError("reply text must be a non-empty string")
-    try:
-        payload = json.loads(content)
-    except json.JSONDecodeError as exc:
-        raise ValueError("reply provider output must be a JSON object") from exc
-    if not isinstance(payload, dict):
-        raise ValueError("reply provider output must be a JSON object")
+    payload = parse_model_json_object_content(
+        content,
+        error_message="reply provider output must be a JSON object",
+    )
     return _required_string_value(payload.get("text"), "reply text")

@@ -267,6 +267,25 @@ flags, recent-send suppression, duplicate handling, and provider failure
 fallbacks. Start this mode in dry-run and inspect the proposed decisions before
 enabling sends.
 
+To use Mimo for QQ LLM replies, keep the key in the local gitignored LLM pool
+TOML and give the entry an explicit provider name:
+
+```toml
+[[agents.providers]]
+provider = "mimo"
+base_url = "https://token-plan-cn.xiaomimimo.com/v1"
+model = "mimo-v2.5-pro"
+max_tokens = 2048
+api_keys = [
+  "env:MIMO_API_KEY",
+]
+```
+
+Then run QQ commands with `ISOTOPE_LLM_PROVIDER=mimo`. The resolver reads
+`ISOTOPE_LLM_POOL_TOML_FILES` first, then `SUPERVISOR_LLM_POOL_TOML_FILES`, and
+falls back to the local `src/isotope/features/supervisor/supervisor_llm_pool.toml`
+when it exists.
+
 Check the WebSocket connection without consuming a group event:
 
 ```bash

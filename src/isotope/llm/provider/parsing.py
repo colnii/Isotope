@@ -127,6 +127,49 @@ def _parse_chat_completion(
     )
 
 
+def parse_model_json_object_content(
+    content: object,
+    *,
+    error_message: str,
+) -> dict[str, Any]:
+    """Parse model content that is meant to be exactly one JSON object."""
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError(error_message)
+    for candidate in _json_object_content_candidates(content.strip()):
+        try:
+            payload = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, str):
+            nested = payload.strip()
+            if nested.startswith("{") and nested.endswith("}"):
+                try:
+                    payload = json.loads(nested)
+                except json.JSONDecodeError:
+                    pass
+        if isinstance(payload, dict):
+            return payload
+    raise ValueError(error_message)
+
+
+def _json_object_content_candidates(text: str) -> tuple[str, ...]:
+    candidates = [text]
+    lines = text.splitlines()
+    if (
+        len(lines) >= 3
+        and lines[0].strip().lower() in {"```", "```json"}
+        and lines[-1].strip() == "```"
+    ):
+        body = "\n".join(lines[1:-1]).strip()
+        if body.startswith("{") and body.endswith("}"):
+            candidates.append(body)
+    if len(text) >= 3 and text[0] == "'" and text[-1] == "'":
+        body = text[1:-1].strip()
+        if body.startswith("{") and body.endswith("}"):
+            candidates.append(body)
+    return tuple(dict.fromkeys(candidates))
+
+
 def _stream_chat_completion_chunks(
     events: Iterable[dict[str, Any]],
     *,

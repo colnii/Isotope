@@ -523,6 +523,9 @@ Run this checklist for each controlled beta day:
   "llm"` and `runtime.reply_provider = "llm"` only after the shared LLM provider
   is configured; ordinary messages may then produce either LLM silence or LLM
   reply candidates.
+- For Mimo, set `ISOTOPE_LLM_PROVIDER=mimo` and make the local LLM pool entry
+  explicit with `provider = "mimo"`, `base_url =
+  "https://token-plan-cn.xiaomimimo.com/v1"`, and `model = "mimo-v2.5-pro"`.
 - Run `qq review-dry-run` or `./review-dry-run.sh` and inspect warnings.
 - Run `qq export-log` or `./export-log.sh`.
 - Record observed failures with `qq record-failure` or `./record-failure.sh`.

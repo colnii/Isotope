@@ -73,6 +73,40 @@ def test_participation_provider_llm_can_share_config_with_llm_reply_provider(
     assert isinstance(loop.reply_provider, LLMSocialReplyProvider)
 
 
+def test_participation_and_reply_provider_can_resolve_mimo_from_pool(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    pool_path = tmp_path / "llm-pool.toml"
+    pool_path.write_text(
+        "\n".join(
+            [
+                "[[agents]]",
+                'name = "supervisor"',
+                "",
+                "[[agents.providers]]",
+                'provider = "mimo"',
+                'base_url = "https://token-plan-cn.xiaomimimo.com/v1"',
+                'model = "mimo-v2.5-pro"',
+                'api_keys = ["tp-test-key"]',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ISOTOPE_LLM_PROVIDER", "mimo")
+    monkeypatch.setenv("ISOTOPE_LLM_POOL_TOML_FILES", str(pool_path))
+
+    loop = qq_runtime_commands.decision_loop_from_config(
+        {"runtime": {"participation_provider": "llm", "reply_provider": "llm"}}
+    )
+
+    assert isinstance(loop.participation_provider, LLMSocialParticipationProvider)
+    assert isinstance(loop.reply_provider, LLMSocialReplyProvider)
+    assert loop.participation_provider.chat_provider.provider == "mimo"
+    assert loop.reply_provider.chat_provider.provider == "mimo"
+    assert loop.reply_provider.chat_provider.model == "mimo-v2.5-pro"
+
+
 def test_participation_provider_llm_requires_configured_llm(monkeypatch) -> None:
     monkeypatch.setattr(
         qq_runtime_commands,
