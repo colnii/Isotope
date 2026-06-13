@@ -31,6 +31,8 @@ ALLOWED_SCREEN_ACTION_TYPES = {
     "button_down",
     "button_up",
     "click",
+    "double_click",
+    "drag",
     "wheel",
     "key_down",
     "key_up",
@@ -141,13 +143,15 @@ class ScreenAction:
     key: str | None = None
     delta_x: int | None = None
     delta_y: int | None = None
+    to_x: int | None = None
+    to_y: int | None = None
     duration_ms: int | None = None
 
     def __post_init__(self) -> None:
         _non_empty_string("type", self.type)
         if self.type not in ALLOWED_SCREEN_ACTION_TYPES:
             raise ValueError("screen action type is not supported")
-        for field_name in ("x", "y", "delta_x", "delta_y", "duration_ms"):
+        for field_name in ("x", "y", "delta_x", "delta_y", "to_x", "to_y", "duration_ms"):
             value = getattr(self, field_name)
             if value is not None and not isinstance(value, int):
                 raise ValueError(f"screen action {field_name} must be an int")
@@ -155,6 +159,12 @@ class ScreenAction:
             _non_empty_string("button", self.button)
         if self.key is not None:
             _non_empty_string("key", self.key)
+        if self.type == "double_click" and (self.x is None or self.y is None):
+            raise ValueError("double_click requires x and y")
+        if self.type == "drag" and (
+            self.x is None or self.y is None or self.to_x is None or self.to_y is None
+        ):
+            raise ValueError("drag requires x, y, to_x, and to_y")
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "ScreenAction":
@@ -167,13 +177,25 @@ class ScreenAction:
             "key",
             "delta_x",
             "delta_y",
+            "to_x",
+            "to_y",
             "duration_ms",
         }
         return cls(**{key: value[key] for key in supported_fields if key in value})
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {"type": self.type}
-        for field_name in ("x", "y", "button", "key", "delta_x", "delta_y", "duration_ms"):
+        for field_name in (
+            "x",
+            "y",
+            "button",
+            "key",
+            "delta_x",
+            "delta_y",
+            "to_x",
+            "to_y",
+            "duration_ms",
+        ):
             value = getattr(self, field_name)
             if value is not None:
                 result[field_name] = value

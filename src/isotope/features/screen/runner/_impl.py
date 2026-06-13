@@ -17,6 +17,12 @@ from ..artifacts import (
     print_screen_report_plain,
     report_screen_artifacts,
 )
+from .actions import (
+    _build_click_action,
+    _build_double_click_action,
+    _build_drag_action,
+    _build_restore_window_action,
+)
 
 
 def _print_json(payload: dict[str, Any]) -> None:
@@ -107,19 +113,6 @@ def _build_control_intent(
     return intent
 
 
-def _build_click_action(*, x: int, y: int, button: str) -> dict[str, Any]:
-    return {
-        "type": "click",
-        "button": button,
-        "x": x,
-        "y": y,
-    }
-
-
-def _build_restore_window_action() -> dict[str, Any]:
-    return {"type": "restore_window"}
-
-
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run manual screen observe/control smoke checks.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -164,6 +157,52 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Mouse button.",
     )
     click_parser.add_argument(
+        "--approve-execute",
+        action="store_true",
+        help="Request approval and execute after immediate local approval.",
+    )
+    double_click_parser = subparsers.add_parser(
+        "control-double-click",
+        help="Plan or execute one double-click without writing action JSON.",
+    )
+    _add_runtime_args(double_click_parser)
+    _add_target_args(double_click_parser)
+    double_click_parser.add_argument("--x", type=int, required=True, help="Screen x coordinate.")
+    double_click_parser.add_argument("--y", type=int, required=True, help="Screen y coordinate.")
+    double_click_parser.add_argument(
+        "--button",
+        choices=["left", "middle", "right", "x1", "x2"],
+        default="left",
+        help="Mouse button.",
+    )
+    double_click_parser.add_argument(
+        "--approve-execute",
+        action="store_true",
+        help="Request approval and execute after immediate local approval.",
+    )
+    drag_parser = subparsers.add_parser(
+        "control-drag",
+        help="Plan or execute one drag without writing action JSON.",
+    )
+    _add_runtime_args(drag_parser)
+    _add_target_args(drag_parser)
+    drag_parser.add_argument("--x", type=int, required=True, help="Start screen x coordinate.")
+    drag_parser.add_argument("--y", type=int, required=True, help="Start screen y coordinate.")
+    drag_parser.add_argument("--to-x", type=int, required=True, help="End screen x coordinate.")
+    drag_parser.add_argument("--to-y", type=int, required=True, help="End screen y coordinate.")
+    drag_parser.add_argument(
+        "--button",
+        choices=["left", "middle", "right", "x1", "x2"],
+        default="left",
+        help="Mouse button.",
+    )
+    drag_parser.add_argument(
+        "--duration-ms",
+        type=int,
+        default=250,
+        help="Approximate drag duration in milliseconds.",
+    )
+    drag_parser.add_argument(
         "--approve-execute",
         action="store_true",
         help="Request approval and execute after immediate local approval.",
@@ -440,6 +479,67 @@ def main(argv: list[str] | None = None) -> int:
                     {
                         "resolution": "approved",
                         "reason": "screen smoke click execute approved",
+                        "resolver": "local_operator",
+                    },
+                )
+            else:
+                result = pending_or_result
+        elif args.command == "control-double-click":
+            execution_mode = "execute" if args.approve_execute else "dry_run"
+            pending_or_result = api.submit_action(
+                run_id,
+                _build_control_intent(
+                    target_selector=target_selector,
+                    actions=[
+                        _build_double_click_action(
+                            x=args.x,
+                            y=args.y,
+                            button=args.button,
+                        )
+                    ],
+                    execution_mode=execution_mode,
+                    target_allowlist=target_allowlist,
+                ),
+                requires_approval=args.approve_execute,
+            )
+            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+                result = api.resolve_approval(
+                    pending_or_result["approval_id"],
+                    {
+                        "resolution": "approved",
+                        "reason": "screen smoke double-click execute approved",
+                        "resolver": "local_operator",
+                    },
+                )
+            else:
+                result = pending_or_result
+        elif args.command == "control-drag":
+            execution_mode = "execute" if args.approve_execute else "dry_run"
+            pending_or_result = api.submit_action(
+                run_id,
+                _build_control_intent(
+                    target_selector=target_selector,
+                    actions=[
+                        _build_drag_action(
+                            x=args.x,
+                            y=args.y,
+                            to_x=args.to_x,
+                            to_y=args.to_y,
+                            button=args.button,
+                            duration_ms=args.duration_ms,
+                        )
+                    ],
+                    execution_mode=execution_mode,
+                    target_allowlist=target_allowlist,
+                ),
+                requires_approval=args.approve_execute,
+            )
+            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+                result = api.resolve_approval(
+                    pending_or_result["approval_id"],
+                    {
+                        "resolution": "approved",
+                        "reason": "screen smoke drag execute approved",
                         "resolver": "local_operator",
                     },
                 )

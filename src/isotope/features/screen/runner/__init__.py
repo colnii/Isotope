@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from ._impl import *
+from .actions import (
+    _build_click_action,
+    _build_double_click_action,
+    _build_drag_action,
+    _build_restore_window_action,
+)
 
 # Private re-exports for test compatibility
 from ._impl import (
-    _build_click_action,
     _build_observe_intent,
     _build_parser,
-    _build_restore_window_action,
     _default_smoke_matrix,
     _print_json,
     _real_smoke_commands,

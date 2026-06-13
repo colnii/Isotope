@@ -2198,8 +2198,8 @@ class CapabilityCatalog:
                             "actions": {
                                 "type": "array",
                                 "description": (
-                                    "Screen action objects such as click, wheel, "
-                                    "key_press, or restore_window."
+                                    "Screen action objects such as click, double_click, "
+                                    "drag, wheel, key_press, or restore_window."
                                 ),
                             },
                             "root": {

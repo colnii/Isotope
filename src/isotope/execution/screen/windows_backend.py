@@ -384,6 +384,29 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
                 [NativeScreen]::mouse_event($down, 0, 0, 0, [UIntPtr]::Zero)
                 [NativeScreen]::mouse_event($up, 0, 0, 0, [UIntPtr]::Zero)
                 $applied += 1
+            } elseif ($action.type -eq "double_click") {
+                $down = $LeftDown; $up = $LeftUp
+                if ($action.button -eq "right") { $down = $RightDown; $up = $RightUp }
+                if ($action.button -eq "middle") { $down = $MiddleDown; $up = $MiddleUp }
+                [NativeScreen]::mouse_event($down, 0, 0, 0, [UIntPtr]::Zero)
+                [NativeScreen]::mouse_event($up, 0, 0, 0, [UIntPtr]::Zero)
+                [NativeScreen]::mouse_event($down, 0, 0, 0, [UIntPtr]::Zero)
+                [NativeScreen]::mouse_event($up, 0, 0, 0, [UIntPtr]::Zero)
+                $applied += 1
+            } elseif ($action.type -eq "drag") {
+                $down = $LeftDown; $up = $LeftUp
+                if ($action.button -eq "right") { $down = $RightDown; $up = $RightUp }
+                if ($action.button -eq "middle") { $down = $MiddleDown; $up = $MiddleUp }
+                $duration = 0
+                if ($null -ne $action.duration_ms -and [int]$action.duration_ms -gt 0) {
+                    $duration = [int]$action.duration_ms
+                }
+                [NativeScreen]::mouse_event($down, 0, 0, 0, [UIntPtr]::Zero)
+                if ($duration -gt 0) { Start-Sleep -Milliseconds ([Math]::Max(1, [int]($duration / 2))) }
+                [void][NativeScreen]::SetCursorPos([int]$action.to_x, [int]$action.to_y)
+                if ($duration -gt 0) { Start-Sleep -Milliseconds ([Math]::Max(1, [int]($duration / 2))) }
+                [NativeScreen]::mouse_event($up, 0, 0, 0, [UIntPtr]::Zero)
+                $applied += 1
             } elseif ($action.type -eq "wheel") {
                 [NativeScreen]::mouse_event($Wheel, 0, 0, [uint32]$action.delta_y, [UIntPtr]::Zero)
                 $applied += 1

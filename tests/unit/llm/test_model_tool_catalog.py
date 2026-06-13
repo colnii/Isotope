@@ -73,12 +73,17 @@ def test_model_tool_catalog_exposes_screen_control_nested_schema(tmp_path):
         "button_down",
         "button_up",
         "click",
+        "double_click",
+        "drag",
         "wheel",
         "key_down",
         "key_up",
         "key_press",
         "restore_window",
     ]
+    action_properties = schema["properties"]["actions"]["items"]["properties"]
+    assert action_properties["to_x"] == {"type": "integer"}
+    assert action_properties["to_y"] == {"type": "integer"}
     assert screen_control["constraints"]["screen_control"] is True
     assert screen_control["output_contract"]["result_kind"] == "screen_control_result"
 
