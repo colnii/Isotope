@@ -77,6 +77,7 @@ from .routes.desktop_artifacts import (
     screen_screenshot_artifact_payload,
 )
 from .routes.goals import write_goal_plan_candidates
+from .routes.long_tasks_dispatch import handle_long_task_get, handle_long_task_post
 from .routes.service_actions import SERVICE_ACTION_PATHS, run_service_action
 from .routes.worker_lifecycle import (
     WORKER_LIFECYCLE_EXECUTE_PATH,
@@ -326,6 +327,8 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
         if artifact_id is not None:
             self._send_desktop_screen_artifact_content(artifact_id)
             return
+        if handle_long_task_get(self, path=path):
+            return
         if path == "/desktop/agent-groups":
             self._send_json(list_agent_groups_payload(self.server.codex_home))
             return
@@ -395,6 +398,8 @@ class _DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/desktop/chat":
             self._send_desktop_chat()
+            return
+        if handle_long_task_post(self, path=path):
             return
         if handle_agent_workspace_post(self, path=path):
             return

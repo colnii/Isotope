@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from isotope.features.supervisor.long_task.runtime import list_long_tasks
 from isotope.features.supervisor.state.projection import (
     build_supervisor_state_snapshot,
 )
@@ -61,6 +62,7 @@ def build_desktop_snapshot(*, state_root: Path | str) -> dict[str, Any]:
         "artifacts": [],
         "runningToolCalls": [],
     }
+    snapshot["longTasks"] = list_long_tasks(root)
     if active_goal is not None:
         snapshot["activeGoal"] = active_goal
     worker_lifecycle = worker_lifecycle_projection_payload(state_snapshot=supervisor)
