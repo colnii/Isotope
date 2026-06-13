@@ -67,3 +67,14 @@ def test_research_recall_fixture_seeds_preview_only_report(tmp_path):
     assert len(artifacts) == 1
     assert artifacts[0].artifact_type == "research.report"
     assert "RAG_RECALL_EVAL_MARKER" in artifacts[0].summary
+
+
+def test_screen_control_approval_scenario_requires_approval_guard():
+    scenario = next(
+        item for item in scenario_catalog() if item.case_id == "screen_control_approval_fixture"
+    )
+
+    assert scenario.capability_ids == ("screen.control",)
+    assert scenario.fixture == "screen_config_gated"
+    assert "screen_control_approval_guard" in scenario.required_gates
+    assert scenario.allowed_result_statuses == ("pending_user_approval",)

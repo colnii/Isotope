@@ -50,6 +50,9 @@ def agent_loop_json_result(payload: Mapping[str, Any]) -> dict[str, Any]:
         result["agent_loop_artifact_id"] = artifact_ref.get("artifact_id")
     capability_run = _agent_loop_capability_run(tick_result)
     if isinstance(capability_run, Mapping):
+        screen_control = capability_run.get("screen_control")
+        if isinstance(screen_control, Mapping):
+            result["screen_control"] = _agent_loop_screen_control_result(screen_control)
         screen_report = capability_run.get("screen_report")
         if isinstance(screen_report, Mapping):
             result.update(_agent_loop_screen_report_result(screen_report))
@@ -160,6 +163,17 @@ def _agent_loop_screen_report_result(
         "interferes_with_screen"
     )
     return result
+
+
+def _agent_loop_screen_control_result(
+    screen_control: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "status": screen_control.get("status"),
+        "approval_id": screen_control.get("approval_id"),
+        "execution_id": screen_control.get("execution_id"),
+        "artifact_ref": screen_control.get("artifact_ref"),
+    }
 
 
 def _agent_loop_memory_query_result(

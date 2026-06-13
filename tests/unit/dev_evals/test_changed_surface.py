@@ -24,6 +24,29 @@ diff --git a/src/isotope/capabilities/catalog.py b/src/isotope/capabilities/cata
     )
 
 
+def test_changed_surface_recommends_screen_control_approval_case_for_screen_control_diff():
+    diff_text = """
+diff --git a/src/isotope/llm/tool_bridge.py b/src/isotope/llm/tool_bridge.py
++    if tool_name == "screen_control":
++        return _submit_screen_control_tool_call(app, run_id, arguments)
+diff --git a/src/isotope/capabilities/catalog.py b/src/isotope/capabilities/catalog.py
++                    capability_id="screen.control",
+"""
+
+    result = detect_changed_surface(diff_text)
+
+    assert result.eval_required is True
+    assert result.recommended_command == (
+        "scripts/dev-eval supervisor_capacity_eval "
+        "--suite supervisor_capacity_basic --case-id screen_control_approval_fixture "
+        "--deterministic-provider --json"
+    )
+    assert result.full_command == (
+        "scripts/dev-eval supervisor_capacity_eval "
+        "--suite supervisor_capacity_basic --json"
+    )
+
+
 def test_changed_surface_requires_eval_for_prompt_and_observation_diff():
     diff_text = """
 diff --git a/src/isotope/llm/prompts/supervisor_conversation_loop.md b/src/isotope/llm/prompts/supervisor_conversation_loop.md

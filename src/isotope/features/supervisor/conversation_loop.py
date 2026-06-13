@@ -812,6 +812,12 @@ def _capacity_event_id(capacity_id: str) -> str:
 
 
 def _capacity_result_status(result: dict[str, Any]) -> str:
+    screen_control = result.get("screen_control")
+    if (
+        isinstance(screen_control, dict)
+        and screen_control.get("status") == "pending_user_approval"
+    ):
+        return "pending_user_approval"
     terminal_status = result.get("agent_loop_terminal_exec_status")
     if terminal_status == "completed":
         return "ok"

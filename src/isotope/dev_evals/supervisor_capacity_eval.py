@@ -148,6 +148,42 @@ def run_live_suite(
 def _default_deterministic_provider_for_case(
     capability_id: str,
 ) -> DeterministicScenarioProvider:
+    if capability_id == "screen.control":
+        return DeterministicScenarioProvider(
+            [
+                {
+                    "kind": "call_capability",
+                    "capacity_id": capability_id,
+                    "arguments": {
+                        "target_selector": {
+                            "kind": "window",
+                            "selector": {"app": "notepad.exe"},
+                        },
+                        "target_allowlist": {"allowed_apps": ["notepad.exe"]},
+                        "execution_mode": "execute",
+                        "actions": [
+                            {
+                                "type": "click",
+                                "button": "left",
+                                "x": 10,
+                                "y": 20,
+                            }
+                        ],
+                    },
+                    "rationale": "Exercise approval without executing input.",
+                },
+                {
+                    "kind": "direct_answer",
+                    "answer": "Screen control is pending user approval.",
+                    "answer_basis": {
+                        "kind": "observation",
+                        "capacity_ids": [capability_id],
+                        "reason": "Screen input has not executed before approval.",
+                    },
+                    "rationale": "Stop.",
+                },
+            ]
+        )
     return DeterministicScenarioProvider(
         [
             {

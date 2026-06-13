@@ -13,6 +13,11 @@ RECOMMENDED_COMMAND = (
     "scripts/dev-eval supervisor_capacity_eval "
     "--suite supervisor_capacity_basic --case-id code_search_fixture --json"
 )
+SCREEN_CONTROL_RECOMMENDED_COMMAND = (
+    "scripts/dev-eval supervisor_capacity_eval "
+    "--suite supervisor_capacity_basic --case-id screen_control_approval_fixture "
+    "--deterministic-provider --json"
+)
 FULL_COMMAND = (
     "scripts/dev-eval supervisor_capacity_eval "
     "--suite supervisor_capacity_basic --json"
@@ -87,13 +92,20 @@ def detect_changed_surface(diff_text: str) -> SurfaceDecision:
     for reason_code, needles in SEMANTIC_PATTERNS:
         if any(needle in diff_text for needle in needles):
             reason_codes.append(reason_code)
+    recommended_command = _recommended_command_for_diff(diff_text) if reason_codes else None
     return SurfaceDecision(
         eval_required=bool(reason_codes),
         suite=SUITE if reason_codes else None,
         reason_codes=reason_codes,
-        recommended_command=RECOMMENDED_COMMAND if reason_codes else None,
+        recommended_command=recommended_command,
         full_command=FULL_COMMAND if reason_codes else None,
     )
+
+
+def _recommended_command_for_diff(diff_text: str) -> str:
+    if "screen.control" in diff_text or "screen_control" in diff_text:
+        return SCREEN_CONTROL_RECOMMENDED_COMMAND
+    return RECOMMENDED_COMMAND
 
 
 def diff_against_base(base: str) -> str:

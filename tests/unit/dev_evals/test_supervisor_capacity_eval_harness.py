@@ -129,6 +129,60 @@ def test_harness_fails_when_provider_chooses_wrong_capacity(tmp_path):
     ] == ["code.search"]
 
 
+def test_harness_runs_screen_control_approval_case_without_execution(tmp_path):
+    scenario = next(
+        item for item in scenario_catalog() if item.case_id == "screen_control_approval_fixture"
+    )
+    provider = DeterministicScenarioProvider(
+        [
+            {
+                "kind": "call_capability",
+                "capacity_id": "screen.control",
+                "arguments": {
+                    "target_selector": {
+                        "kind": "window",
+                        "selector": {"app": "notepad.exe"},
+                    },
+                    "target_allowlist": {"allowed_apps": ["notepad.exe"]},
+                    "execution_mode": "execute",
+                    "actions": [
+                        {
+                            "type": "click",
+                            "button": "left",
+                            "x": 10,
+                            "y": 20,
+                        }
+                    ],
+                },
+                "rationale": "Exercise the approval boundary without sending input.",
+            },
+            {
+                "kind": "direct_answer",
+                "answer": "Screen control is waiting for user approval.",
+                "answer_basis": {
+                    "kind": "observation",
+                    "capacity_ids": ["screen.control"],
+                    "reason": "Execution is pending approval.",
+                },
+                "rationale": "Stop.",
+            },
+        ]
+    )
+
+    report = run_scenarios([scenario], root=tmp_path, provider=provider, live=False)
+
+    assert report["status"] == "passed"
+    case = report["cases"][0]
+    assert case["steps"][0]["status"] == "pending_user_approval"
+    assert case["steps"][0]["result_summary"]["screen_control"]["status"] == (
+        "pending_user_approval"
+    )
+    assert "screen_control_approval_guard" in [
+        gate["gate"] for gate in case["hard_gates"]
+    ]
+    assert "data:image/" not in json.dumps(report)
+
+
 def test_cli_uses_fresh_default_run_root_each_time(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
 
@@ -160,3 +214,22 @@ def test_cli_uses_fresh_default_run_root_each_time(tmp_path, monkeypatch, capsys
         for run_root in run_roots
     )
     assert '"run_root": ".dev-eval-runs/run-' in captured.out
+
+
+def test_cli_deterministic_screen_control_approval_case_passes(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+
+    status = main(
+        [
+            "--deterministic-provider",
+            "--case-id",
+            "screen_control_approval_fixture",
+            "--json",
+        ]
+    )
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert status == 0
+    assert payload["status"] == "passed"
+    assert payload["cases"][0]["steps"][0]["status"] == "pending_user_approval"

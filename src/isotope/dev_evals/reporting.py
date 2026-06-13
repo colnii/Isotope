@@ -7,6 +7,7 @@ from .gates import (
     evaluate_required_input_fragments,
     evaluate_required_capacity_called,
     evaluate_result_status,
+    evaluate_screen_control_approval_guard,
     low_sensitive_report_passed,
 )
 from .models import CapabilityScenario
@@ -52,6 +53,10 @@ def build_case_report(
     ]
     if scenario.required_input_fragments:
         hard_gates.append(evaluate_required_input_fragments(scenario, sanitized_steps))
+    if "screen_control_approval_guard" in scenario.required_gates:
+        hard_gates.append(
+            evaluate_screen_control_approval_guard(scenario, sanitized_steps)
+        )
     hard_gates.append(
         {
             "gate": "low_sensitive_report",
