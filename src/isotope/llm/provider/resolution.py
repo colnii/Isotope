@@ -11,7 +11,11 @@ from typing import Any
 
 from ...integrations.codex.task import CodexTaskNotConfiguredError
 from ..pool import resolve_pool_entries_from_env
-from .clients import DeepSeekChatProvider, DeepSeekToolCallProvider
+from .clients import (
+    DeepSeekChatProvider,
+    DeepSeekToolCallProvider,
+    OpenAICompatibleToolCallProvider,
+)
 from .codex import CodexCliLLMProvider
 from .codex_api import CodexApiLLMProvider
 from .factory import create_chat_provider_from_pool_entry
@@ -60,6 +64,21 @@ def resolve_llm_tool_call_provider(
             executable_resolver=codex_executable_resolver,
         )
 
+    timeout = _resolve_provider_timeout(env)
+    if timeout is None:
+        return LLMProviderResolution(
+            status="missing_configuration",
+            reason_code="llm_provider_invalid_configuration",
+            provider_name=provider_name,
+        )
+
+    if provider_name == "mimo":
+        return _resolve_mimo_tool_call_provider(
+            env,
+            timeout=timeout,
+            transport=transport,
+        )
+
     if provider_name != "deepseek":
         return LLMProviderResolution(
             status="missing_configuration",
@@ -75,14 +94,6 @@ def resolve_llm_tool_call_provider(
             provider_name=provider_name,
         )
 
-    timeout = _resolve_provider_timeout(env)
-    if timeout is None:
-        return LLMProviderResolution(
-            status="missing_configuration",
-            reason_code="llm_provider_invalid_configuration",
-            provider_name=provider_name,
-        )
-
     provider = DeepSeekToolCallProvider(
         api_key=api_key,
         model=_env_string(env, "ISOTOPE_LLM_MODEL")
@@ -94,6 +105,47 @@ def resolve_llm_tool_call_provider(
         timeout=timeout,
         transport=transport,
     )
+    return LLMProviderResolution(
+        status="configured",
+        reason_code="llm_provider_configured",
+        provider_name=provider.provider,
+        provider=provider,
+    )
+
+
+def _resolve_mimo_tool_call_provider(
+    env: Mapping[str, str],
+    *,
+    timeout: int,
+    transport: Transport | None,
+) -> LLMProviderResolution:
+    api_key = _env_string(env, "ISOTOPE_LLM_API_KEY") or _env_string(env, "MIMO_API_KEY")
+    if not api_key:
+        return LLMProviderResolution(
+            status="missing_configuration",
+            reason_code="llm_provider_api_key_missing",
+            provider_name="mimo",
+        )
+    try:
+        provider = OpenAICompatibleToolCallProvider(
+            provider="mimo",
+            api_key=api_key,
+            model=_env_string(env, "ISOTOPE_LLM_MODEL")
+            or _env_string(env, "MIMO_MODEL")
+            or "mimo-v2.5",
+            base_url=_env_string(env, "ISOTOPE_LLM_BASE_URL")
+            or _env_string(env, "MIMO_BASE_URL")
+            or "https://token-plan-cn.xiaomimimo.com/v1",
+            api_key_header="api-key",
+            timeout=timeout,
+            transport=transport,
+        )
+    except ValueError:
+        return LLMProviderResolution(
+            status="missing_configuration",
+            reason_code="llm_provider_invalid_configuration",
+            provider_name="mimo",
+        )
     return LLMProviderResolution(
         status="configured",
         reason_code="llm_provider_configured",

@@ -55,6 +55,34 @@ def test_model_tool_catalog_exposes_codex_task_as_callable_tool(tmp_path):
     assert "queued" + "_tools" not in catalog
 
 
+def test_model_tool_catalog_exposes_screen_control_nested_schema(tmp_path):
+    api = server.InProcessServer(tmp_path)
+
+    catalog = api.get_model_tool_catalog()
+
+    screen_control = _tool_by_name(catalog, "screen_control")
+    schema = screen_control["input_schema"]
+    assert schema["required"] == ["target_selector", "execution_mode", "actions"]
+    assert schema["properties"]["target_selector"]["type"] == "object"
+    assert schema["properties"]["target_selector"]["properties"]["selector"]["type"] == "object"
+    assert schema["properties"]["target_allowlist"]["type"] == "object"
+    assert schema["properties"]["execution_mode"]["enum"] == ["dry_run", "execute"]
+    assert schema["properties"]["actions"]["type"] == "array"
+    assert schema["properties"]["actions"]["items"]["properties"]["type"]["enum"] == [
+        "move",
+        "button_down",
+        "button_up",
+        "click",
+        "wheel",
+        "key_down",
+        "key_up",
+        "key_press",
+        "restore_window",
+    ]
+    assert screen_control["constraints"]["screen_control"] is True
+    assert screen_control["output_contract"]["result_kind"] == "screen_control_result"
+
+
 def test_model_tool_catalog_exposes_write_memory_as_approval_gated_tool(tmp_path):
     api = server.InProcessServer(tmp_path)
 

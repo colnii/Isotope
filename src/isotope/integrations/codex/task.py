@@ -82,7 +82,10 @@ class CodexTaskAdapter:
 
         output_artifacts = [_coerce_output_artifact(item) for item in result.output_artifacts]
         for output in output_artifacts:
-            if _summary_contains_full_content(result.summary, output.content):
+            if _should_check_output_content_leak(output) and _summary_contains_full_content(
+                result.summary,
+                output.content,
+            ):
                 raise CodexTaskProtocolError(
                     "codex task summary exposes artifact content",
                     details={"adapter_session_id": result.adapter_session_id},
@@ -92,7 +95,7 @@ class CodexTaskAdapter:
         artifact_refs: list[ResourceRef] = []
         for index, ref in enumerate(result.artifact_refs):
             artifact_refs.append(self._validate_adapter_artifact_ref(ref, index=index))
-        for output in output_artifacts:
+        for output in _storage_ordered_output_artifacts(output_artifacts):
             artifact = self.artifact_store.create_artifact(
                 run_id=request.run_id,
                 execution_id=request.execution_id,
@@ -221,6 +224,22 @@ def _coerce_output_artifact(value: CodexTaskOutputArtifact | dict[str, Any]) -> 
 
 def _summary_contains_full_content(summary: str, content: str) -> bool:
     return bool(content) and len(content) >= 8 and content in summary
+
+
+def _should_check_output_content_leak(output: CodexTaskOutputArtifact) -> bool:
+    return output.artifact_type != "codex_task_summary"
+
+
+def _storage_ordered_output_artifacts(
+    output_artifacts: list[CodexTaskOutputArtifact],
+) -> list[CodexTaskOutputArtifact]:
+    summary_artifacts = [
+        output for output in output_artifacts if output.artifact_type == "codex_task_summary"
+    ]
+    primary_artifacts = [
+        output for output in output_artifacts if output.artifact_type != "codex_task_summary"
+    ]
+    return summary_artifacts + primary_artifacts
 
 
 __all__ = [

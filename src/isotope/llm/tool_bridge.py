@@ -67,6 +67,13 @@ def submit_model_tool_call(
             catalog_entry=enabled_tools[tool_name],
             complete_run=complete_run,
         )
+    if tool_name == "screen_control":
+        return _submit_screen_control_tool_call(
+            app,
+            run_id,
+            arguments,
+            complete_run=complete_run,
+        )
 
     if tool_name != "codex_task":
         raise IsotopeError(
@@ -137,6 +144,43 @@ def _submit_terminal_exec_tool_call(
     )
 
 
+def _submit_screen_control_tool_call(
+    app: Any,
+    run_id: str,
+    arguments: dict[str, Any],
+    *,
+    complete_run: bool,
+) -> dict[str, Any]:
+    intent = _screen_control_intent(arguments)
+    requires_approval = _screen_control_requires_approval(intent, arguments)
+    try:
+        body = app.server.submit_action(
+            run_id,
+            intent,
+            requires_approval=requires_approval,
+            complete_run=complete_run,
+        )
+    except IsotopeError:
+        raise
+    except ValueError as exc:
+        raise _invalid_call("arguments", str(exc)) from exc
+    except PermissionError as exc:
+        raise IsotopeError(
+            str(exc),
+            code="model_tool_policy_denied",
+            category="policy",
+            retryable=False,
+            http_status=403,
+            details={"tool_name": "screen_control"},
+        ) from exc
+    return _safe_direct_action_result(
+        tool_name="screen_control",
+        route="in-process:submit_action",
+        body=body,
+        requires_approval=requires_approval,
+    )
+
+
 def _terminal_exec_requires_approval(
     argv: list[str],
     arguments: dict[str, Any],
@@ -180,6 +224,23 @@ def _terminal_exec_requires_approval(
             raise _invalid_call(
                 "requires_approval",
                 "terminal_exec command requires approval",
+            )
+        return True
+    return requested is True
+
+
+def _screen_control_requires_approval(
+    intent: dict[str, Any],
+    arguments: dict[str, Any],
+) -> bool:
+    if "requires_approval" in arguments and not isinstance(arguments["requires_approval"], bool):
+        raise _invalid_call("requires_approval", "screen_control requires_approval must be a bool")
+    requested = arguments.get("requires_approval")
+    if intent["execution_mode"] == "execute":
+        if requested is False:
+            raise _invalid_call(
+                "requires_approval",
+                "screen_control execute requires approval",
             )
         return True
     return requested is True
@@ -251,6 +312,21 @@ def _terminal_exec_intent(arguments: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(max_output_bytes, int) or isinstance(max_output_bytes, bool) or max_output_bytes <= 0:
             raise _invalid_call("terminal_max_output_bytes", "must be a positive integer")
         intent["terminal_max_output_bytes"] = max_output_bytes
+    return intent
+
+
+def _screen_control_intent(arguments: dict[str, Any]) -> dict[str, Any]:
+    intent: dict[str, Any] = {
+        "action": "call_tool",
+        "tool": "screen_control",
+        "target_selector": arguments.get("target_selector"),
+        "mode": arguments.get("mode", "interactive"),
+        "execution_mode": arguments.get("execution_mode"),
+        "actions": arguments.get("actions"),
+    }
+    for key in ("target_allowlist", "capture", "summary", "budget", "workspace_mode"):
+        if key in arguments:
+            intent[key] = arguments[key]
     return intent
 
 

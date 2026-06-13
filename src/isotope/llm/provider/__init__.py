@@ -6,6 +6,7 @@ from .clients import (
     DeepSeekChatProvider,
     DeepSeekToolCallProvider,
     OpenAICompatibleChatProvider,
+    OpenAICompatibleToolCallProvider,
 )
 from .codex import CodexCliLLMProvider
 from .codex_api import CodexApiLLMProvider
@@ -44,6 +45,7 @@ __all__ = [
     "LLMToolCall",
     "LLMToolCallResponse",
     "OpenAICompatibleChatProvider",
+    "OpenAICompatibleToolCallProvider",
     "StreamTransport",
     "ToolCallProvider",
     "build_llm_tool_result_message",

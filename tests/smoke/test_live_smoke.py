@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import shutil
+import struct
+import zlib
 from typing import Any
 
 import pytest
@@ -16,6 +19,16 @@ from isotope.interfaces.http import (
 )
 import isotope.llm.provider as llm_provider
 from isotope.llm.provider import LLMToolCall, LLMToolCallResponse
+from isotope.platform.errors import IsotopeError
+
+
+ACTION_EXECUTION_EVENTS = {
+    "action.started",
+    "artifact.created",
+    "action.completed",
+    "action.failed",
+    "run.completed",
+}
 
 
 class DeterministicCompletedProcess:
@@ -222,3 +235,126 @@ def test_live_llm_terminal_tool_smoke_reaches_provider_and_runs_terminal_only(tm
         assert result["tool_result_status"] == "completed"
         assert "approval.requested" not in _event_types(app, run_id)
         assert "run.completed" in _event_types(app, run_id)
+
+
+@pytest.mark.skipif(
+    os.environ.get("ISOTOPE_RUN_LIVE_MIMO_SCREEN_CONTROL_SMOKE") != "1",
+    reason="live Mimo multimodal screen-control smoke is opt-in",
+)
+def test_live_mimo_multimodal_screen_control_smoke_selects_approval_gated_tool(tmp_path):
+    resolution = llm_provider.resolve_llm_tool_call_provider()
+    if resolution.status != "configured":
+        pytest.skip(f"Mimo provider is not configured: {resolution.reason_code}")
+    assert resolution.provider_name == "mimo"
+    app = create_http_app(tmp_path)
+    run_id = _create_run(app)
+    image_url = _blue_button_screen_image_url()
+
+    try:
+        result = llm_provider.submit_llm_tool_call(
+            app,
+            run_id,
+            resolution.provider,
+            _mimo_screen_control_messages(image_url),
+            max_tokens=int(os.environ.get("ISOTOPE_LIVE_MIMO_MAX_TOKENS", "2048")),
+            tool_names=("screen_control",),
+            complete_run=False,
+        )
+    except IsotopeError as exc:
+        pytest.fail(f"Mimo live request failed: {exc.code}", pytrace=False)
+
+    _assert_mimo_screen_control_rules(app, run_id, result, image_url=image_url)
+
+
+def _mimo_screen_control_messages(image_url: str) -> list[dict[str, Any]]:
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are testing Isotope multimodal screen control. "
+                "Choose the offered screen_control tool exactly once and do not answer in text. "
+                "Use execution_mode=execute so Isotope asks the human operator for approval before input."
+            ),
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        "The image is a small app window with one blue rectangular button. "
+                        "Use target_selector {kind: window, selector: {app: notepad.exe}}, "
+                        "target_allowlist {allowed_apps: [notepad.exe]}, and one left click near "
+                        "the center of the blue button."
+                    ),
+                },
+                {"type": "image_url", "image_url": {"url": image_url}},
+            ],
+        },
+    ]
+
+
+def _assert_mimo_screen_control_rules(
+    app: Any,
+    run_id: str,
+    result: dict[str, Any],
+    *,
+    image_url: str,
+) -> None:
+    assert result["status"] == "pending_user_approval"
+    assert result["provider"] == "mimo"
+    assert result["tool_name"] == "screen_control"
+    assert result["requires_approval"] is True
+    assert result["tool_result"]["status"] == "pending_user_approval"
+    assert result["tool_result"]["requires_approval"] is True
+    assert "approval.requested" in _event_types(app, run_id)
+    assert not ACTION_EXECUTION_EVENTS.intersection(_event_types(app, run_id))
+
+    state = app.server.get_run_state(run_id)
+    pending_approvals = [
+        approval
+        for approval in state.approvals.values()
+        if approval.get("status") == "pending"
+    ]
+    assert len(pending_approvals) == 1
+    label = pending_approvals[0]["requested_action_label"]
+    assert label["tool"] == "screen_control"
+    assert label["target_kind"] == "window"
+    assert label["selector_keys"] == ["app"]
+    assert label["execution_mode"] == "execute"
+    assert label["action_count"] == 1
+    assert label["action_types"] == ["click"]
+
+    rendered_result = repr(result)
+    assert "data:image/" not in rendered_result
+    assert image_url not in rendered_result
+
+
+def _blue_button_screen_image_url() -> str:
+    width = 120
+    height = 80
+    rows: list[bytes] = []
+    for y in range(height):
+        row = bytearray([0])
+        for x in range(width):
+            if 70 <= x <= 110 and 42 <= y <= 66:
+                rgb = (24, 36, 56)
+            elif 74 <= x <= 106 and 46 <= y <= 62:
+                rgb = (38, 118, 245)
+            else:
+                rgb = (245, 247, 250)
+            row.extend(rgb)
+        rows.append(bytes(row))
+    raw = b"".join(rows)
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        body = tag + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+
+    png = (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(raw))
+        + chunk(b"IEND", b"")
+    )
+    return "data:image/png;base64," + base64.b64encode(png).decode("ascii")

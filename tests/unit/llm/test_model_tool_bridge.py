@@ -333,6 +333,39 @@ def test_model_tool_bridge_terminal_exec_can_pause_for_approval(tmp_path):
     assert app.server.artifact_store.list_artifacts(run_id) == []
 
 
+def test_model_tool_bridge_routes_screen_control_execute_to_pending_approval(tmp_path):
+    app = create_http_app(tmp_path)
+    run_id = _create_run(app)
+
+    result = submit_model_tool_call(
+        app,
+        run_id,
+        {
+            "tool_name": "screen_control",
+            "arguments": {
+                "target_selector": {
+                    "kind": "window",
+                    "selector": {"app": "notepad.exe"},
+                },
+                "target_allowlist": {"allowed_apps": ["notepad.exe"]},
+                "execution_mode": "execute",
+                "actions": [{"type": "click", "button": "left", "x": 42, "y": 24}],
+                "summary": "model-selected screen click",
+            },
+        },
+        complete_run=False,
+    )
+
+    assert result["status"] == "pending_user_approval"
+    assert result["tool_name"] == "screen_control"
+    assert result["route"] == "in-process:submit_action"
+    assert result["requires_approval"] is True
+    assert result["approval_id"].startswith("approval_")
+    assert "execution_id" not in result
+    assert "action.started" not in _event_types(app, run_id)
+    assert app.server.artifact_store.list_artifacts(run_id) == []
+
+
 def test_model_tool_bridge_rejects_enabled_tool_without_bridge_route(tmp_path):
     app = create_http_app(tmp_path)
     run_id = _create_run(app)

@@ -229,6 +229,82 @@ def test_llm_provider_resolution_reports_unsupported_provider_without_secret_lea
     assert "UNSUPPORTED_SECRET_SHOULD_NOT_LEAK" not in repr(resolution)
 
 
+def test_llm_provider_resolution_accepts_mimo_multimodal_tool_calls():
+    calls: list[dict[str, Any]] = []
+
+    def transport(url: str, payload: dict[str, Any], headers: dict[str, str], timeout: int):
+        calls.append({"url": url, "payload": payload, "headers": headers, "timeout": timeout})
+        return {
+            "model": "mimo-v2.5",
+            "choices": [
+                {
+                    "finish_reason": "tool_calls",
+                    "message": {
+                        "tool_calls": [
+                            {
+                                "id": "call_mimo_screen",
+                                "type": "function",
+                                "function": {
+                                    "name": "screen_control",
+                                    "arguments": (
+                                        '{"target_selector":{"kind":"window","selector":{"app":"notepad.exe"}},'
+                                        '"execution_mode":"execute","actions":[{"type":"restore_window"}]}'
+                                    ),
+                                },
+                            }
+                        ]
+                    },
+                }
+            ],
+            "usage": {"total_tokens": 28},
+        }
+
+    resolution = llm_provider.resolve_llm_tool_call_provider(
+        {
+            "ISOTOPE_LLM_PROVIDER": "mimo",
+            "ISOTOPE_LLM_API_KEY": "MIMO_SECRET_SHOULD_NOT_LEAK",
+            "ISOTOPE_LLM_BASE_URL": "https://token-plan-cn.xiaomimimo.com/v1",
+            "ISOTOPE_LLM_TIMEOUT_SECONDS": "11",
+        },
+        transport=transport,
+    )
+
+    assert resolution.status == "configured"
+    assert resolution.reason_code == "llm_provider_configured"
+    assert resolution.provider_name == "mimo"
+    assert resolution.provider is not None
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Use screen_control for the shown window."},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "data:image/png;base64,ZmFrZS1pbWFnZS1ieXRlcw=="
+                    },
+                },
+            ],
+        }
+    ]
+    response = resolution.provider.select_tool(
+        messages,
+        tools=[{"name": "screen_control", "input_schema": {"type": "object", "properties": {}}}],
+        max_tokens=44,
+    )
+
+    assert response.provider == "mimo"
+    assert response.tool_call.tool_name == "screen_control"
+    assert calls[0]["url"] == "https://token-plan-cn.xiaomimimo.com/v1/chat/completions"
+    assert calls[0]["payload"]["messages"] == messages
+    assert calls[0]["payload"]["model"] == "mimo-v2.5"
+    assert calls[0]["payload"]["max_tokens"] == 44
+    assert "thinking" not in calls[0]["payload"]
+    assert calls[0]["headers"]["api-key"] == "MIMO_SECRET_SHOULD_NOT_LEAK"
+    assert "Authorization" not in calls[0]["headers"]
+    assert calls[0]["timeout"] == 11
+    assert "MIMO_SECRET_SHOULD_NOT_LEAK" not in repr(resolution)
+
 
 def test_llm_tool_call_live_smoke_reports_unified_missing_configuration_without_side_effects(tmp_path):
     runner = RecordingProcessRunner(DeterministicCompletedProcess(stdout='{"event":"task_complete"}\n'))

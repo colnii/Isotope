@@ -181,6 +181,46 @@ def test_codex_result_creates_artifact_without_exposing_full_output(tmp_path):
     assert backend.calls[0].grants == decision.grants
 
 
+def test_codex_result_allows_summary_artifact_without_treating_it_as_leak(tmp_path):
+    proposal = _proposal()
+    decision = _decision(proposal)
+    summary_content = '{"status":"completed","reason_code":"codex_cli_completed"}'
+    backend = StubCodexBackend(
+        codex_task.CodexTaskResult(
+            adapter_session_id="codex_session_001",
+            status="completed",
+            started_at="2026-05-11T00:00:00Z",
+            finished_at="2026-05-11T00:00:01Z",
+            summary=summary_content,
+            output_artifacts=[
+                codex_task.CodexTaskOutputArtifact(
+                    artifact_type="codex_task_summary",
+                    summary="codex cli runtime summary captured",
+                    content=summary_content,
+                )
+            ],
+            reason_code="codex_task_completed",
+            retryable=False,
+            resource_usage={"duration_ms": 1000},
+        )
+    )
+    store = artifact_store.ArtifactStore(tmp_path)
+    adapter = codex_task.CodexTaskAdapter(artifact_store=store, backend=backend)
+
+    result = adapter.prepare_and_run(
+        proposal=proposal,
+        decision=decision,
+        execution_id="exec_codex_task",
+        workspace_binding=_workspace_binding(),
+        basis_event_ids=["evt_proposed", "evt_decided"],
+        artifact_policy={"capture": ["summary"]},
+    )
+
+    assert result.status == "completed"
+    assert len(result.artifact_refs) == 1
+    assert store.get_content(result.artifact_refs[0]) == summary_content
+
+
 def test_codex_backend_reported_widened_grants_are_rejected(tmp_path):
     proposal = _proposal()
     backend_result = _completed_result()

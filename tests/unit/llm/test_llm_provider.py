@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+import isotope.llm.provider as llm_provider
 from isotope.llm.provider import (
     DeepSeekChatProvider,
     OpenAICompatibleChatProvider,
@@ -182,6 +183,105 @@ def test_openai_compatible_provider_rejects_invalid_image_url_content_blocks():
                 }
             ]
         )
+
+
+def test_openai_compatible_tool_call_provider_allows_multimodal_mimo_screen_control():
+    captured: dict = {}
+
+    def stub_transport(url, payload, headers, timeout):
+        captured["url"] = url
+        captured["payload"] = payload
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        return {
+            "id": "chatcmpl_mimo_tool",
+            "model": "mimo-v2.5",
+            "choices": [
+                {
+                    "finish_reason": "tool_calls",
+                    "message": {
+                        "tool_calls": [
+                            {
+                                "id": "call_screen_control",
+                                "type": "function",
+                                "function": {
+                                    "name": "screen_control",
+                                    "arguments": (
+                                        '{"target_selector":{"kind":"window","selector":{"app":"notepad.exe"}},'
+                                        '"execution_mode":"execute",'
+                                        '"actions":[{"type":"click","x":42,"y":24,"button":"left"}]}'
+                                    ),
+                                },
+                            }
+                        ]
+                    },
+                }
+            ],
+            "usage": {"total_tokens": 42},
+        }
+
+    provider_class = getattr(llm_provider, "OpenAICompatibleToolCallProvider", None)
+    assert provider_class is not None
+    provider = provider_class(
+        provider="mimo",
+        api_key="test_secret",
+        base_url="https://token-plan-cn.xiaomimimo.com/v1",
+        model="mimo-v2.5",
+        api_key_header="api-key",
+        transport=stub_transport,
+    )
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Click the OK button shown on this screen."},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "data:image/png;base64,ZmFrZS1pbWFnZS1ieXRlcw=="
+                    },
+                },
+            ],
+        }
+    ]
+
+    response = provider.select_tool(
+        messages,
+        tools=[
+            {
+                "name": "screen_control",
+                "input_schema": {"type": "object", "properties": {}},
+            }
+        ],
+        max_tokens=96,
+    )
+
+    assert captured["url"] == "https://token-plan-cn.xiaomimimo.com/v1/chat/completions"
+    assert captured["payload"] == {
+        "model": "mimo-v2.5",
+        "messages": messages,
+        "tools": [
+            {
+                "type": "function",
+                "function": {
+                    "name": "screen_control",
+                    "description": "Isotope controlled tool; output is returned through artifact refs, not inline content",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }
+        ],
+        "tool_choice": "required",
+        "temperature": 0,
+        "max_tokens": 96,
+        "stream": False,
+    }
+    assert captured["headers"]["api-key"] == "test_secret"
+    assert "Authorization" not in captured["headers"]
+    assert captured["timeout"] == 60
+    assert response.provider == "mimo"
+    assert response.model == "mimo-v2.5"
+    assert response.tool_call.tool_name == "screen_control"
+    assert response.tool_call.arguments["execution_mode"] == "execute"
 
 
 def test_openai_compatible_provider_streams_chat_completion_deltas():

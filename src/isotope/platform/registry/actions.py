@@ -17,6 +17,18 @@ from ...execution.screen.backend_types import (
     SUPPORTED_SCREEN_MODES,
 )
 
+SCREEN_ACTION_TYPE_SCHEMA_ENUM = [
+    "move",
+    "button_down",
+    "button_up",
+    "click",
+    "wheel",
+    "key_down",
+    "key_up",
+    "key_press",
+    "restore_window",
+]
+
 
 @dataclass(frozen=True)
 class ActionTypeEntry:
@@ -419,7 +431,7 @@ def _model_tool_entry(entry: ActionTypeEntry) -> dict[str, Any]:
         "name": entry.tool_name,
         "action": entry.action_type,
         "status": "enabled",
-        "input_schema": _input_schema_from_payload_requirements(entry.payload_requirements),
+        "input_schema": _input_schema_for_entry(entry),
         "constraints": {
             "workspace_mode": entry.default_workspace_mode,
             "budget_seconds": budget_seconds,
@@ -470,6 +482,80 @@ def _model_tool_entry(entry: ActionTypeEntry) -> dict[str, Any]:
             "requires_approval": True,
         })
     return tool
+
+
+def _input_schema_for_entry(entry: ActionTypeEntry) -> dict[str, Any]:
+    if entry.tool_name == "screen_control":
+        return _screen_control_input_schema()
+    return _input_schema_from_payload_requirements(entry.payload_requirements)
+
+
+def _screen_control_input_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "required": ["target_selector", "execution_mode", "actions"],
+        "properties": {
+            "target_selector": _screen_target_selector_schema(),
+            "target_allowlist": {
+                "type": "object",
+                "properties": {
+                    "allowed_apps": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                    "allowed_title_contains": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                    "allow_first_match_execute": {"type": "boolean"},
+                },
+            },
+            "execution_mode": {
+                "type": "string",
+                "enum": ["dry_run", "execute"],
+            },
+            "actions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": list(SCREEN_ACTION_TYPE_SCHEMA_ENUM),
+                        },
+                        "x": {"type": "integer"},
+                        "y": {"type": "integer"},
+                        "button": {"type": "string"},
+                        "key": {"type": "string"},
+                        "delta_x": {"type": "integer"},
+                        "delta_y": {"type": "integer"},
+                        "duration_ms": {"type": "integer"},
+                    },
+                },
+                "minItems": 1,
+            },
+            "summary": {"type": "string"},
+        },
+    }
+
+
+def _screen_target_selector_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "required": ["kind", "selector"],
+        "properties": {
+            "kind": {"type": "string", "enum": ["window"]},
+            "selector": {
+                "type": "object",
+                "properties": {
+                    "app": {"type": "string"},
+                    "title_contains": {"type": "string"},
+                    "window_id": {"type": "string"},
+                },
+            },
+        },
+    }
 
 
 def _input_schema_from_payload_requirements(payload_requirements: dict[str, Any]) -> dict[str, Any]:
