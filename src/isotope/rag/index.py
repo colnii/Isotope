@@ -7,6 +7,7 @@ from typing import Any, Mapping
 
 from .documents import RetrievalDocument
 from .embeddings import DeterministicEmbeddingProvider, EmbeddingProvider
+from .lancedb_store import LanceDBVectorStore
 from .vector_store import InMemoryVectorStore, VectorStore
 
 
@@ -14,6 +15,8 @@ from .vector_store import InMemoryVectorStore, VectorStore
 class RagIndexConfig:
     backend: str
     dimensions: int = 16
+    path: str | None = None
+    table_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -41,8 +44,8 @@ def parse_rag_index_config(value: Mapping[str, Any] | None) -> RagIndexConfig | 
         raise ValueError("dense_retrieval must be an object")
 
     backend = value.get("backend")
-    if backend != "local":
-        raise ValueError("dense_retrieval.backend must be local")
+    if backend not in {"local", "lancedb"}:
+        raise ValueError("dense_retrieval.backend must be local or lancedb")
 
     dimensions = value.get("dimensions", 16)
     if (
@@ -51,6 +54,14 @@ def parse_rag_index_config(value: Mapping[str, Any] | None) -> RagIndexConfig | 
         or dimensions <= 0
     ):
         raise ValueError("dense_retrieval.dimensions must be a positive integer")
+
+    if backend == "lancedb":
+        return RagIndexConfig(
+            backend="lancedb",
+            dimensions=dimensions,
+            path=_required_config_text(value, "path"),
+            table_name=_required_config_text(value, "table_name"),
+        )
 
     return RagIndexConfig(backend="local", dimensions=dimensions)
 
@@ -68,7 +79,13 @@ def build_rag_index(
     embedding_provider = DeterministicEmbeddingProvider(
         dimensions=normalized.dimensions
     )
-    vector_store = InMemoryVectorStore()
+    if normalized.backend == "lancedb":
+        vector_store = LanceDBVectorStore(
+            path=normalized.path or "",
+            table_name=normalized.table_name or "",
+        )
+    else:
+        vector_store = InMemoryVectorStore()
     vector_store.upsert(
         [
             (
@@ -91,3 +108,10 @@ def document_embedding_text(document: RetrievalDocument) -> str:
         for part in (document.title, document.summary, document.body)
         if isinstance(part, str) and part
     )
+
+
+def _required_config_text(value: Mapping[str, Any], key: str) -> str:
+    raw = value.get(key)
+    if not isinstance(raw, str) or not raw.strip():
+        raise ValueError(f"dense_retrieval.{key} must be a non-empty string")
+    return raw

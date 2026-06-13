@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
-from typing import Protocol, Sequence
+from typing import Any, Protocol, Sequence
 
 
 @dataclass(frozen=True)
@@ -21,7 +21,19 @@ class VectorSearchResult:
     reason_code: str | None = None
 
 
+@dataclass(frozen=True)
+class VectorUpsertResult:
+    status: str
+    reason_code: str | None = None
+
+
 class VectorStore(Protocol):
+    def upsert(
+        self,
+        rows: list[tuple[str, Sequence[float], dict[str, Any] | None]],
+    ) -> VectorUpsertResult:
+        """Upsert dense vectors."""
+
     def search(
         self, *, query_vector: Sequence[float], limit: int
     ) -> VectorSearchResult:
@@ -32,9 +44,13 @@ class InMemoryVectorStore:
     def __init__(self) -> None:
         self._vectors: dict[str, tuple[list[float], dict | None]] = {}
 
-    def upsert(self, rows: list[tuple[str, Sequence[float], dict | None]]) -> None:
+    def upsert(
+        self,
+        rows: list[tuple[str, Sequence[float], dict[str, Any] | None]],
+    ) -> VectorUpsertResult:
         for document_id, vector, metadata in rows:
             self._vectors[document_id] = ([float(value) for value in vector], metadata)
+        return VectorUpsertResult(status="ok")
 
     def search(
         self, *, query_vector: Sequence[float], limit: int

@@ -239,7 +239,7 @@
 | `ArtifactStore` | 产物存储，负责保存和读取 artifact 元数据与内容 | 工作区资源 | `src/isotope/workspace/artifacts.py` |
 | `ResourceRef` | 资源引用，指向产物等对象而不是直接暴露全文 | 平台数据 | `src/isotope/platform/schemas/refs.py` |
 | `RetrievalService` | 检索服务，按权限读取产物摘要或内容 | RAG/检索 | `src/isotope/rag/retrieval.py` |
-| `hybrid retrieval` | 通用 RAG 检索基建，先用 BM25 稀疏检索，配置 dense backend 时再融合向量检索；`rag.index` 负责本地 deterministic dense 索引装配，`memory.query` / `memory.recall` 和 `research.recall` 是第一批 caller，第一外部后端目标仍是 LanceDB，未配置或失败时降级 BM25 | RAG/检索 | `src/isotope/rag/hybrid.py`, `src/isotope/rag/index.py`, `src/isotope/rag/lancedb_store.py` |
+| `hybrid retrieval` | 通用 RAG 检索基建，先用 BM25 稀疏检索，配置 dense backend 时再融合向量检索；`rag.index` 负责 local deterministic dense 索引和可选 LanceDB vector store 索引装配，`memory.query` / `memory.recall` 和 `research.recall` 是第一批 caller，未配置、缺依赖或写查失败时降级 BM25 | RAG/检索 | `src/isotope/rag/hybrid.py`, `src/isotope/rag/index.py`, `src/isotope/rag/lancedb_store.py` |
 | `ExternalIngestionService` | 外部输入接入，把结构化原始输入保存为 artifact-only 产物 | RAG/接入 | `src/isotope/rag/ingestion.py` |
 | `checkpoint` | 检查点，用于恢复运行状态 | 状态恢复 | `src/isotope/platform/state/checkpoint_store.py` |
 | `event log` | 事件日志，记录系统发生过的事实 | 状态恢复 | `src/isotope/platform/state/event_store.py` |
@@ -260,7 +260,7 @@
 | `Codex task` | Codex 任务，把外部 Codex 执行封装成可路由能力；`task.py` 保留 facade，request 和 adapter contract 已拆到专门模块 | 工具/任务 | `src/isotope/integrations/codex/task.py`, `src/isotope/integrations/codex/task_request.py`, `src/isotope/integrations/codex/task_contract.py`, `src/isotope/integrations/codex/cli.py` |
 | `workspace` | 工作区，任务运行时读写资源的边界 | 产品/资源 | `src/isotope/workspace/` |
 | `memory` | 记忆，用于保存、查询和投影长期上下文；当前本地 query 返回 summary / refs / provenance，full content 走 controlled expand | 智能体 | `src/isotope/memory/`, `src/isotope/memory/views.py` |
-| `memory.query` | capability runner 里的 memory recall 能力，复用 `LocalMemoryQueryService` 和 caller audit，只返回 summary / refs / provenance；默认 BM25，可用 `dense_retrieval={"backend":"local"}` 显式启用本地 dense smoke 闭环 | 产品能力/智能体 | `src/isotope/capabilities/memory.py`, `src/isotope/memory/__init__.py` |
+| `memory.query` | capability runner 里的 memory recall 能力，复用 `LocalMemoryQueryService` 和 caller audit，只返回 summary / refs / provenance；默认 BM25，可用 `dense_retrieval={"backend":"local"}` 显式启用本地 dense smoke，或用 `dense_retrieval={"backend":"lancedb","path":"...","table_name":"..."}` 接入可选 LanceDB vector store | 产品能力/智能体 | `src/isotope/capabilities/memory.py`, `src/isotope/memory/__init__.py` |
 | `RAG` | 检索增强生成，先检索资料再让模型回答 | 应用能力 | `src/isotope/rag/` |
 | `workflow` | 工作流，多个步骤组成的任务流程 | 应用能力 | 待新目录设计 |
 | `feature` | 业务功能，如聊天、搜索、工作区、权限 | 产品能力 | 待新目录设计 |

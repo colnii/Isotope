@@ -67,10 +67,12 @@
   summary / refs / provenance / quality preview；这是 runtime 构造上下文，
   event 写入和 full content materialization 走各自授权路径。`default_context.memory` 现在通过通用
   hybrid retrieval helper 查询结构化 `MemoryRecord` preview 字段；通用
-  `rag.index` 负责本地 deterministic dense 索引装配，memory 只做
+  `rag.index` 负责 dense 索引装配，memory 只做
   `MemoryRecord` 到 `RetrievalDocument` 的适配。默认未配置 dense backend
   时继续走 BM25，显式 `dense_retrieval={"backend":"local"}` 会启用本地
-  dense smoke 闭环，外部 LanceDB 后端仍是后续接入目标。`controlled_expand` 仍然是唯一
+  dense smoke 闭环，显式 `dense_retrieval={"backend":"lancedb","path":"...","table_name":"..."}`
+  会写入并查询可选 LanceDB vector store；未安装或写查失败会降级 BM25。
+  `controlled_expand` 仍然是唯一
   读取 `MemoryRecord.content` 的授权路径。当前实现用当前 run goal 查询当前
   run memory 和同一 session 内显式晋升的 session memory；其他对话、跨
   session/global recall、超长上下文自动整理晋升和自动 promotion policy 仍是
@@ -138,7 +140,9 @@
 - `research.recall` 已进入 capability runner / capacity path：`isotope-capability`
   可 search/plan/run，运行时只扫描 existing `research.report` artifact 的
   preview metadata，复用 `rag.index` / hybrid retrieval，可显式传
-  `dense_retrieval={"backend":"local"}` 启用本地 dense smoke；结果只返回
+  `dense_retrieval={"backend":"local"}` 启用本地 dense smoke，或传
+  `dense_retrieval={"backend":"lancedb","path":"...","table_name":"..."}`
+  接入可选 LanceDB vector store；结果只返回
   summary、ref、source_refs 和 provenance，report 正文仍走 artifact inspect /
   expand。capacity plain 输出和 desktop capacity card 已能显示 recall status、
   report count、retrieval backend / dense status，以及可读的 report preview 列表。

@@ -52,6 +52,10 @@ def test_runner_discovers_research_recall_from_default_catalog():
     properties = description["input_contract"]["properties"]
     assert set(properties) == {"root", "query", "run_id", "limit", "dense_retrieval"}
     assert properties["root"]["x-system-input"] is True
+    dense_properties = properties["dense_retrieval"]["properties"]
+    assert dense_properties["backend"]["enum"] == ["local", "lancedb"]
+    assert "path" in dense_properties
+    assert "table_name" in dense_properties
     assert "research_report_artifact_preview_only" in description["safety_boundaries"]
     assert "no_research_artifact_content_return" in description["safety_boundaries"]
     assert (

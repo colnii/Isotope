@@ -26,7 +26,34 @@ def test_lancedb_store_reports_unavailable_when_dependency_is_missing(
     assert result.hits == []
 
 
+def test_lancedb_store_upsert_reports_unavailable_when_dependency_is_missing(
+    monkeypatch, tmp_path
+):
+    real_import = builtins.__import__
+
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "lancedb":
+            raise ModuleNotFoundError("No module named 'lancedb'")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    store = LanceDBVectorStore(path=tmp_path / "vectors.lance", table_name="memory")
+    result = store.upsert([("doc_1", [1.0, 0.0], {"kind": "memory"})])
+
+    assert result.status == "dense_unavailable"
+    assert result.reason_code == "lancedb_not_installed"
+
+
 class _FakeLanceTable:
+    def __init__(self):
+        self.rows = []
+
+    def add(self, rows, mode=None):
+        self.rows.extend(rows)
+        self.add_mode = mode
+        return self
+
     def search(self, query_vector):
         self.query_vector = query_vector
         return self
@@ -43,15 +70,29 @@ class _FakeLanceTable:
 
 
 class _FakeLanceConnection:
+    def __init__(self):
+        self.tables = {"memory": _FakeLanceTable()}
+
     def open_table(self, table_name):
         assert table_name == "memory"
-        return _FakeLanceTable()
+        return self.tables[table_name]
+
+    def create_table(self, table_name, data, mode=None):
+        table = _FakeLanceTable()
+        table.rows.extend(data)
+        table.create_mode = mode
+        self.tables[table_name] = table
+        return table
 
 
 class _FakeLanceModule:
-    @staticmethod
-    def connect(path):
-        return _FakeLanceConnection()
+    connections = []
+
+    @classmethod
+    def connect(cls, path):
+        connection = _FakeLanceConnection()
+        cls.connections.append(connection)
+        return connection
 
 
 def test_lancedb_store_maps_rows_to_vector_hits(monkeypatch, tmp_path):
@@ -75,4 +116,28 @@ def test_lancedb_store_maps_rows_to_vector_hits(monkeypatch, tmp_path):
     assert result.hits == [
         VectorSearchHit(document_id="doc_1", score=0.9, metadata={"kind": "memory"}),
         VectorSearchHit(document_id="doc_2", score=0.6, metadata={"kind": "memory"}),
+    ]
+
+
+def test_lancedb_store_upserts_rows_into_table(monkeypatch, tmp_path):
+    _FakeLanceModule.connections = []
+    real_import = builtins.__import__
+
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "lancedb":
+            return _FakeLanceModule
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    result = LanceDBVectorStore(
+        path=tmp_path / "vectors.lance",
+        table_name="memory",
+    ).upsert(
+        [("doc_1", [1.0, 0.0], {"kind": "memory"})],
+    )
+
+    assert result.status == "ok"
+    assert _FakeLanceModule.connections[0].tables["memory"].rows == [
+        {"document_id": "doc_1", "vector": [1.0, 0.0], "kind": "memory"}
     ]

@@ -88,7 +88,12 @@ def test_memory_recall_capability_is_registered_as_inspection_product_candidate(
     assert description["shelf"] == "product_candidate"
     assert description["network_required"] is False
     assert description["input_contract"]["required"] == ["root", "query"]
-    assert description["input_contract"]["properties"]["root"]["x-system-input"] is True
+    properties = description["input_contract"]["properties"]
+    assert properties["root"]["x-system-input"] is True
+    dense_properties = properties["dense_retrieval"]["properties"]
+    assert dense_properties["backend"]["enum"] == ["local", "lancedb"]
+    assert "path" in dense_properties
+    assert "table_name" in dense_properties
 
 
 
@@ -101,7 +106,12 @@ def test_runner_discovers_memory_query_from_default_catalog():
     assert "memory.query" in _ids(search["capabilities"])
     description = runner.describe_capability("memory.query")
     assert description["input_contract"]["required"] == ["root", "query", "run_id"]
-    assert "dense_retrieval" in description["input_contract"]["properties"]
+    dense_properties = description["input_contract"]["properties"]["dense_retrieval"][
+        "properties"
+    ]
+    assert dense_properties["backend"]["enum"] == ["local", "lancedb"]
+    assert "path" in dense_properties
+    assert "table_name" in dense_properties
     assert "memory_query_grant_gated" in description["safety_boundaries"]
     assert "memory_record_refs_expandable" in description["safety_boundaries"]
 

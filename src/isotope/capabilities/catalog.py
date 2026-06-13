@@ -148,6 +148,36 @@ def _manifest_input_contract(
     )
 
 
+def _dense_retrieval_input_contract() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "description": (
+            "Optional dense retrieval config. Use backend=local for deterministic "
+            "in-memory smoke, or backend=lancedb with path/table_name for an "
+            "optional LanceDB vector-store index. Default is BM25-only."
+        ),
+        "properties": {
+            "backend": {
+                "type": "string",
+                "enum": ["local", "lancedb"],
+            },
+            "dimensions": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 16,
+            },
+            "path": {
+                "type": "string",
+                "description": "LanceDB database path when backend is lancedb.",
+            },
+            "table_name": {
+                "type": "string",
+                "description": "LanceDB table name when backend is lancedb.",
+            },
+        },
+    }
+
+
 class CapabilityCatalog:
     def __init__(self, *, capabilities: list[Capability] | tuple[Capability, ...] | None = None):
         self._capabilities: dict[str, Capability] = {}
@@ -1588,14 +1618,7 @@ class CapabilityCatalog:
                                     "controlled_expand is true."
                                 ),
                             },
-                            "dense_retrieval": {
-                                "type": "object",
-                                "description": (
-                                    "Optional dense retrieval config. Use "
-                                    '{"backend":"local"} for deterministic '
-                                    "local smoke and tests; default is BM25-only."
-                                ),
-                            },
+                            "dense_retrieval": _dense_retrieval_input_contract(),
                         },
                     },
                     output_contract={
@@ -1664,14 +1687,7 @@ class CapabilityCatalog:
                                 "description": "Maximum records to preview.",
                                 "default": 20,
                             },
-                            "dense_retrieval": {
-                                "type": "object",
-                                "description": (
-                                    "Optional dense retrieval config. Use "
-                                    '{"backend":"local"} for deterministic '
-                                    "local smoke and tests; default is BM25-only."
-                                ),
-                            },
+                            "dense_retrieval": _dense_retrieval_input_contract(),
                         },
                     },
                     output_contract={
@@ -2002,21 +2018,7 @@ class CapabilityCatalog:
                                 "default": 20,
                                 "description": "Maximum number of artifact previews to return.",
                             },
-                            "dense_retrieval": {
-                                "type": "object",
-                                "description": "Optional local dense retrieval config.",
-                                "properties": {
-                                    "backend": {
-                                        "type": "string",
-                                        "enum": ["local"],
-                                    },
-                                    "dimensions": {
-                                        "type": "integer",
-                                        "minimum": 1,
-                                        "default": 16,
-                                    },
-                                },
-                            },
+                            "dense_retrieval": _dense_retrieval_input_contract(),
                         },
                     },
                     output_contract={
