@@ -2151,6 +2151,88 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="screen.control",
+                    title="Screen Control",
+                    description=(
+                        "Plan or request approval for policy-gated local screen "
+                        "input actions and return the shared screen report."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "screen",
+                        "control",
+                        "approval",
+                        "gui",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": [
+                            "target_selector",
+                            "execution_mode",
+                            "actions",
+                        ],
+                        "properties": {
+                            "target_selector": {
+                                "type": "object",
+                                "description": (
+                                    "Window selector with kind=window and selector "
+                                    "keys such as app, title_contains, or window_id."
+                                ),
+                            },
+                            "target_allowlist": {
+                                "type": "object",
+                                "description": (
+                                    "Optional allowed_apps / allowed_title_contains "
+                                    "policy override for this control call."
+                                ),
+                            },
+                            "execution_mode": {
+                                "type": "string",
+                                "enum": ["dry_run", "execute"],
+                                "description": (
+                                    "dry_run plans actions; execute requests user "
+                                    "approval before any screen input is sent."
+                                ),
+                            },
+                            "actions": {
+                                "type": "array",
+                                "description": (
+                                    "Screen action objects such as click, wheel, "
+                                    "key_press, or restore_window."
+                                ),
+                            },
+                            "root": {
+                                "type": "string",
+                                "x-system-input": True,
+                                "description": (
+                                    "Optional runtime root. Agent loop calls use "
+                                    "their capability root when this is omitted."
+                                ),
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "screen_control",
+                            "screen_report",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "policy_gated_screen_control",
+                        "local_backend_only",
+                        "screen_report_artifact",
+                        "approval_required_for_execute",
+                        "no_input_execution_without_user_approval",
+                        "target_allowlist_supported",
+                        "multi_match_execute_rejected_by_default",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="supervisor.codex_operation",
                     title="Supervisor Operation",
                     description=(

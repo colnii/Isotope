@@ -248,6 +248,7 @@ const ACTION_TITLES: Record<string, string> = {
   'research.search': '检索资料',
   'research.promote': '沉淀资料',
   'screen.observe': '观察屏幕',
+  'screen.control': '操作屏幕',
   'screen.report': '生成屏幕报告',
   'supervisor.project_status': '查看项目态势',
   'supervisor.request_context': '请求项目上下文',

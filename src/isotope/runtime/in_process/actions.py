@@ -459,9 +459,21 @@ class InProcessActionMixin:
                 actions = proposal.payload.get("actions")
                 if isinstance(actions, list):
                     label["action_count"] = len(actions)
+                    action_types: list[str] = []
+                    for action in actions:
+                        if not isinstance(action, dict):
+                            continue
+                        action_type = action.get("type")
+                        if (
+                            isinstance(action_type, str)
+                            and action_type
+                            and action_type not in action_types
+                        ):
+                            action_types.append(action_type)
+                    if action_types:
+                        label["action_types"] = action_types
                 label["execution_mode"] = proposal.payload.get("execution_mode")
         return label
-
 
     def _validate_action_intent(self, intent: object) -> None:
         if not isinstance(intent, dict):

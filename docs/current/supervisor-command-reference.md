@@ -1,7 +1,7 @@
 # Supervisor 命令参考
 
 状态：`当前入口 / 命令索引`
-更新时间：2026-05-24
+更新时间：2026-06-14
 
 本文只保留 Supervisor 命令族、常用入口、边界归属和更新规则，不再维护长篇逐命令说明。
 旧完整说明已归档到
@@ -59,7 +59,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 | `merge-work-order` / `merge-dispatch` / `promotion` | 生成 merge worker 工单、派发合并、CI watch 和 promotion gate。 | [architecture migration table](./supervisor-architecture-migration-table.md) |
 | `cleanup` | 只在 done、archived、already_integrated 且路径安全时删除 worktree。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `capacity` | 生成 capacity decision；显式执行时通过 tick driver 运行一次 `call_capability`。 | [capability inventory](./supervisor-capability-inventory.md)、[agent-loop tick driver boundary](../architecture/agent-loop-tick-driver-boundary-v0.2.md) |
-| `isotope-capability` | 搜索、检查或运行 capability；`supervisor.goal_plan` 复用目标规划，`supervisor.worker_review` / `supervisor.integration_review` 复用既有审查路径，`memory.query` / `research.recall` / `screen.observe` / `screen.report` 复用既有结构化查询、artifact preview 召回、观察和报告边界。 | [capability inventory](./supervisor-capability-inventory.md) |
+| `isotope-capability` | 搜索、检查或运行 capability；`supervisor.goal_plan` 复用目标规划，`supervisor.worker_review` / `supervisor.integration_review` 复用既有审查路径，`memory.query` / `research.recall` / `screen.observe` / `screen.control` / `screen.report` 复用既有结构化查询、artifact preview 召回、观察、控制和报告边界。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `memory` / `worker-event` / `worker-manager` | 查询本地 memory preview、worker event、multi-worker read model 和 supervised capacity run 摘要。 | [terminology](./terminology.md)、[capability inventory](./supervisor-capability-inventory.md) |
 | `research` | 代理 shared Research flow，支持 search / list / inspect；成功写 `research.report`，provider 失败只写 `research.provider_trace`。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
 | `isotope-screen inspect/report` / `screen` | 读取 screen artifact 或生成 run 级结构化 observe/control plan 摘要；Supervisor `screen report/inspect` 复用同一 screen artifact report 边界。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |

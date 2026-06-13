@@ -58,6 +58,13 @@ describe('capacityCallView', () => {
         title: 'Isotope Self Repair'
       })
     ).toBe('启动 Isotope 自修复');
+    expect(
+      capacityCallProductTitle({
+        ...call,
+        capacityId: 'screen.control',
+        title: 'Screen Control'
+      })
+    ).toBe('操作屏幕');
   });
 
   test('summarizes project status and self-repair actions in product language', () => {

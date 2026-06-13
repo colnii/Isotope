@@ -253,6 +253,30 @@ def _runtime_approval_summary(requested_label: dict[str, Any] | None) -> dict[st
         if isinstance(max_excerpt_chars, int) and not isinstance(max_excerpt_chars, bool):
             summary["max_excerpt_chars"] = max_excerpt_chars
         return summary
+    if tool == "screen_control" and isinstance(requested_label, dict):
+        summary = {"tool": tool}
+        target_kind = _label_string(requested_label, "target_kind")
+        if target_kind:
+            summary["target_kind"] = target_kind
+        selector_keys = requested_label.get("selector_keys")
+        if isinstance(selector_keys, list):
+            summary["selector_keys"] = [
+                key for key in selector_keys if isinstance(key, str) and key
+            ]
+        action_count = requested_label.get("action_count")
+        if isinstance(action_count, int) and not isinstance(action_count, bool):
+            summary["action_count"] = action_count
+        action_types = requested_label.get("action_types")
+        if isinstance(action_types, list):
+            summary["action_types"] = [
+                action_type
+                for action_type in action_types
+                if isinstance(action_type, str) and action_type
+            ]
+        execution_mode = _label_string(requested_label, "execution_mode")
+        if execution_mode:
+            summary["execution_mode"] = execution_mode
+        return summary
     if requested_label is None:
         return None
     return dict(requested_label)
@@ -267,6 +291,8 @@ def _runtime_approval_title(requested_label: dict[str, Any] | None) -> str:
         if command:
             return f"需要批准 terminal_exec: {command}"
         return "需要批准 terminal_exec"
+    if tool == "screen_control":
+        return "需要批准屏幕操作"
     if tool:
         return f"需要批准 {tool}"
     action_type = _label_string(requested_label, "action_type")

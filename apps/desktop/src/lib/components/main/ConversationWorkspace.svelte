@@ -61,11 +61,29 @@
     const path = typeof summary.path === 'string' ? summary.path : null;
     const maxExcerptChars =
       typeof summary.max_excerpt_chars === 'number' ? summary.max_excerpt_chars : null;
+    const actionCount = typeof summary.action_count === 'number' ? summary.action_count : null;
+    const executionMode = typeof summary.execution_mode === 'string' ? summary.execution_mode : null;
+    const actionTypes = Array.isArray(summary.action_types)
+      ? summary.action_types.filter((value): value is string => typeof value === 'string' && !!value)
+      : [];
+    const selectorKeys = Array.isArray(summary.selector_keys)
+      ? summary.selector_keys.filter((value): value is string => typeof value === 'string' && !!value)
+      : [];
     if (tool === 'local_file_read' && path) {
       return maxExcerptChars === null ? path : `${path} / 最多 ${maxExcerptChars} 字符`;
     }
     if (tool === 'terminal_exec' && command) {
       return argvCount === null ? command : `${command} / argv ${argvCount}`;
+    }
+    if (tool === 'screen_control') {
+      const modeLabel =
+        executionMode === 'execute' ? '执行需批准' : executionMode === 'dry_run' ? '仅规划' : '';
+      const countLabel = actionCount === null ? '' : `${actionCount} 个动作`;
+      const actionLabel = actionTypes.length ? actionTypes.join(', ') : '';
+      const selectorLabel = selectorKeys.length ? `目标: ${selectorKeys.join(', ')}` : '';
+      return ['屏幕操作', modeLabel, countLabel, actionLabel, selectorLabel]
+        .filter(Boolean)
+        .join(' / ');
     }
     if (tool) return tool;
     return approval.reasonCodes?.join(', ') || '等待人工确认';

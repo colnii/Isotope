@@ -24,6 +24,16 @@ describe('ConversationWorkspace', () => {
     expect(source).toContain('最多 ${maxExcerptChars} 字符');
   });
 
+  test('contains screen control approval detail branch', () => {
+    const path = join(process.cwd(), 'src/lib/components/main/ConversationWorkspace.svelte');
+    const source = readFileSync(path, 'utf8');
+
+    expect(source).toContain("tool === 'screen_control'");
+    expect(source).toContain('屏幕操作');
+    expect(source).toContain('actionTypes');
+    expect(source).toContain('selectorKeys');
+  });
+
   test('keeps header copy separated from the suprematist mark', () => {
     const path = join(process.cwd(), 'src/lib/components/main/ConversationWorkspace.svelte');
     const source = readFileSync(path, 'utf8');

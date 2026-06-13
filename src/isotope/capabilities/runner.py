@@ -88,10 +88,12 @@ from .research import (
     validate_research_inputs,
 )
 from .screen import (
+    SCREEN_CONTROL_CAPABILITY,
     SCREEN_OBSERVE_CAPABILITY,
     SCREEN_REPORT_CAPABILITY,
     is_screen_capability,
     is_screen_projection_capability,
+    run_screen_control,
     run_screen_observe,
     run_screen_report,
     validate_screen_inputs,
@@ -605,6 +607,8 @@ class CapabilityRunner:
             return run_research_recall(inputs=input_mapping)
         if capability_id == RESEARCH_SEARCH_CAPABILITY:
             return run_research_search(inputs=input_mapping)
+        if capability_id == SCREEN_CONTROL_CAPABILITY:
+            return run_screen_control(root_path=root_path, inputs=input_mapping)
         if capability_id == SCREEN_OBSERVE_CAPABILITY:
             return run_screen_observe(root_path=root_path, inputs=input_mapping)
         if capability_id == SCREEN_REPORT_CAPABILITY:
@@ -773,7 +777,10 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
         return "deterministic_projection"
     if is_research_capability(str(capability.get("capability_id", ""))):
         return "deterministic_local"
-    if capability.get("capability_id") == SCREEN_OBSERVE_CAPABILITY:
+    if capability.get("capability_id") in {
+        SCREEN_CONTROL_CAPABILITY,
+        SCREEN_OBSERVE_CAPABILITY,
+    }:
         return "deterministic_local"
     if is_screen_projection_capability(str(capability.get("capability_id", ""))):
         return "deterministic_projection"

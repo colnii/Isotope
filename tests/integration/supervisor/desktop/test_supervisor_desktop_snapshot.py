@@ -29,6 +29,28 @@ def _terminal_intent(argv: list[str]) -> dict:
     }
 
 
+def _screen_control_intent() -> dict:
+    return {
+        "action": "call_tool",
+        "tool": "screen_control",
+        "target_selector": {
+            "kind": "window",
+            "selector": {"app": "notepad.exe"},
+        },
+        "target_allowlist": {"allowed_apps": ["notepad.exe"]},
+        "execution_mode": "execute",
+        "actions": [
+            {
+                "type": "click",
+                "button": "left",
+                "x": 10,
+                "y": 20,
+            }
+        ],
+        "summary": "screen control approval",
+    }
+
+
 def test_desktop_snapshot_empty_root_uses_contract_shape(tmp_path):
     snapshot = build_desktop_snapshot(state_root=tmp_path)
 
@@ -240,6 +262,36 @@ def test_desktop_snapshot_includes_runtime_pending_approval_without_command_leak
     assert approval["requestedActionLabel"]["tool"] == "terminal_exec"
     assert approval["requestedActionLabel"]["terminal_command"] == "bash"
     assert "SHOULD_NOT_LEAK" not in json.dumps(snapshot, ensure_ascii=False)
+
+
+def test_desktop_snapshot_includes_screen_control_approval_summary_without_coordinates(tmp_path):
+    api = runtime.InProcessServer(tmp_path)
+    session = api.create_session()
+    run = api.create_run(session["session_id"], goal="approve screen control")
+
+    pending = api.submit_action(
+        run["run_id"],
+        _screen_control_intent(),
+        requires_approval=True,
+    )
+
+    snapshot = build_desktop_snapshot(state_root=tmp_path)
+
+    assert snapshot["counts"]["approvals"] == 1
+    approval = snapshot["approvals"][0]
+    assert approval["id"] == pending["approval_id"]
+    assert approval["title"] == "需要批准屏幕操作"
+    assert approval["requestedActionSummary"] == {
+        "tool": "screen_control",
+        "target_kind": "window",
+        "selector_keys": ["app"],
+        "action_count": 1,
+        "action_types": ["click"],
+        "execution_mode": "execute",
+    }
+    serialized = json.dumps(snapshot, ensure_ascii=False)
+    assert '"x": 10' not in serialized
+    assert '"y": 20' not in serialized
 
 
 def test_public_metadata_preview_guard_rejects_secrets_and_long_content():

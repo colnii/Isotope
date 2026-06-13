@@ -693,6 +693,53 @@ def test_capability_runner_cli_runs_screen_report_with_input_json(tmp_path):
     _assert_public_metadata(payload)
 
 
+def test_capability_runner_cli_describes_screen_control_as_product_candidate():
+    result = _run_cli("describe", "screen.control", "--json")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    capability = payload["capability"]
+    assert capability["capability_id"] == "screen.control"
+    assert capability["shelf"] == "product_candidate"
+    assert capability["input_contract"]["required"] == [
+        "target_selector",
+        "execution_mode",
+        "actions",
+    ]
+    assert "approval_required_for_execute" in capability["safety_boundaries"]
+    _assert_public_metadata(payload)
+
+
+def test_capability_runner_cli_plans_screen_control_missing_actions(tmp_path):
+    result = _run_cli(
+        "plan",
+        "screen.control",
+        "--input-json",
+        json.dumps(
+            {
+                "root": str(tmp_path),
+                "target_selector": {
+                    "kind": "window",
+                    "selector": {"app": "notepad.exe"},
+                },
+                "execution_mode": "dry_run",
+            }
+        ),
+        "--json",
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "ok"
+    plan = payload["plan"]
+    assert plan["capability_id"] == "screen.control"
+    assert plan["status"] == "missing_inputs"
+    assert plan["missing_inputs"] == ["actions"]
+    assert plan["runner_kind"] == "deterministic_local"
+    _assert_public_metadata(payload)
+
+
 def test_capability_runner_cli_unknown_capability_fails_controlled_json(tmp_path):
     result = _run_cli("run", "unknown.capability", "--root", str(tmp_path), "--json")
 

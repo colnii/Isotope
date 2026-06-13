@@ -1868,6 +1868,118 @@ def test_conversation_loop_executes_screen_observe_capacity_with_generic_events(
     assert "ZmFrZS1pbWFnZS1ieXRlcw==" not in rendered_events
 
 
+def test_conversation_loop_executes_screen_control_dry_run_with_generic_events(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    from isotope.capabilities import screen as screen_capability
+
+    class StubScreenBackend:
+        def run(self, request):
+            return {
+                "backend_session_id": "stub_screen_control_001",
+                "status": "completed",
+                "started_at": "2026-05-24T00:00:00Z",
+                "finished_at": "2026-05-24T00:00:01Z",
+                "summary": "screen control completed",
+                "output_artifacts": [
+                    {
+                        "artifact_type": "screen_control_plan",
+                        "summary": "screen control result",
+                        "content": json.dumps(
+                            {
+                                "action_count": 1,
+                                "executed": False,
+                                "planned_actions": ["click"],
+                                "private_note": "raw screen control payload must not leak",
+                            },
+                            sort_keys=True,
+                        ),
+                    },
+                ],
+                "reason_code": "screen_control_completed",
+                "retryable": False,
+                "resource_usage": {"window_count": 1},
+            }
+
+    monkeypatch.setattr(
+        screen_capability,
+        "WindowsScreenBackend",
+        StubScreenBackend,
+        raising=False,
+    )
+    provider = RecordingConversationProvider(
+        [
+            json.dumps(
+                {
+                    "kind": "call_capability",
+                    "capacity_id": "screen.control",
+                    "arguments": {
+                        "target_selector": {
+                            "kind": "window",
+                            "selector": {"app": "notepad.exe"},
+                        },
+                        "target_allowlist": {"allowed_apps": ["notepad.exe"]},
+                        "execution_mode": "dry_run",
+                        "actions": [
+                            {
+                                "type": "click",
+                                "button": "left",
+                                "x": 10,
+                                "y": 20,
+                            }
+                        ],
+                    },
+                    "rationale": "Plan a safe click before execution.",
+                }
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer": "已生成屏幕操作计划。",
+                }
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="先规划一下点击记事本。",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert events[0].payload["capacity_id"] == "screen.control"
+    assert events[1].payload["status"] == "ok"
+    assert events[1].payload["result"]["agent_loop_tick_status"] == "executed"
+    assert events[1].payload["result"]["agent_loop_screen_report_status"] == "ok"
+    assert events[1].payload["result"]["agent_loop_screen_control_status"] == "planned"
+    assert events[1].payload["result"]["agent_loop_screen_interferes_with_screen"] is True
+    screen_artifact_details = [
+        detail
+        for detail in events[1].payload["details"]
+        if detail["label"] == "Screen artifacts"
+    ]
+    assert screen_artifact_details
+    assert screen_artifact_details[0]["content"]["artifacts"][0]["artifact_type"] == (
+        "screen_control_plan"
+    )
+    rendered_events = json.dumps(
+        [event.payload for event in events],
+        ensure_ascii=False,
+    )
+    assert "raw screen control payload" not in rendered_events
+    assert events[2].payload["text"] == "已生成屏幕操作计划。"
+
+
 def _message_image_urls(messages: list[dict[str, Any]]) -> list[str]:
     urls: list[str] = []
     for message in messages:
