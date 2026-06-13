@@ -227,7 +227,6 @@ def test_openai_compatible_tool_call_provider_allows_multimodal_mimo_screen_cont
         api_key="test_secret",
         base_url="https://token-plan-cn.xiaomimimo.com/v1",
         model="mimo-v2.5",
-        api_key_header="api-key",
         transport=stub_transport,
     )
     messages = [
@@ -275,8 +274,8 @@ def test_openai_compatible_tool_call_provider_allows_multimodal_mimo_screen_cont
         "max_tokens": 96,
         "stream": False,
     }
-    assert captured["headers"]["api-key"] == "test_secret"
-    assert "Authorization" not in captured["headers"]
+    assert captured["headers"]["Authorization"] == "Bearer test_secret"
+    assert "api-key" not in captured["headers"]
     assert captured["timeout"] == 60
     assert response.provider == "mimo"
     assert response.model == "mimo-v2.5"

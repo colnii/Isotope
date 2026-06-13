@@ -136,7 +136,6 @@ def _resolve_mimo_tool_call_provider(
             base_url=_env_string(env, "ISOTOPE_LLM_BASE_URL")
             or _env_string(env, "MIMO_BASE_URL")
             or "https://token-plan-cn.xiaomimimo.com/v1",
-            api_key_header="api-key",
             timeout=timeout,
             transport=transport,
         )

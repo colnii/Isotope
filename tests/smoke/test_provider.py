@@ -300,8 +300,8 @@ def test_llm_provider_resolution_accepts_mimo_multimodal_tool_calls():
     assert calls[0]["payload"]["model"] == "mimo-v2.5"
     assert calls[0]["payload"]["max_tokens"] == 44
     assert "thinking" not in calls[0]["payload"]
-    assert calls[0]["headers"]["api-key"] == "MIMO_SECRET_SHOULD_NOT_LEAK"
-    assert "Authorization" not in calls[0]["headers"]
+    assert calls[0]["headers"]["Authorization"] == "Bearer MIMO_SECRET_SHOULD_NOT_LEAK"
+    assert "api-key" not in calls[0]["headers"]
     assert calls[0]["timeout"] == 11
     assert "MIMO_SECRET_SHOULD_NOT_LEAK" not in repr(resolution)
 
