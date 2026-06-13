@@ -18,6 +18,7 @@ from ..platform.schemas.input_contract import missing_required_input_keys
 SCREEN_CONTROL_CAPABILITY = "screen.control"
 SCREEN_OBSERVE_CAPABILITY = "screen.observe"
 SCREEN_REPORT_CAPABILITY = "screen.report"
+SCREEN_CONTROL_APPROVAL_MODES = {"single_approval", "yolo"}
 SCREEN_CAPABILITIES = {
     SCREEN_CONTROL_CAPABILITY,
     SCREEN_OBSERVE_CAPABILITY,
@@ -146,10 +147,11 @@ def run_screen_control(
     run = api.create_run(session["session_id"], goal="screen control capacity")
     run_id = run["run_id"]
     execution_mode = input_mapping["execution_mode"]
+    approval_mode = input_mapping.get("approval_mode", "single_approval")
     control_result = api.submit_action(
         run_id,
         _screen_control_intent(input_mapping),
-        requires_approval=execution_mode == "execute",
+        requires_approval=execution_mode == "execute" and approval_mode != "yolo",
     )
     payload = report_screen_artifacts(root, run_id=run_id)
     control_summary = {
@@ -263,6 +265,10 @@ def _validate_screen_control_inputs(
             raise ValueError("execution_mode must be dry_run or execute")
     if "actions" not in missing_inputs:
         _validate_actions(input_mapping.get("actions"))
+    if "approval_mode" in input_mapping:
+        value = input_mapping.get("approval_mode")
+        if not isinstance(value, str) or value not in SCREEN_CONTROL_APPROVAL_MODES:
+            raise ValueError("approval_mode must be single_approval or yolo")
     if "target_allowlist" in input_mapping:
         _validate_target_allowlist(input_mapping.get("target_allowlist"))
     return dict(input_mapping)
@@ -353,6 +359,7 @@ def _screen_control_intent(input_mapping: Mapping[str, Any]) -> dict[str, Any]:
         "target_selector": dict(input_mapping["target_selector"]),
         "mode": "interactive",
         "execution_mode": input_mapping["execution_mode"],
+        "approval_mode": input_mapping.get("approval_mode", "single_approval"),
         "actions": [dict(action) for action in input_mapping["actions"]],
         "summary": "screen control capacity",
     }

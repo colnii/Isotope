@@ -128,6 +128,28 @@ def test_control_button_down_parser_accepts_coordinate_arguments():
     assert args.approve_execute is False
 
 
+def test_control_click_parser_accepts_yolo_approval_mode():
+    args = runner._build_parser().parse_args(
+        [
+            "control-click",
+            "--root",
+            "runtime-root",
+            "--app",
+            "notepad.exe",
+            "--x",
+            "100",
+            "--y",
+            "120",
+            "--approval-mode",
+            "yolo",
+        ]
+    )
+
+    assert args.command == "control-click"
+    assert args.approval_mode == "yolo"
+    assert args.approve_execute is False
+
+
 def test_control_button_up_parser_accepts_coordinate_arguments():
     args = runner._build_parser().parse_args(
         [

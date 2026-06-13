@@ -103,6 +103,7 @@ def _build_control_intent(
     target_selector: dict[str, Any],
     actions: list[dict[str, Any]],
     execution_mode: str,
+    approval_mode: str = "single_approval",
     target_allowlist: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     intent = {
@@ -111,6 +112,7 @@ def _build_control_intent(
         "target_selector": target_selector,
         "mode": "interactive",
         "execution_mode": execution_mode,
+        "approval_mode": approval_mode,
         "actions": list(actions),
         "summary": "manual screen control smoke",
     }
@@ -147,6 +149,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Request approval and execute after immediate local approval.",
     )
+    control_parser.add_argument(
+        "--approval-mode",
+        choices=["single_approval", "yolo"],
+        default="single_approval",
+        help="Control approval mode; yolo executes immediately for allowlisted smoke tests.",
+    )
 
     click_parser = subparsers.add_parser(
         "control-click",
@@ -167,6 +175,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Request approval and execute after immediate local approval.",
     )
+    click_parser.add_argument(
+        "--approval-mode",
+        choices=["single_approval", "yolo"],
+        default="single_approval",
+        help="Control approval mode; yolo executes immediately for allowlisted smoke tests.",
+    )
     double_click_parser = subparsers.add_parser(
         "control-double-click",
         help="Plan or execute one double-click without writing action JSON.",
@@ -185,6 +199,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--approve-execute",
         action="store_true",
         help="Request approval and execute after immediate local approval.",
+    )
+    double_click_parser.add_argument(
+        "--approval-mode",
+        choices=["single_approval", "yolo"],
+        default="single_approval",
+        help="Control approval mode; yolo executes immediately for allowlisted smoke tests.",
     )
     drag_parser = subparsers.add_parser(
         "control-drag",
@@ -213,6 +233,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Request approval and execute after immediate local approval.",
     )
+    drag_parser.add_argument(
+        "--approval-mode",
+        choices=["single_approval", "yolo"],
+        default="single_approval",
+        help="Control approval mode; yolo executes immediately for allowlisted smoke tests.",
+    )
     for command, action_name in (
         ("control-button-down", "button down"),
         ("control-button-up", "button up"),
@@ -236,6 +262,12 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Request approval and execute after immediate local approval.",
         )
+        button_parser.add_argument(
+            "--approval-mode",
+            choices=["single_approval", "yolo"],
+            default="single_approval",
+            help="Control approval mode; yolo executes immediately for allowlisted smoke tests.",
+        )
     wheel_parser = subparsers.add_parser(
         "control-wheel",
         help="Plan or execute one mouse wheel action without writing action JSON.",
@@ -250,6 +282,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--approve-execute",
         action="store_true",
         help="Request approval and execute after immediate local approval.",
+    )
+    wheel_parser.add_argument(
+        "--approval-mode",
+        choices=["single_approval", "yolo"],
+        default="single_approval",
+        help="Control approval mode; yolo executes immediately for allowlisted smoke tests.",
     )
     for command, action_name in (
         ("control-key-press", "key press"),
@@ -268,6 +306,12 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="Request approval and execute after immediate local approval.",
         )
+        key_parser.add_argument(
+            "--approval-mode",
+            choices=["single_approval", "yolo"],
+            default="single_approval",
+            help="Control approval mode; yolo executes immediately for allowlisted smoke tests.",
+        )
     restore_parser = subparsers.add_parser(
         "control-restore",
         help="Plan or execute a window restore action without writing action JSON.",
@@ -278,6 +322,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--approve-execute",
         action="store_true",
         help="Request approval and execute after immediate local approval.",
+    )
+    restore_parser.add_argument(
+        "--approval-mode",
+        choices=["single_approval", "yolo"],
+        default="single_approval",
+        help="Control approval mode; yolo executes immediately for allowlisted smoke tests.",
     )
 
     allowlist_parser = subparsers.add_parser(
@@ -500,18 +550,24 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "control":
             actions = _actions_from_json(args.action_json)
-            execution_mode = "execute" if args.approve_execute else "dry_run"
+            execution_mode = (
+                "execute"
+                if args.approve_execute or args.approval_mode == "yolo"
+                else "dry_run"
+            )
+            requires_approval = args.approve_execute and args.approval_mode != "yolo"
             pending_or_result = api.submit_action(
                 run_id,
                 _build_control_intent(
                     target_selector=target_selector,
                     actions=actions,
                     execution_mode=execution_mode,
+                    approval_mode=args.approval_mode,
                     target_allowlist=target_allowlist,
                 ),
-                requires_approval=args.approve_execute,
+                requires_approval=requires_approval,
             )
-            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+            if requires_approval and pending_or_result["status"] == "pending_user_approval":
                 result = api.resolve_approval(
                     pending_or_result["approval_id"],
                     {
@@ -523,18 +579,24 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 result = pending_or_result
         elif args.command == "control-click":
-            execution_mode = "execute" if args.approve_execute else "dry_run"
+            execution_mode = (
+                "execute"
+                if args.approve_execute or args.approval_mode == "yolo"
+                else "dry_run"
+            )
+            requires_approval = args.approve_execute and args.approval_mode != "yolo"
             pending_or_result = api.submit_action(
                 run_id,
                 _build_control_intent(
                     target_selector=target_selector,
                     actions=[_build_click_action(x=args.x, y=args.y, button=args.button)],
                     execution_mode=execution_mode,
+                    approval_mode=args.approval_mode,
                     target_allowlist=target_allowlist,
                 ),
-                requires_approval=args.approve_execute,
+                requires_approval=requires_approval,
             )
-            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+            if requires_approval and pending_or_result["status"] == "pending_user_approval":
                 result = api.resolve_approval(
                     pending_or_result["approval_id"],
                     {
@@ -546,7 +608,12 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 result = pending_or_result
         elif args.command == "control-double-click":
-            execution_mode = "execute" if args.approve_execute else "dry_run"
+            execution_mode = (
+                "execute"
+                if args.approve_execute or args.approval_mode == "yolo"
+                else "dry_run"
+            )
+            requires_approval = args.approve_execute and args.approval_mode != "yolo"
             pending_or_result = api.submit_action(
                 run_id,
                 _build_control_intent(
@@ -559,11 +626,12 @@ def main(argv: list[str] | None = None) -> int:
                         )
                     ],
                     execution_mode=execution_mode,
+                    approval_mode=args.approval_mode,
                     target_allowlist=target_allowlist,
                 ),
-                requires_approval=args.approve_execute,
+                requires_approval=requires_approval,
             )
-            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+            if requires_approval and pending_or_result["status"] == "pending_user_approval":
                 result = api.resolve_approval(
                     pending_or_result["approval_id"],
                     {
@@ -575,7 +643,12 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 result = pending_or_result
         elif args.command == "control-drag":
-            execution_mode = "execute" if args.approve_execute else "dry_run"
+            execution_mode = (
+                "execute"
+                if args.approve_execute or args.approval_mode == "yolo"
+                else "dry_run"
+            )
+            requires_approval = args.approve_execute and args.approval_mode != "yolo"
             pending_or_result = api.submit_action(
                 run_id,
                 _build_control_intent(
@@ -591,11 +664,12 @@ def main(argv: list[str] | None = None) -> int:
                         )
                     ],
                     execution_mode=execution_mode,
+                    approval_mode=args.approval_mode,
                     target_allowlist=target_allowlist,
                 ),
-                requires_approval=args.approve_execute,
+                requires_approval=requires_approval,
             )
-            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+            if requires_approval and pending_or_result["status"] == "pending_user_approval":
                 result = api.resolve_approval(
                     pending_or_result["approval_id"],
                     {
@@ -615,7 +689,12 @@ def main(argv: list[str] | None = None) -> int:
                 "control-button-down": "button down",
                 "control-button-up": "button up",
             }
-            execution_mode = "execute" if args.approve_execute else "dry_run"
+            execution_mode = (
+                "execute"
+                if args.approve_execute or args.approval_mode == "yolo"
+                else "dry_run"
+            )
+            requires_approval = args.approve_execute and args.approval_mode != "yolo"
             pending_or_result = api.submit_action(
                 run_id,
                 _build_control_intent(
@@ -628,11 +707,12 @@ def main(argv: list[str] | None = None) -> int:
                         )
                     ],
                     execution_mode=execution_mode,
+                    approval_mode=args.approval_mode,
                     target_allowlist=target_allowlist,
                 ),
-                requires_approval=args.approve_execute,
+                requires_approval=requires_approval,
             )
-            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+            if requires_approval and pending_or_result["status"] == "pending_user_approval":
                 result = api.resolve_approval(
                     pending_or_result["approval_id"],
                     {
@@ -644,7 +724,12 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 result = pending_or_result
         elif args.command == "control-wheel":
-            execution_mode = "execute" if args.approve_execute else "dry_run"
+            execution_mode = (
+                "execute"
+                if args.approve_execute or args.approval_mode == "yolo"
+                else "dry_run"
+            )
+            requires_approval = args.approve_execute and args.approval_mode != "yolo"
             pending_or_result = api.submit_action(
                 run_id,
                 _build_control_intent(
@@ -658,11 +743,12 @@ def main(argv: list[str] | None = None) -> int:
                         )
                     ],
                     execution_mode=execution_mode,
+                    approval_mode=args.approval_mode,
                     target_allowlist=target_allowlist,
                 ),
-                requires_approval=args.approve_execute,
+                requires_approval=requires_approval,
             )
-            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+            if requires_approval and pending_or_result["status"] == "pending_user_approval":
                 result = api.resolve_approval(
                     pending_or_result["approval_id"],
                     {
@@ -684,18 +770,24 @@ def main(argv: list[str] | None = None) -> int:
                 "control-key-down": "key down",
                 "control-key-up": "key up",
             }
-            execution_mode = "execute" if args.approve_execute else "dry_run"
+            execution_mode = (
+                "execute"
+                if args.approve_execute or args.approval_mode == "yolo"
+                else "dry_run"
+            )
+            requires_approval = args.approve_execute and args.approval_mode != "yolo"
             pending_or_result = api.submit_action(
                 run_id,
                 _build_control_intent(
                     target_selector=target_selector,
                     actions=[action_builders[args.command](key=args.key)],
                     execution_mode=execution_mode,
+                    approval_mode=args.approval_mode,
                     target_allowlist=target_allowlist,
                 ),
-                requires_approval=args.approve_execute,
+                requires_approval=requires_approval,
             )
-            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+            if requires_approval and pending_or_result["status"] == "pending_user_approval":
                 result = api.resolve_approval(
                     pending_or_result["approval_id"],
                     {
@@ -707,18 +799,24 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 result = pending_or_result
         elif args.command == "control-restore":
-            execution_mode = "execute" if args.approve_execute else "dry_run"
+            execution_mode = (
+                "execute"
+                if args.approve_execute or args.approval_mode == "yolo"
+                else "dry_run"
+            )
+            requires_approval = args.approve_execute and args.approval_mode != "yolo"
             pending_or_result = api.submit_action(
                 run_id,
                 _build_control_intent(
                     target_selector=target_selector,
                     actions=[_build_restore_window_action()],
                     execution_mode=execution_mode,
+                    approval_mode=args.approval_mode,
                     target_allowlist=target_allowlist,
                 ),
-                requires_approval=args.approve_execute,
+                requires_approval=requires_approval,
             )
-            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+            if requires_approval and pending_or_result["status"] == "pending_user_approval":
                 result = api.resolve_approval(
                     pending_or_result["approval_id"],
                     {

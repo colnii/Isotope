@@ -175,6 +175,35 @@ def test_policy_allows_execute_control_when_approval_requested():
     assert "execute" in decision.grants["screen"]["action_policy"]["execution_modes"]
 
 
+def test_policy_allows_execute_control_with_yolo_approval_mode():
+    compiler = ActionCompiler(registry=ActionTypeRegistry.default())
+    intent = _control_intent(execution_mode="execute")
+    intent["approval_mode"] = "yolo"
+    intent["target_allowlist"] = {"allowed_apps": ["notepad.exe"]}
+    proposal = compiler.compile(intent, _runtime_context())
+
+    decision = PolicyEngine(registry=ActionTypeRegistry.default()).decide(proposal)
+
+    assert proposal.payload["approval_mode"] == "yolo"
+    assert proposal.payload["approval_requested"] is False
+    assert decision.outcome == "approved"
+    assert decision.grants["tools"] == ["screen_control"]
+    assert decision.grants["screen"]["control"] is True
+    assert "execute" in decision.grants["screen"]["action_policy"]["execution_modes"]
+
+
+def test_policy_denies_yolo_execute_without_target_allowlist():
+    compiler = ActionCompiler(registry=ActionTypeRegistry.default())
+    intent = _control_intent(execution_mode="execute")
+    intent["approval_mode"] = "yolo"
+    proposal = compiler.compile(intent, _runtime_context())
+
+    decision = PolicyEngine(registry=ActionTypeRegistry.default()).decide(proposal)
+
+    assert decision.outcome == "denied"
+    assert decision.reason_codes == ["screen_yolo_target_allowlist_required"]
+
+
 def test_policy_denies_unknown_screen_action_type_before_executor():
     compiler = ActionCompiler(registry=ActionTypeRegistry.default())
     intent = _control_intent(execution_mode="dry_run")

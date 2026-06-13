@@ -13,6 +13,9 @@ from ..platform.registry.actions import ActionTypeRegistry
 from ..platform.schemas.actions import ActionProposal, PolicyDecision
 
 
+SCREEN_CONTROL_APPROVAL_MODES = {"single_approval", "yolo"}
+
+
 class PolicyEngine:
     """Minimal policy boundary backed by action/tool metadata."""
 
@@ -172,12 +175,24 @@ class PolicyEngine:
                 if action_denial is not None:
                     return self._denied(proposal, action_denial)
                 if execution_mode == "execute":
-                    if proposal.payload.get("approval_requested") is not True:
+                    approval_mode = proposal.payload.get("approval_mode", "single_approval")
+                    if approval_mode not in SCREEN_CONTROL_APPROVAL_MODES:
+                        return self._denied(proposal, "screen_approval_mode_not_allowed")
+                    if approval_mode == "yolo":
+                        if not _has_explicit_target_allowlist(
+                            proposal.payload.get("target_allowlist")
+                        ):
+                            return self._denied(
+                                proposal,
+                                "screen_yolo_target_allowlist_required",
+                            )
+                    elif proposal.payload.get("approval_requested") is not True:
                         return self._denied(proposal, "screen_approval_required")
                     screen_grant["action_policy"]["execution_modes"] = _with_unique(
                         screen_grant["action_policy"]["execution_modes"],
                         "execute",
                     )
+                    screen_grant["approval_mode"] = approval_mode
                 grants["screen"] = screen_grant
         requested_matches = (
             requested_tools == grants["tools"]
@@ -362,6 +377,20 @@ def _apply_target_allowlist(screen_grant: dict, target_allowlist: object) -> Non
         "allowed_title_contains": list(allowed_titles),
         "allow_first_match_execute": target_allowlist.get("allow_first_match_execute") is True,
     }
+
+
+def _has_explicit_target_allowlist(target_allowlist: object) -> bool:
+    if not isinstance(target_allowlist, dict):
+        return False
+    allowed_apps = target_allowlist.get("allowed_apps", [])
+    allowed_titles = target_allowlist.get("allowed_title_contains", [])
+    return (
+        isinstance(allowed_apps, list)
+        and any(isinstance(item, str) and item for item in allowed_apps)
+    ) or (
+        isinstance(allowed_titles, list)
+        and any(isinstance(item, str) and item for item in allowed_titles)
+    )
 
 
 def _target_policy_denial(

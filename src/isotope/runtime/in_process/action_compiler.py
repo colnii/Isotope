@@ -18,6 +18,9 @@ from ...platform.registry.actions import ActionTypeRegistry
 from ...platform.schemas.actions import ActionProposal
 
 
+SCREEN_CONTROL_APPROVAL_MODES = {"single_approval", "yolo"}
+
+
 class ActionCompiler:
     """Compile compact model-facing intents into canonical proposals."""
 
@@ -172,6 +175,9 @@ class ActionCompiler:
             "target_selector": _normalized_target_selector(intent.get("target_selector")),
             "mode": _normalized_screen_mode(intent.get("mode", "interactive")),
             "execution_mode": _normalized_execution_mode(intent.get("execution_mode")),
+            "approval_mode": _normalized_screen_control_approval_mode(
+                intent.get("approval_mode", "single_approval")
+            ),
             "actions": _normalized_screen_actions(intent.get("actions")),
             "capture": _normalized_capture(intent.get("capture", ["control_plan", "control_result"])),
         }
@@ -231,6 +237,12 @@ def _normalized_screen_mode(value: Any) -> str:
 def _normalized_execution_mode(value: Any) -> str:
     if not isinstance(value, str) or value not in SUPPORTED_EXECUTION_MODES:
         raise ValueError("screen execution_mode is not supported")
+    return value
+
+
+def _normalized_screen_control_approval_mode(value: Any) -> str:
+    if not isinstance(value, str) or value not in SCREEN_CONTROL_APPROVAL_MODES:
+        raise ValueError("screen control approval_mode is not supported")
     return value
 
 

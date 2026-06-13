@@ -20,7 +20,7 @@ _CAPABILITY_ID_RE = re.compile(r"^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$")
 _SHELVES = frozenset(
     {"product_candidate", "prototype", "diagnostic", "experimental"}
 )
-_PRIVATE_INPUT_PROPERTIES = frozenset({"prompt"})
+_PRIVATE_INPUT_PROPERTIES = frozenset({"approval_mode", "prompt"})
 
 
 def _as_tuple(value: tuple[str, ...] | list[str] | None, *, field_name: str) -> tuple[str, ...]:
@@ -2193,6 +2193,15 @@ class CapabilityCatalog:
                                 "description": (
                                     "dry_run plans actions; execute requests user "
                                     "approval before any screen input is sent."
+                                ),
+                            },
+                            "approval_mode": {
+                                "type": "string",
+                                "enum": ["single_approval", "yolo"],
+                                "x-system-input": True,
+                                "description": (
+                                    "System-only smoke-test approval mode. yolo "
+                                    "requires an explicit target_allowlist."
                                 ),
                             },
                             "actions": {
