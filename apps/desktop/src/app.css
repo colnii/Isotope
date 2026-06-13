@@ -45,24 +45,39 @@ textarea {
   }
 
   .iso-suprematist-mark {
-    @apply pointer-events-none absolute right-7 top-4 h-14 w-36;
+    @apply pointer-events-none absolute right-7 top-3 h-16 w-44;
   }
 
   .iso-suprematist-red {
-    @apply absolute right-3 top-1 h-4 w-12 bg-isotope-red;
+    @apply absolute right-1 top-1 h-3 w-12 bg-isotope-red;
     transform: rotate(-12deg);
   }
 
   .iso-suprematist-blue {
-    @apply absolute right-16 top-7 h-7 w-7 bg-isotope-blue;
+    @apply absolute bottom-1 right-14 h-8 w-8 bg-isotope-blue;
+    transform: rotate(-34deg);
   }
 
   .iso-suprematist-yellow {
-    @apply absolute right-28 top-2 h-6 w-6 bg-isotope-yellow;
+    @apply absolute left-10 top-2 h-5 w-5 bg-isotope-yellow;
+  }
+
+  .iso-suprematist-square {
+    @apply absolute left-0 top-0 h-8 w-8 bg-isotope-ink;
+  }
+
+  .iso-suprematist-ring {
+    @apply absolute bottom-2 left-12 h-6 w-6 border-[5px] border-isotope-umber;
+    border-radius: 9999px;
   }
 
   .iso-suprematist-ink {
-    @apply absolute bottom-1 right-0 h-9 w-2.5 bg-isotope-ink;
+    @apply absolute bottom-0 right-0 h-9 w-2.5 bg-isotope-ink;
+  }
+
+  .iso-suprematist-link {
+    @apply absolute bottom-1 right-5 h-2.5 w-12 bg-isotope-ink;
+    transform: rotate(-34deg);
   }
 
   .iso-chat-scroll {
@@ -140,7 +155,7 @@ textarea {
   }
 
   .iso-desktop-mode-rail {
-    @apply fixed bottom-0 left-0 top-0 z-30 flex flex-col items-center border-r border-[#2f2b24] bg-isotope-ink px-3 py-4 text-isotope-panel;
+    @apply fixed bottom-0 left-0 top-0 z-30 flex flex-col items-center border-r border-[#3a3329] bg-isotope-rail px-3 py-4 text-isotope-panel;
     width: 5.25rem;
   }
 
@@ -171,7 +186,7 @@ textarea {
   }
 
   .iso-desktop-mode-button {
-    @apply flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-panel border border-transparent text-isotope-panel/70 transition-colors hover:border-isotope-panel/20 hover:bg-isotope-panel/10 hover:text-isotope-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-isotope-yellow focus-visible:ring-offset-2 focus-visible:ring-offset-isotope-ink;
+    @apply flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-panel border border-transparent text-isotope-panel/70 transition-colors hover:border-isotope-panel/20 hover:bg-isotope-panel/10 hover:text-isotope-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-isotope-yellow focus-visible:ring-offset-2 focus-visible:ring-offset-isotope-rail;
   }
 
   .iso-desktop-mode-button-active {

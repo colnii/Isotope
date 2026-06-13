@@ -17,6 +17,8 @@ describe('desktop Canvas Suprematist visual system', () => {
     expect(source).toContain("red: '#c9342c'");
     expect(source).toContain("blue: '#1d58a8'");
     expect(source).toContain("yellow: '#e2b631'");
+    expect(source).toContain("rail: '#2b251f'");
+    expect(source).toContain("umber: '#9a4f1c'");
     expect(source).toContain("line: '#d6cdbd'");
     expect(source).toContain("'line-strong': '#bdb4a4'");
   });
@@ -29,6 +31,9 @@ describe('desktop Canvas Suprematist visual system', () => {
     expect(source).toContain('.iso-chat-header-copy');
     expect(source).toContain('max-width: calc(100% - 11rem)');
     expect(source).toContain('.iso-suprematist-mark');
+    expect(source).toContain('.iso-suprematist-square');
+    expect(source).toContain('.iso-suprematist-ring');
+    expect(source).toContain('.iso-suprematist-link');
     expect(source).toContain('.iso-message-bubble-user');
     expect(source).toContain('.iso-capacity-card');
     expect(source).toContain('.iso-command-composer');

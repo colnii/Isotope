@@ -26,5 +26,9 @@ describe('DesktopModeRail', () => {
     expect(source).toContain('iso-desktop-mode-button');
     expect(source).toContain('iso-desktop-mode-glyph');
     expect(source).toContain('iso-desktop-mode-label');
+
+    const styles = readFileSync(join(process.cwd(), 'src/app.css'), 'utf8');
+    expect(styles).toContain('bg-isotope-rail');
+    expect(styles).not.toContain('bg-isotope-ink px-3 py-4');
   });
 });

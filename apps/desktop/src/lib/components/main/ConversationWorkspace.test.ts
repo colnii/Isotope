@@ -32,10 +32,24 @@ describe('ConversationWorkspace', () => {
     expect(source).toContain('<header class="iso-chat-header">');
     expect(source).toContain('<div class="iso-chat-header-copy">');
     expect(source).toContain('<div class="iso-suprematist-mark" aria-hidden="true">');
+    expect(source).toContain('class="iso-suprematist-square"');
     expect(source).toContain('class="iso-chat-subtitle"');
     expect(source.indexOf('<div class="iso-chat-header-copy">')).toBeLessThan(
       source.indexOf('<div class="iso-suprematist-mark" aria-hidden="true">')
     );
+  });
+
+  test('uses a connected suprematist header mark with non-rectangular shape', () => {
+    const componentPath = join(process.cwd(), 'src/lib/components/main/ConversationWorkspace.svelte');
+    const stylesPath = join(process.cwd(), 'src/app.css');
+    const source = readFileSync(componentPath, 'utf8');
+    const styles = readFileSync(stylesPath, 'utf8');
+
+    expect(source).toContain('class="iso-suprematist-ring"');
+    expect(source).toContain('class="iso-suprematist-link"');
+    expect(styles).toContain('border-isotope-umber');
+    expect(styles).toContain('border-radius: 9999px;');
+    expect(styles).toContain('transform: rotate(-34deg);');
   });
 
   test('uses shared visual classes for conversation surfaces', () => {

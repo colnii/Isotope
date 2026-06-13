@@ -76,10 +76,13 @@
       {/if}
     </div>
     <div class="iso-suprematist-mark" aria-hidden="true">
-      <span class="iso-suprematist-red"></span>
-      <span class="iso-suprematist-blue"></span>
+      <span class="iso-suprematist-square"></span>
       <span class="iso-suprematist-yellow"></span>
+      <span class="iso-suprematist-ring"></span>
+      <span class="iso-suprematist-blue"></span>
+      <span class="iso-suprematist-red"></span>
       <span class="iso-suprematist-ink"></span>
+      <span class="iso-suprematist-link"></span>
     </div>
   </header>
 
