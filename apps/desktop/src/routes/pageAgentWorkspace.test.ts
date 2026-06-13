@@ -11,13 +11,17 @@ describe('desktop page Agent Workspace entry', () => {
     expect(page).not.toContain('agentGroupFixture');
   });
 
-  test('keeps the desktop mode switcher out of the header geometry lane', () => {
+  test('places the desktop mode switcher in a fixed left rail', () => {
     const page = readFileSync(join(process.cwd(), 'src/routes/+page.svelte'), 'utf8');
     const styles = readFileSync(join(process.cwd(), 'src/app.css'), 'utf8');
 
-    expect(page).toContain('class="iso-desktop-mode-switcher"');
-    expect(page).not.toContain('fixed right-4 top-4 z-10 flex gap-2');
-    expect(styles).toContain('.iso-desktop-mode-switcher');
-    expect(styles).toContain('right: 13rem;');
+    expect(page).toContain("from '$lib/components/common/DesktopModeRail.svelte';");
+    expect(page).toContain('<DesktopModeRail mode={desktopMode}');
+    expect(page).toContain('class="iso-desktop-workspace-with-rail"');
+    expect(page).not.toContain('iso-desktop-mode-switcher');
+    expect(styles).toContain('.iso-desktop-mode-rail');
+    expect(styles).toContain('width: 5.25rem;');
+    expect(styles).toContain('.iso-desktop-workspace-with-rail');
+    expect(styles).toContain('padding-left: 5.25rem;');
   });
 });

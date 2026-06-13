@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { createIsotopeClient } from '$lib/client/isotopeClient';
   import AgentWorkspaceShell from '$lib/components/agentWorkspace/AgentWorkspaceShell.svelte';
+  import DesktopModeRail, { type DesktopMode } from '$lib/components/common/DesktopModeRail.svelte';
   import MainWindowShell from '$lib/components/main/MainWindowShell.svelte';
   import MiniWindow from '$lib/components/mini/MiniWindow.svelte';
   import { createAppState } from '$lib/stores/appState';
@@ -28,7 +29,7 @@
 
   let loadError = $state<string | null>(null);
   let surface = $state<DesktopWindowSurface>(browser ? resolveWindowSurface(window.location.search) : 'dev');
-  let desktopMode = $state<'chat' | 'agent-workspace'>('chat');
+  let desktopMode = $state<DesktopMode>('chat');
 
   onMount(() => {
     surface = resolveWindowSurface(window.location.search);
@@ -44,6 +45,10 @@
 
   function closeMiniWindow() {
     void windowClient.hide('mini');
+  }
+
+  function setDesktopMode(mode: DesktopMode) {
+    desktopMode = mode;
   }
 
 </script>
@@ -68,40 +73,25 @@
     {/if}
   {:else if surface === 'main'}
     {#if $snapshot}
-      <div class="iso-desktop-mode-switcher">
-        <button
-          class={desktopMode === 'chat' ? 'iso-button-primary' : 'iso-button-muted'}
-          type="button"
-          aria-pressed={desktopMode === 'chat'}
-          onclick={() => (desktopMode = 'chat')}
-        >
-          主管聊天
-        </button>
-        <button
-          class={desktopMode === 'agent-workspace' ? 'iso-button-primary' : 'iso-button-muted'}
-          type="button"
-          aria-pressed={desktopMode === 'agent-workspace'}
-          onclick={() => (desktopMode = 'agent-workspace')}
-        >
-          智能体群聊
-        </button>
+      <DesktopModeRail mode={desktopMode} onModeChange={setDesktopMode} />
+      <div class="iso-desktop-workspace-with-rail">
+        {#if desktopMode === 'agent-workspace'}
+          <AgentWorkspaceShell agentWorkspaceClient={isotopeClient.agentWorkspaceClient} />
+        {:else}
+          <MainWindowShell
+            snapshot={$snapshot}
+            selectedActivity={$selectedActivity}
+            chatMessages={$chatMessages}
+            chatError={$chatError}
+            isAskingDesktop={$isAskingDesktop}
+            resolvingApprovalId={$isResolvingApproval}
+            approvalError={$approvalError}
+            agentClient={isotopeClient.agentClient}
+            onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
+            onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
+          />
+        {/if}
       </div>
-      {#if desktopMode === 'agent-workspace'}
-        <AgentWorkspaceShell agentWorkspaceClient={isotopeClient.agentWorkspaceClient} />
-      {:else}
-        <MainWindowShell
-          snapshot={$snapshot}
-          selectedActivity={$selectedActivity}
-          chatMessages={$chatMessages}
-          chatError={$chatError}
-          isAskingDesktop={$isAskingDesktop}
-          resolvingApprovalId={$isResolvingApproval}
-          approvalError={$approvalError}
-          agentClient={isotopeClient.agentClient}
-          onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
-          onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
-        />
-      {/if}
     {:else}
       <div class="border border-isotope-line bg-white p-5 text-sm text-isotope-muted">
         {loadError ? '主窗口快照不可用' : '正在加载主窗口'}
@@ -109,40 +99,25 @@
     {/if}
   {:else}
     {#if $snapshot}
-      <div class="iso-desktop-mode-switcher">
-        <button
-          class={desktopMode === 'chat' ? 'iso-button-primary' : 'iso-button-muted'}
-          type="button"
-          aria-pressed={desktopMode === 'chat'}
-          onclick={() => (desktopMode = 'chat')}
-        >
-          主管聊天
-        </button>
-        <button
-          class={desktopMode === 'agent-workspace' ? 'iso-button-primary' : 'iso-button-muted'}
-          type="button"
-          aria-pressed={desktopMode === 'agent-workspace'}
-          onclick={() => (desktopMode = 'agent-workspace')}
-        >
-          智能体群聊
-        </button>
+      <DesktopModeRail mode={desktopMode} onModeChange={setDesktopMode} />
+      <div class="iso-desktop-workspace-with-rail">
+        {#if desktopMode === 'agent-workspace'}
+          <AgentWorkspaceShell agentWorkspaceClient={isotopeClient.agentWorkspaceClient} />
+        {:else}
+          <MainWindowShell
+            snapshot={$snapshot}
+            selectedActivity={$selectedActivity}
+            chatMessages={$chatMessages}
+            chatError={$chatError}
+            isAskingDesktop={$isAskingDesktop}
+            resolvingApprovalId={$isResolvingApproval}
+            approvalError={$approvalError}
+            agentClient={isotopeClient.agentClient}
+            onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
+            onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
+          />
+        {/if}
       </div>
-      {#if desktopMode === 'agent-workspace'}
-        <AgentWorkspaceShell agentWorkspaceClient={isotopeClient.agentWorkspaceClient} />
-      {:else}
-        <MainWindowShell
-          snapshot={$snapshot}
-          selectedActivity={$selectedActivity}
-          chatMessages={$chatMessages}
-          chatError={$chatError}
-          isAskingDesktop={$isAskingDesktop}
-          resolvingApprovalId={$isResolvingApproval}
-          approvalError={$approvalError}
-          agentClient={isotopeClient.agentClient}
-          onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
-          onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
-        />
-      {/if}
     {:else}
       <div class="border border-isotope-line bg-white p-5 text-sm text-isotope-muted">
         {loadError ? '对话不可用' : '正在加载 Isotope 对话'}
