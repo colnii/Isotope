@@ -7,6 +7,9 @@ from .actions import (
     _build_click_action,
     _build_double_click_action,
     _build_drag_action,
+    _build_key_down_action,
+    _build_key_press_action,
+    _build_key_up_action,
     _build_restore_window_action,
 )
 

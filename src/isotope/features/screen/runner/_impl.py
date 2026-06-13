@@ -21,6 +21,9 @@ from .actions import (
     _build_click_action,
     _build_double_click_action,
     _build_drag_action,
+    _build_key_down_action,
+    _build_key_press_action,
+    _build_key_up_action,
     _build_restore_window_action,
 )
 
@@ -207,6 +210,23 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Request approval and execute after immediate local approval.",
     )
+    for command, action_name in (
+        ("control-key-press", "key press"),
+        ("control-key-down", "key down"),
+        ("control-key-up", "key up"),
+    ):
+        key_parser = subparsers.add_parser(
+            command,
+            help=f"Plan or execute one {action_name} without writing action JSON.",
+        )
+        _add_runtime_args(key_parser)
+        _add_target_args(key_parser)
+        key_parser.add_argument("--key", required=True, help="Keyboard key, such as Enter or Shift.")
+        key_parser.add_argument(
+            "--approve-execute",
+            action="store_true",
+            help="Request approval and execute after immediate local approval.",
+        )
     restore_parser = subparsers.add_parser(
         "control-restore",
         help="Plan or execute a window restore action without writing action JSON.",
@@ -540,6 +560,39 @@ def main(argv: list[str] | None = None) -> int:
                     {
                         "resolution": "approved",
                         "reason": "screen smoke drag execute approved",
+                        "resolver": "local_operator",
+                    },
+                )
+            else:
+                result = pending_or_result
+        elif args.command in {"control-key-press", "control-key-down", "control-key-up"}:
+            action_builders = {
+                "control-key-press": _build_key_press_action,
+                "control-key-down": _build_key_down_action,
+                "control-key-up": _build_key_up_action,
+            }
+            action_names = {
+                "control-key-press": "key press",
+                "control-key-down": "key down",
+                "control-key-up": "key up",
+            }
+            execution_mode = "execute" if args.approve_execute else "dry_run"
+            pending_or_result = api.submit_action(
+                run_id,
+                _build_control_intent(
+                    target_selector=target_selector,
+                    actions=[action_builders[args.command](key=args.key)],
+                    execution_mode=execution_mode,
+                    target_allowlist=target_allowlist,
+                ),
+                requires_approval=args.approve_execute,
+            )
+            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+                result = api.resolve_approval(
+                    pending_or_result["approval_id"],
+                    {
+                        "resolution": "approved",
+                        "reason": f"screen smoke {action_names[args.command]} execute approved",
                         "resolver": "local_operator",
                     },
                 )

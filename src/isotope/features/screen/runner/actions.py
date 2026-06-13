@@ -43,5 +43,17 @@ def _build_drag_action(
     }
 
 
+def _build_key_down_action(*, key: str) -> dict[str, Any]:
+    return {"type": "key_down", "key": key}
+
+
+def _build_key_up_action(*, key: str) -> dict[str, Any]:
+    return {"type": "key_up", "key": key}
+
+
+def _build_key_press_action(*, key: str) -> dict[str, Any]:
+    return {"type": "key_press", "key": key}
+
+
 def _build_restore_window_action() -> dict[str, Any]:
     return {"type": "restore_window"}

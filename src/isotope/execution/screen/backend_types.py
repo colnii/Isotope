@@ -165,6 +165,8 @@ class ScreenAction:
             self.x is None or self.y is None or self.to_x is None or self.to_y is None
         ):
             raise ValueError("drag requires x, y, to_x, and to_y")
+        if self.type in {"key_down", "key_up", "key_press"} and self.key is None:
+            raise ValueError(f"{self.type} requires key")
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "ScreenAction":

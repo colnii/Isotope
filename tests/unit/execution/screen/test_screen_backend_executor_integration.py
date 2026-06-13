@@ -210,12 +210,71 @@ def test_screen_control_backend_request_preserves_double_click_and_drag_actions(
     ]
 
 
+def test_screen_control_backend_request_preserves_keyboard_actions(tmp_path):
+    backend = StubScreenBackend(
+        {
+            "backend_session_id": "screen_backend_001",
+            "status": "completed",
+            "started_at": "2026-05-24T00:00:00Z",
+            "finished_at": "2026-05-24T00:00:01Z",
+            "summary": "screen control completed",
+            "output_artifacts": [
+                {
+                    "artifact_type": "screen_control_plan",
+                    "summary": "screen control plan",
+                    "content": json.dumps(
+                        {
+                            "action_count": 3,
+                            "executed": False,
+                            "planned_actions": ["key_down", "key_press", "key_up"],
+                        },
+                        sort_keys=True,
+                    ),
+                }
+            ],
+            "reason_code": "screen_control_completed",
+            "retryable": False,
+            "resource_usage": {"duration_ms": 10},
+        }
+    )
+    api, run_id = _new_run(tmp_path, backend)
+    intent = _control_intent()
+    intent["actions"] = [
+        {"type": "key_down", "key": "Shift"},
+        {"type": "key_press", "key": "A"},
+        {"type": "key_up", "key": "Shift"},
+    ]
+
+    result = api.submit_action(run_id, intent)
+
+    assert result["status"] == "completed"
+    assert [action.to_dict() for action in backend.calls[0].actions] == [
+        {"type": "key_down", "key": "Shift"},
+        {"type": "key_press", "key": "A"},
+        {"type": "key_up", "key": "Shift"},
+    ]
+
+
 def test_windows_backend_script_supports_double_click_and_drag_branches():
     script = windows_backend._POWERSHELL_SCRIPT
 
     assert '$action.type -eq "double_click"' in script
     assert '$action.type -eq "drag"' in script
     assert "SetCursorPos([int]$action.to_x, [int]$action.to_y)" in script
+
+
+def test_windows_backend_script_supports_keyboard_down_up_branches():
+    script = windows_backend._POWERSHELL_SCRIPT
+
+    assert "function Resolve-KeyCode" in script
+    assert '$action.type -eq "key_press"' in script
+    assert '$action.type -eq "key_down"' in script
+    assert '$action.type -eq "key_up"' in script
+    assert "KEYEVENTF_KEYUP" in script
+    assert "keybd_event" in script
+    assert '"enter" = 0x0D' in script
+    assert '"shift" = 0x10' in script
+    assert "SendKeys" not in script
 
 
 def test_screen_restore_window_execute_requires_approval_before_backend_call(tmp_path):

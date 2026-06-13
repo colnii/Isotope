@@ -215,7 +215,6 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
         [Parameter(Mandatory=$true)][string]$OutputPath
     )
 
-    Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Drawing
     Add-Type @"
     using System;
@@ -233,6 +232,7 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
         [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
         [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
         [DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
+        [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
         [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
     }
 "@
@@ -246,8 +246,52 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
     $MiddleDown = 0x0020
     $MiddleUp = 0x0040
     $Wheel = 0x0800
+    $KEYEVENTF_KEYUP = 0x0002
 
     function NowIso { return [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ") }
+
+    function Resolve-KeyCode([string]$key) {
+        if ([string]::IsNullOrWhiteSpace($key)) { throw "screen keyboard action requires key" }
+        $normalized = $key.Trim()
+        if ($normalized.Length -eq 1) {
+            $upper = $normalized.ToUpperInvariant()
+            $code = [int][char]$upper
+            if (($code -ge 48 -and $code -le 57) -or ($code -ge 65 -and $code -le 90)) {
+                return [byte]$code
+            }
+        }
+        $named = @{
+            "enter" = 0x0D
+            "return" = 0x0D
+            "tab" = 0x09
+            "escape" = 0x1B
+            "esc" = 0x1B
+            "backspace" = 0x08
+            "delete" = 0x2E
+            "space" = 0x20
+            "left" = 0x25
+            "up" = 0x26
+            "right" = 0x27
+            "down" = 0x28
+            "home" = 0x24
+            "end" = 0x23
+            "pageup" = 0x21
+            "pagedown" = 0x22
+            "insert" = 0x2D
+            "shift" = 0x10
+            "ctrl" = 0x11
+            "control" = 0x11
+            "alt" = 0x12
+            "win" = 0x5B
+            "meta" = 0x5B
+        }
+        $lower = $normalized.ToLowerInvariant()
+        if ($named.ContainsKey($lower)) { return [byte]$named[$lower] }
+        if ($lower -match '^f([1-9]|1[0-2])$') {
+            return [byte](0x70 + [int]$Matches[1] - 1)
+        }
+        throw "unsupported screen keyboard key: $key"
+    }
 
     function Read-Request {
         return Get-Content -LiteralPath $RequestPath -Raw | ConvertFrom-Json
@@ -410,8 +454,18 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
             } elseif ($action.type -eq "wheel") {
                 [NativeScreen]::mouse_event($Wheel, 0, 0, [uint32]$action.delta_y, [UIntPtr]::Zero)
                 $applied += 1
+            } elseif ($action.type -eq "key_down" -and $action.key) {
+                $keyCode = Resolve-KeyCode ([string]$action.key)
+                [NativeScreen]::keybd_event($keyCode, 0, 0, [UIntPtr]::Zero)
+                $applied += 1
+            } elseif ($action.type -eq "key_up" -and $action.key) {
+                $keyCode = Resolve-KeyCode ([string]$action.key)
+                [NativeScreen]::keybd_event($keyCode, 0, $KEYEVENTF_KEYUP, [UIntPtr]::Zero)
+                $applied += 1
             } elseif ($action.type -eq "key_press" -and $action.key) {
-                [System.Windows.Forms.SendKeys]::SendWait([string]$action.key)
+                $keyCode = Resolve-KeyCode ([string]$action.key)
+                [NativeScreen]::keybd_event($keyCode, 0, 0, [UIntPtr]::Zero)
+                [NativeScreen]::keybd_event($keyCode, 0, $KEYEVENTF_KEYUP, [UIntPtr]::Zero)
                 $applied += 1
             }
         }
