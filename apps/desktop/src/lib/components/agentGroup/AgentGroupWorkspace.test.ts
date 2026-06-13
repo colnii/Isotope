@@ -20,6 +20,30 @@ describe('AgentGroupWorkspace', () => {
     expect(workspace).toContain('Interrupt');
     expect(workspace).toContain("{:else if isRunning}");
   });
+
+  test('uses shared canvas classes for the direct group chat surface', () => {
+    const source = [
+      readSource('AgentGroupWorkspace.svelte'),
+      readSource('AgentGroupMemberStrip.svelte'),
+      readSource('AgentGroupStream.svelte'),
+      readSource('AgentGroupPrivateChat.svelte')
+    ].join('\n');
+    const styles = readFileSync(join(process.cwd(), 'src/app.css'), 'utf8');
+
+    for (const className of [
+      'iso-agent-group-shell',
+      'iso-agent-member-strip',
+      'iso-agent-stream',
+      'iso-agent-message',
+      'iso-agent-composer',
+      'iso-agent-input'
+    ]) {
+      expect(source).toContain(className);
+      expect(styles).toContain(`.${className}`);
+    }
+
+    expect(source).not.toContain('bg-white text-isotope-text');
+  });
 });
 
 function readSource(fileName: string): string {

@@ -444,7 +444,7 @@
   }
 </script>
 
-<section class="flex min-h-screen bg-[#f6f7f9] text-isotope-text" aria-label="智能体工作区">
+<section class="iso-agent-workspace-shell" aria-label="智能体工作区">
   <AgentWorkspaceSidebar
     workspace={workspace?.workspace ?? null}
     {channels}
@@ -461,7 +461,7 @@
     onSelectConversation={selectConversation}
   />
 
-  <div class="flex min-w-0 flex-1 flex-col">
+  <div class="iso-agent-workspace-main">
     <AgentConversationPane
       {selectedConversationKind}
       {conversationTitle}

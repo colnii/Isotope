@@ -73,6 +73,40 @@ describe('AgentWorkspaceShell', () => {
     expect(source).toContain("message.message_type !== 'sent_to_member'");
     expect(source).toContain("message.message_type !== 'status'");
   });
+
+  test('uses shared canvas suprematist classes for the group chat surface', () => {
+    const source = readSources(
+      'AgentWorkspaceShell.svelte',
+      'AgentWorkspaceSidebar.svelte',
+      'AgentConversationPane.svelte',
+      'AgentConversationComposer.svelte',
+      'AgentChannelInspector.svelte',
+      'CodexSessionPicker.svelte'
+    );
+    const styles = readFileSync(join(process.cwd(), 'src/app.css'), 'utf8');
+
+    for (const className of [
+      'iso-agent-workspace-shell',
+      'iso-agent-sidebar',
+      'iso-agent-sidebar-header',
+      'iso-agent-panel',
+      'iso-agent-pane',
+      'iso-agent-pane-header',
+      'iso-agent-stream',
+      'iso-agent-message',
+      'iso-agent-composer',
+      'iso-agent-input',
+      'iso-agent-inspector',
+      'iso-agent-button-primary'
+    ]) {
+      expect(source).toContain(className);
+      expect(styles).toContain(`.${className}`);
+    }
+
+    expect(source).not.toContain('bg-[#f6f7f9]');
+    expect(source).not.toContain('bg-[#eef2f6]');
+    expect(source).not.toContain('bg-[#fbfcfd]');
+  });
 });
 
 function readSources(...fileNames: string[]): string {

@@ -8,10 +8,10 @@
   }>();
 </script>
 
-<aside class="border-b border-isotope-line bg-white px-4 py-3" aria-label="Connected AI sessions">
+<aside class="iso-agent-member-strip" aria-label="Connected AI sessions">
   <div class="flex gap-3 overflow-x-auto">
     {#each members as member (member.member_id)}
-      <section class="min-w-64 border border-isotope-line bg-isotope-panel px-3 py-2">
+      <section class="iso-agent-panel min-w-64 px-3 py-2">
         <div class="flex items-start justify-between gap-3">
           <button
             class="min-w-0 flex-1 text-left"
@@ -25,7 +25,7 @@
             <div class="mt-1 line-clamp-2 text-xs leading-5 text-isotope-muted">{member.role}</div>
           </button>
           <button
-            class="shrink-0 border border-isotope-error bg-white px-2 py-1 text-xs font-semibold text-isotope-error disabled:opacity-50"
+            class="iso-agent-button-outline-danger shrink-0"
             type="button"
             disabled={member.status === 'terminated'}
             aria-label={`Stop ${member.display_name}`}

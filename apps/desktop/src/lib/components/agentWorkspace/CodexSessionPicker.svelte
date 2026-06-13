@@ -35,10 +35,10 @@
     <div class="text-sm font-semibold">Codex 会话列表</div>
     <div class="flex gap-1">
       <button
-        class={`border px-2 py-1 text-xs font-semibold ${
+        class={`iso-agent-button-secondary ${
           sessionScope === 'cwd'
-            ? 'border-isotope-running bg-white text-isotope-running'
-            : 'border-isotope-line bg-white text-isotope-muted'
+            ? 'border-isotope-red text-isotope-red'
+            : ''
         }`}
         type="button"
         onclick={() => {
@@ -49,10 +49,10 @@
         当前目录
       </button>
       <button
-        class={`border px-2 py-1 text-xs font-semibold ${
+        class={`iso-agent-button-secondary ${
           sessionScope === 'all'
-            ? 'border-isotope-running bg-white text-isotope-running'
-            : 'border-isotope-line bg-white text-isotope-muted'
+            ? 'border-isotope-red text-isotope-red'
+            : ''
         }`}
         type="button"
         onclick={() => {
@@ -67,14 +67,12 @@
 
   <div class="max-h-44 space-y-2 overflow-y-auto">
     {#if isLoadingSessions}
-      <div class="border border-isotope-line bg-white px-3 py-2 text-xs text-isotope-muted">加载中</div>
+      <div class="iso-agent-panel px-3 py-2 text-xs text-isotope-muted">加载中</div>
     {:else}
       {#each sessionCandidates as candidate (candidate.session_id)}
         <button
-          class={`w-full border px-3 py-2 text-left ${
-            selectedSessionId === candidate.session_id
-              ? 'border-isotope-running bg-white'
-              : 'border-isotope-line bg-white'
+          class={`iso-agent-panel w-full px-3 py-2 text-left ${
+            selectedSessionId === candidate.session_id ? 'border-isotope-red' : ''
           }`}
           type="button"
           onclick={() => onSelectSession(candidate)}
@@ -90,27 +88,27 @@
 
   <div class="mt-3 space-y-2">
     <input
-      class="w-full border border-isotope-line bg-white px-2 py-1.5 text-xs"
+      class="iso-agent-input-compact w-full"
       bind:value={memberDisplayName}
       placeholder="显示名称"
     />
     <input
-      class="w-full border border-isotope-line bg-white px-2 py-1.5 text-xs"
+      class="iso-agent-input-compact w-full"
       bind:value={memberRole}
       placeholder="角色"
     />
     <input
-      class="w-full border border-isotope-line bg-white px-2 py-1.5 text-xs"
+      class="iso-agent-input-compact w-full"
       bind:value={memberGoal}
       placeholder="成员目标/备注（可选）"
     />
-    <select class="w-full border border-isotope-line bg-white px-2 py-1.5 text-xs" bind:value={memberSendPolicy}>
+    <select class="iso-agent-input-compact w-full" bind:value={memberSendPolicy}>
       <option value="auto">自动发送</option>
       <option value="confirm">发送前确认</option>
       <option value="draft_only">只写草稿</option>
     </select>
     <button
-      class="w-full border border-isotope-running bg-isotope-running px-3 py-2 text-xs font-semibold text-white"
+      class="iso-agent-button-primary w-full"
       type="button"
       disabled={!selectedSession}
       onclick={() => onAddMember()}

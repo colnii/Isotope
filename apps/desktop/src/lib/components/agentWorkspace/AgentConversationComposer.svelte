@@ -24,22 +24,22 @@
   const composerIsEmpty = $derived(composerText.trim().length === 0);
 </script>
 
-<footer class="border-t border-isotope-line bg-white px-5 py-4">
+<footer class="iso-agent-composer">
   {#if actionError}
-    <div class="mb-3 border border-isotope-error/40 bg-white px-3 py-2 text-xs text-isotope-error" role="alert">
+    <div class="iso-agent-error-card" role="alert">
       {actionError}
     </div>
   {/if}
   <div class="flex gap-2">
     <input
-      class="min-w-0 flex-1 border border-isotope-line px-3 py-2 text-sm"
+      class="iso-agent-input flex-1"
       bind:value={composerText}
       placeholder={selectedConversationKind === 'channel' ? '发送到当前群聊' : '发送给协调 AI'}
       disabled={!selectedConversationId || isSending}
     />
     {#if currentRunIsActive && composerIsEmpty}
       <button
-        class="border border-isotope-error bg-isotope-error px-4 py-2 text-sm font-semibold text-white"
+        class="iso-agent-button-danger"
         type="button"
         onclick={() => onStopCurrentRun()}
       >
@@ -47,7 +47,7 @@
       </button>
     {:else if currentRunIsActive}
       <button
-        class="border border-isotope-line bg-white px-4 py-2 text-sm font-semibold text-isotope-muted"
+        class="iso-agent-button-secondary"
         type="button"
         disabled={isSending}
         onclick={() => onSendMessage('queue')}
@@ -55,7 +55,7 @@
         排队
       </button>
       <button
-        class="border border-isotope-running bg-isotope-running px-4 py-2 text-sm font-semibold text-white"
+        class="iso-agent-button-primary"
         type="button"
         disabled={isSending}
         onclick={() => onSendMessage('interrupt')}
@@ -64,7 +64,7 @@
       </button>
     {:else}
       <button
-        class="border border-isotope-running bg-isotope-running px-4 py-2 text-sm font-semibold text-white"
+        class="iso-agent-button-primary"
         type="button"
         disabled={!composerText.trim() || isSending}
         onclick={() => onSendMessage('queue')}

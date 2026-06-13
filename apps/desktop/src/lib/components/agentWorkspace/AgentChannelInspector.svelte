@@ -61,14 +61,14 @@
   }>();
 </script>
 
-<aside class="hidden w-[23rem] shrink-0 overflow-y-auto border-l border-isotope-line bg-[#f6f7f9] p-4 xl:block">
+<aside class="iso-agent-inspector">
   <div class="mb-4 flex items-center justify-between gap-3">
     <div>
       <div class="text-sm font-semibold">频道设置</div>
       <div class="mt-1 text-xs text-isotope-muted">{conversationTitle}</div>
     </div>
     <button
-      class="border border-isotope-line bg-white px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+      class="iso-agent-button-secondary"
       type="button"
       onclick={() => onLoadCodexSessions(sessionScope)}
     >
@@ -77,25 +77,25 @@
   </div>
 
   {#if selectedConversationKind !== 'channel'}
-    <div class="border border-isotope-line bg-white px-3 py-3 text-sm text-isotope-muted">
+    <div class="iso-agent-panel px-3 py-3 text-sm text-isotope-muted">
       私聊没有群聊成员。
     </div>
   {:else}
     <div class="space-y-3">
       {#each currentMembers as member (member.member_id)}
-        <article class="border border-isotope-line bg-white px-3 py-3">
+        <article class="iso-agent-panel px-3 py-3">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="truncate text-sm font-semibold">{member.display_name}</div>
               <div class="mt-1 truncate text-xs text-isotope-muted">{member.resume_session_id}</div>
             </div>
-            <span class="shrink-0 border border-isotope-line px-2 py-0.5 text-[11px] text-isotope-muted">
+            <span class="iso-agent-chip">
               {workspaceMemberStatusLabel(member.status)}
             </span>
           </div>
           <div class="mt-3 grid grid-cols-[1fr_auto_auto_auto] gap-2">
             <select
-              class="min-w-0 border border-isotope-line bg-white px-2 py-1.5 text-xs"
+              class="iso-agent-input-compact min-w-0"
               value={member.send_policy}
               onchange={(event) =>
                 onUpdateMember(member, (event.currentTarget as HTMLSelectElement).value as WorkspaceSendPolicy)}
@@ -105,7 +105,7 @@
               <option value="draft_only">只写草稿</option>
             </select>
             <button
-              class="border border-isotope-line bg-white px-2 py-1.5 text-xs font-semibold text-isotope-muted"
+              class="iso-agent-button-secondary"
               type="button"
               disabled={!member.resume_session_id}
               onclick={() => onLoadTranscript(member)}
@@ -114,7 +114,7 @@
             </button>
             {#if member.status === 'terminated'}
               <button
-                class="border border-isotope-running/40 bg-white px-2 py-1.5 text-xs font-semibold text-isotope-running"
+                class="iso-agent-button-secondary text-isotope-blue"
                 type="button"
                 onclick={() => onReactivateMember(member)}
               >
@@ -122,7 +122,7 @@
               </button>
             {:else}
               <button
-                class="border border-isotope-error/40 bg-white px-2 py-1.5 text-xs font-semibold text-isotope-error"
+                class="iso-agent-button-outline-danger"
                 type="button"
                 onclick={() => onStopMember(member)}
               >
@@ -130,7 +130,7 @@
               </button>
             {/if}
             <button
-              class="border border-isotope-line bg-white px-2 py-1.5 text-xs font-semibold text-isotope-muted"
+              class="iso-agent-button-secondary"
               type="button"
               onclick={() => onRemoveMember(member)}
             >

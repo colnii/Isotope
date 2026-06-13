@@ -80,8 +80,8 @@
   }
 </script>
 
-<section class="flex min-h-screen flex-col bg-white text-isotope-text" aria-label="Agent Group Chat">
-  <header class="border-b border-isotope-line px-5 py-4">
+<section class="iso-agent-group-shell" aria-label="Agent Group Chat">
+  <header class="border-b border-isotope-line bg-isotope-panel px-5 py-4">
     <div class="text-xs font-semibold uppercase text-isotope-muted">Agent Group Chat</div>
     <h1 class="mt-1 text-xl font-semibold">{group.group.title}</h1>
     <p class="mt-1 text-sm text-isotope-muted">{group.group.goal}</p>
@@ -100,21 +100,21 @@
 
   <CodexTranscriptPanel {transcript} {showRaw} onToggleRaw={() => (showRaw = !showRaw)} />
 
-  <footer class="border-t border-isotope-line px-5 py-4">
+  <footer class="iso-agent-composer">
     {#if actionError}
-      <div class="mb-3 border border-isotope-error/40 bg-white px-3 py-2 text-xs text-isotope-error" role="alert">
+      <div class="iso-agent-error-card" role="alert">
         {actionError}
       </div>
     {/if}
     <div class="flex gap-2">
       <input
-        class="min-w-0 flex-1 border border-isotope-line px-3 py-2 text-sm"
+        class="iso-agent-input flex-1"
         bind:value={localComposerText}
         placeholder="给协调模型发消息"
       />
       {#if isRunning && composerIsEmpty}
         <button
-          class="border border-isotope-error bg-isotope-error px-4 py-2 text-sm font-semibold text-white"
+          class="iso-agent-button-danger"
           type="button"
           onclick={stopCurrentRun}
         >
@@ -122,14 +122,14 @@
         </button>
       {:else if isRunning}
         <button
-          class="border border-isotope-line bg-white px-4 py-2 text-sm font-semibold text-isotope-muted"
+          class="iso-agent-button-secondary"
           type="button"
           onclick={() => sendMessage('queue')}
         >
           Queue
         </button>
         <button
-          class="border border-isotope-running bg-isotope-running px-4 py-2 text-sm font-semibold text-white"
+          class="iso-agent-button-primary"
           type="button"
           onclick={() => sendMessage('interrupt')}
         >
@@ -137,7 +137,7 @@
         </button>
       {:else}
         <button
-          class="border border-isotope-running bg-isotope-running px-4 py-2 text-sm font-semibold text-white"
+          class="iso-agent-button-primary"
           type="button"
           onclick={() => sendMessage('queue')}
         >
