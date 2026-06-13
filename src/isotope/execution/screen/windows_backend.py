@@ -469,7 +469,12 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
                 $applied += 1
             }
         }
-        return @{ action_count = $actions.Count; executed = $true; applied_count = $applied }
+        return @{
+            action_count = $actions.Count
+            executed = $true
+            applied_count = $applied
+            action_types = $plannedActions
+        }
     }
 
     $started = NowIso

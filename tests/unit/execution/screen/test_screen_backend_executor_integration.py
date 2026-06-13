@@ -277,6 +277,13 @@ def test_windows_backend_script_supports_keyboard_down_up_branches():
     assert "SendKeys" not in script
 
 
+def test_windows_backend_script_records_executed_action_types():
+    script = windows_backend._POWERSHELL_SCRIPT
+
+    assert "$plannedActions = @($actions | ForEach-Object { $_.type })" in script
+    assert "action_types = $plannedActions" in script
+
+
 def test_screen_restore_window_execute_requires_approval_before_backend_call(tmp_path):
     backend = StubScreenBackend(_backend_result(content='{"restored": true}'))
     api, run_id = _new_run(tmp_path, backend)

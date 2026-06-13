@@ -206,11 +206,13 @@ def _screen_control_summary(record: dict[str, Any], content: Any) -> dict[str, A
     executed = content.get("executed")
     if isinstance(executed, bool):
         summary["executed"] = executed
-    planned_actions = content.get("planned_actions")
-    if isinstance(planned_actions, list):
+    action_types = content.get("planned_actions")
+    if not isinstance(action_types, list):
+        action_types = content.get("action_types")
+    if isinstance(action_types, list):
         summary["action_types"] = [
             action_type
-            for action_type in planned_actions
+            for action_type in action_types
             if isinstance(action_type, str) and action_type
         ]
     return summary
