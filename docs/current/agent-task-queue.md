@@ -72,6 +72,8 @@
   时继续走 BM25，显式 `dense_retrieval={"backend":"local"}` 会启用本地
   dense smoke 闭环，显式 `dense_retrieval={"backend":"lancedb","path":"...","table_name":"..."}`
   会写入并查询可选 LanceDB vector store；未安装或写查失败会降级 BM25。
+  运行 LanceDB backend 需要安装 `.[rag]`；测试环境的 `.[test]` 已包含真实
+  LanceDB integration smoke。
   `controlled_expand` 仍然是唯一
   读取 `MemoryRecord.content` 的授权路径。当前实现用当前 run goal 查询当前
   run memory 和同一 session 内显式晋升的 session memory；其他对话、跨
@@ -142,7 +144,7 @@
   preview metadata，复用 `rag.index` / hybrid retrieval，可显式传
   `dense_retrieval={"backend":"local"}` 启用本地 dense smoke，或传
   `dense_retrieval={"backend":"lancedb","path":"...","table_name":"..."}`
-  接入可选 LanceDB vector store；结果只返回
+  接入可选 LanceDB vector store；运行该 backend 需要安装 `.[rag]`，结果只返回
   summary、ref、source_refs 和 provenance，report 正文仍走 artifact inspect /
   expand。capacity plain 输出和 desktop capacity card 已能显示 recall status、
   report count、retrieval backend / dense status，以及可读的 report preview 列表。

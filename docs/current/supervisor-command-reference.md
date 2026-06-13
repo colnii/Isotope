@@ -200,7 +200,8 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   `dense_retrieval={"backend":"local"}` 时会用本地 deterministic embedding
   和内存 vector store 跑完整 dense smoke 闭环；传
   `dense_retrieval={"backend":"lancedb","path":"...","table_name":"..."}`
-  时会写入并查询可选 LanceDB vector store。成功时结果返回
+  时会写入并查询可选 LanceDB vector store；运行该 backend 需要安装
+  `.[rag]`。成功时结果返回
   `retrieval.backend=hybrid` / `dense_status=ok`，未安装或写查失败时降级 BM25。
 - `skills.search` / `skills.describe` 默认读取 Isotope 自己的 skill assets：
   当前项目 `isotope.extensions/skills/<skill-id>/SKILL.md`、`$ISOTOPE_HOME/skills`、
@@ -233,7 +234,8 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   `research.report` artifact metadata 检索 preview，默认 BM25；输入里显式传
   `dense_retrieval={"backend":"local"}` 时复用 `rag.index` 跑本地 dense smoke，
   传 `dense_retrieval={"backend":"lancedb","path":"...","table_name":"..."}`
-  时写入并查询可选 LanceDB vector store。成功时返回
+  时写入并查询可选 LanceDB vector store；运行该 backend 需要安装 `.[rag]`。
+  成功时返回
   `retrieval.backend=hybrid` / `dense_status=ok`。该 capability 只返回
   summary、ref、source_refs 和 provenance，report 正文仍走 artifact inspect /
   expand。通过 capacity agent loop 执行后，plain 输出会显示

@@ -6,7 +6,7 @@
 
 **Architecture:** Keep `HybridRetriever` and RRF ranking unchanged. Extend `rag.index` config parsing to select either the existing in-memory local vector store or a LanceDB-backed vector store; `LanceDBVectorStore` owns optional dependency handling, table creation, upsert, and search row mapping. Memory and research callers continue to pass `dense_retrieval` through the same generic `build_rag_index` boundary.
 
-**Tech Stack:** Python 3.13, pytest, optional `lancedb`, Isotope `RetrievalDocument`, deterministic embedding provider, `HybridRetriever`.
+**Tech Stack:** Python 3.13, pytest, `lancedb>=0.33,<0.34` via `.[rag]` / `.[test]`, Isotope `RetrievalDocument`, deterministic embedding provider, `HybridRetriever`.
 
 ---
 
@@ -231,3 +231,11 @@ git add docs/superpowers/plans/2026-06-14-lancedb-rag-index.md \
 git commit -m "feat(rag): add lancedb dense retrieval backend"
 git push
 ```
+
+### Follow-Up Execution Note
+
+The dependency was promoted from optional-only adapter support into declared
+extras: `rag = ["lancedb>=0.33,<0.34"]` for runtime use, and `test` includes the
+same dependency so CI can run `tests/integration/rag/test_lancedb_real_backend.py`.
+The real package smoke covers both generic `build_rag_index(...)` and
+`research.recall` using `dense_retrieval.backend="lancedb"`.
