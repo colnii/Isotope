@@ -13,6 +13,7 @@ from isotope.platform.state.multi_worker import (
     build_multi_worker_status_payload,
     render_multi_worker_status_plain,
 )
+from .dense import build_memory_dense_retrieval
 from .retrieval import MemoryQueryMatches
 from .retrieval import query_memory_records_hybrid
 
@@ -67,6 +68,7 @@ def build_memory_query_payload(
     run_id: str | None = None,
     session_id: str | None = None,
     limit: int = 20,
+    dense_retrieval: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     root_path = Path(root).expanduser()
     if scope is not None and scope not in VALID_SCOPES:
@@ -76,12 +78,15 @@ def build_memory_query_payload(
     clean_query = _required_query(query)
 
     records = FileMemoryStore(root_path).list_records(scope=scope)
+    dense = build_memory_dense_retrieval(records, dense_retrieval)
     matched = query_memory_records(
         records,
         query=clean_query,
         run_id=run_id,
         session_id=session_id,
         limit=limit,
+        embedding_provider=dense.embedding_provider if dense else None,
+        vector_store=dense.vector_store if dense else None,
     )
     return {
         "status": "ok",
@@ -115,6 +120,8 @@ def query_memory_records(
     run_id: str | None = None,
     session_id: str | None = None,
     limit: int = 20,
+    embedding_provider=None,
+    vector_store=None,
 ) -> MemoryQueryMatches:
     if limit <= 0:
         raise ValueError("limit must be positive")
@@ -125,6 +132,8 @@ def query_memory_records(
         run_id=run_id,
         session_id=session_id,
         limit=limit,
+        embedding_provider=embedding_provider,
+        vector_store=vector_store,
     )
 
 

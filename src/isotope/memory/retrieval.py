@@ -36,7 +36,7 @@ def query_memory_records_hybrid(
         for record in records
         if _record_allowed(record, run_id=run_id, session_id=session_id)
     ]
-    documents = [_memory_record_document(record) for record in filtered]
+    documents = [memory_record_retrieval_document(record) for record in filtered]
     result = HybridRetriever(
         embedding_provider=embedding_provider,
         vector_store=vector_store,
@@ -76,7 +76,7 @@ def _record_allowed(
     return True
 
 
-def _memory_record_document(record: MemoryRecord) -> RetrievalDocument:
+def memory_record_retrieval_document(record: MemoryRecord) -> RetrievalDocument:
     source_text = " ".join(
         str(value) for ref in record.source_refs for value in ref.values()
     )

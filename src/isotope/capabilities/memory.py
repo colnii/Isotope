@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from ..memory import LocalMemoryQueryService
+from ..memory.dense import parse_memory_dense_retrieval_config
 from ..memory.promotion import build_memory_promotion_proposal
 from ..memory.views import build_memory_query_payload
 from ..platform.schemas.input_contract import missing_required_input_keys
@@ -67,7 +68,10 @@ def run_memory_query(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         grants["memory"]["controlled_expand"] = True
         grants["memory"]["expand_budget"] = input_mapping["expand_budget"]
 
-    payload = LocalMemoryQueryService(FileMemoryStore(root)).query(
+    payload = LocalMemoryQueryService(
+        FileMemoryStore(root),
+        dense_retrieval=input_mapping.get("dense_retrieval"),
+    ).query(
         run_id=input_mapping["run_id"],
         query=input_mapping["query"],
         grants=grants,
@@ -105,6 +109,7 @@ def run_memory_recall(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
         run_id=input_mapping.get("run_id"),
         session_id=input_mapping.get("session_id"),
         limit=input_mapping["limit"],
+        dense_retrieval=input_mapping.get("dense_retrieval"),
     )
     return {
         "kind": "capability_run_result",
@@ -180,6 +185,7 @@ def _validate_memory_query_inputs(
     normalized = dict(input_mapping)
     normalized["limit"] = limit
     normalized["controlled_expand"] = controlled_expand
+    _validate_dense_retrieval_input(input_mapping)
     if controlled_expand:
         if "expand_budget" not in input_mapping:
             raise ValueError("expand_budget is required when controlled_expand is true")
@@ -232,7 +238,14 @@ def _validate_memory_recall_inputs(
 
     normalized = dict(input_mapping)
     normalized["limit"] = limit
+    _validate_dense_retrieval_input(input_mapping)
     return normalized
+
+
+def _validate_dense_retrieval_input(input_mapping: Mapping[str, Any]) -> None:
+    if "dense_retrieval" not in input_mapping:
+        return
+    parse_memory_dense_retrieval_config(input_mapping.get("dense_retrieval"))
 
 
 def _validate_memory_promotion_preview_inputs(

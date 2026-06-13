@@ -66,8 +66,10 @@
   现在会默认注入 `default_context.memory`，复用 agent-loop memory query 的
   summary / refs / provenance / quality preview；这是 runtime 构造上下文，
   event 写入和 full content materialization 走各自授权路径。`default_context.memory` 现在通过通用
-  hybrid retrieval helper 查询结构化 `MemoryRecord` preview 字段；未配置
-  LanceDB 或 dense 查询失败时继续走 BM25。`controlled_expand` 仍然是唯一
+  hybrid retrieval helper 查询结构化 `MemoryRecord` preview 字段；默认未配置
+  dense backend 时继续走 BM25，显式 `dense_retrieval={"backend":"local"}`
+  会启用本地 deterministic dense smoke 闭环，外部 LanceDB 后端仍是后续
+  接入目标。`controlled_expand` 仍然是唯一
   读取 `MemoryRecord.content` 的授权路径。当前实现用当前 run goal 查询当前
   run memory 和同一 session 内显式晋升的 session memory；其他对话、跨
   session/global recall、超长上下文自动整理晋升和自动 promotion policy 仍是

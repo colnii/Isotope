@@ -1588,6 +1588,14 @@ class CapabilityCatalog:
                                     "controlled_expand is true."
                                 ),
                             },
+                            "dense_retrieval": {
+                                "type": "object",
+                                "description": (
+                                    "Optional dense retrieval config. Use "
+                                    '{"backend":"local"} for deterministic '
+                                    "local smoke and tests; default is BM25-only."
+                                ),
+                            },
                         },
                     },
                     output_contract={
@@ -1655,6 +1663,14 @@ class CapabilityCatalog:
                                 "type": "integer",
                                 "description": "Maximum records to preview.",
                                 "default": 20,
+                            },
+                            "dense_retrieval": {
+                                "type": "object",
+                                "description": (
+                                    "Optional dense retrieval config. Use "
+                                    '{"backend":"local"} for deterministic '
+                                    "local smoke and tests; default is BM25-only."
+                                ),
                             },
                         },
                     },

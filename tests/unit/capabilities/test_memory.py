@@ -101,6 +101,7 @@ def test_runner_discovers_memory_query_from_default_catalog():
     assert "memory.query" in _ids(search["capabilities"])
     description = runner.describe_capability("memory.query")
     assert description["input_contract"]["required"] == ["root", "query", "run_id"]
+    assert "dense_retrieval" in description["input_contract"]["properties"]
     assert "memory_query_grant_gated" in description["safety_boundaries"]
     assert "memory_record_refs_expandable" in description["safety_boundaries"]
 
@@ -185,6 +186,7 @@ def test_memory_promotion_preview_plan_stops_when_required_inputs_are_missing():
         ("limit", 0),
         ("controlled_expand", "yes"),
         ("expand_budget", True),
+        ("dense_retrieval", "local"),
     ],
 )
 def test_memory_query_plan_rejects_invalid_inputs(field_name, bad_value):
@@ -317,7 +319,6 @@ def test_memory_query_capability_runs_existing_public_metadata_query(tmp_path):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
-
 def test_memory_recall_capability_runs_state_root_preview_query(tmp_path):
     memory_dir = tmp_path / "memory"
     memory_dir.mkdir()
@@ -375,7 +376,6 @@ def test_memory_recall_capability_runs_state_root_preview_query(tmp_path):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
 
 
-
 def test_memory_promotion_preview_capability_returns_public_metadata_proposal():
     result = _runner().run_capability(
         "memory.promotion.preview",
@@ -430,6 +430,3 @@ def test_memory_promotion_preview_capability_returns_public_metadata_proposal():
     assert "raw memory content" not in output
     for mapping in _walk_mapping(result):
         assert FORBIDDEN_RESULT_KEYS.isdisjoint(mapping)
-
-
-

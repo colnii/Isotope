@@ -196,7 +196,10 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   `LocalMemoryQueryService` 结构化 recall 路径，要求 `root/query/run_id` 和
   caller audit；`controlled_expand` 有 expand grant 和正预算时会物化 matched
   `MemoryRecord.content` 的 budgeted `materialized_text`；source artifact full
-  content 走 artifact inspect / expansion 路径。
+  content 走 artifact inspect / expansion 路径。默认检索是 BM25；输入里显式传
+  `dense_retrieval={"backend":"local"}` 时会用本地 deterministic embedding
+  和内存 vector store 跑完整 dense smoke 闭环，并在结果里返回
+  `retrieval.backend=hybrid` / `dense_status=ok`。
 - `skills.search` / `skills.describe` 默认读取 Isotope 自己的 skill assets：
   当前项目 `isotope.extensions/skills/<skill-id>/SKILL.md`、`$ISOTOPE_HOME/skills`、
   `~/.isotope/skills`、随 Isotope 打包的 built-in skills，以及兼容路径

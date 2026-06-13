@@ -8,6 +8,7 @@ from typing import Any
 
 from ..platform.schemas.memory import MemoryRecord
 from ..platform.state.memory_store import FileMemoryStore
+from .dense import build_memory_dense_retrieval, parse_memory_dense_retrieval_config
 from .views import query_memory_records
 
 
@@ -209,8 +210,14 @@ class LocalMemoryWriteService:
 class LocalMemoryQueryService:
     """Query local memory records and return previews only by default."""
 
-    def __init__(self, memory_store: FileMemoryStore) -> None:
+    def __init__(
+        self,
+        memory_store: FileMemoryStore,
+        *,
+        dense_retrieval: dict[str, Any] | None = None,
+    ) -> None:
         self.memory_store = memory_store
+        self.dense_retrieval = parse_memory_dense_retrieval_config(dense_retrieval)
 
     def query(
         self,
@@ -277,12 +284,16 @@ class LocalMemoryQueryService:
 
         record_run_id = None if scope == "session" and session_id is not None else run_id
         record_session_id = session_id if scope == "session" else None
+        records = self.memory_store.list_records(scope=scope)
+        dense = build_memory_dense_retrieval(records, self.dense_retrieval)
         matches = query_memory_records(
-            self.memory_store.list_records(scope=scope),
+            records,
             query=query,
             run_id=record_run_id,
             session_id=record_session_id,
             limit=limit,
+            embedding_provider=dense.embedding_provider if dense else None,
+            vector_store=dense.vector_store if dense else None,
         )
         results = [
             {
