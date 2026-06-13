@@ -17,6 +17,9 @@ from isotope.features.supervisor.commands.parser.agent_group import (
 )
 from isotope.features.supervisor.commands.parser.daemon import add_daemon_command_parser
 from isotope.features.supervisor.commands.parser.loop import add_loop_command_parsers
+from isotope.features.supervisor.commands.parser.long_task import (
+    add_long_task_command_parser,
+)
 from isotope.features.supervisor.commands.parser.memory import add_memory_command_parsers
 
 
@@ -303,6 +306,7 @@ def _build_parser_impl(*, api: Any) -> argparse.ArgumentParser:
     _add_state_root_arg(worker_review_parser)
     worker_review_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     add_agent_group_command_parser(subparsers)
+    add_long_task_command_parser(subparsers)
     add_memory_command_parsers(subparsers)
     integration_review_parser = subparsers.add_parser(
         "integration-review",

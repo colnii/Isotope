@@ -14,6 +14,7 @@ from .handlers.capacity import handle_capacity_command as _handle_capacity_comma
 from .handlers.context import handle_context_command as _handle_context_command
 from .handlers.decision import handle_decision_command as _handle_decision_command
 from .handlers.goal import handle_goal_command as _handle_goal_command
+from .handlers.long_task import handle_long_task_command as _handle_long_task_command
 from .handlers.memory import (
     handle_memory_command as _handle_memory_command,
     handle_worker_event_command as _handle_worker_event_command,
@@ -157,6 +158,7 @@ COMMAND_HANDLERS = {
     "agent-group": _handle_agent_group_command,
     "dashboard": _handle_dashboard_command,
     "integration-review": _handle_integration_review_command,
+    "long-task": _handle_long_task_command,
     "merge-work-order": _handle_merge_work_order_command,
     "goal": _handle_goal_command,
     "cleanup": _handle_cleanup_command,
