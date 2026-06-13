@@ -21,4 +21,15 @@ describe('CapacityCallDetails visual contract', () => {
     expect(source).toContain('researchSourcePreviewsForDetailSection(section)');
     expect(source).toContain('{source.url}');
   });
+
+  test('renders research recall previews before raw json disclosure', () => {
+    const path = join(process.cwd(), 'src/lib/components/main/CapacityCallDetails.svelte');
+    const source = readFileSync(path, 'utf8');
+
+    expect(source).toContain('researchRecallPreviewsForDetailSection(section)');
+    expect(source).toContain('{preview.summary}');
+    expect(source).toContain('{preview.artifactId}');
+    expect(source).toContain('{preview.runId}');
+    expect(source).toContain('结果原文');
+  });
 });

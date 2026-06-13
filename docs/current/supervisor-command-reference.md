@@ -232,7 +232,9 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   `dense_retrieval={"backend":"local"}` 时复用 `rag.index` 跑本地 dense smoke，
   并返回 `retrieval.backend=hybrid` / `dense_status=ok`。该 capability 只返回
   summary、ref、source_refs 和 provenance，report 正文仍走 artifact inspect /
-  expand。
+  expand。通过 capacity agent loop 执行后，plain 输出会显示
+  `agent_loop_research_recall_status`、result count 和 retrieval；desktop capacity
+  card 展开详情会把 report previews 渲染成可读列表，并保留 raw JSON disclosure。
 - `isotope-research inspect --root ... --run-id ... --artifact-id ...` 可读取
   单个 `research.*` artifact 内容；非 research artifact 会被拒绝。Supervisor
   侧 `research inspect` 复用同一边界。

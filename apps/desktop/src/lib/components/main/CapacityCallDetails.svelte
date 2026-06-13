@@ -3,6 +3,7 @@
   import {
     capacityDetailLabel,
     formatCapacityDetailContent,
+    researchRecallPreviewsForDetailSection,
     researchSourcePreviewsForDetailSection
   } from '../../view/capacityCallView';
 
@@ -20,6 +21,7 @@
   <div class="space-y-3">
     {#each details as section}
       {@const sourcePreviews = researchSourcePreviewsForDetailSection(section)}
+      {@const recallPreviews = researchRecallPreviewsForDetailSection(section)}
       <section class="iso-card-raised overflow-hidden">
         <div class="border-b border-isotope-line bg-isotope-panel px-3 py-2 text-xs font-semibold uppercase text-isotope-muted">
           {capacityDetailLabel(section.label)}
@@ -60,6 +62,33 @@
                 {#if source.whyUsed}
                   <p class="mt-1 text-[11px] leading-5 text-isotope-muted">{source.whyUsed}</p>
                 {/if}
+              </li>
+            {/each}
+          </ol>
+          <details class="border-t border-isotope-line bg-isotope-panel px-3 py-2">
+            <summary class="cursor-pointer text-xs font-semibold text-isotope-muted">结果原文</summary>
+            <pre
+              class={[
+                'mt-2 overflow-auto whitespace-pre-wrap break-words rounded-panel bg-isotope-canvas p-3 text-xs leading-5 text-isotope-text',
+                fullscreen ? 'max-h-[70vh]' : 'max-h-64'
+              ]}
+            >{formatCapacityDetailContent(section)}</pre>
+          </details>
+        {:else if recallPreviews.length}
+          <ol class="divide-y divide-isotope-line bg-isotope-panel">
+            {#each recallPreviews as preview, index}
+              <li class="px-3 py-2.5">
+                <div class="flex flex-col gap-1">
+                  <div class="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase text-isotope-muted">
+                    <span>报告 {index + 1}</span>
+                    <span>{preview.artifactType}</span>
+                  </div>
+                  <p class="text-sm font-semibold leading-5 text-isotope-text">{preview.summary}</p>
+                  <div class="flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-5 text-isotope-muted">
+                    <span>artifact: {preview.artifactId}</span>
+                    <span>run: {preview.runId}</span>
+                  </div>
+                </div>
               </li>
             {/each}
           </ol>

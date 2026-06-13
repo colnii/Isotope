@@ -6,6 +6,7 @@ import {
   capacityCallSummary,
   capacityDetailLabel,
   formatCapacityDetailContent,
+  researchRecallPreviewsForDetailSection,
   researchSourcePreviewsForDetailSection,
   screenArtifactsForCapacityCall,
   screenArtifactActions
@@ -154,6 +155,20 @@ describe('capacityCallView', () => {
     ).toBe('research.search · Tavily returned 5 source-backed results. · sources: 5 · provider: tavily');
   });
 
+  test('summarizes research recall cards with retrieval status', () => {
+    expect(
+      capacityCallSummary({
+        ...call,
+        capacityId: 'research.recall',
+        resultSummary: {
+          agent_loop_research_recall_result_count: 1,
+          agent_loop_research_recall_retrieval_backend: 'hybrid',
+          agent_loop_research_recall_dense_status: 'ok'
+        }
+      })
+    ).toBe('召回研究 · reports: 1 · hybrid/ok');
+  });
+
   test('formats json and text details for scrollable display', () => {
     expect(
       formatCapacityDetailContent({
@@ -201,6 +216,44 @@ describe('capacityCallView', () => {
         url: 'https://community.openai.com',
         snippet: 'June 4, 2026. Latest developer discussion.',
         whyUsed: 'Tavily search result rank 2, score 0.84'
+      }
+    ]);
+  });
+
+  test('extracts research recall previews for product detail rendering', () => {
+    const previews = researchRecallPreviewsForDetailSection({
+      label: 'Result',
+      kind: 'json',
+      content: {
+        agent_loop_research_recall_previews: [
+          {
+            run_id: 'run_research',
+            artifact_id: 'artifact_report',
+            artifact_type: 'research.report',
+            summary: 'Stored research report preview.',
+            ref: {
+              ref_type: 'artifact',
+              scope: 'run',
+              run_id: 'run_research',
+              artifact_id: 'artifact_report'
+            },
+            source_refs: [{ ref_type: 'url', url: 'https://example.com' }],
+            provenance: { execution_id: 'exec_research' }
+          },
+          {
+            artifact_id: 'missing_run_id',
+            summary: 'No run id.'
+          }
+        ]
+      }
+    });
+
+    expect(previews).toEqual([
+      {
+        runId: 'run_research',
+        artifactId: 'artifact_report',
+        artifactType: 'research.report',
+        summary: 'Stored research report preview.'
       }
     ]);
   });

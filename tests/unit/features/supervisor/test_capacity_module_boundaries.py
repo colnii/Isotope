@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from isotope.features.supervisor.commands import capacity as _capacity
-capacity_rendering = _capacity.capacity_rendering
-capacity_result = _capacity.capacity_result
+from isotope.features.supervisor.commands.capacity import capacity_rendering
+from isotope.features.supervisor.commands.capacity import capacity_result
 from isotope.features.supervisor.commands.handlers import capacity as capacity_command
 
 
@@ -72,6 +71,90 @@ def test_capacity_result_extracts_public_metadata_agent_loop_fields():
     assert "PRIVATE_" not in str(summary)
 
 
+def test_capacity_result_extracts_research_recall_preview_fields():
+    payload = {
+        "agent_loop": {
+            "tick_result": {
+                "planner_result": {
+                    "step_result": {
+                        "action_result": {
+                            "capability_run": {
+                                "capability_id": "research.recall",
+                                "research_recall": {
+                                    "status": "ok",
+                                    "content_policy": (
+                                        "research_report_artifact_preview_only"
+                                    ),
+                                    "retrieval": {
+                                        "backend": "hybrid",
+                                        "dense_status": "ok",
+                                    },
+                                    "results": [
+                                        {
+                                            "run_id": "run_research",
+                                            "artifact_id": "artifact_report",
+                                            "artifact_type": "research.report",
+                                            "summary": (
+                                                "Stored research report preview."
+                                            ),
+                                            "ref": {
+                                                "ref_type": "artifact",
+                                                "scope": "run",
+                                                "run_id": "run_research",
+                                                "artifact_id": "artifact_report",
+                                            },
+                                            "source_refs": [
+                                                {
+                                                    "ref_type": "url",
+                                                    "url": "https://example.com",
+                                                }
+                                            ],
+                                            "provenance": {
+                                                "execution_id": "exec_research"
+                                            },
+                                            "content": (
+                                                "raw report body must not leak"
+                                            ),
+                                        }
+                                    ],
+                                },
+                            },
+                        }
+                    }
+                },
+            },
+        }
+    }
+
+    summary = capacity_result.agent_loop_json_result(payload)
+
+    assert summary["agent_loop_research_recall_status"] == "ok"
+    assert summary["agent_loop_research_recall_result_count"] == 1
+    assert (
+        summary["agent_loop_research_recall_content_policy"]
+        == "research_report_artifact_preview_only"
+    )
+    assert summary["agent_loop_research_recall_retrieval_backend"] == "hybrid"
+    assert summary["agent_loop_research_recall_dense_status"] == "ok"
+    assert summary["agent_loop_research_recall_previews"] == [
+        {
+            "run_id": "run_research",
+            "artifact_id": "artifact_report",
+            "artifact_type": "research.report",
+            "summary": "Stored research report preview.",
+            "ref": {
+                "ref_type": "artifact",
+                "scope": "run",
+                "run_id": "run_research",
+                "artifact_id": "artifact_report",
+            },
+            "source_refs": [{"ref_type": "url", "url": "https://example.com"}],
+            "provenance": {"execution_id": "exec_research"},
+        }
+    ]
+    assert "raw report body" not in str(summary)
+
+
 def test_capacity_rendering_prints_plain_capacity_plan(capsys):
     payload = {
         "status_reason": "not_launchable",
@@ -100,3 +183,52 @@ def test_capacity_rendering_prints_plain_capacity_plan(capsys):
     assert "capacity_blocked_reason: not_allowlisted" in output
     assert "launch_blocking_reasons: not_allowlisted" in output
     assert "agent_loop_executed: False" in output
+
+
+def test_capacity_rendering_prints_research_recall_plain_fields(capsys):
+    payload = {
+        "status_reason": "launchable",
+        "selection": {
+            "capacity_id": "research.recall",
+            "status": "ready_to_call",
+        },
+        "capability_launch_plan": {"status": "launchable"},
+        "agent_loop": {
+            "tick_result": {
+                "planner_result": {
+                    "step_result": {
+                        "action_result": {
+                            "capability_run": {
+                                "capability_id": "research.recall",
+                                "research_recall": {
+                                    "status": "ok",
+                                    "content_policy": (
+                                        "research_report_artifact_preview_only"
+                                    ),
+                                    "retrieval": {
+                                        "backend": "hybrid",
+                                        "dense_status": "ok",
+                                    },
+                                    "results": [
+                                        {
+                                            "run_id": "run_research",
+                                            "artifact_id": "artifact_report",
+                                            "artifact_type": "research.report",
+                                            "summary": "Stored research report preview.",
+                                        }
+                                    ],
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+        },
+    }
+
+    capacity_rendering.print_capacity_plan_plain(payload)
+
+    output = capsys.readouterr().out
+    assert "agent_loop_research_recall_status: ok" in output
+    assert "agent_loop_research_recall_result_count: 1" in output
+    assert "agent_loop_research_recall_retrieval: hybrid/ok" in output

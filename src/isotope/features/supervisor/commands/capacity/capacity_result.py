@@ -56,6 +56,7 @@ def agent_loop_json_result(payload: Mapping[str, Any]) -> dict[str, Any]:
         result.update(_agent_loop_memory_query_result(capability_run))
         result.update(_agent_loop_memory_recall_result(capability_run))
         result.update(_agent_loop_research_search_result(capability_run))
+        result.update(_agent_loop_research_recall_result(capability_run))
         result.update(_agent_loop_research_promotion_result(capability_run))
         result.update(_agent_loop_project_status_result(capability_run))
         result.update(_agent_loop_terminal_exec_result(capability_run))
@@ -235,6 +236,66 @@ def _agent_loop_research_search_result(
         result["agent_loop_research_error_message"] = error.get("message")
         result["agent_loop_research_error_retryable"] = error.get("retryable")
     return result
+
+
+def _agent_loop_research_recall_result(
+    capability_run: Mapping[str, Any],
+) -> dict[str, Any]:
+    if capability_run.get("capability_id") != "research.recall":
+        return {}
+    research_recall = capability_run.get("research_recall")
+    if not isinstance(research_recall, Mapping):
+        return {}
+    results = research_recall.get("results")
+    safe_previews = _safe_research_recall_previews(results)
+    result: dict[str, Any] = {
+        "agent_loop_research_recall_status": research_recall.get("status"),
+        "agent_loop_research_recall_result_count": (
+            len(results) if isinstance(results, list) else 0
+        ),
+    }
+    content_policy = research_recall.get("content_policy")
+    if isinstance(content_policy, str) and content_policy:
+        result["agent_loop_research_recall_content_policy"] = content_policy
+    retrieval = research_recall.get("retrieval")
+    if isinstance(retrieval, Mapping):
+        backend = retrieval.get("backend")
+        if isinstance(backend, str) and backend:
+            result["agent_loop_research_recall_retrieval_backend"] = backend
+        dense_status = retrieval.get("dense_status")
+        if isinstance(dense_status, str) and dense_status:
+            result["agent_loop_research_recall_dense_status"] = dense_status
+    if safe_previews:
+        result["agent_loop_research_recall_previews"] = safe_previews
+    return result
+
+
+def _safe_research_recall_previews(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    previews: list[dict[str, Any]] = []
+    for item in value[:5]:
+        if not isinstance(item, Mapping):
+            continue
+        preview = {
+            key: item.get(key)
+            for key in ("run_id", "artifact_id", "artifact_type", "summary")
+            if isinstance(item.get(key), str) and item.get(key)
+        }
+        ref = item.get("ref")
+        if isinstance(ref, Mapping):
+            preview["ref"] = dict(ref)
+        source_refs = item.get("source_refs")
+        if isinstance(source_refs, list):
+            preview["source_refs"] = [
+                dict(ref) for ref in source_refs if isinstance(ref, Mapping)
+            ]
+        provenance = item.get("provenance")
+        if isinstance(provenance, Mapping):
+            preview["provenance"] = dict(provenance)
+        if preview:
+            previews.append(preview)
+    return previews
 
 
 def _agent_loop_research_promotion_result(

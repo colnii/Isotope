@@ -97,6 +97,24 @@ def print_capacity_plan_plain(payload: Mapping[str, Any]) -> None:
                 "agent_loop_research_artifact_count: "
                 f"{agent_loop_result.get('agent_loop_research_artifact_count')}"
             )
+        recall_status = agent_loop_result.get("agent_loop_research_recall_status")
+        if recall_status is not None:
+            print(f"agent_loop_research_recall_status: {recall_status}")
+            print(
+                "agent_loop_research_recall_result_count: "
+                f"{agent_loop_result.get('agent_loop_research_recall_result_count')}"
+            )
+            recall_backend = agent_loop_result.get(
+                "agent_loop_research_recall_retrieval_backend"
+            )
+            recall_dense_status = agent_loop_result.get(
+                "agent_loop_research_recall_dense_status"
+            )
+            if recall_backend is not None or recall_dense_status is not None:
+                print(
+                    "agent_loop_research_recall_retrieval: "
+                    f"{recall_backend}/{recall_dense_status}"
+                )
         promotion_status = agent_loop_result.get(
             "agent_loop_research_promotion_status"
         )

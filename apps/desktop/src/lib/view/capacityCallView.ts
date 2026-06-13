@@ -15,6 +15,13 @@ export type ResearchSourcePreview = {
   whyUsed: string;
 };
 
+export type ResearchRecallPreview = {
+  runId: string;
+  artifactId: string;
+  artifactType: string;
+  summary: string;
+};
+
 export type ScreenArtifactAction = 'view-original' | 'open-folder' | 'download';
 
 export function capacityCallStatusLabel(call: DesktopCapacityCall): string {
@@ -51,6 +58,20 @@ export function capacityCallSummary(call: DesktopCapacityCall): string {
     ].filter(Boolean);
     if (resultParts.length) {
       return [call.capacityId, ...resultParts].join(' · ');
+    }
+  }
+  if (call.capacityId === 'research.recall') {
+    const resultRecord = resultRecordForCapacityCall(call);
+    const resultCount = resultRecord.agent_loop_research_recall_result_count;
+    const backend = stringValue(resultRecord.agent_loop_research_recall_retrieval_backend);
+    const denseStatus = stringValue(resultRecord.agent_loop_research_recall_dense_status);
+    const retrieval = [backend, denseStatus].filter(Boolean).join('/');
+    const resultParts = [
+      typeof resultCount === 'number' ? `reports: ${resultCount}` : '',
+      retrieval
+    ].filter(Boolean);
+    if (resultParts.length) {
+      return [capacityCallProductTitle(call), ...resultParts].join(' · ');
     }
   }
   if (call.capacityId === 'supervisor.project_status') {
@@ -103,6 +124,29 @@ export function researchSourcePreviewsForDetailSection(
         url,
         snippet: stringValue(preview.snippet),
         whyUsed: stringValue(preview.why_used)
+      }
+    ];
+  });
+}
+
+export function researchRecallPreviewsForDetailSection(
+  section: DesktopCapacityDetailSection
+): ResearchRecallPreview[] {
+  if (!isRecord(section.content)) return [];
+  const previews = section.content.agent_loop_research_recall_previews;
+  if (!Array.isArray(previews)) return [];
+  return previews.flatMap((preview) => {
+    if (!isRecord(preview)) return [];
+    const runId = stringValue(preview.run_id);
+    const artifactId = stringValue(preview.artifact_id);
+    const summary = stringValue(preview.summary);
+    if (!runId || !artifactId || !summary) return [];
+    return [
+      {
+        runId,
+        artifactId,
+        artifactType: stringValue(preview.artifact_type) || 'research.report',
+        summary
       }
     ];
   });
@@ -200,6 +244,7 @@ function stringValue(value: unknown): string {
 
 const ACTION_TITLES: Record<string, string> = {
   'memory.query': '查询记忆',
+  'research.recall': '召回研究',
   'research.search': '检索资料',
   'research.promote': '沉淀资料',
   'screen.observe': '观察屏幕',

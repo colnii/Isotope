@@ -140,7 +140,8 @@
   preview metadata，复用 `rag.index` / hybrid retrieval，可显式传
   `dense_retrieval={"backend":"local"}` 启用本地 dense smoke；结果只返回
   summary、ref、source_refs 和 provenance，report 正文仍走 artifact inspect /
-  expand。
+  expand。capacity plain 输出和 desktop capacity card 已能显示 recall status、
+  report count、retrieval backend / dense status，以及可读的 report preview 列表。
 - `research.promote` 已进入 capability runner / capacity path：`isotope-capability`
   可 search/plan/run，运行时复用 existing research promote payload builder 和
   `memory.promotion` proposal boundary；它只从 `research.report` metadata 和
@@ -239,6 +240,8 @@
 - `research.recall` 已接入同一 capability runner；capacity path 会给它补
   `root` default，模型只需要提供 `query`，可选 `run_id/limit/dense_retrieval`；
   它检索 artifact preview，不走 inspect/promote 的正文路径，也不返回 report 正文。
+  现在已有低敏 `agent_loop_research_recall_*` projection 和 desktop preview
+  展示；planner/prompt 自动优先选择 recall 仍是后续 slice。
 - `research.promote` 已接入同一 capability runner；capacity path 会给它补
   `root` default，但 `run_id/artifact_id/agent_id/thread_id` 仍必须来自目标或
   模型参数。metadata 齐备时生成 `write_memory` proposal，memory 写入交给
