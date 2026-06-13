@@ -130,7 +130,9 @@ def test_conversation_manifest_hides_system_routing_inputs(tmp_path) -> None:
     assert '"root"' not in system_prompt
 
 
-def test_conversation_loop_prompt_routes_goal_planning_to_capacity(tmp_path) -> None:
+def test_conversation_loop_prompt_lets_capability_metadata_drive_choice(
+    tmp_path,
+) -> None:
     provider = RecordingConversationProvider(
         [no_capability_direct_answer("这条测试只检查 prompt。")]
     )
@@ -145,10 +147,13 @@ def test_conversation_loop_prompt_routes_goal_planning_to_capacity(tmp_path) -> 
     )
 
     system_prompt = provider.calls[0]["messages"][0]["content"]
-    assert "目标规划、拆目标、规划任务" in system_prompt
-    assert "supervisor.goal_plan" in system_prompt
+    assert (
+        "Let the user's goal and available capability metadata drive the choice."
+        in system_prompt
+    )
+    assert "Use capabilities when the answer needs current project state" in system_prompt
+    assert "Report a capability gap only when Isotope lacks the capability" in system_prompt
     assert "call_capability" in system_prompt
-    assert "不要重复调用已经有 observation 的同一个 capability" in system_prompt
 
 
 def test_conversation_loop_prompt_separates_manifest_from_observation(
@@ -176,6 +181,56 @@ def test_conversation_loop_prompt_separates_manifest_from_observation(
         in system_prompt
     )
     assert "只有 capacity_observation 可以支撑 `answer_basis.kind=\"observation\"`" in system_prompt
+
+
+def test_conversation_loop_prompt_avoids_route_specific_capacity_hints(
+    tmp_path,
+) -> None:
+    provider = RecordingConversationProvider(
+        [no_capability_direct_answer("这条测试只检查 prompt。")]
+    )
+
+    list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=tmp_path / "repo",
+            user_message="帮我规划、读文件、查记忆",
+            provider=provider,
+        )
+    )
+
+    system_prompt = provider.calls[0]["messages"][0]["content"]
+    prompt_prose = system_prompt.split("capacity_manifest:", 1)[0]
+    assert "用户想查已有记忆时优先用 memory.recall" not in prompt_prose
+    assert "只有明确要查某个 agent-loop run" not in prompt_prose
+    assert "读取文件时优先使用 `file.read`" not in prompt_prose
+    assert "当用户要求目标规划" not in prompt_prose
+    assert "supervisor.goal_plan" not in prompt_prose
+    assert "research_context" not in prompt_prose
+
+
+def test_conversation_loop_prompt_is_a_compact_decision_contract(
+    tmp_path,
+) -> None:
+    provider = RecordingConversationProvider(
+        [no_capability_direct_answer("这条测试只检查 prompt。")]
+    )
+
+    list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path,
+            cwd=tmp_path / "repo",
+            user_message="总结当前上下文",
+            provider=provider,
+        )
+    )
+
+    system_prompt = provider.calls[0]["messages"][0]["content"]
+    assert "## Role" in system_prompt
+    assert "## Context Boundaries" in system_prompt
+    assert "## Decision Rules" in system_prompt
+    assert "## Output Contract" in system_prompt
+    assert len(system_prompt.splitlines()) < 80
 
 
 def test_conversation_loop_manifest_exposes_extension_entrypoints_without_skill_registry(
