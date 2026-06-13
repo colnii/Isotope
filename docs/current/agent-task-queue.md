@@ -142,6 +142,9 @@
   summary、ref、source_refs 和 provenance，report 正文仍走 artifact inspect /
   expand。capacity plain 输出和 desktop capacity card 已能显示 recall status、
   report count、retrieval backend / dense status，以及可读的 report preview 列表。
+  `research_recall_fixture` dev-eval 会种一个 `research.report` 并要求模型在
+  existing stored research report 语境下选择 `research.recall`；默认测试跳过真实
+  provider，设置 `ISOTOPE_RUN_LIVE_SUPERVISOR_EVAL=1` 后可跑真实 LLM smoke。
 - `research.promote` 已进入 capability runner / capacity path：`isotope-capability`
   可 search/plan/run，运行时复用 existing research promote payload builder 和
   `memory.promotion` proposal boundary；它只从 `research.report` metadata 和
@@ -241,7 +244,8 @@
   `root` default，模型只需要提供 `query`，可选 `run_id/limit/dense_retrieval`；
   它检索 artifact preview，不走 inspect/promote 的正文路径，也不返回 report 正文。
   现在已有低敏 `agent_loop_research_recall_*` projection 和 desktop preview
-  展示；planner/prompt 自动优先选择 recall 仍是后续 slice。
+  展示；`research_recall_fixture` 已覆盖真实 LLM opt-in smoke，用于判断模型是否
+  能从 existing stored research report 语境中自然选择 recall。
 - `research.promote` 已接入同一 capability runner；capacity path 会给它补
   `root` default，但 `run_id/artifact_id/agent_id/thread_id` 仍必须来自目标或
   模型参数。metadata 齐备时生成 `write_memory` proposal，memory 写入交给

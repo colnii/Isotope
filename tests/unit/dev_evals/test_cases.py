@@ -1,5 +1,7 @@
 from isotope.capabilities.runner import CapabilityRunner
 from isotope.dev_evals.cases import scenario_catalog
+from isotope.dev_evals.fixtures import prepare_fixture
+from isotope.workspace.artifacts import ArtifactStore
 
 
 def test_scenario_catalog_covers_every_registered_capability():
@@ -33,6 +35,7 @@ def test_scenarios_have_mechanical_gate_contracts():
             "mcp_configured",
             "screen_config_gated",
             "provider_config_gated",
+            "research_recall_seeded",
         }
         assert "required_capacity_called" in scenario.required_gates
         assert "low_sensitive_report" in scenario.required_gates
@@ -45,3 +48,22 @@ def test_code_search_scenario_requires_literal_marker_input():
 
     assert "ISOTOPE_DEV_EVAL_MARKER" in scenario.user_message
     assert scenario.required_input_fragments == ("ISOTOPE_DEV_EVAL_MARKER",)
+
+
+def test_research_recall_scenario_requires_marker_input():
+    scenario = next(
+        item for item in scenario_catalog() if item.case_id == "research_recall_fixture"
+    )
+
+    assert "RAG_RECALL_EVAL_MARKER" in scenario.user_message
+    assert scenario.fixture == "research_recall_seeded"
+    assert scenario.required_input_fragments == ("RAG_RECALL_EVAL_MARKER",)
+
+
+def test_research_recall_fixture_seeds_preview_only_report(tmp_path):
+    state_root, _workspace = prepare_fixture(tmp_path, "research_recall_seeded")
+    artifacts = ArtifactStore(state_root).list_artifacts("run_research_recall_eval")
+
+    assert len(artifacts) == 1
+    assert artifacts[0].artifact_type == "research.report"
+    assert "RAG_RECALL_EVAL_MARKER" in artifacts[0].summary

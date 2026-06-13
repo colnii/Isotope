@@ -143,6 +143,16 @@ _SCENARIOS: tuple[CapabilityScenario, ...] = (
         combination_only=True,
     ),
     CapabilityScenario(
+        "research_recall_fixture",
+        ("research.recall",),
+        (
+            "Use existing stored research reports to recall what we already "
+            "learned about RAG_RECALL_EVAL_MARKER. Do not run a new web search."
+        ),
+        "research_recall_seeded",
+        required_input_fragments=("RAG_RECALL_EVAL_MARKER",),
+    ),
+    CapabilityScenario(
         "research_search_fixture",
         ("research.search",),
         "Research the current public docs for pytest markers.",

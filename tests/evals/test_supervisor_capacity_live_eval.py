@@ -24,3 +24,29 @@ def test_live_supervisor_capacity_basic_eval_records_real_provider_result(tmp_pa
         assert report["suite"] == "supervisor_capacity_basic"
         assert report["cases"]
         assert "raw_response" not in repr(report)
+
+
+@pytest.mark.skipif(
+    os.environ.get("ISOTOPE_RUN_LIVE_SUPERVISOR_EVAL") != "1",
+    reason="live Supervisor capacity eval is opt-in",
+)
+def test_live_supervisor_research_recall_eval_records_real_provider_choice(tmp_path):
+    resolution = resolve_llm_chat_provider()
+    report = run_live_suite(
+        root=tmp_path,
+        case_id="research_recall_fixture",
+        case_limit=1,
+    )
+
+    if resolution.provider is None:
+        assert report["status"] == "blocked"
+        assert report["reason_code"] == resolution.reason_code
+        assert report["deterministic_fallback"]["status"] == "passed"
+        assert "scenario_catalog_covered" in report["deterministic_fallback"]["checks"]
+    else:
+        assert report["status"] == "passed"
+        assert report["kind"] == "supervisor_capacity_dev_eval_report"
+        assert report["suite"] == "supervisor_capacity_basic"
+        assert report["cases"][0]["capability_under_test"] == ["research.recall"]
+        assert "raw_response" not in repr(report)
+        assert "controlled_expand" not in repr(report)

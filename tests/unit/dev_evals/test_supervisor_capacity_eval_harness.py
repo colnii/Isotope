@@ -53,6 +53,49 @@ def test_harness_runs_code_search_case_through_conversation_loop(tmp_path):
     assert "raw_response" not in json.dumps(report)
 
 
+def test_harness_runs_research_recall_case_against_seeded_report(tmp_path):
+    scenario = next(
+        item for item in scenario_catalog() if item.case_id == "research_recall_fixture"
+    )
+    provider = DeterministicScenarioProvider(
+        [
+            {
+                "kind": "call_capability",
+                "capacity_id": "research.recall",
+                "arguments": {"query": "RAG_RECALL_EVAL_MARKER", "limit": 5},
+                "rationale": "Need existing research report recall.",
+            },
+            {
+                "kind": "direct_answer",
+                "answer": "Recalled the stored report preview.",
+                "answer_basis": {
+                    "kind": "observation",
+                    "capacity_ids": ["research.recall"],
+                    "reason": "Research recall observation returned the marker.",
+                },
+                "rationale": "Observation is enough.",
+            },
+        ]
+    )
+
+    report = run_scenarios([scenario], root=tmp_path, provider=provider, live=False)
+
+    assert report["status"] == "passed"
+    case = report["cases"][0]
+    assert case["hard_gate_passed"] is True
+    assert case["steps"][0]["capacity_id"] == "research.recall"
+    assert (
+        case["steps"][0]["result_summary"][
+            "agent_loop_research_recall_result_count"
+        ]
+        == 1
+    )
+    rendered_report = json.dumps(report)
+    assert "RAG_RECALL_EVAL_MARKER" in rendered_report
+    assert "raw_response" not in rendered_report
+    assert "must_not_leak" not in rendered_report.lower()
+
+
 def test_harness_fails_when_provider_chooses_wrong_capacity(tmp_path):
     scenario = next(
         item for item in scenario_catalog() if item.case_id == "code_search_fixture"

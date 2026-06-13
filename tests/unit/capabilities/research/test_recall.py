@@ -54,6 +54,10 @@ def test_runner_discovers_research_recall_from_default_catalog():
     assert properties["root"]["x-system-input"] is True
     assert "research_report_artifact_preview_only" in description["safety_boundaries"]
     assert "no_research_artifact_content_return" in description["safety_boundaries"]
+    assert (
+        "report_content_via_artifact_inspect" in description["safety_boundaries"]
+    )
+    assert "artifact inspect" in description["description"]
 
 
 def test_research_recall_plan_is_launchable_with_root_and_query():

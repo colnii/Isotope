@@ -1966,7 +1966,9 @@ class CapabilityCatalog:
                     title="Research Recall",
                     description=(
                         "Search existing research.report artifact previews through "
-                        "the shared RAG retrieval boundary."
+                        "the shared RAG retrieval boundary. It returns preview "
+                        "metadata only; use artifact inspect/expand on returned "
+                        "artifact refs for report content."
                     ),
                     maturity="v0.2",
                     shelf="product_candidate",
@@ -2034,7 +2036,7 @@ class CapabilityCatalog:
                         "no_research_artifact_content_return",
                         "reuses_generic_rag_index",
                         "public_result_metadata",
-                        "artifact_refs_expandable",
+                        "report_content_via_artifact_inspect",
                     ),
                     default_enabled=True,
                     network_required=False,
