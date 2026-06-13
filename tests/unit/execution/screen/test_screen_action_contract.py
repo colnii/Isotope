@@ -47,14 +47,27 @@ def test_screen_action_accepts_keyboard_actions():
     assert key_press.to_dict() == {"type": "key_press", "key": "Enter"}
 
 
+def test_screen_action_accepts_button_and_wheel_actions():
+    button_down = ScreenAction.from_dict({"type": "button_down", "button": "right", "x": 10, "y": 20})
+    button_up = ScreenAction.from_dict({"type": "button_up", "button": "right", "x": 10, "y": 20})
+    wheel = ScreenAction.from_dict({"type": "wheel", "x": 10, "y": 20, "delta_y": 120})
+
+    assert button_down.to_dict() == {"type": "button_down", "x": 10, "y": 20, "button": "right"}
+    assert button_up.to_dict() == {"type": "button_up", "x": 10, "y": 20, "button": "right"}
+    assert wheel.to_dict() == {"type": "wheel", "x": 10, "y": 20, "delta_y": 120}
+
+
 @pytest.mark.parametrize(
     "payload",
     [
         {"type": "double_click", "x": 10},
         {"type": "drag", "x": 10, "y": 20, "to_x": 90},
+        {"type": "button_down", "x": 10, "y": 20},
+        {"type": "button_up", "x": 10, "y": 20},
+        {"type": "wheel", "x": 10, "y": 20},
     ],
 )
-def test_screen_action_rejects_incomplete_mouse_coordinates(payload):
+def test_screen_action_rejects_incomplete_mouse_payloads(payload):
     with pytest.raises(ValueError, match="requires"):
         ScreenAction.from_dict(payload)
 

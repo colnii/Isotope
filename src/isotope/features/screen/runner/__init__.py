@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from ._impl import *
 from .actions import (
+    _build_button_down_action,
+    _build_button_up_action,
     _build_click_action,
     _build_double_click_action,
     _build_drag_action,
@@ -11,6 +13,7 @@ from .actions import (
     _build_key_press_action,
     _build_key_up_action,
     _build_restore_window_action,
+    _build_wheel_action,
 )
 
 # Private re-exports for test compatibility

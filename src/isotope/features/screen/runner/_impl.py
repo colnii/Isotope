@@ -18,6 +18,8 @@ from ..artifacts import (
     report_screen_artifacts,
 )
 from .actions import (
+    _build_button_down_action,
+    _build_button_up_action,
     _build_click_action,
     _build_double_click_action,
     _build_drag_action,
@@ -25,6 +27,7 @@ from .actions import (
     _build_key_press_action,
     _build_key_up_action,
     _build_restore_window_action,
+    _build_wheel_action,
 )
 
 
@@ -206,6 +209,44 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Approximate drag duration in milliseconds.",
     )
     drag_parser.add_argument(
+        "--approve-execute",
+        action="store_true",
+        help="Request approval and execute after immediate local approval.",
+    )
+    for command, action_name in (
+        ("control-button-down", "button down"),
+        ("control-button-up", "button up"),
+    ):
+        button_parser = subparsers.add_parser(
+            command,
+            help=f"Plan or execute one mouse {action_name} without writing action JSON.",
+        )
+        _add_runtime_args(button_parser)
+        _add_target_args(button_parser)
+        button_parser.add_argument("--x", type=int, required=True, help="Screen x coordinate.")
+        button_parser.add_argument("--y", type=int, required=True, help="Screen y coordinate.")
+        button_parser.add_argument(
+            "--button",
+            choices=["left", "middle", "right", "x1", "x2"],
+            default="left",
+            help="Mouse button.",
+        )
+        button_parser.add_argument(
+            "--approve-execute",
+            action="store_true",
+            help="Request approval and execute after immediate local approval.",
+        )
+    wheel_parser = subparsers.add_parser(
+        "control-wheel",
+        help="Plan or execute one mouse wheel action without writing action JSON.",
+    )
+    _add_runtime_args(wheel_parser)
+    _add_target_args(wheel_parser)
+    wheel_parser.add_argument("--x", type=int, required=True, help="Screen x coordinate.")
+    wheel_parser.add_argument("--y", type=int, required=True, help="Screen y coordinate.")
+    wheel_parser.add_argument("--delta-x", type=int, default=0, help="Horizontal wheel delta.")
+    wheel_parser.add_argument("--delta-y", type=int, default=120, help="Vertical wheel delta.")
+    wheel_parser.add_argument(
         "--approve-execute",
         action="store_true",
         help="Request approval and execute after immediate local approval.",
@@ -560,6 +601,73 @@ def main(argv: list[str] | None = None) -> int:
                     {
                         "resolution": "approved",
                         "reason": "screen smoke drag execute approved",
+                        "resolver": "local_operator",
+                    },
+                )
+            else:
+                result = pending_or_result
+        elif args.command in {"control-button-down", "control-button-up"}:
+            action_builders = {
+                "control-button-down": _build_button_down_action,
+                "control-button-up": _build_button_up_action,
+            }
+            action_names = {
+                "control-button-down": "button down",
+                "control-button-up": "button up",
+            }
+            execution_mode = "execute" if args.approve_execute else "dry_run"
+            pending_or_result = api.submit_action(
+                run_id,
+                _build_control_intent(
+                    target_selector=target_selector,
+                    actions=[
+                        action_builders[args.command](
+                            x=args.x,
+                            y=args.y,
+                            button=args.button,
+                        )
+                    ],
+                    execution_mode=execution_mode,
+                    target_allowlist=target_allowlist,
+                ),
+                requires_approval=args.approve_execute,
+            )
+            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+                result = api.resolve_approval(
+                    pending_or_result["approval_id"],
+                    {
+                        "resolution": "approved",
+                        "reason": f"screen smoke {action_names[args.command]} execute approved",
+                        "resolver": "local_operator",
+                    },
+                )
+            else:
+                result = pending_or_result
+        elif args.command == "control-wheel":
+            execution_mode = "execute" if args.approve_execute else "dry_run"
+            pending_or_result = api.submit_action(
+                run_id,
+                _build_control_intent(
+                    target_selector=target_selector,
+                    actions=[
+                        _build_wheel_action(
+                            x=args.x,
+                            y=args.y,
+                            delta_x=args.delta_x,
+                            delta_y=args.delta_y,
+                        )
+                    ],
+                    execution_mode=execution_mode,
+                    target_allowlist=target_allowlist,
+                ),
+                requires_approval=args.approve_execute,
+            )
+            if args.approve_execute and pending_or_result["status"] == "pending_user_approval":
+                result = api.resolve_approval(
+                    pending_or_result["approval_id"],
+                    {
+                        "resolution": "approved",
+                        "reason": "screen smoke wheel execute approved",
                         "resolver": "local_operator",
                     },
                 )

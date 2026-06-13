@@ -255,12 +255,67 @@ def test_screen_control_backend_request_preserves_keyboard_actions(tmp_path):
     ]
 
 
+def test_screen_control_backend_request_preserves_button_and_wheel_actions(tmp_path):
+    backend = StubScreenBackend(
+        {
+            "backend_session_id": "screen_backend_001",
+            "status": "completed",
+            "started_at": "2026-05-24T00:00:00Z",
+            "finished_at": "2026-05-24T00:00:01Z",
+            "summary": "screen control completed",
+            "output_artifacts": [
+                {
+                    "artifact_type": "screen_control_plan",
+                    "summary": "screen control plan",
+                    "content": json.dumps(
+                        {
+                            "action_count": 3,
+                            "executed": False,
+                            "planned_actions": ["button_down", "wheel", "button_up"],
+                        },
+                        sort_keys=True,
+                    ),
+                }
+            ],
+            "reason_code": "screen_control_completed",
+            "retryable": False,
+            "resource_usage": {"duration_ms": 10},
+        }
+    )
+    api, run_id = _new_run(tmp_path, backend)
+    intent = _control_intent()
+    intent["actions"] = [
+        {"type": "button_down", "button": "right", "x": 1, "y": 2},
+        {"type": "wheel", "x": 1, "y": 2, "delta_y": 120},
+        {"type": "button_up", "button": "right", "x": 1, "y": 2},
+    ]
+
+    result = api.submit_action(run_id, intent)
+
+    assert result["status"] == "completed"
+    assert [action.to_dict() for action in backend.calls[0].actions] == [
+        {"type": "button_down", "x": 1, "y": 2, "button": "right"},
+        {"type": "wheel", "x": 1, "y": 2, "delta_y": 120},
+        {"type": "button_up", "x": 1, "y": 2, "button": "right"},
+    ]
+
+
 def test_windows_backend_script_supports_double_click_and_drag_branches():
     script = windows_backend._POWERSHELL_SCRIPT
 
     assert '$action.type -eq "double_click"' in script
     assert '$action.type -eq "drag"' in script
     assert "SetCursorPos([int]$action.to_x, [int]$action.to_y)" in script
+
+
+def test_windows_backend_script_supports_button_and_wheel_branches():
+    script = windows_backend._POWERSHELL_SCRIPT
+
+    assert '$action.type -eq "button_down"' in script
+    assert '$action.type -eq "button_up"' in script
+    assert '$action.type -eq "wheel"' in script
+    assert "$HWheel = 0x01000" in script
+    assert "Convert-MouseData" in script
 
 
 def test_windows_backend_script_supports_keyboard_down_up_branches():

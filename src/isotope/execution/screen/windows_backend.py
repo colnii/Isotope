@@ -245,10 +245,44 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
     $RightUp = 0x0010
     $MiddleDown = 0x0020
     $MiddleUp = 0x0040
+    $XDown = 0x0080
+    $XUp = 0x0100
     $Wheel = 0x0800
+    $HWheel = 0x01000
+    $XButton1 = 0x0001
+    $XButton2 = 0x0002
     $KEYEVENTF_KEYUP = 0x0002
 
     function NowIso { return [DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ") }
+
+    function Convert-MouseData([int]$value) {
+        return [BitConverter]::ToUInt32([BitConverter]::GetBytes($value), 0)
+    }
+
+    function Resolve-MouseButton($button) {
+        $name = "left"
+        if ($null -ne $button -and -not [string]::IsNullOrWhiteSpace([string]$button)) {
+            $name = ([string]$button).ToLowerInvariant()
+        }
+        if ($name -eq "left") { return @{ down = $LeftDown; up = $LeftUp; data = 0 } }
+        if ($name -eq "right") { return @{ down = $RightDown; up = $RightUp; data = 0 } }
+        if ($name -eq "middle") { return @{ down = $MiddleDown; up = $MiddleUp; data = 0 } }
+        if ($name -eq "x1") { return @{ down = $XDown; up = $XUp; data = $XButton1 } }
+        if ($name -eq "x2") { return @{ down = $XDown; up = $XUp; data = $XButton2 } }
+        throw "unsupported screen mouse button: $button"
+    }
+
+    function Invoke-MouseButtonDown($buttonFlags) {
+        [NativeScreen]::mouse_event(
+            [uint32]$buttonFlags["down"], 0, 0, [uint32]$buttonFlags["data"], [UIntPtr]::Zero
+        )
+    }
+
+    function Invoke-MouseButtonUp($buttonFlags) {
+        [NativeScreen]::mouse_event(
+            [uint32]$buttonFlags["up"], 0, 0, [uint32]$buttonFlags["data"], [UIntPtr]::Zero
+        )
+    }
 
     function Resolve-KeyCode([string]$key) {
         if ([string]::IsNullOrWhiteSpace($key)) { throw "screen keyboard action requires key" }
@@ -422,38 +456,48 @@ _POWERSHELL_SCRIPT = textwrap.dedent(
                 [void][NativeScreen]::SetForegroundWindow($hwnd)
                 $applied += 1
             } elseif ($action.type -eq "click") {
-                $down = $LeftDown; $up = $LeftUp
-                if ($action.button -eq "right") { $down = $RightDown; $up = $RightUp }
-                if ($action.button -eq "middle") { $down = $MiddleDown; $up = $MiddleUp }
-                [NativeScreen]::mouse_event($down, 0, 0, 0, [UIntPtr]::Zero)
-                [NativeScreen]::mouse_event($up, 0, 0, 0, [UIntPtr]::Zero)
+                $buttonFlags = Resolve-MouseButton $action.button
+                Invoke-MouseButtonDown $buttonFlags
+                Invoke-MouseButtonUp $buttonFlags
                 $applied += 1
             } elseif ($action.type -eq "double_click") {
-                $down = $LeftDown; $up = $LeftUp
-                if ($action.button -eq "right") { $down = $RightDown; $up = $RightUp }
-                if ($action.button -eq "middle") { $down = $MiddleDown; $up = $MiddleUp }
-                [NativeScreen]::mouse_event($down, 0, 0, 0, [UIntPtr]::Zero)
-                [NativeScreen]::mouse_event($up, 0, 0, 0, [UIntPtr]::Zero)
-                [NativeScreen]::mouse_event($down, 0, 0, 0, [UIntPtr]::Zero)
-                [NativeScreen]::mouse_event($up, 0, 0, 0, [UIntPtr]::Zero)
+                $buttonFlags = Resolve-MouseButton $action.button
+                Invoke-MouseButtonDown $buttonFlags
+                Invoke-MouseButtonUp $buttonFlags
+                Invoke-MouseButtonDown $buttonFlags
+                Invoke-MouseButtonUp $buttonFlags
                 $applied += 1
             } elseif ($action.type -eq "drag") {
-                $down = $LeftDown; $up = $LeftUp
-                if ($action.button -eq "right") { $down = $RightDown; $up = $RightUp }
-                if ($action.button -eq "middle") { $down = $MiddleDown; $up = $MiddleUp }
+                $buttonFlags = Resolve-MouseButton $action.button
                 $duration = 0
                 if ($null -ne $action.duration_ms -and [int]$action.duration_ms -gt 0) {
                     $duration = [int]$action.duration_ms
                 }
-                [NativeScreen]::mouse_event($down, 0, 0, 0, [UIntPtr]::Zero)
+                Invoke-MouseButtonDown $buttonFlags
                 if ($duration -gt 0) { Start-Sleep -Milliseconds ([Math]::Max(1, [int]($duration / 2))) }
                 [void][NativeScreen]::SetCursorPos([int]$action.to_x, [int]$action.to_y)
                 if ($duration -gt 0) { Start-Sleep -Milliseconds ([Math]::Max(1, [int]($duration / 2))) }
-                [NativeScreen]::mouse_event($up, 0, 0, 0, [UIntPtr]::Zero)
+                Invoke-MouseButtonUp $buttonFlags
+                $applied += 1
+            } elseif ($action.type -eq "button_down") {
+                $buttonFlags = Resolve-MouseButton $action.button
+                Invoke-MouseButtonDown $buttonFlags
+                $applied += 1
+            } elseif ($action.type -eq "button_up") {
+                $buttonFlags = Resolve-MouseButton $action.button
+                Invoke-MouseButtonUp $buttonFlags
                 $applied += 1
             } elseif ($action.type -eq "wheel") {
-                [NativeScreen]::mouse_event($Wheel, 0, 0, [uint32]$action.delta_y, [UIntPtr]::Zero)
-                $applied += 1
+                $sentWheel = $false
+                if ($null -ne $action.delta_y -and [int]$action.delta_y -ne 0) {
+                    [NativeScreen]::mouse_event($Wheel, 0, 0, (Convert-MouseData ([int]$action.delta_y)), [UIntPtr]::Zero)
+                    $sentWheel = $true
+                }
+                if ($null -ne $action.delta_x -and [int]$action.delta_x -ne 0) {
+                    [NativeScreen]::mouse_event($HWheel, 0, 0, (Convert-MouseData ([int]$action.delta_x)), [UIntPtr]::Zero)
+                    $sentWheel = $true
+                }
+                if ($sentWheel) { $applied += 1 }
             } elseif ($action.type -eq "key_down" -and $action.key) {
                 $keyCode = Resolve-KeyCode ([string]$action.key)
                 [NativeScreen]::keybd_event($keyCode, 0, 0, [UIntPtr]::Zero)

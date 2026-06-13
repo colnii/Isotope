@@ -165,6 +165,13 @@ class ScreenAction:
             self.x is None or self.y is None or self.to_x is None or self.to_y is None
         ):
             raise ValueError("drag requires x, y, to_x, and to_y")
+        if self.type in {"button_down", "button_up"} and self.button is None:
+            raise ValueError(f"{self.type} requires button")
+        if self.type == "wheel" and (
+            (self.delta_x is None or self.delta_x == 0)
+            and (self.delta_y is None or self.delta_y == 0)
+        ):
+            raise ValueError("wheel requires delta_x or delta_y")
         if self.type in {"key_down", "key_up", "key_press"} and self.key is None:
             raise ValueError(f"{self.type} requires key")
 

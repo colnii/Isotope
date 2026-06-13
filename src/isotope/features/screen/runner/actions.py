@@ -43,6 +43,34 @@ def _build_drag_action(
     }
 
 
+def _build_button_down_action(*, x: int, y: int, button: str) -> dict[str, Any]:
+    return {
+        "type": "button_down",
+        "button": button,
+        "x": x,
+        "y": y,
+    }
+
+
+def _build_button_up_action(*, x: int, y: int, button: str) -> dict[str, Any]:
+    return {
+        "type": "button_up",
+        "button": button,
+        "x": x,
+        "y": y,
+    }
+
+
+def _build_wheel_action(*, x: int, y: int, delta_x: int, delta_y: int) -> dict[str, Any]:
+    return {
+        "type": "wheel",
+        "x": x,
+        "y": y,
+        "delta_x": delta_x,
+        "delta_y": delta_y,
+    }
+
+
 def _build_key_down_action(*, key: str) -> dict[str, Any]:
     return {"type": "key_down", "key": key}
 
