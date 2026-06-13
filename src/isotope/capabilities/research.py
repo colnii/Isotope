@@ -7,15 +7,18 @@ from typing import Any, Mapping
 
 from ..features.research.flow import ResearchFlow
 from ..features.research.providers import build_research_provider
+from ..features.research.recall import build_research_recall_payload
 from ..features.research.runner import build_research_memory_promotion_payload
 from ..platform.schemas.input_contract import missing_required_input_keys
 
 
 RESEARCH_PROMOTE_CAPABILITY = "research.promote"
+RESEARCH_RECALL_CAPABILITY = "research.recall"
 RESEARCH_SEARCH_CAPABILITY = "research.search"
 RESEARCH_CAPABILITIES = frozenset(
     {
         RESEARCH_PROMOTE_CAPABILITY,
+        RESEARCH_RECALL_CAPABILITY,
         RESEARCH_SEARCH_CAPABILITY,
     }
 )
@@ -41,6 +44,11 @@ def validate_research_inputs(
         )
     if capability_id == RESEARCH_PROMOTE_CAPABILITY:
         return _validate_research_promote_inputs(
+            inputs=inputs,
+            missing_inputs=missing_inputs,
+        )
+    if capability_id == RESEARCH_RECALL_CAPABILITY:
+        return _validate_research_recall_inputs(
             inputs=inputs,
             missing_inputs=missing_inputs,
         )
@@ -164,6 +172,33 @@ def run_research_promote(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def run_research_recall(*, inputs: Mapping[str, Any] | None) -> dict[str, Any]:
+    required_inputs = ["root", "query"]
+    missing_inputs = _missing_inputs(required_inputs, inputs)
+    if missing_inputs:
+        raise ValueError(
+            "missing required capability inputs: " + ", ".join(missing_inputs)
+        )
+    input_mapping = _validate_research_recall_inputs(
+        inputs=inputs,
+        missing_inputs=missing_inputs,
+    )
+    payload = build_research_recall_payload(
+        root=input_mapping["root"],
+        query=input_mapping["query"],
+        run_id=input_mapping.get("run_id"),
+        limit=input_mapping["limit"],
+        dense_retrieval=input_mapping.get("dense_retrieval"),
+    )
+    return {
+        "kind": "capability_run_result",
+        "capability_id": RESEARCH_RECALL_CAPABILITY,
+        "status": "completed",
+        "runner_kind": "deterministic_projection",
+        "research_recall": payload,
+    }
+
+
 def _missing_inputs(
     required_inputs: list[str], inputs: Mapping[str, Any] | None
 ) -> list[str]:
@@ -186,6 +221,41 @@ def _validate_research_search_inputs(
             raise ValueError(f"{name} must be a non-empty string")
 
     return dict(input_mapping)
+
+
+def _validate_research_recall_inputs(
+    *,
+    inputs: Mapping[str, Any] | None,
+    missing_inputs: list[str],
+) -> dict[str, Any]:
+    input_mapping = inputs or {}
+    for name in ("root", "query"):
+        if name in missing_inputs:
+            continue
+        value = input_mapping.get(name)
+        if not isinstance(value, str):
+            raise ValueError(f"{name} must be a string")
+        if not value.strip():
+            raise ValueError(f"{name} must be a non-empty string")
+
+    run_id = input_mapping.get("run_id")
+    if run_id is not None and (not isinstance(run_id, str) or not run_id.strip()):
+        raise ValueError("run_id must be a non-empty string")
+
+    limit = input_mapping.get("limit", 20)
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0:
+        raise ValueError("limit must be a positive integer")
+
+    if "dense_retrieval" in input_mapping:
+        from ..rag.index import parse_rag_index_config
+
+        parse_rag_index_config(input_mapping.get("dense_retrieval"))
+
+    normalized = dict(input_mapping)
+    normalized["limit"] = limit
+    if isinstance(run_id, str):
+        normalized["run_id"] = run_id.strip()
+    return normalized
 
 
 def _resolve_research_provider_policy(

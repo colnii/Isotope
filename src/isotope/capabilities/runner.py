@@ -79,9 +79,11 @@ from .read import (
 )
 from .research import (
     RESEARCH_PROMOTE_CAPABILITY,
+    RESEARCH_RECALL_CAPABILITY,
     RESEARCH_SEARCH_CAPABILITY,
     is_research_capability,
     run_research_promote,
+    run_research_recall,
     run_research_search,
     validate_research_inputs,
 )
@@ -599,6 +601,8 @@ class CapabilityRunner:
             return run_memory_promotion_preview(inputs=input_mapping)
         if capability_id == RESEARCH_PROMOTE_CAPABILITY:
             return run_research_promote(inputs=input_mapping)
+        if capability_id == RESEARCH_RECALL_CAPABILITY:
+            return run_research_recall(inputs=input_mapping)
         if capability_id == RESEARCH_SEARCH_CAPABILITY:
             return run_research_search(inputs=input_mapping)
         if capability_id == SCREEN_OBSERVE_CAPABILITY:

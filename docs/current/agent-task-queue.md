@@ -135,6 +135,12 @@
   capacity path 注入 root，provider / gate / network 策略由 runtime policy
   内部决定；经 capacity agent loop 执行后，`agent_loop_summary` / plain 输出只显示 status、provider、
   source_count 和 artifact_count，report 正文和 raw transcript 走 artifact inspect。
+- `research.recall` 已进入 capability runner / capacity path：`isotope-capability`
+  可 search/plan/run，运行时只扫描 existing `research.report` artifact 的
+  preview metadata，复用 `rag.index` / hybrid retrieval，可显式传
+  `dense_retrieval={"backend":"local"}` 启用本地 dense smoke；结果只返回
+  summary、ref、source_refs 和 provenance，report 正文仍走 artifact inspect /
+  expand。
 - `research.promote` 已进入 capability runner / capacity path：`isotope-capability`
   可 search/plan/run，运行时复用 existing research promote payload builder 和
   `memory.promotion` proposal boundary；它只从 `research.report` metadata 和
@@ -230,6 +236,9 @@
 - `research.search` 已接入同一 capability runner；capacity path 会给它补
   `root` default，模型只需要提供 `query`；provider / gate / network 策略
   不进入模型可见 input contract。
+- `research.recall` 已接入同一 capability runner；capacity path 会给它补
+  `root` default，模型只需要提供 `query`，可选 `run_id/limit/dense_retrieval`；
+  它检索 artifact preview，不走 inspect/promote 的正文路径，也不返回 report 正文。
 - `research.promote` 已接入同一 capability runner；capacity path 会给它补
   `root` default，但 `run_id/artifact_id/agent_id/thread_id` 仍必须来自目标或
   模型参数。metadata 齐备时生成 `write_memory` proposal，memory 写入交给

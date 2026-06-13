@@ -1962,6 +1962,84 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="research.recall",
+                    title="Research Recall",
+                    description=(
+                        "Search existing research.report artifact previews through "
+                        "the shared RAG retrieval boundary."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "research",
+                        "recall",
+                        "artifact",
+                        "rag",
+                        "provenance",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": ["root", "query"],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "x-system-input": True,
+                                "description": "Runtime root containing research artifacts.",
+                            },
+                            "query": {
+                                "type": "string",
+                                "description": "Research artifact recall query.",
+                            },
+                            "run_id": {
+                                "type": "string",
+                                "description": "Optional run id filter for research.report artifacts.",
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "default": 20,
+                                "description": "Maximum number of artifact previews to return.",
+                            },
+                            "dense_retrieval": {
+                                "type": "object",
+                                "description": "Optional local dense retrieval config.",
+                                "properties": {
+                                    "backend": {
+                                        "type": "string",
+                                        "enum": ["local"],
+                                    },
+                                    "dimensions": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "default": 16,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "content_policy",
+                            "query",
+                            "run_id",
+                            "summary",
+                            "retrieval",
+                            "results",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "research_report_artifact_preview_only",
+                        "no_research_artifact_content_return",
+                        "reuses_generic_rag_index",
+                        "public_result_metadata",
+                        "artifact_refs_expandable",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="research.promote",
                     title="Research Promote",
                     description=(

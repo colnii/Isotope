@@ -59,7 +59,7 @@ PYTHONPATH=src .venv/bin/python -m isotope.features.supervisor.runner <command>
 | `merge-work-order` / `merge-dispatch` / `promotion` | 生成 merge worker 工单、派发合并、CI watch 和 promotion gate。 | [architecture migration table](./supervisor-architecture-migration-table.md) |
 | `cleanup` | 只在 done、archived、already_integrated 且路径安全时删除 worktree。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `capacity` | 生成 capacity decision；显式执行时通过 tick driver 运行一次 `call_capability`。 | [capability inventory](./supervisor-capability-inventory.md)、[agent-loop tick driver boundary](../architecture/agent-loop-tick-driver-boundary-v0.2.md) |
-| `isotope-capability` | 搜索、检查或运行 capability；`supervisor.goal_plan` 复用目标规划，`supervisor.worker_review` / `supervisor.integration_review` 复用既有审查路径，`memory.query` / `screen.observe` / `screen.report` 复用既有结构化查询、观察和报告边界。 | [capability inventory](./supervisor-capability-inventory.md) |
+| `isotope-capability` | 搜索、检查或运行 capability；`supervisor.goal_plan` 复用目标规划，`supervisor.worker_review` / `supervisor.integration_review` 复用既有审查路径，`memory.query` / `research.recall` / `screen.observe` / `screen.report` 复用既有结构化查询、artifact preview 召回、观察和报告边界。 | [capability inventory](./supervisor-capability-inventory.md) |
 | `memory` / `worker-event` / `worker-manager` | 查询本地 memory preview、worker event、multi-worker read model 和 supervised capacity run 摘要。 | [terminology](./terminology.md)、[capability inventory](./supervisor-capability-inventory.md) |
 | `research` | 代理 shared Research flow，支持 search / list / inspect；成功写 `research.report`，provider 失败只写 `research.provider_trace`。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
 | `isotope-screen inspect/report` / `screen` | 读取 screen artifact 或生成 run 级结构化 observe/control plan 摘要；Supervisor `screen report/inspect` 复用同一 screen artifact report 边界。 | [application structure plan](./application-structure-plan.md)、[terminology](./terminology.md) |
@@ -227,6 +227,12 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   retry attempts），成功 report 只由 successful search 写入。
 - `research list` 只列 `research.*` artifact，按最近修改时间倒序；plain 输出给
   可复制的 `run_id` / `artifact_id`，用于后续 `research inspect`。
+- `isotope-capability run research.recall --input-json ...` 会从现有
+  `research.report` artifact metadata 检索 preview，默认 BM25；输入里显式传
+  `dense_retrieval={"backend":"local"}` 时复用 `rag.index` 跑本地 dense smoke，
+  并返回 `retrieval.backend=hybrid` / `dense_status=ok`。该 capability 只返回
+  summary、ref、source_refs 和 provenance，report 正文仍走 artifact inspect /
+  expand。
 - `isotope-research inspect --root ... --run-id ... --artifact-id ...` 可读取
   单个 `research.*` artifact 内容；非 research artifact 会被拒绝。Supervisor
   侧 `research inspect` 复用同一边界。
