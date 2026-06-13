@@ -6,14 +6,29 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from isotope.agents.loop.context import (
+    build_agent_loop_default_context,
+    merge_agent_loop_default_context,
+)
+from isotope.agents.loop.provider_planner import (
+    build_agent_loop_provider_planner_result,
+)
 from isotope.platform.ids import new_id, reserve_ids
 from isotope.runtime.in_process import InProcessServer
 
-from .contracts import LongTaskRecord
+from .contracts import LongTaskRecord, reject_raw_long_task_payload
 from .store import LongTaskStore, append_long_task_control
 
 
 TERMINAL_RUN_STATUSES = {"completed", "failed", "denied"}
+TERMINAL_TASK_STATUSES = {"completed", "failed", "stopped"}
+LONG_TASK_COMPLETION_STEP = "complete_long_task"
+LONG_TASK_ALLOWED_STEPS = [
+    "record_turn_memory",
+    "query_memory",
+    "promote_run_memory",
+    LONG_TASK_COMPLETION_STEP,
+]
 
 
 def create_long_task(root: Path | str, *, goal: str) -> dict[str, Any]:
@@ -77,7 +92,10 @@ def pause_long_task(root: Path | str, task_id: str, *, reason: str) -> dict[str,
 def resume_long_task(root: Path | str, task_id: str, *, reason: str) -> dict[str, Any]:
     root_path = Path(root).expanduser()
     projection = _attach_run_status(root_path, LongTaskStore(root_path).projection(task_id))
-    if projection.get("run_status") in TERMINAL_RUN_STATUSES:
+    if (
+        projection.get("status") in TERMINAL_TASK_STATUSES
+        or projection.get("run_status") in TERMINAL_RUN_STATUSES
+    ):
         raise ValueError("terminal long task cannot be resumed")
     return _control_long_task(root_path, task_id, control="resume", reason=reason)
 
@@ -125,25 +143,20 @@ def run_long_task_ticks(
         if current_task.get("control_state") == "stop":
             stop_reason = "stopped"
             break
-        tick = api.run_agent_loop_provider_planner_tick(
-            str(current_task["run_id"]),
+        tick = _run_long_task_planner_tick(
+            api,
+            current_task,
             provider=provider,
-            agent_id="agent_long_task",
-            tick_id=f"{task_id}_tick_{tick_index + 1}",
-            decision_id=f"{task_id}_decision_{tick_index + 1}",
-            tick_budget={
-                "max_ticks": max_ticks,
-                "ticks_used": tick_index,
-                "budget_basis": f"long_task:{task_id}",
-            },
-            default_context_extra=_long_task_default_context(current_task),
+            task_id=task_id,
+            tick_index=tick_index,
+            max_ticks=max_ticks,
             max_tokens=max_tokens,
         )
         public_tick = _public_tick_summary(task_id, tick_index, tick)
         ticks.append(public_tick)
         stop_reason = tick.get("stop_reason")
         api.save_checkpoint_for_run(str(current_task["run_id"]))
-        if tick.get("tick_status") != "executed":
+        if tick.get("tick_status") != "executed" or stop_reason == "completed":
             break
 
     latest_task = store.projection(task_id)
@@ -161,14 +174,7 @@ def run_long_task_ticks(
             last_event_id=updated_state.last_event_id,
             last_checkpoint_event_id=updated_state.last_event_id,
             control_state="run",
-            summary={
-                "phase": "ticked",
-                "tick_count": _existing_tick_count(latest_task) + len(ticks),
-                "last_selected_step": (
-                    ticks[-1]["planner_summary"]["selected_step"] if ticks else None
-                ),
-                "stop_reason": stop_reason,
-            },
+            summary=_summary_after_ticks(latest_task, ticks, stop_reason),
         )
     )
     return {
@@ -211,6 +217,176 @@ def _attach_run_status(root: Path, task: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _run_long_task_planner_tick(
+    api: InProcessServer,
+    current_task: dict[str, Any],
+    *,
+    provider: Any,
+    task_id: str,
+    tick_index: int,
+    max_ticks: int,
+    max_tokens: int,
+) -> dict[str, Any]:
+    run_id = str(current_task["run_id"])
+    tick_budget = _tick_budget(task_id, tick_index=tick_index, max_ticks=max_ticks)
+    before_policy = api.get_agent_loop_tick_policy(run_id, tick_budget=tick_budget)
+    if before_policy["should_continue"] is not True:
+        return {
+            "kind": "long_task_planner_tick",
+            "tick_status": "stopped",
+            "stop_reason": before_policy["must_stop_reason"],
+            "before_policy": before_policy,
+            "provider_result": None,
+            "planner_contract_result": None,
+            "after_policy": before_policy,
+        }
+
+    control = _long_task_control(api.get_agent_loop_control(run_id))
+    default_context = merge_agent_loop_default_context(
+        build_agent_loop_default_context(api, run_id, control=control),
+        _long_task_default_context(current_task),
+    )
+    provider_result = build_agent_loop_provider_planner_result(
+        provider,
+        control=control,
+        default_context=default_context,
+        agent_id="agent_long_task",
+        tick_id=f"{task_id}_tick_{tick_index + 1}",
+        decision_id=f"{task_id}_decision_{tick_index + 1}",
+        max_tokens=max_tokens,
+    )
+    selected_step = _selected_step(provider_result)
+    if selected_step == LONG_TASK_COMPLETION_STEP:
+        completion = _completion_from_provider_result(provider_result)
+        after_policy = {
+            **before_policy,
+            "should_continue": False,
+            "must_stop_reason": "completed",
+            "max_next_tick_kind": None,
+        }
+        return {
+            "kind": "long_task_planner_tick",
+            "tick_status": "executed",
+            "stop_reason": "completed",
+            "before_policy": before_policy,
+            "provider_result": provider_result,
+            "planner_contract_result": {
+                "planner_result": {
+                    "planner_run_id": _planner_run_id(provider_result),
+                    "planner_status": "accepted",
+                    "selected_step": LONG_TASK_COMPLETION_STEP,
+                    "step_result": {
+                        "status": "completed",
+                        "completion": completion,
+                    },
+                    "control": control,
+                }
+            },
+            "after_policy": after_policy,
+            "long_task_completion": completion,
+        }
+
+    contract_result = api.run_agent_loop_real_planner_contract_step(
+        run_id,
+        provider_result,
+    )
+    after_policy = api.get_agent_loop_tick_policy(
+        run_id,
+        tick_budget=_tick_budget(task_id, tick_index=tick_index + 1, max_ticks=max_ticks),
+    )
+    return {
+        "kind": "long_task_planner_tick",
+        "tick_status": "executed",
+        "stop_reason": after_policy["must_stop_reason"],
+        "before_policy": before_policy,
+        "provider_result": provider_result,
+        "planner_contract_result": contract_result,
+        "after_policy": after_policy,
+    }
+
+
+def _tick_budget(task_id: str, *, tick_index: int, max_ticks: int) -> dict[str, Any]:
+    return {
+        "max_ticks": max_ticks,
+        "ticks_used": tick_index,
+        "budget_basis": f"long_task:{task_id}",
+    }
+
+
+def _long_task_control(control: dict[str, Any]) -> dict[str, Any]:
+    result = dict(control)
+    next_actions = list(control.get("next_actions", []))
+    if control.get("phase") == "ready" and LONG_TASK_COMPLETION_STEP not in next_actions:
+        next_actions.append(LONG_TASK_COMPLETION_STEP)
+    result["next_actions"] = next_actions
+    return result
+
+
+def _selected_step(provider_result: dict[str, Any]) -> str:
+    parsed = provider_result.get("parsed_planner_output")
+    if not isinstance(parsed, dict):
+        return ""
+    decision = parsed.get("decision")
+    if not isinstance(decision, dict):
+        return ""
+    step = decision.get("step")
+    return step if isinstance(step, str) else ""
+
+
+def _planner_run_id(provider_result: dict[str, Any]) -> str:
+    parsed = provider_result.get("parsed_planner_output")
+    if not isinstance(parsed, dict):
+        return ""
+    value = parsed.get("planner_run_id")
+    return value if isinstance(value, str) else ""
+
+
+def _completion_from_provider_result(provider_result: dict[str, Any]) -> dict[str, Any]:
+    parsed = provider_result.get("parsed_planner_output")
+    if not isinstance(parsed, dict):
+        raise ValueError("long-task completion requires parsed planner output")
+    decision = parsed.get("decision")
+    if not isinstance(decision, dict):
+        raise ValueError("long-task completion requires planner decision")
+    request = decision.get("request")
+    if not isinstance(request, dict):
+        raise ValueError("long-task completion request must be a dict")
+    reject_raw_long_task_payload(request)
+    final_summary = _request_text(request, "final_summary")
+    return {
+        "final_summary": final_summary,
+        "evidence": _public_list(request.get("evidence", []), "evidence"),
+        "remaining_risks": _public_list(
+            request.get("remaining_risks", []),
+            "remaining_risks",
+        ),
+    }
+
+
+def _request_text(request: dict[str, Any], field_name: str) -> str:
+    value = request.get(field_name)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"long-task completion {field_name} must be a non-empty string")
+    return value.strip()
+
+
+def _public_list(value: Any, field_name: str) -> list[Any]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ValueError(f"long-task completion {field_name} must be a list")
+    return [_public_payload(item) for item in value]
+
+
+def _public_payload(value: Any) -> Any:
+    reject_raw_long_task_payload(value)
+    if isinstance(value, dict):
+        return {str(key): _public_payload(nested) for key, nested in value.items()}
+    if isinstance(value, list):
+        return [_public_payload(nested) for nested in value]
+    return value
+
+
 def _public_tick_summary(
     task_id: str,
     tick_index: int,
@@ -234,7 +410,7 @@ def _public_tick_summary(
         if isinstance(contract.get("planner_result"), dict)
         else {}
     )
-    return {
+    summary = {
         "task_id": task_id,
         "tick_index": tick_index,
         "tick_status": tick.get("tick_status"),
@@ -252,6 +428,10 @@ def _public_tick_summary(
             "selected_step": planner_result.get("selected_step"),
         },
     }
+    completion = tick.get("long_task_completion")
+    if isinstance(completion, dict):
+        summary["completion"] = _public_payload(completion)
+    return summary
 
 
 def _existing_tick_count(task: dict[str, Any]) -> int:
@@ -269,13 +449,36 @@ def _long_task_default_context(task: dict[str, Any]) -> dict[str, Any]:
         "long_task": {
             "task_id": str(task["task_id"]),
             "goal": str(task["goal"]),
-            "allowed_steps": [
-                "record_turn_memory",
-                "query_memory",
-                "promote_run_memory",
-            ],
+            "allowed_steps": list(LONG_TASK_ALLOWED_STEPS),
         }
     }
+
+
+def _summary_after_ticks(
+    latest_task: dict[str, Any],
+    ticks: list[dict[str, Any]],
+    stop_reason: object,
+) -> dict[str, Any]:
+    summary = {
+        "phase": "completed" if stop_reason == "completed" else "ticked",
+        "tick_count": _existing_tick_count(latest_task) + len(ticks),
+        "last_selected_step": (
+            ticks[-1]["planner_summary"]["selected_step"] if ticks else None
+        ),
+        "stop_reason": stop_reason,
+    }
+    completion = _last_completion(ticks)
+    if completion:
+        summary.update(completion)
+    return summary
+
+
+def _last_completion(ticks: list[dict[str, Any]]) -> dict[str, Any]:
+    for tick in reversed(ticks):
+        completion = tick.get("completion")
+        if isinstance(completion, dict):
+            return _public_payload(completion)
+    return {}
 
 
 def _status_after_ticks(run_status: str, stop_reason: object) -> str:

@@ -22,14 +22,15 @@ _LIVE_ENV = "ISOTOPE_RUN_MIMO_LONG_TASK_LIVE"
 _LOG_DIR_ENV = "ISOTOPE_LONG_TASK_LIVE_LOG_DIR"
 _PROVIDER_ENV = "ISOTOPE_LONG_TASK_LLM_PROVIDER"
 _MARKER = "MIMO_LONG_TASK_SMOKE"
-_REQUIRED_STEP = "record_turn_memory"
+_EVIDENCE_STEP = "record_turn_memory"
+_COMPLETION_STEP = "complete_long_task"
 
 
 @pytest.mark.skipif(
     os.environ.get(_LIVE_ENV) != "1",
     reason="live Mimo long-task smoke is opt-in",
 )
-def test_live_mimo_long_task_runs_two_safe_ticks_and_records_log():
+def test_live_mimo_long_task_records_evidence_then_completes_with_log():
     log_root = _new_log_root()
     state_root = log_root / "state"
     log_path = log_root / "mimo-long-task-live.json"
@@ -54,7 +55,7 @@ def test_live_mimo_long_task_runs_two_safe_ticks_and_records_log():
             state_root,
             task_id,
             provider=provider,
-            max_ticks=2,
+            max_ticks=3,
             max_tokens=2048,
         )
         final_status = status_long_task(state_root, task_id)
@@ -84,26 +85,33 @@ def test_live_mimo_long_task_runs_two_safe_ticks_and_records_log():
         raise
 
     ticks = result["ticks"]
+    selected_steps = [tick["planner_summary"]["selected_step"] for tick in ticks]
     assert result["status"] == "ok"
-    assert len(ticks) == 2
-    assert result["task"]["summary"]["tick_count"] >= 2
-    assert [tick["tick_status"] for tick in ticks] == ["executed", "executed"]
-    assert [tick["planner_summary"]["provider"] for tick in ticks] == ["mimo", "mimo"]
-    assert [tick["planner_summary"]["selected_step"] for tick in ticks] == [
-        _REQUIRED_STEP,
-        _REQUIRED_STEP,
-    ]
+    assert 2 <= len(ticks) <= 3
+    assert result["stop_reason"] == "completed"
+    assert result["task"]["status"] == "completed"
+    assert result["task"]["summary"]["phase"] == "completed"
+    assert result["task"]["summary"]["final_summary"]
+    assert result["task"]["summary"]["tick_count"] == len(ticks)
+    assert [tick["tick_status"] for tick in ticks] == ["executed"] * len(ticks)
+    assert [tick["planner_summary"]["provider"] for tick in ticks] == ["mimo"] * len(ticks)
+    assert selected_steps[0] == _EVIDENCE_STEP
+    assert selected_steps[-1] == _COMPLETION_STEP
+    assert set(selected_steps).issubset({_EVIDENCE_STEP, _COMPLETION_STEP})
     assert log_path.is_file()
     assert "raw_response" not in json.dumps(result, ensure_ascii=False)
 
 
 def _live_goal() -> str:
     return (
-        "Live Mimo long-task smoke. On every planner tick choose "
-        "decision.step=record_turn_memory. Each request.summary must contain "
-        f"{_MARKER}. Each request.content must be a non-empty object with "
-        f"marker={_MARKER}. Do not choose query_memory, call_capability, "
-        "terminal, worker, approval, or artifact steps."
+        "Live Mimo long-task smoke. If default_context.memory has no result "
+        f"whose summary contains {_MARKER}, choose decision.step=record_turn_memory. "
+        f"The record_turn_memory request.summary must contain {_MARKER}; "
+        "request.content must be a non-empty object with "
+        f"marker={_MARKER}. After default_context.memory contains that marker, "
+        "choose decision.step=complete_long_task with a non-empty final_summary, "
+        "evidence list, and remaining_risks list. Do not choose query_memory, "
+        "call_capability, terminal, worker, approval, or artifact steps."
     )
 
 
@@ -130,8 +138,8 @@ def _safe_log_payload(
         "created_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
         "rules": {
             "provider": "mimo",
-            "max_ticks": 2,
-            "required_step": _REQUIRED_STEP,
+            "max_ticks": 3,
+            "required_steps": [_EVIDENCE_STEP, _COMPLETION_STEP],
             "marker": _MARKER,
         },
         "paths": {

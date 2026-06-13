@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import pytest
+
 from isotope.llm.provider import LLMResponse
 from isotope.runtime.in_process import InProcessServer
 
@@ -113,6 +115,49 @@ class DeterministicLongTaskPlanner:
         return json.loads(tasks[-1])["run_id"]
 
 
+class CompletingLongTaskPlanner(DeterministicLongTaskPlanner):
+    provider = "deterministic_long_task_completion"
+    model = "stub-long-task-completion"
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        self.calls.append({"messages": messages, "max_tokens": max_tokens})
+        run_id = self._run_id()
+        control = InProcessServer(self.root).get_agent_loop_control(run_id)
+        payload = {
+            "planner_run_id": f"planner_complete_{len(self.calls)}",
+            "basis": {
+                "run_id": run_id,
+                "last_event_id": control["last_event_id"],
+            },
+            "decision": {
+                "step": "complete_long_task",
+                "request": {
+                    "final_summary": "Long task finished with deterministic evidence.",
+                    "evidence": [
+                        {
+                            "kind": "memory",
+                            "summary": "deterministic completion evidence",
+                        }
+                    ],
+                    "remaining_risks": ["live provider not exercised"],
+                },
+            },
+        }
+        return LLMResponse(
+            provider=self.provider,
+            model=self.model,
+            content=json.dumps(payload),
+            finish_reason="stop",
+            usage={"prompt_tokens": 1, "completion_tokens": 1},
+            raw={"raw_response": "SHOULD_NOT_LEAK"},
+        )
+
+
 def test_run_long_task_ticks_advances_bounded_ticks_without_raw_payload(tmp_path):
     task_id = create_long_task(tmp_path, goal="Run bounded ticks.")["task"]["task_id"]
     provider = DeterministicLongTaskPlanner(tmp_path)
@@ -129,8 +174,59 @@ def test_run_long_task_ticks_advances_bounded_ticks_without_raw_payload(tmp_path
     assert prompt_payload["default_context"]["long_task"] == {
         "task_id": task_id,
         "goal": "Run bounded ticks.",
-        "allowed_steps": ["record_turn_memory", "query_memory", "promote_run_memory"],
+        "allowed_steps": [
+            "record_turn_memory",
+            "query_memory",
+            "promote_run_memory",
+            "complete_long_task",
+        ],
     }
+
+
+def test_run_long_task_ticks_accepts_completion_contract(tmp_path):
+    task_id = create_long_task(tmp_path, goal="Complete me.")["task"]["task_id"]
+    provider = CompletingLongTaskPlanner(tmp_path)
+
+    result = run_long_task_ticks(tmp_path, task_id, provider=provider, max_ticks=3)
+
+    assert result["status"] == "ok"
+    assert result["stop_reason"] == "completed"
+    assert len(result["ticks"]) == 1
+    assert result["ticks"][0]["planner_summary"]["selected_step"] == "complete_long_task"
+    assert result["ticks"][0]["completion"]["final_summary"] == (
+        "Long task finished with deterministic evidence."
+    )
+    assert result["task"]["status"] == "completed"
+    assert result["task"]["requires_human"] is False
+    assert result["task"]["summary"] == {
+        "phase": "completed",
+        "tick_count": 1,
+        "last_selected_step": "complete_long_task",
+        "stop_reason": "completed",
+        "final_summary": "Long task finished with deterministic evidence.",
+        "evidence": [
+            {
+                "kind": "memory",
+                "summary": "deterministic completion evidence",
+            }
+        ],
+        "remaining_risks": ["live provider not exercised"],
+    }
+    assert status_long_task(tmp_path, task_id)["task"]["status"] == "completed"
+    assert "raw_response" not in json.dumps(result)
+
+
+def test_resume_completed_long_task_is_rejected(tmp_path):
+    task_id = create_long_task(tmp_path, goal="Complete then resume.")["task"]["task_id"]
+    run_long_task_ticks(
+        tmp_path,
+        task_id,
+        provider=CompletingLongTaskPlanner(tmp_path),
+        max_ticks=1,
+    )
+
+    with pytest.raises(ValueError, match="terminal long task"):
+        resume_long_task(tmp_path, task_id, reason="Should not resume.")
 
 
 def test_run_long_task_ticks_honors_pause_before_next_tick(tmp_path):
