@@ -26,7 +26,8 @@ describe('AgentGroupWorkspace', () => {
       readSource('AgentGroupWorkspace.svelte'),
       readSource('AgentGroupMemberStrip.svelte'),
       readSource('AgentGroupStream.svelte'),
-      readSource('AgentGroupPrivateChat.svelte')
+      readSource('AgentGroupPrivateChat.svelte'),
+      readSource('CodexTranscriptPanel.svelte')
     ].join('\n');
     const styles = readFileSync(join(process.cwd(), 'src/app.css'), 'utf8');
 
@@ -36,13 +37,17 @@ describe('AgentGroupWorkspace', () => {
       'iso-agent-stream',
       'iso-agent-message',
       'iso-agent-composer',
-      'iso-agent-input'
+      'iso-agent-input',
+      'iso-agent-transcript-panel',
+      'iso-agent-transcript-body',
+      'iso-agent-button-secondary'
     ]) {
       expect(source).toContain(className);
       expect(styles).toContain(`.${className}`);
     }
 
     expect(source).not.toContain('bg-white text-isotope-text');
+    expect(readSource('CodexTranscriptPanel.svelte')).not.toContain('border-t border-isotope-line bg-white');
   });
 });
 

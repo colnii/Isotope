@@ -15,7 +15,7 @@
   const readableEvents = $derived(readableTranscriptEvents(transcript));
 </script>
 
-<section class="border-t border-isotope-line bg-white px-4 py-3" aria-label="Codex 会话记录">
+<section class="iso-agent-transcript-panel" aria-label="Codex 会话记录">
   <div class="flex items-center justify-between gap-3">
     <div>
       <div class="text-xs font-semibold text-isotope-muted">
@@ -31,14 +31,14 @@
       {/if}
     </div>
     <button
-      class="border border-isotope-line bg-isotope-panel px-3 py-1.5 text-xs font-semibold text-isotope-muted"
+      class="iso-agent-button-secondary"
       type="button"
       onclick={() => onToggleRaw?.()}
     >
       {showRaw ? '可读视图' : '原始数据'}
     </button>
   </div>
-  <div class="mt-3 max-h-96 overflow-auto border border-isotope-line bg-isotope-panel">
+  <div class="iso-agent-transcript-body">
     {#if !transcript}
       <p class="px-3 py-2 text-sm text-isotope-muted">选择一个 Codex 成员查看会话记录。</p>
     {:else if showRaw}
