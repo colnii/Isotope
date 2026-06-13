@@ -152,9 +152,11 @@ def _dense_retrieval_input_contract() -> dict[str, Any]:
     return {
         "type": "object",
         "description": (
-            "Optional dense retrieval config. Use backend=local for deterministic "
-            "in-memory smoke, or backend=lancedb with path/table_name for an "
-            "optional LanceDB vector-store index. Default is BM25-only."
+            "Optional dense retrieval config. Use backend=local for an in-memory "
+            "vector store, or backend=lancedb with path/table_name for an "
+            "optional LanceDB vector-store index. Use embedding_provider=fastembed "
+            "for a local real embedding model; default is deterministic smoke "
+            "embeddings. Default retrieval is BM25-only."
         ),
         "properties": {
             "backend": {
@@ -165,6 +167,17 @@ def _dense_retrieval_input_contract() -> dict[str, Any]:
                 "type": "integer",
                 "minimum": 1,
                 "default": 16,
+            },
+            "embedding_provider": {
+                "type": "string",
+                "enum": ["deterministic", "fastembed"],
+                "default": "deterministic",
+            },
+            "embedding_model": {
+                "type": "string",
+                "description": (
+                    "FastEmbed model name when embedding_provider is fastembed."
+                ),
             },
             "path": {
                 "type": "string",

@@ -54,6 +54,11 @@ def test_runner_discovers_research_recall_from_default_catalog():
     assert properties["root"]["x-system-input"] is True
     dense_properties = properties["dense_retrieval"]["properties"]
     assert dense_properties["backend"]["enum"] == ["local", "lancedb"]
+    assert dense_properties["embedding_provider"]["enum"] == [
+        "deterministic",
+        "fastembed",
+    ]
+    assert "embedding_model" in dense_properties
     assert "path" in dense_properties
     assert "table_name" in dense_properties
     assert "research_report_artifact_preview_only" in description["safety_boundaries"]

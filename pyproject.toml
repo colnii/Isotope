@@ -27,8 +27,8 @@ isotope-screen = "isotope.features.screen.runner:main"
 isotope-social = "isotope.features.social.runner:main"
 
 [project.optional-dependencies]
-rag = ["lancedb>=0.33,<0.34"]
-test = ["lancedb>=0.33,<0.34", "pytest>=8.0"]
+rag = ["fastembed>=0.8,<0.9", "lancedb>=0.33,<0.34"]
+test = ["fastembed>=0.8,<0.9", "lancedb>=0.33,<0.34", "pytest>=8.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

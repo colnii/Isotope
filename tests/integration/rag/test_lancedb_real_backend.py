@@ -40,6 +40,48 @@ def test_lancedb_rag_index_round_trips_with_installed_package(tmp_path):
     assert (tmp_path / "vectors").exists()
 
 
+def test_fastembed_lancedb_rag_index_round_trips_with_installed_packages(tmp_path):
+    import fastembed  # noqa: F401
+    import lancedb  # noqa: F401
+
+    index = build_rag_index(
+        [
+            RetrievalDocument(
+                document_id="doc_rag",
+                title="retrieval augmented generation context search",
+                summary="Find relevant project context before answering.",
+            ),
+            RetrievalDocument(
+                document_id="doc_cooking",
+                title="sourdough fermentation schedule",
+                summary="Feed starter and control room temperature.",
+            ),
+        ],
+        {
+            "backend": "lancedb",
+            "path": str(tmp_path / "fastembed_vectors"),
+            "table_name": "fastembed_rag",
+            "embedding_provider": "fastembed",
+            "embedding_model": "BAAI/bge-small-en-v1.5",
+        },
+    )
+
+    assert index is not None
+    components = index.components()
+    result = components.vector_store.search(
+        query_vector=components.embedding_provider.embed(
+            "semantic search for useful context"
+        ),
+        limit=2,
+    )
+
+    assert result.status == "ok"
+    assert result.reason_code is None
+    assert result.hits
+    assert result.hits[0].document_id == "doc_rag"
+    assert (tmp_path / "fastembed_vectors").exists()
+
+
 def test_research_recall_uses_real_lancedb_backend(tmp_path):
     import lancedb  # noqa: F401
 
