@@ -47,7 +47,12 @@ from .reply_provider import (
     SocialReplyDraft,
     SocialReplyProvider,
 )
-from .runtime import SocialRuntime, SocialRuntimeConfig, SocialRuntimeTurn
+from .runtime import (
+    SocialCapabilityRuntimeConfig,
+    SocialRuntime,
+    SocialRuntimeConfig,
+    SocialRuntimeTurn,
+)
 from .operations import SocialOperationsController, SocialPolicyDecision
 from .send_feedback import (
     SUPPORTED_SEND_STATUSES,
@@ -75,6 +80,7 @@ __all__ = [
     "SocialArbiterResult",
     "SocialCapabilityBridge",
     "SocialCapabilityPolicy",
+    "SocialCapabilityRuntimeConfig",
     "CharacterCard",
     "CharacterIdentity",
     "CharacterVoice",

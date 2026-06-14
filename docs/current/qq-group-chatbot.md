@@ -41,7 +41,10 @@ Keep the runtime config equivalent to this shape:
     "default_dry_run": true
   },
   "runtime": {
-    "reply_provider": "deterministic"
+    "reply_provider": "deterministic",
+    "capability": {
+      "enabled": false
+    }
   },
   "role_card_path": "tests/fixtures/social/character_cards/qq_helper.json",
   "sticker_library_path": "tests/fixtures/social/stickers/engineering.json"
@@ -50,6 +53,42 @@ Keep the runtime config equivalent to this shape:
 
 Start beta in dry-run, inspect decisions, then enable sends only for the
 controlled group.
+
+Enable social capability calls only for a controlled operator test. Capability
+use has two gates: the role card must allow the capability in
+`tools.allowed_capabilities`, and `runtime.capability` must explicitly map
+group text to one capability. Keep `approval_required` enabled unless the
+capability is safe to run from ordinary group messages:
+
+```json
+{
+  "runtime": {
+    "capability": {
+      "enabled": true,
+      "capability_id": "supervisor.request_context",
+      "trigger_keywords": ["capacity"],
+      "input_defaults": {
+        "cwd": "/path/to/isotope",
+        "state_root": ".isotope/qq-capacity"
+      },
+      "query_input_key": "query",
+      "approval_keywords": ["批准"],
+      "approval_required": true
+    }
+  },
+  "role_card": {
+    "tools": {
+      "allowed_capabilities": ["supervisor.request_context"]
+    }
+  }
+}
+```
+
+When a matching group message arrives, QQ social proposes a
+`call_capability` action. Without an operator approval keyword from a configured
+operator, the bot replies with an approval prompt instead of running the
+capability. With approval, `SocialCapabilityBridge` calls the configured
+capability and sends a low-sensitive result summary back to the group.
 
 You can generate a self-contained beta directory instead of hand-writing the
 config and commands:
@@ -216,8 +255,11 @@ NapCat must expose a OneBot 11 WebSocket endpoint. The live path is:
 3. `SocialContextBuilder` combines role card, lorebook, recent messages, and
    memory previews.
 4. `SocialDecisionLoop` proposes and selects an action.
-5. `OneBotAdapter.send_action(...)` sends the selected `SocialReplyAction`.
-6. `SocialOperationsController` records decision, send, and capability reports.
+5. If `runtime.capability` matches the message, `SocialCapabilityBridge` can
+   execute the selected `call_capability` action after approval.
+6. `OneBotAdapter.send_action(...)` sends the selected reply or capability
+   report.
+7. `SocialOperationsController` records decision, send, and capability reports.
 
 Each dry-run, replay, and live-run turn includes inspectable context. Check
 `turn.context.persona_instructions` to confirm the active role card identity,

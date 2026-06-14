@@ -70,6 +70,9 @@ class SocialOperationsController:
         self._paused_groups.discard(clean_group_id)
         return {"ok": True, "reason": f"group_resumed:{clean_group_id}"}
 
+    def is_operator(self, user_id: str) -> bool:
+        return self._is_operator(_required_string_value(user_id, "operator_user_id"))
+
     def record_decision(
         self,
         group_id: str,

@@ -9,6 +9,7 @@ from typing import Any
 
 from ...integrations.qq import FakeOneBotClient, OneBotAdapter, OneBotWebSocketClient
 from ...llm.provider import resolve_llm_chat_provider
+from .capability_bridge import SocialCapabilityBridge, SocialCapabilityPolicy
 from .operations import SocialOperationsController
 from .qq_state_config import (
     bool_value,
@@ -33,7 +34,7 @@ from .replay import (
     runtime_overrides,
     write_replay_report,
 )
-from .runtime import SocialRuntime, SocialRuntimeConfig
+from .runtime import SocialCapabilityRuntimeConfig, SocialRuntime, SocialRuntimeConfig
 from .loop import SocialDecisionLoop
 from .participation_provider import (
     LLMParticipationDecision,
@@ -267,6 +268,7 @@ def runtime_from_adapter(
         lorebook=optional_lorebook_from_config(config),
         sticker_library=optional_stickers_from_config(config),
         decision_loop=decision_loop_from_config(config),
+        capability_bridge=capability_bridge_from_config(config),
     )
 
 
@@ -286,6 +288,50 @@ def runtime_config_from_config(config: dict[str, Any]) -> SocialRuntimeConfig:
             runtime.get("allow_sticker_only", False),
             "runtime.allow_sticker_only",
         ),
+        capability=capability_runtime_config_from_config(config),
+    )
+
+
+def capability_runtime_config_from_config(config: dict[str, Any]) -> SocialCapabilityRuntimeConfig:
+    runtime = dict_field(config, "runtime", default={})
+    capability = dict_field(runtime, "capability", default={})
+    enabled = bool_value(capability.get("enabled", False), "runtime.capability.enabled")
+    if not enabled:
+        return SocialCapabilityRuntimeConfig()
+    input_defaults = dict_field(capability, "input_defaults", default={})
+    return SocialCapabilityRuntimeConfig(
+        enabled=True,
+        capability_id=string_value(
+            capability.get("capability_id"),
+            "runtime.capability.capability_id",
+        ),
+        trigger_keywords=string_tuple_from_list(capability.get("trigger_keywords", [])),
+        input_defaults=dict(input_defaults),
+        query_input_key=string_value(
+            capability.get("query_input_key", "query"),
+            "runtime.capability.query_input_key",
+        ),
+        approval_keywords=string_tuple_from_list(capability.get("approval_keywords", [])),
+    )
+
+
+def capability_bridge_from_config(config: dict[str, Any]) -> SocialCapabilityBridge | None:
+    runtime = dict_field(config, "runtime", default={})
+    capability = dict_field(runtime, "capability", default={})
+    capability_config = capability_runtime_config_from_config(config)
+    if not capability_config.enabled:
+        return None
+    approval_required = bool_value(
+        capability.get("approval_required", True),
+        "runtime.capability.approval_required",
+    )
+    approval_required_capabilities = (
+        (capability_config.capability_id,) if approval_required else ()
+    )
+    return SocialCapabilityBridge(
+        policy=SocialCapabilityPolicy(
+            approval_required_capabilities=approval_required_capabilities,
+        )
     )
 
 

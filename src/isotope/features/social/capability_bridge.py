@@ -156,5 +156,34 @@ def _content_from_result(capability_id: str, result: Mapping[str, Any]) -> str:
         value = result.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
+    context_result = result.get("context_result")
+    if isinstance(context_result, Mapping):
+        return _content_from_context_result(context_result)
     status = result.get("status", "completed")
     return f"{capability_id} returned status: {status}"
+
+
+def _content_from_context_result(context_result: Mapping[str, Any]) -> str:
+    item_count = context_result.get("item_count")
+    if isinstance(item_count, bool) or not isinstance(item_count, int):
+        items = context_result.get("items", [])
+        item_count = len(items) if isinstance(items, list) else 0
+    first = _first_context_item_ref(context_result)
+    suffix = f"，最相关：{first}" if first else ""
+    return f"找到 {item_count} 条相关上下文{suffix}。"
+
+
+def _first_context_item_ref(context_result: Mapping[str, Any]) -> str:
+    items = context_result.get("items", [])
+    if not isinstance(items, list) or not items:
+        return ""
+    first = items[0]
+    if not isinstance(first, Mapping):
+        return ""
+    path = first.get("path")
+    line = first.get("line")
+    if not isinstance(path, str) or not path.strip():
+        return ""
+    if isinstance(line, int) and not isinstance(line, bool):
+        return f"{path}:{line}"
+    return path.strip()

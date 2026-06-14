@@ -164,6 +164,22 @@ connecting to OneBot.
 Generated `dry-run.sh` and `send-run.sh` run `startup-check.sh` before the live
 command.
 
+### Capability Calls
+
+QQ social capability calls are opt-in. Do not enable them for an uncontrolled
+group. A capability-capable config needs both:
+
+- the role card allowlist, for example
+  `role_card.tools.allowed_capabilities = ["supervisor.request_context"]`;
+- `runtime.capability`, with `enabled`, `capability_id`, `trigger_keywords`,
+  `input_defaults`, `approval_keywords`, and `approval_required`.
+
+Keep `approval_required: true` for Supervisor or workspace capabilities. When a
+non-operator triggers the keyword, the bot should send an approval prompt and
+must not call the capability. When a configured operator sends an approval
+keyword such as `批准`, `SocialCapabilityBridge` runs the capability and the bot
+sends the low-sensitive result summary back to the group.
+
 ## Inspect
 
 Inspect before enabling real sends:
