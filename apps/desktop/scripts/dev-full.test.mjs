@@ -1,8 +1,8 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { ensureDesktopEnvFile, resolveDesktopApiBaseUrl } from './dev-full.mjs';
+import { ensureDesktopEnvFile, resolveDesktopApiBaseUrl, withRepoSourcePath } from './dev-full.mjs';
 
 describe('desktop full dev launcher env setup', () => {
   test('writes the default desktop API base URL when .env.local is missing', async () => {
@@ -64,5 +64,11 @@ describe('desktop full dev launcher env setup', () => {
 
   test('normalizes empty shell API base URL to the default', () => {
     expect(resolveDesktopApiBaseUrl({ VITE_ISOTOPE_DESKTOP_API_BASE: '  ' })).toBe('http://127.0.0.1:8765');
+  });
+
+  test('puts the current repository src path first for backend Python imports', () => {
+    const result = withRepoSourcePath({ PYTHONPATH: '/stale/editable/src' }, '/repo/src');
+
+    expect(result.PYTHONPATH.split(delimiter)).toEqual(['/repo/src', '/stale/editable/src']);
   });
 });

@@ -2,7 +2,7 @@
 
 import { access, appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 
@@ -42,6 +42,14 @@ export async function ensureDesktopEnvFile(envPath, env = process.env) {
   return {
     apiBaseUrl: fallbackApiBaseUrl,
     changed: true
+  };
+}
+
+export function withRepoSourcePath(env = process.env, sourcePath = join(repoRoot, 'src')) {
+  const currentPythonPath = env.PYTHONPATH?.trim();
+  return {
+    ...env,
+    PYTHONPATH: currentPythonPath ? `${sourcePath}${delimiter}${currentPythonPath}` : sourcePath
   };
 }
 
@@ -86,9 +94,10 @@ async function main() {
 async function spawnBackend({ host, port, env }) {
   const command = env.ISOTOPE_SUPERVISOR_BIN?.trim() || supervisorCommand();
   await assertExecutable(command, 'Isotope supervisor');
+  const backendEnv = withRepoSourcePath(env);
   return spawnChild(command, ['web', '--host', host, '--port', String(port)], {
     cwd: repoRoot,
-    env,
+    env: backendEnv,
     name: 'Isotope backend'
   });
 }
