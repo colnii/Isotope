@@ -1,14 +1,17 @@
 <script lang="ts">
   import type { ApprovalSummary, ActivityNode, IsotopeSnapshot } from '../../contracts/isotope';
   import type { AgentClient, ApprovalResolution } from '../../client/agentClient';
-  import type { DesktopChatMessage } from '../../stores/appState';
+  import type { DesktopChatMessage, DesktopChatSessionSummary } from '../../stores/appState';
   import { buildMainWindowProductView } from '../../view/mainWindowProductView';
   import ConversationWorkspace from './ConversationWorkspace.svelte';
+  import SessionHistorySidebar from './sessionHistory/SessionHistorySidebar.svelte';
 
   let {
     snapshot,
     selectedActivity,
     chatMessages = [],
+    chatSessionSummaries = [],
+    activeChatSessionId = '',
     chatError = null,
     isAskingDesktop = false,
     resolvingApprovalId = null,
@@ -16,6 +19,8 @@
     terminalYoloEnabled = false,
     agentClient,
     onAskDesktop,
+    onSelectChatSession = () => undefined,
+    onNewChatSession = () => undefined,
     onResolveApproval,
     onToggleTerminalYolo,
     onAllowlistTerminalApproval
@@ -23,6 +28,8 @@
     snapshot: IsotopeSnapshot;
     selectedActivity: ActivityNode | null;
     chatMessages?: DesktopChatMessage[];
+    chatSessionSummaries?: DesktopChatSessionSummary[];
+    activeChatSessionId?: string;
     chatError?: string | null;
     isAskingDesktop?: boolean;
     resolvingApprovalId?: string | null;
@@ -30,6 +37,8 @@
     terminalYoloEnabled?: boolean;
     agentClient: AgentClient;
     onAskDesktop: (question: string) => void;
+    onSelectChatSession?: (sessionId: string) => void;
+    onNewChatSession?: () => void;
     onResolveApproval: (approvalId: string, resolution: ApprovalResolution) => void;
     onToggleTerminalYolo: () => void;
     onAllowlistTerminalApproval: (approvalId: string, command: string) => void;
@@ -41,10 +50,14 @@
   );
 </script>
 
-<section
-  class="min-h-screen bg-white text-isotope-text"
-  aria-label="Isotope AI 对话"
->
+<section class="iso-main-window-shell" aria-label="Isotope AI 对话">
+  <SessionHistorySidebar
+    sessions={chatSessionSummaries}
+    activeSessionId={activeChatSessionId}
+    onSelectSession={onSelectChatSession}
+    onNewSession={onNewChatSession}
+  />
+  <div class="iso-main-conversation-pane">
   <ConversationWorkspace
     eyebrow={view.chatEyebrow}
     title={view.workspaceTitle}
@@ -66,4 +79,5 @@
     onToggleTerminalYolo={onToggleTerminalYolo}
     onAllowlistTerminalApproval={onAllowlistTerminalApproval}
   />
+  </div>
 </section>

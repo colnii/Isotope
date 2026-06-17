@@ -21,6 +21,8 @@
     snapshot,
     selectedActivity,
     chatMessages,
+    chatSessionSummaries,
+    activeChatSessionId,
     isAskingDesktop,
     chatError,
     isResolvingApproval,
@@ -83,6 +85,8 @@
             snapshot={$snapshot}
             selectedActivity={$selectedActivity}
             chatMessages={$chatMessages}
+            chatSessionSummaries={$chatSessionSummaries}
+            activeChatSessionId={$activeChatSessionId}
             chatError={$chatError}
             isAskingDesktop={$isAskingDesktop}
             resolvingApprovalId={$isResolvingApproval}
@@ -90,6 +94,8 @@
             terminalYoloEnabled={$terminalYoloEnabled}
             agentClient={isotopeClient.agentClient}
             onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
+            onSelectChatSession={(sessionId) => appState.selectChatSession(sessionId)}
+            onNewChatSession={() => appState.startNewChatSession()}
             onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
             onToggleTerminalYolo={() => appState.toggleTerminalYolo()}
             onAllowlistTerminalApproval={(approvalId, command) =>
@@ -113,6 +119,8 @@
             snapshot={$snapshot}
             selectedActivity={$selectedActivity}
             chatMessages={$chatMessages}
+            chatSessionSummaries={$chatSessionSummaries}
+            activeChatSessionId={$activeChatSessionId}
             chatError={$chatError}
             isAskingDesktop={$isAskingDesktop}
             resolvingApprovalId={$isResolvingApproval}
@@ -120,6 +128,8 @@
             terminalYoloEnabled={$terminalYoloEnabled}
             agentClient={isotopeClient.agentClient}
             onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
+            onSelectChatSession={(sessionId) => appState.selectChatSession(sessionId)}
+            onNewChatSession={() => appState.startNewChatSession()}
             onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
             onToggleTerminalYolo={() => appState.toggleTerminalYolo()}
             onAllowlistTerminalApproval={(approvalId, command) =>

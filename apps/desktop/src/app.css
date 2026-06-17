@@ -24,6 +24,58 @@ textarea {
     @apply relative flex min-h-screen min-w-0 flex-col overflow-hidden bg-isotope-canvas text-isotope-text;
   }
 
+  .iso-main-window-shell {
+    @apply flex min-h-screen min-w-0 bg-isotope-canvas text-isotope-text;
+  }
+
+  .iso-main-conversation-pane {
+    @apply min-w-0 flex-1;
+  }
+
+  .iso-session-sidebar {
+    @apply flex w-72 shrink-0 flex-col border-r border-isotope-line bg-isotope-rail text-isotope-text;
+  }
+
+  .iso-session-sidebar-header {
+    @apply flex items-center justify-between gap-3 border-b border-isotope-line bg-isotope-rail px-4 py-4;
+  }
+
+  .iso-session-sidebar-kicker {
+    @apply text-[11px] font-bold uppercase text-isotope-red;
+  }
+
+  .iso-session-sidebar-title {
+    @apply mt-1 text-sm font-semibold text-isotope-text;
+  }
+
+  .iso-session-new-button {
+    @apply grid h-8 w-8 shrink-0 place-items-center rounded-panel border border-isotope-line bg-isotope-panel text-lg font-semibold leading-none text-isotope-red shadow-sm transition-colors hover:border-isotope-red hover:bg-isotope-panel-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-isotope-red focus-visible:ring-offset-2 focus-visible:ring-offset-isotope-rail;
+  }
+
+  .iso-session-list {
+    @apply min-h-0 flex-1 space-y-2 overflow-y-auto p-3;
+  }
+
+  .iso-session-item {
+    @apply flex w-full flex-col items-start rounded-panel border border-transparent px-3 py-3 text-left transition-colors hover:border-isotope-line hover:bg-isotope-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-isotope-red focus-visible:ring-offset-2 focus-visible:ring-offset-isotope-rail;
+  }
+
+  .iso-session-item-active {
+    @apply border-isotope-line bg-isotope-panel shadow-sm;
+  }
+
+  .iso-session-item-title {
+    @apply w-full truncate text-sm font-semibold text-isotope-text;
+  }
+
+  .iso-session-item-meta {
+    @apply mt-1 text-xs text-isotope-muted;
+  }
+
+  .iso-session-empty {
+    @apply rounded-panel border border-dashed border-isotope-line px-3 py-4 text-sm text-isotope-muted;
+  }
+
   .iso-chat-header {
     @apply relative border-b border-isotope-line bg-isotope-panel px-7 py-5;
   }
@@ -214,6 +266,17 @@ textarea {
   .iso-theme-dark .iso-desktop-mode-button-active,
   [data-theme='dark'] .iso-desktop-mode-button-active {
     @apply border-isotope-panel bg-isotope-panel text-isotope-red;
+  }
+
+  @media (max-width: 760px) {
+    .iso-main-window-shell {
+      @apply flex-col;
+    }
+
+    .iso-session-sidebar {
+      @apply w-full border-b border-r-0;
+      max-height: 16rem;
+    }
   }
 
   .iso-agent-workspace-shell {
