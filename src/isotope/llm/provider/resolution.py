@@ -79,11 +79,19 @@ def resolve_llm_tool_call_provider(
             transport=transport,
         )
 
-    if provider_name != "deepseek":
+    if provider_name == "codex-api":
         return LLMProviderResolution(
             status="missing_configuration",
             reason_code="llm_provider_unsupported",
             provider_name=provider_name,
+        )
+
+    if provider_name != "deepseek":
+        return _resolve_pool_tool_call_provider(
+            env,
+            provider_name=provider_name,
+            timeout=timeout,
+            transport=transport,
         )
 
     api_key = _env_string(env, "ISOTOPE_LLM_API_KEY") or _env_string(env, "DEEPSEEK_API_KEY")
@@ -150,6 +158,61 @@ def _resolve_mimo_tool_call_provider(
         reason_code="llm_provider_configured",
         provider_name=provider.provider,
         provider=provider,
+    )
+
+
+def _resolve_pool_tool_call_provider(
+    env: Mapping[str, str],
+    *,
+    provider_name: str,
+    timeout: int,
+    transport: Transport | None,
+) -> LLMProviderResolution:
+    pool_env = dict(env)
+    if "ISOTOPE_LLM_POOL_TOML_FILES" not in pool_env:
+        supervisor_pool_files = _env_string(pool_env, "SUPERVISOR_LLM_POOL_TOML_FILES")
+        if supervisor_pool_files:
+            pool_env["ISOTOPE_LLM_POOL_TOML_FILES"] = supervisor_pool_files
+    try:
+        entries = resolve_pool_entries_from_env(
+            pool_env,
+            env_var="ISOTOPE_LLM_POOL_TOML_FILES",
+            default_paths=(DEFAULT_CHAT_POOL_PATH,),
+        )
+    except ValueError:
+        return LLMProviderResolution(
+            status="missing_configuration",
+            reason_code="llm_provider_invalid_configuration",
+            provider_name=provider_name,
+        )
+    for entry in entries:
+        if _normalized_provider_name(entry.provider) != provider_name:
+            continue
+        try:
+            provider = OpenAICompatibleToolCallProvider(
+                provider=entry.provider,
+                api_key=entry.api_key,
+                base_url=entry.base_url,
+                model=entry.model,
+                timeout=timeout,
+                transport=transport,
+            )
+        except ValueError:
+            return LLMProviderResolution(
+                status="missing_configuration",
+                reason_code="llm_provider_invalid_configuration",
+                provider_name=provider_name,
+            )
+        return LLMProviderResolution(
+            status="configured",
+            reason_code="llm_provider_configured",
+            provider_name=provider.provider,
+            provider=provider,
+        )
+    return LLMProviderResolution(
+        status="missing_configuration",
+        reason_code="llm_provider_unsupported",
+        provider_name=provider_name,
     )
 
 

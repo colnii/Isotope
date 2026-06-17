@@ -12,6 +12,7 @@ from typing import Any
 
 from .parsing import (
     _is_length_limited_reasoning_only_response,
+    _normalized_provider_name,
     _parse_chat_completion,
     _parse_chat_turn_completion,
     _parse_tool_call_completion,
@@ -176,6 +177,8 @@ class OpenAICompatibleChatProvider:
             "max_tokens": max_tokens,
             "stream": False,
         }
+        if _uses_minimax_defaults(self.provider, self.base_url, self.model):
+            payload["thinking"] = {"type": "disabled"}
         raw = self._transport(
             f"{self.base_url}/chat/completions",
             payload,
@@ -216,6 +219,8 @@ class OpenAICompatibleChatProvider:
             "max_tokens": max_tokens,
             "stream": True,
         }
+        if _uses_minimax_defaults(self.provider, self.base_url, self.model):
+            payload["thinking"] = {"type": "disabled"}
         return _stream_chat_completion_chunks(
             self._stream_transport(
                 f"{self.base_url}/chat/completions",
@@ -318,6 +323,8 @@ class OpenAICompatibleToolCallProvider:
             "max_tokens": max_tokens,
             "stream": False,
         }
+        if _uses_minimax_defaults(self.provider, self.base_url, self.model):
+            payload["thinking"] = {"type": "disabled"}
         headers = self._headers()
         return self._transport(
             f"{self.base_url}/chat/completions",
@@ -433,6 +440,11 @@ class DeepSeekToolCallProvider:
             headers,
             self.timeout,
         )
+
+
+def _uses_minimax_defaults(provider: str, base_url: str, model: str) -> bool:
+    provider_name = _normalized_provider_name(provider)
+    return provider_name.startswith("minimax") or model.lower().startswith("minimax-")
 
 
 def _urllib_transport(

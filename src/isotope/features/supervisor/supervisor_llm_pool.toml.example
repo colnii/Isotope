@@ -51,6 +51,15 @@ api_keys = [
 #   "tp-your-plaintext-key",
 # ]
 
+# [[agents.providers]]
+# provider = "minimax"
+# base_url = "https://api.minimaxi.com/v1"  # China endpoint
+# model = "MiniMax-M3"
+# max_tokens = 2048
+# api_keys = [
+#   "env:YIFU_MINIMAX_CODER_API_KEY",
+# ]
+
 # [[agents]]
 # name = "workbench_ask"
 #
