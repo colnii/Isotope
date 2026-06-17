@@ -867,6 +867,16 @@ def _capacity_display_inputs(capacity_id: str, inputs: dict[str, Any]) -> dict[s
         display.pop("cwd", None)
         display.pop("allowed_commands", None)
         return display
+    if capacity_id == "code.ast_edit":
+        display.pop("root", None)
+        display.pop("cwd", None)
+        replacement = display.get("replacement")
+        if isinstance(replacement, str):
+            display["replacement"] = {
+                "line_count": len(replacement.splitlines()),
+                "character_count": len(replacement),
+            }
+        return display
     if capacity_id in {"supervisor.project_status", "isotope.self_repair"}:
         display.pop("state_root", None)
         display.pop("cwd", None)

@@ -53,6 +53,53 @@ def test_harness_runs_code_search_case_through_conversation_loop(tmp_path):
     assert "raw_response" not in json.dumps(report)
 
 
+def test_harness_runs_ast_edit_case_through_conversation_loop(tmp_path):
+    scenario = next(
+        item for item in scenario_catalog() if item.case_id == "code_ast_edit_fixture"
+    )
+    provider = DeterministicScenarioProvider(
+        [
+            {
+                "kind": "call_capability",
+                "capacity_id": "code.ast_edit",
+                "arguments": {
+                    "path": "src/app.py",
+                    "selector": {
+                        "node_type": "function_definition",
+                        "text_contains": "def answer",
+                    },
+                    "replacement": "def answer():\n    return 'AST_EDITED'\n",
+                },
+                "rationale": "Need AST node edit.",
+            },
+            {
+                "kind": "direct_answer",
+                "answer": "Edited the selected function node.",
+                "answer_basis": {
+                    "kind": "observation",
+                    "capacity_ids": ["code.ast_edit"],
+                    "reason": "AST edit observation returned syntax_check passed.",
+                },
+                "rationale": "Observation is enough.",
+            },
+        ]
+    )
+
+    report = run_scenarios([scenario], root=tmp_path, provider=provider, live=False)
+
+    assert report["status"] == "passed"
+    case = report["cases"][0]
+    step = case["steps"][0]
+    assert step["capacity_id"] == "code.ast_edit"
+    assert step["result_summary"]["agent_loop_ast_edit_status"] == "applied"
+    assert step["result_summary"]["agent_loop_ast_edit_selected_node_type"] == (
+        "function_definition"
+    )
+    rendered = json.dumps(report)
+    assert "AST_EDITED" not in rendered
+    assert "raw_response" not in rendered
+
+
 def test_harness_runs_research_recall_case_against_seeded_report(tmp_path):
     scenario = next(
         item for item in scenario_catalog() if item.case_id == "research_recall_fixture"

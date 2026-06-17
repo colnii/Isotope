@@ -258,6 +258,11 @@
   `root` default，但 `run_id/artifact_id/agent_id/thread_id` 仍必须来自目标或
   模型参数。metadata 齐备时生成 `write_memory` proposal，memory 写入交给
   approval / action 路径。
+- `code.ast_edit` 已接入同一 capability runner 和 native coding agent-loop
+  allowed capabilities。它复用 Tree-sitter parser 生成 universal syntax tree
+  projection，用通用 selector 定位节点并替换节点文本；写入前会重解析，返回
+  node range/hash、syntax status 和 changed files，避免把整文件或 replacement
+  原文放进低敏 result projection。
 
 后续：
 

@@ -17,6 +17,12 @@ from .artifact_outputs import (
     run_artifact_diff_result,
     validate_artifact_output_inputs,
 )
+from .ast_edit import (
+    CODE_AST_EDIT_CAPABILITY,
+    is_ast_edit_capability,
+    run_code_ast_edit,
+    validate_ast_edit_inputs,
+)
 from .catalog import CapabilityCatalog
 from .coding import (
     CODING_TASK_PLAN_CAPABILITY,
@@ -338,6 +344,11 @@ class CapabilityRunner:
             inputs=input_mapping,
             missing_inputs=missing_inputs,
         )
+        validate_ast_edit_inputs(
+            capability_id=capability_id,
+            inputs=input_mapping,
+            missing_inputs=missing_inputs,
+        )
         validate_test_run_inputs(
             capability_id=capability_id,
             inputs=input_mapping,
@@ -410,6 +421,7 @@ class CapabilityRunner:
             and not is_code_access_capability(capability_id)
             and not is_file_read_capability(capability_id)
             and not is_code_edit_capability(capability_id)
+            and not is_ast_edit_capability(capability_id)
             and not is_test_run_capability(capability_id)
             and not is_terminal_exec_capability(capability_id)
             and not is_vcs_capability(capability_id)
@@ -475,6 +487,7 @@ class CapabilityRunner:
             or is_coding_run_capability(capability_id)
             or is_code_access_capability(capability_id)
             or is_code_edit_capability(capability_id)
+            or is_ast_edit_capability(capability_id)
             or is_test_run_capability(capability_id)
             or is_terminal_exec_capability(capability_id)
             or is_vcs_capability(capability_id)
@@ -542,6 +555,11 @@ class CapabilityRunner:
                 missing_inputs=missing_inputs,
             )
             validate_code_edit_inputs(
+                capability_id=capability_id,
+                inputs=input_mapping,
+                missing_inputs=missing_inputs,
+            )
+            validate_ast_edit_inputs(
                 capability_id=capability_id,
                 inputs=input_mapping,
                 missing_inputs=missing_inputs,
@@ -641,6 +659,8 @@ class CapabilityRunner:
             return run_code_search(inputs=input_mapping)
         if capability_id == CODE_APPLY_PATCH_CAPABILITY:
             return run_code_apply_patch(inputs=input_mapping)
+        if capability_id == CODE_AST_EDIT_CAPABILITY:
+            return run_code_ast_edit(inputs=input_mapping)
         if capability_id == TEST_RUN_CAPABILITY:
             return run_test_run(inputs=input_mapping)
         if capability_id == TERMINAL_EXEC_CAPABILITY:
@@ -799,6 +819,8 @@ def _runner_kind(capability: Mapping[str, Any], *, scenario: str | None) -> str:
     if is_code_access_capability(str(capability.get("capability_id", ""))):
         return "deterministic_projection"
     if is_code_edit_capability(str(capability.get("capability_id", ""))):
+        return "deterministic_local"
+    if is_ast_edit_capability(str(capability.get("capability_id", ""))):
         return "deterministic_local"
     if is_test_run_capability(str(capability.get("capability_id", ""))):
         return "deterministic_local"

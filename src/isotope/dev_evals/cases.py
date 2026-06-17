@@ -36,6 +36,17 @@ _SCENARIOS: tuple[CapabilityScenario, ...] = (
         "workspace_with_code",
     ),
     CapabilityScenario(
+        "code_ast_edit_fixture",
+        ("code.ast_edit",),
+        (
+            "Use code.ast_edit on src/app.py. Select the "
+            "function_definition containing def answer and replace that node "
+            "with a valid function returning 'AST_EDITED'."
+        ),
+        "workspace_with_code",
+        required_input_fragments=("function_definition", "def answer"),
+    ),
+    CapabilityScenario(
         "code_read_fixture",
         ("code.read",),
         "Read src/app.py and tell me whether the fixture marker is present.",

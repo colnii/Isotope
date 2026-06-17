@@ -50,6 +50,16 @@ def test_code_search_scenario_requires_literal_marker_input():
     assert scenario.required_input_fragments == ("ISOTOPE_DEV_EVAL_MARKER",)
 
 
+def test_ast_edit_scenario_requires_universal_node_selector_input():
+    scenario = next(
+        item for item in scenario_catalog() if item.case_id == "code_ast_edit_fixture"
+    )
+
+    assert scenario.capability_ids == ("code.ast_edit",)
+    assert scenario.fixture == "workspace_with_code"
+    assert scenario.required_input_fragments == ("function_definition", "def answer")
+
+
 def test_research_recall_scenario_requires_marker_input():
     scenario = next(
         item for item in scenario_catalog() if item.case_id == "research_recall_fixture"

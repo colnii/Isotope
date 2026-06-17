@@ -148,6 +148,37 @@ def run_live_suite(
 def _default_deterministic_provider_for_case(
     capability_id: str,
 ) -> DeterministicScenarioProvider:
+    if capability_id == "code.ast_edit":
+        return DeterministicScenarioProvider(
+            [
+                {
+                    "kind": "call_capability",
+                    "capacity_id": capability_id,
+                    "arguments": {
+                        "path": "src/app.py",
+                        "selector": {
+                            "node_type": "function_definition",
+                            "text_contains": "def answer",
+                        },
+                        "replacement": (
+                            "def answer():\n"
+                            "    return 'AST_EDITED'\n"
+                        ),
+                    },
+                    "rationale": "Exercise Tree-sitter AST node replacement.",
+                },
+                {
+                    "kind": "direct_answer",
+                    "answer": "AST edit completed and syntax check passed.",
+                    "answer_basis": {
+                        "kind": "observation",
+                        "capacity_ids": [capability_id],
+                        "reason": "AST edit observation reported syntax_check passed.",
+                    },
+                    "rationale": "Stop.",
+                },
+            ]
+        )
     if capability_id == "screen.control":
         return DeterministicScenarioProvider(
             [

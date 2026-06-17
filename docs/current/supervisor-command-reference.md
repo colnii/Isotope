@@ -188,6 +188,11 @@ worktree，也会报告多个 dirty worktree 是否修改了同一个文件。�
   通过单 tick driver 跑一次 `call_capability`；多轮推进交给 finite-step runner
   和 tick policy；JSON 输出会带
   `agent_loop_summary` 结构化字段，供 dashboard / web 复用。
+- `code.ast_edit` capability 已接入同一路径：输入 workspace 相对 `path`、
+  Tree-sitter 通用 `selector` 和 `replacement`，运行时先 parse 成 universal
+  syntax tree（统一语法树投影），按节点 byte range 改写，再重解析；语法失败时
+  不写文件。结果只暴露 root type、selected node range/hash、syntax status 和
+  changed files，不返回整文件或 replacement 原文。
 - `supervisor.goal_plan` capability 默认只预览目标规划；只有输入里显式
   `write=true` 才会写入 Supervisor goal queue。
 - `memory --query` 返回 summary / refs / provenance preview；plain 输出会标出

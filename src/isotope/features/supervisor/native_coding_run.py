@@ -50,6 +50,7 @@ def run_native_coding_agent_loop(
                     "allowed_capabilities": [
                         "code.search",
                         "code.read",
+                        "code.ast_edit",
                         "coding_task.execute",
                     ],
                     "verification_intent": _string(

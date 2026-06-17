@@ -63,6 +63,7 @@ def agent_loop_json_result(payload: Mapping[str, Any]) -> dict[str, Any]:
         result.update(_agent_loop_research_promotion_result(capability_run))
         result.update(_agent_loop_project_status_result(capability_run))
         result.update(_agent_loop_terminal_exec_result(capability_run))
+        result.update(_agent_loop_ast_edit_result(capability_run))
         result.update(request_context_agent_loop_result(capability_run))
         result.update(_agent_loop_self_repair_result(capability_run))
         result.update(_agent_loop_reviewed_apply_result(capability_run))
@@ -351,6 +352,28 @@ def _agent_loop_terminal_exec_result(
         if value:
             result[result_key] = value
     return result
+
+
+def _agent_loop_ast_edit_result(capability_run: Mapping[str, Any]) -> dict[str, Any]:
+    if capability_run.get("capability_id") != "code.ast_edit":
+        return {}
+    ast_edit = capability_run.get("ast_edit")
+    if not isinstance(ast_edit, Mapping):
+        return {}
+    selected_node = ast_edit.get("selected_node")
+    syntax_check = ast_edit.get("syntax_check")
+    return {
+        "agent_loop_ast_edit_status": ast_edit.get("status"),
+        "agent_loop_ast_edit_path": ast_edit.get("path"),
+        "agent_loop_ast_edit_language": ast_edit.get("language"),
+        "agent_loop_ast_edit_selected_node_type": (
+            selected_node.get("type") if isinstance(selected_node, Mapping) else None
+        ),
+        "agent_loop_ast_edit_syntax_status": (
+            syntax_check.get("status") if isinstance(syntax_check, Mapping) else None
+        ),
+        "agent_loop_ast_edit_content_policy": ast_edit.get("content_policy"),
+    }
 
 
 def _agent_loop_reviewed_apply_result(

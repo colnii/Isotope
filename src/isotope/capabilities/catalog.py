@@ -1308,6 +1308,93 @@ class CapabilityCatalog:
                     network_required=False,
                 ),
                 Capability(
+                    capability_id="code.ast_edit",
+                    title="Code AST Edit",
+                    description=(
+                        "Parse one workspace-relative code file with Tree-sitter, "
+                        "project a universal syntax tree, replace a selected "
+                        "syntax node, and reparse before writing."
+                    ),
+                    maturity="v0.2",
+                    shelf="product_candidate",
+                    domain_tags=(
+                        "code",
+                        "ast",
+                        "tree-sitter",
+                        "edit",
+                        "native-coding",
+                        "workspace",
+                    ),
+                    input_contract={
+                        "type": "object",
+                        "required": [
+                            "root",
+                            "cwd",
+                            "path",
+                            "selector",
+                            "replacement",
+                        ],
+                        "properties": {
+                            "root": {
+                                "type": "string",
+                                "x-system-input": True,
+                                "description": "Runtime root for AST edit metadata.",
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "x-system-input": True,
+                                "description": "Workspace directory that bounds the edit.",
+                            },
+                            "path": {
+                                "type": "string",
+                                "description": "Workspace-relative file path to edit.",
+                            },
+                            "language": {
+                                "type": "string",
+                                "description": (
+                                    "Optional Tree-sitter language id. Defaults "
+                                    "to detection from path."
+                                ),
+                            },
+                            "selector": {
+                                "type": "object",
+                                "description": (
+                                    "Universal syntax node selector. Use node_path "
+                                    "for exact named-child paths, or node_type plus "
+                                    "optional text_contains and occurrence."
+                                ),
+                            },
+                            "replacement": {
+                                "type": "string",
+                                "description": "Replacement source text for the selected node.",
+                            },
+                        },
+                    },
+                    output_contract={
+                        "type": "object",
+                        "fields": [
+                            "status",
+                            "runner_kind",
+                            "ast_edit",
+                            "universal_tree",
+                            "selected_node",
+                            "syntax_check",
+                            "changed_files",
+                        ],
+                    },
+                    safety_boundaries=(
+                        "tree_sitter_parse_required",
+                        "universal_syntax_tree_projection",
+                        "relative_paths_only",
+                        "workspace_escape_rejected",
+                        "node_range_replace_only",
+                        "syntax_error_rejected_before_write",
+                        "node_ranges_and_hashes_only",
+                    ),
+                    default_enabled=True,
+                    network_required=False,
+                ),
+                Capability(
                     capability_id="terminal.exec",
                     title="Terminal Exec",
                     description=(

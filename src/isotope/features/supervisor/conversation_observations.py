@@ -186,6 +186,7 @@ def _capability_result_detail_label(capacity_id: str) -> str:
         "code.read": "Code read result",
         "file.read": "File read result",
         "code.apply_patch": "Patch result",
+        "code.ast_edit": "AST edit result",
         "artifact.diff_result": "Artifact result",
         "supervisor.project_status": "Project status summary",
         "skills.search": "Skills search result",
@@ -223,6 +224,23 @@ def _capability_result_observation(
         return _file_read_observation(capability_run)
     if capacity_id == "code.apply_patch":
         return _patch_result_observation(capability_run)
+    if capacity_id == "code.ast_edit":
+        ast_edit = capability_run.get("ast_edit")
+        if not isinstance(ast_edit, dict):
+            return None
+        return {
+            "kind": "ast_edit",
+            "status": _string_value(ast_edit.get("status")),
+            "path": _string_value(ast_edit.get("path")),
+            "language": _string_value(ast_edit.get("language")),
+            "parse_engine": _string_value(ast_edit.get("parse_engine")),
+            "universal_tree": _safe_mapping(ast_edit.get("universal_tree")),
+            "selected_node": _safe_mapping(ast_edit.get("selected_node")),
+            "changed_files": _string_list_value(ast_edit.get("changed_files")),
+            "syntax_check": _safe_mapping(ast_edit.get("syntax_check")),
+            "write_policy": _string_value(ast_edit.get("write_policy")),
+            "content_policy": _string_value(ast_edit.get("content_policy")),
+        }
     if capacity_id == "artifact.diff_result":
         return _artifact_result_observation(capability_run)
     if capacity_id == "terminal.exec":
