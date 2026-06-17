@@ -84,6 +84,18 @@ export function createAppState(clients: AppClients, options: AppStateOptions = {
     persistChatSessionState(chatSessionStorage, get(chatSessions), get(activeChatSessionId));
   }
 
+  function createEmptyChatSession(): DesktopChatSession {
+    const timestamp = now().toISOString();
+    chatSessionCount += 1;
+    return {
+      id: `chat_session_${chatSessionCount}`,
+      title: '新对话',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      messages: []
+    };
+  }
+
   function updateSessionMessages(
     sessionId: string,
     updater: (messages: DesktopChatMessage[]) => DesktopChatMessage[]
@@ -205,17 +217,29 @@ export function createAppState(clients: AppClients, options: AppStateOptions = {
       persistSessions();
     },
     startNewChatSession() {
-      const timestamp = now().toISOString();
-      chatSessionCount += 1;
-      const session: DesktopChatSession = {
-        id: `chat_session_${chatSessionCount}`,
-        title: '新对话',
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        messages: []
-      };
+      const session = createEmptyChatSession();
       chatSessions.update((sessions) => [...sessions, session]);
       activeChatSessionId.set(session.id);
+      chatError.set(null);
+      persistSessions();
+    },
+    deleteChatSession(sessionId: string) {
+      const cleanSessionId = sessionId.trim();
+      if (!get(chatSessions).some((session) => session.id === cleanSessionId)) return;
+      let nextActiveSessionId = get(activeChatSessionId);
+      chatSessions.update((sessions) => {
+        const remaining = sessions.filter((session) => session.id !== cleanSessionId);
+        if (!remaining.length) {
+          const replacement = createEmptyChatSession();
+          nextActiveSessionId = replacement.id;
+          return [replacement];
+        }
+        if (nextActiveSessionId === cleanSessionId) {
+          nextActiveSessionId = summarizeChatSessions(remaining, '')[0].id;
+        }
+        return remaining;
+      });
+      activeChatSessionId.set(nextActiveSessionId);
       chatError.set(null);
       persistSessions();
     },

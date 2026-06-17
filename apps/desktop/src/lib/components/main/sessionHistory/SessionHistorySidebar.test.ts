@@ -14,6 +14,9 @@ describe('SessionHistorySidebar', () => {
     expect(source).toContain('历史会话');
     expect(source).toContain('aria-label="新建会话"');
     expect(source).toContain('{#each sessions as session (session.id)}');
+    expect(source).toContain('<article');
     expect(source).toContain('onclick={() => onSelectSession(session.id)}');
+    expect(source).toContain('onclick={() => onDeleteSession(session.id)}');
+    expect(source).toContain('删除会话');
   });
 });

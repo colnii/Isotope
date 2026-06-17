@@ -95,6 +95,7 @@
             agentClient={isotopeClient.agentClient}
             onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
             onSelectChatSession={(sessionId) => appState.selectChatSession(sessionId)}
+            onDeleteChatSession={(sessionId) => appState.deleteChatSession(sessionId)}
             onNewChatSession={() => appState.startNewChatSession()}
             onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
             onToggleTerminalYolo={() => appState.toggleTerminalYolo()}
@@ -129,6 +130,7 @@
             agentClient={isotopeClient.agentClient}
             onAskDesktop={(question) => void appState.askDesktopQuestion(question)}
             onSelectChatSession={(sessionId) => appState.selectChatSession(sessionId)}
+            onDeleteChatSession={(sessionId) => appState.deleteChatSession(sessionId)}
             onNewChatSession={() => appState.startNewChatSession()}
             onResolveApproval={(approvalId, resolution) => void appState.resolveApproval(approvalId, resolution)}
             onToggleTerminalYolo={() => appState.toggleTerminalYolo()}

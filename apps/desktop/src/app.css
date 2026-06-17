@@ -56,12 +56,16 @@ textarea {
     @apply min-h-0 flex-1 space-y-2 overflow-y-auto p-3;
   }
 
-  .iso-session-item {
-    @apply flex w-full flex-col items-start rounded-panel border border-transparent px-3 py-3 text-left transition-colors hover:border-isotope-line hover:bg-isotope-panel focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-isotope-red focus-visible:ring-offset-2 focus-visible:ring-offset-isotope-rail;
+  .iso-session-row {
+    @apply flex items-stretch gap-2 rounded-panel border border-transparent transition-colors hover:border-isotope-line hover:bg-isotope-panel;
   }
 
-  .iso-session-item-active {
+  .iso-session-row-active {
     @apply border-isotope-line bg-isotope-panel shadow-sm;
+  }
+
+  .iso-session-item {
+    @apply flex min-w-0 flex-1 flex-col items-start rounded-panel px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-isotope-red focus-visible:ring-offset-2 focus-visible:ring-offset-isotope-rail;
   }
 
   .iso-session-item-title {
@@ -74,6 +78,10 @@ textarea {
 
   .iso-session-empty {
     @apply rounded-panel border border-dashed border-isotope-line px-3 py-4 text-sm text-isotope-muted;
+  }
+
+  .iso-session-delete-button {
+    @apply m-2 grid h-8 w-8 shrink-0 place-items-center rounded-panel border border-transparent text-xs font-bold text-isotope-muted transition-colors hover:border-isotope-error hover:bg-isotope-error hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-isotope-error focus-visible:ring-offset-2 focus-visible:ring-offset-isotope-rail;
   }
 
   .iso-chat-header {

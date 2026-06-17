@@ -20,6 +20,7 @@
     agentClient,
     onAskDesktop,
     onSelectChatSession = () => undefined,
+    onDeleteChatSession = () => undefined,
     onNewChatSession = () => undefined,
     onResolveApproval,
     onToggleTerminalYolo,
@@ -38,6 +39,7 @@
     agentClient: AgentClient;
     onAskDesktop: (question: string) => void;
     onSelectChatSession?: (sessionId: string) => void;
+    onDeleteChatSession?: (sessionId: string) => void;
     onNewChatSession?: () => void;
     onResolveApproval: (approvalId: string, resolution: ApprovalResolution) => void;
     onToggleTerminalYolo: () => void;
@@ -55,6 +57,7 @@
     sessions={chatSessionSummaries}
     activeSessionId={activeChatSessionId}
     onSelectSession={onSelectChatSession}
+    onDeleteSession={onDeleteChatSession}
     onNewSession={onNewChatSession}
   />
   <div class="iso-main-conversation-pane">

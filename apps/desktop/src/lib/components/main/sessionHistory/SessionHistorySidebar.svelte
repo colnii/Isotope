@@ -5,11 +5,13 @@
     sessions = [],
     activeSessionId = '',
     onSelectSession,
+    onDeleteSession,
     onNewSession
   } = $props<{
     sessions?: DesktopChatSessionSummary[];
     activeSessionId?: string;
     onSelectSession: (sessionId: string) => void;
+    onDeleteSession: (sessionId: string) => void;
     onNewSession: () => void;
   }>();
 
@@ -47,20 +49,33 @@
       <div class="iso-session-empty">暂无会话</div>
     {:else}
       {#each sessions as session (session.id)}
-        <button
-          type="button"
+        <article
           class={[
-            'iso-session-item',
-            session.id === activeSessionId || session.active ? 'iso-session-item-active' : ''
+            'iso-session-row',
+            session.id === activeSessionId || session.active ? 'iso-session-row-active' : ''
           ]}
-          aria-current={session.id === activeSessionId ? 'page' : undefined}
-          onclick={() => onSelectSession(session.id)}
         >
-          <span class="iso-session-item-title">{session.title}</span>
-          <span class="iso-session-item-meta">
-            {session.messageCount} 条 / {formatUpdatedAt(session.updatedAt)}
-          </span>
-        </button>
+          <button
+            type="button"
+            class="iso-session-item"
+            aria-current={session.id === activeSessionId ? 'page' : undefined}
+            onclick={() => onSelectSession(session.id)}
+          >
+            <span class="iso-session-item-title">{session.title}</span>
+            <span class="iso-session-item-meta">
+              {session.messageCount} 条 / {formatUpdatedAt(session.updatedAt)}
+            </span>
+          </button>
+          <button
+            type="button"
+            class="iso-session-delete-button"
+            aria-label={`删除会话 ${session.title}`}
+            title="删除会话"
+            onclick={() => onDeleteSession(session.id)}
+          >
+            x
+          </button>
+        </article>
       {/each}
     {/if}
   </div>

@@ -186,4 +186,88 @@ describe('session history state', () => {
       }
     ]);
   });
+
+  test('deletes inactive session without changing the active chat', () => {
+    const storage = memoryStorage({
+      'isotope.desktop.chatSessions.v1': JSON.stringify({
+        activeSessionId: 'chat_session_2',
+        sessions: [
+          {
+            id: 'chat_session_1',
+            title: '旧会话',
+            createdAt: '2026-06-17T01:00:00.000Z',
+            updatedAt: '2026-06-17T01:00:00.000Z',
+            messages: [{ id: 'chat_user_1', role: 'user', content: '旧问题' }]
+          },
+          {
+            id: 'chat_session_2',
+            title: '当前会话',
+            createdAt: '2026-06-18T01:00:00.000Z',
+            updatedAt: '2026-06-18T01:00:00.000Z',
+            messages: [{ id: 'chat_user_2', role: 'user', content: '当前问题' }]
+          }
+        ]
+      })
+    });
+    const { state } = appState(storage);
+
+    state.deleteChatSession('chat_session_1');
+
+    expect(get(state.activeChatSessionId)).toBe('chat_session_2');
+    expect(get(state.chatMessages)).toEqual([{ id: 'chat_user_2', role: 'user', content: '当前问题' }]);
+    expect(get(state.chatSessionSummaries)).toEqual([
+      {
+        id: 'chat_session_2',
+        title: '当前会话',
+        updatedAt: '2026-06-18T01:00:00.000Z',
+        messageCount: 1,
+        active: true
+      }
+    ]);
+    expect(storage.value('isotope.desktop.chatSessions.v1')).not.toContain('chat_session_1');
+  });
+
+  test('deleting active session selects remaining session and keeps one empty session after deleting all', () => {
+    const storage = memoryStorage({
+      'isotope.desktop.chatSessions.v1': JSON.stringify({
+        activeSessionId: 'chat_session_2',
+        sessions: [
+          {
+            id: 'chat_session_1',
+            title: '旧会话',
+            createdAt: '2026-06-17T01:00:00.000Z',
+            updatedAt: '2026-06-17T01:00:00.000Z',
+            messages: [{ id: 'chat_user_1', role: 'user', content: '旧问题' }]
+          },
+          {
+            id: 'chat_session_2',
+            title: '当前会话',
+            createdAt: '2026-06-18T01:00:00.000Z',
+            updatedAt: '2026-06-18T01:00:00.000Z',
+            messages: [{ id: 'chat_user_2', role: 'user', content: '当前问题' }]
+          }
+        ]
+      })
+    });
+    const { state } = appState(storage);
+
+    state.deleteChatSession('chat_session_2');
+
+    expect(get(state.activeChatSessionId)).toBe('chat_session_1');
+    expect(get(state.chatMessages)).toEqual([{ id: 'chat_user_1', role: 'user', content: '旧问题' }]);
+
+    state.deleteChatSession('chat_session_1');
+
+    expect(get(state.activeChatSessionId)).toBe('chat_session_3');
+    expect(get(state.chatMessages)).toEqual([]);
+    expect(get(state.chatSessionSummaries)).toEqual([
+      {
+        id: 'chat_session_3',
+        title: '新对话',
+        updatedAt: '2026-06-18T06:00:00.000Z',
+        messageCount: 0,
+        active: true
+      }
+    ]);
+  });
 });
