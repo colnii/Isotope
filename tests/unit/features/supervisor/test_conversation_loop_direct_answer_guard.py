@@ -58,6 +58,111 @@ class PlainTextConversationProvider:
         )
 
 
+class RawSequenceConversationProvider:
+    provider = "deterministic_test"
+    model = "raw-sequence-conversation"
+
+    def __init__(self, responses: list[str]) -> None:
+        self.responses = list(responses)
+        self.calls: list[dict[str, Any]] = []
+
+    def generate(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int = 512,
+    ) -> LLMResponse:
+        self.calls.append({"messages": messages, "max_tokens": max_tokens})
+        return LLMResponse(
+            provider=self.provider,
+            model=self.model,
+            content=self.responses.pop(0),
+            finish_reason="stop",
+            usage={"prompt_tokens": 1, "completion_tokens": 1},
+            raw={},
+        )
+
+
+def test_conversation_loop_executes_json_decision_after_leading_model_text(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    captured_inputs: list[tuple[str, dict[str, Any]]] = []
+
+    def fake_execute_capacity_step(**kwargs: Any) -> dict[str, Any]:
+        capacity_id = kwargs["capability_id"]
+        inputs = dict(kwargs["inputs"])
+        captured_inputs.append((capacity_id, inputs))
+        return _agent_loop(
+            {
+                "kind": "screen_observation",
+                "status": "completed",
+                "summary": "当前屏幕是 Isotope 桌面对话。",
+            }
+        )
+
+    monkeypatch.setattr(
+        conversation_loop,
+        "_execute_capacity_step_with_timeout",
+        fake_execute_capacity_step,
+    )
+    provider = RawSequenceConversationProvider(
+        [
+            (
+                "好的，我先观察一下你的屏幕，看看当前在做什么。\n\n"
+                + json.dumps(
+                    {
+                        "kind": "call_capability",
+                        "capacity_id": "screen.observe",
+                        "arguments": {
+                            "target_selector": {
+                                "kind": "window",
+                                "app": "",
+                                "title_contains": "",
+                            },
+                            "mode": "non_intrusive",
+                            "capture": ["metadata", "screenshot"],
+                        },
+                        "rationale": "用户要求查看当前屏幕内容。",
+                    },
+                    ensure_ascii=False,
+                )
+            ),
+            json.dumps(
+                {
+                    "kind": "direct_answer",
+                    "answer_basis": {
+                        "kind": "no_capability_needed",
+                        "reason": "测试只验证 capability decision 被执行。",
+                    },
+                    "answer": "我已经观察过当前屏幕。",
+                },
+                ensure_ascii=False,
+            ),
+        ]
+    )
+
+    events = list(
+        run_supervisor_conversation_events(
+            state_root=tmp_path / "state",
+            cwd=tmp_path,
+            user_message="看看我的电脑屏幕，我现在在干啥",
+            provider=provider,
+            max_turns=3,
+        )
+    )
+
+    assert [event.event for event in events] == [
+        "capacity_start",
+        "capacity_result",
+        "delta",
+    ]
+    assert [capacity_id for capacity_id, _inputs in captured_inputs] == [
+        "screen.observe"
+    ]
+    assert events[-1].payload == {"text": "我已经观察过当前屏幕。"}
+
+
 def test_conversation_loop_rejects_unbased_direct_answer_before_observation(
     tmp_path,
     monkeypatch,

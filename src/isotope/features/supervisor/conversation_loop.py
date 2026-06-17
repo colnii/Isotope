@@ -41,6 +41,7 @@ from .conversation.direct_answer import (
     direct_answer_rejection_observation,
     recovered_unstructured_direct_answer,
 )
+from .conversation.decision_parsing import parse_decision
 from .conversation.generation import generate_with_timeout as _generate_with_timeout
 from .conversation.repeated_capacity import (
     capacity_call_key,
@@ -131,7 +132,7 @@ def run_supervisor_conversation_events(
             max_tokens=max_tokens,
             timeout_seconds=timeout_seconds,
         )
-        decision = _parse_decision(response.content)
+        decision = parse_decision(response.content)
         if decision["kind"] == "direct_answer":
             answer = _require_text(decision.get("answer"), "answer")
             rejection = direct_answer_rejection_observation(
@@ -460,29 +461,6 @@ def _omit_empty(value: dict[str, Any]) -> dict[str, Any]:
         for key, item in value.items()
         if item not in (None, [], {})
     }
-
-
-def _parse_decision(content: str) -> dict[str, Any]:
-    stripped = _require_text(content, "provider response")
-    try:
-        payload = json.loads(stripped)
-    except json.JSONDecodeError:
-        return {
-            "kind": "direct_answer",
-            "answer": stripped,
-            "_parse_status": "non_json",
-        }
-    if not isinstance(payload, dict):
-        return {"kind": "direct_answer", "answer": stripped}
-    kind = payload.get("kind")
-    if kind not in {
-        "direct_answer",
-        "call_capability",
-        "call_capabilities",
-        "report_capability_gap",
-    }:
-        return {"kind": "direct_answer", "answer": stripped}
-    return dict(payload)
 
 
 def _run_capability_decision(
