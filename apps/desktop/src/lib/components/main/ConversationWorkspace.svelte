@@ -112,19 +112,6 @@
         {#if subtitle}
           <div class="iso-chat-subtitle">{subtitle}</div>
         {/if}
-        <button
-          type="button"
-          aria-pressed={terminalYoloEnabled}
-          class={[
-            'rounded-full border px-3 py-1 text-xs font-semibold transition-colors',
-            terminalYoloEnabled
-              ? 'border-isotope-error bg-isotope-error text-white shadow-sm'
-              : 'border-isotope-line bg-isotope-panel text-isotope-muted hover:border-isotope-line-strong hover:text-isotope-text'
-          ]}
-          onclick={onToggleTerminalYolo}
-        >
-          {terminalYoloEnabled ? '终端 YOLO 已开' : '终端 YOLO'}
-        </button>
       </div>
     </div>
     <div class="iso-suprematist-mark" aria-hidden="true">
@@ -294,7 +281,24 @@
           {approvalError}
         </div>
       {/if}
-      <CommandComposer placeholder={composerPlaceholder} disabled={isAsking} onSubmit={onAsk} />
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          aria-pressed={terminalYoloEnabled}
+          class={[
+            'shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition-colors',
+            terminalYoloEnabled
+              ? 'border-isotope-error bg-isotope-error text-white shadow-sm'
+              : 'border-isotope-line bg-isotope-panel-raised text-isotope-muted hover:border-isotope-line-strong hover:text-isotope-text'
+          ]}
+          onclick={onToggleTerminalYolo}
+        >
+          {terminalYoloEnabled ? 'YOLO 已开' : 'YOLO'}
+        </button>
+        <div class="min-w-0 flex-1">
+          <CommandComposer placeholder={composerPlaceholder} disabled={isAsking} onSubmit={onAsk} />
+        </div>
+      </div>
     </div>
   </div>
 </section>

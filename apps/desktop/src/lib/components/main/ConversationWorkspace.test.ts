@@ -84,5 +84,11 @@ describe('ConversationWorkspace', () => {
     expect(source).toContain('本次批准');
     expect(source).toContain('加入 allowlist');
     expect(source).toContain('onAllowlistTerminalApproval');
+    expect(source.indexOf('aria-pressed={terminalYoloEnabled}')).toBeGreaterThan(
+      source.indexOf('border-t border-isotope-line bg-isotope-panel')
+    );
+    expect(source.indexOf('aria-pressed={terminalYoloEnabled}')).toBeLessThan(
+      source.indexOf('<CommandComposer')
+    );
   });
 });
