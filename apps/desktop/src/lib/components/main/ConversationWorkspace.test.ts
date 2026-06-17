@@ -75,6 +75,21 @@ describe('ConversationWorkspace', () => {
     expect(source).toContain('class="iso-error-card"');
   });
 
+  test('renders transient errors in the middle scroll area instead of the composer footer', () => {
+    const path = join(process.cwd(), 'src/lib/components/main/ConversationWorkspace.svelte');
+    const source = readFileSync(path, 'utf8');
+
+    expect(source.indexOf('aria-live="assertive"')).toBeGreaterThan(
+      source.indexOf('class="iso-chat-scroll"')
+    );
+    expect(source.indexOf('aria-live="assertive"')).toBeLessThan(
+      source.indexOf('border-t border-isotope-line bg-isotope-panel')
+    );
+    expect(source.indexOf('aria-live="assertive"')).toBeLessThan(
+      source.indexOf('<CommandComposer')
+    );
+  });
+
   test('contains terminal approval controls for yolo, single approval, and allowlist', () => {
     const path = join(process.cwd(), 'src/lib/components/main/ConversationWorkspace.svelte');
     const source = readFileSync(path, 'utf8');

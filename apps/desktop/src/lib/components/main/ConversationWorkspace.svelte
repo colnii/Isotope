@@ -267,20 +267,24 @@
         {/each}
       </div>
     {/if}
+    {#if chatError || approvalError}
+      <div class="mx-auto mt-4 w-full max-w-3xl" aria-live="assertive">
+        {#if chatError}
+          <div class="iso-error-card" role="alert">
+            {chatError}
+          </div>
+        {/if}
+        {#if approvalError}
+          <div class="iso-error-card" role="alert">
+            {approvalError}
+          </div>
+        {/if}
+      </div>
+    {/if}
   </div>
 
   <div class="border-t border-isotope-line bg-isotope-panel px-7 py-4">
     <div class="mx-auto max-w-3xl">
-      {#if chatError}
-        <div class="iso-error-card" role="alert">
-          {chatError}
-        </div>
-      {/if}
-      {#if approvalError}
-        <div class="iso-error-card" role="alert">
-          {approvalError}
-        </div>
-      {/if}
       <div class="flex items-center gap-2">
         <button
           type="button"
