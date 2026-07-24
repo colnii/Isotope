@@ -1065,7 +1065,7 @@ class CapabilityCatalog:
                     capability_id="file.read",
                     title="Read",
                     description=(
-                        "Read one bounded text excerpt from either the current "
+                        "Read one scoped text excerpt from either the current "
                         "workspace or an approval-gated local file path."
                     ),
                     maturity="v0.2",

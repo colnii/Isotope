@@ -300,6 +300,12 @@ _SCENARIOS: tuple[CapabilityScenario, ...] = (
         "workspace_with_diff",
         combination_only=True,
     ),
+    CapabilityScenario(
+        "terminal_exec_list_workspace",
+        ("terminal.exec",),
+        "Run an argv-only terminal command to list files in the active workspace and summarize the output.",
+        "workspace_with_code",
+    ),
 )
 
 

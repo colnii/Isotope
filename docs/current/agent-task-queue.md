@@ -250,8 +250,8 @@
   不进入模型可见 input contract。
 - `research.recall` 已接入同一 capability runner；capacity path 会给它补
   `root` default，模型只需要提供 `query`，可选 `run_id/limit/dense_retrieval`；
-  它检索 artifact preview，不走 inspect/promote 的正文路径，也不返回 report 正文。
-  现在已有低敏 `agent_loop_research_recall_*` projection 和 desktop preview
+  它检索 artifact preview，不走 inspect/promote 的正文路径，report 正文只在内部路径处理。
+  现在已有脱敏后的 `agent_loop_research_recall_*` projection 和 desktop preview
   展示；`research_recall_fixture` 已覆盖真实 LLM opt-in smoke，用于判断模型是否
   能从 existing stored research report 语境中自然选择 recall。
 - `research.promote` 已接入同一 capability runner；capacity path 会给它补
@@ -262,7 +262,7 @@
   allowed capabilities。它复用 Tree-sitter parser 生成 universal syntax tree
   projection，用通用 selector 定位节点并替换节点文本；写入前会重解析，返回
   node range/hash、syntax status 和 changed files，避免把整文件或 replacement
-  原文放进低敏 result projection。
+  原文放进脱敏后的 result projection。
 
 后续：
 

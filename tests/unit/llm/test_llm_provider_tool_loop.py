@@ -203,6 +203,7 @@ def test_llm_tool_loop_sends_catalog_to_provider_and_waits_for_approval(tmp_path
         "terminal_exec",
         "screen_observe",
         "screen_control",
+        "local_file_read",
         "codex_task",
     ]
     write_memory = [
