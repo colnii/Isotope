@@ -5,6 +5,8 @@ Isotope 是一个 local-first 的 AI 工程工作台，也是一个 Application-
 它不只是一个 Supervisor——Isotope 将 LLM 驱动的会话管理、桌面交互、RAG 记忆检索、
 屏幕控制、社交桥接和可审查的 agent 工作流整合为统一的本地工作台。
 
+![Isotope 桌面应用截图](docs/assets/isotope-desktop.png)
+
 ## 核心能力
 
 ### Agent Supervisor
