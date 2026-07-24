@@ -54,10 +54,10 @@ def test_ci_workflow_runs_on_push_and_pull_request():
     assert _contains_trigger(text, "pull_request")
 
 
-def test_ci_workflow_uses_project_self_hosted_runner():
+def test_ci_workflow_uses_github_hosted_runner():
     text = _workflow_text()
 
-    assert "runs-on: [self-hosted, linux, x64, isotope-ci]" in text
+    assert "runs-on: ubuntu-latest" in text
 
 
 def test_ci_workflow_cancels_superseded_runs_per_ref():
