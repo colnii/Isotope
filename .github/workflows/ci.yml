@@ -13,9 +13,8 @@ concurrency:
 
 jobs:
   smoke:
-    name: smoke (3.13 self-hosted)
-    # Register a Linux x64 self-hosted runner with the custom isotope-ci label.
-    runs-on: [self-hosted, linux, x64, isotope-ci]
+    name: smoke (3.13)
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
